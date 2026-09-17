@@ -2,6 +2,10 @@ import { IconButton } from "@material-ui/core";
 import LockIcon from "@material-ui/icons/Lock";
 import LockOpenIcon from "@material-ui/icons/LockOpen";
 import SaveIcon from "@material-ui/icons/Save";
+import ViewQuiltIcon from "@material-ui/icons/ViewQuilt";
+import Menu from "@material-ui/core/Menu";
+import Tooltip from "@material-ui/core/Tooltip";
+import ListItemText from "@material-ui/core/ListItemText";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import "../../App.css";
@@ -36,6 +40,13 @@ export const DashboardProvider = ({ children }) => {
   const [dashboardX, setDashboardX] = useState(1);
   const [maxdashboard, setMaxdashboard] = useState(4);
   const [initialdashboard, setInitialdashboard] = useState(0) 
+  const [templateList, setTemplateList] = useState([]);
+
+  useEffect(() => {
+    dashboardapi.templates((data) => {
+      setTemplateList(Array.isArray(data) ? data : []);
+    });
+  }, []);
 
   useEffect(() => {
     dashboardapi.getcurrentdashboard((data) => {
@@ -115,6 +126,45 @@ export const DashboardProvider = ({ children }) => {
     dashboardapi.widgets((data)=>{
       setWidgets(data)
     })
+  };
+
+  // Load a bundled starter layout into the editor. This only changes local
+  // state - nothing is persisted until the user presses Save, so picking a
+  // layout by mistake is harmless.
+  const load_template = (name, max_x = width, max_y = height) => {
+    dashboardapi.template(
+      name,
+      (data) => {
+        const errors = [];
+        const data_model2 = (data.elements || []).reduce((a, x) => {
+          if (x.type in widget_dict) {
+            return [...a, { ...x, instance: <DashboardContainer key={x.id} id={x.id} type={widget_dict[x.type].component} /> }];
+          }
+          errors.push("Can't find " + x.type + " widget");
+          return [...a];
+        }, []);
+
+        setElements(data_model2.reduce((a, x) => ({ ...a, [x.id]: x }), {}));
+        setElements2(data_model2);
+        setPathes(
+          (data.pathes || []).map((v) => ({
+            ...v,
+            instance: <Path key={v.id} id={v.id} coordinates={v.coordinates} condition={v.condition} max_x={max_x} max_y={max_y} />,
+          }))
+        );
+        setSelected(null);
+        setSelectedPath(null);
+
+        if (errors.length > 0) {
+          alert.show(uuidv4(), "Layout", errors.join(", "), "warning");
+        } else {
+          alert.show(uuidv4(), "Layout", "Loaded - press Save to keep it", "success");
+        }
+      },
+      () => {
+        alert.show(uuidv4(), "Layout", "Could not load '" + name + "'", "error");
+      }
+    );
   };
 
   const remove = (id) => {
@@ -272,7 +322,8 @@ export const DashboardProvider = ({ children }) => {
       selectedPath,
       maxdashboard,
       dashboardX,
-      initialdashboard
+      initialdashboard,
+      templateList
     },
     actions: {
       setCurrent,
@@ -294,6 +345,7 @@ export const DashboardProvider = ({ children }) => {
       setDraggable,
       update_path,
       load,
+      load_template,
       setSelectedPath,
       setDashboardX,
       save,
@@ -301,6 +353,37 @@ export const DashboardProvider = ({ children }) => {
   };
 
   return <DashboardContext.Provider value={value}>{children}</DashboardContext.Provider>;
+};
+
+// Picker for the bundled starter layouts. Only rendered in edit mode.
+const TemplateMenu = ({ templates, onPick }) => {
+  const [anchorEl, setAnchorEl] = useState(null);
+
+  const pick = (name) => {
+    setAnchorEl(null);
+    onPick(name);
+  };
+
+  return (
+    <>
+      <Tooltip title="Load Layout">
+        <IconButton onClick={(e) => setAnchorEl(e.currentTarget)}>
+          <ViewQuiltIcon />
+        </IconButton>
+      </Tooltip>
+      <Menu anchorEl={anchorEl} keepMounted open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
+        {templates.length === 0 ? (
+          <MenuItem disabled>No layouts available</MenuItem>
+        ) : (
+          templates.map((t) => (
+            <MenuItem key={t.name} onClick={() => pick(t.name)} style={{ maxWidth: 360, whiteSpace: "normal" }}>
+              <ListItemText primary={t.title || t.name} secondary={t.description} />
+            </MenuItem>
+          ))
+        )}
+      </Menu>
+    </>
+  );
 };
 
 export const Dashboard = ({ width, height , fixdash}) => {
@@ -392,6 +475,7 @@ export const Dashboard = ({ width, height , fixdash}) => {
           {!fixdash ?
           <div style={{ position: "absolute", top: 0, right: 0 }}>
           {state.draggable ? state.dashboardX : <SelectBox options={dashboardlist} value={state.dashboardX} onChange={DashBoardChange}/>} 
+            {state.draggable ? <TemplateMenu templates={state.templateList} onPick={(name) => actions.load_template(name)} /> : "" }
             {state.draggable ? 
             
             <DeleteDialog

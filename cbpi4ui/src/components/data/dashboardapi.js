@@ -79,6 +79,28 @@ const getcurrentdashboard = (callback_susscess = () => {}, callback_failed = () 
     });
 };
 
+const templates = (callback_susscess = () => {}, callback_failed = () => {}) => {
+  axios
+    .get("/dashboard/templates" )
+    .then(function (response) {
+      callback_susscess(response.data);
+    })
+    .catch(function (error) {
+      callback_failed();
+    });
+};
+
+const template = (name, callback_susscess = () => {}, callback_failed = () => {}) => {
+  axios
+    .get("/dashboard/templates/" + name )
+    .then(function (response) {
+      callback_susscess(response.data);
+    })
+    .catch(function (error) {
+      callback_failed();
+    });
+};
+
 export const dashboardapi = {
   save,
   get,
@@ -86,5 +108,7 @@ export const dashboardapi = {
   dashboardnumbers,
   setcurrentdashboard,
   getcurrentdashboard,
-  clear
+  clear,
+  templates,
+  template
 }
