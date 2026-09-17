@@ -26,6 +26,7 @@ import MashProfile from "./components/mashprofile";
 import FermenterProfile from "./components/fermenterprofile";
 import Settings from "./components/settings";
 import Menu from "./components/util/Menu";
+import ConnectionBanner from "./components/util/ConnectionBanner";
 import PrivateRoute from "./components/util/PrivateRoute";
 import logo from "./images/cbpi_no_border.png";
 import StepForm from "./components/mashprofile/StepForm";
@@ -139,6 +140,7 @@ const CraftBeerPiApp = () => {
 
   return (
     <div className={classes.root}>
+      <ConnectionBanner />
       <CssBaseline />
       <Router>
         <Switch>

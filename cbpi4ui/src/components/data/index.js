@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import CBPiWebSocket from "./websocket";
+import CBPiWebSocket, { WS_CONNECTING, WS_LIVE, WS_OFFLINE } from "./websocket";
 import { actorapi } from "./actorapi";
 import { useEventCallback } from "@material-ui/core";
 import { useAlert } from "../alert/AlertProvider";
@@ -41,6 +41,10 @@ export const CBPiProvider = ({ children }) => {
   const [fermenter, setFermenter] = useState([]);
   const [fermenterlogic, setFermenterLogic] = useState([]);
   const [fermentersteps, setFermenterSteps] = useState([]);
+  // Connection state, so the UI can tell the operator when the readings on
+  // screen have stopped being live rather than letting them go stale silently.
+  const [connection, setConnection] = useState(WS_CONNECTING);
+  const [lastMessageAt, setLastMessageAt] = useState(null);
 
   const onMessage = useCallback((data) => {
     //console.log("WS", data);
@@ -87,10 +91,18 @@ export const CBPiProvider = ({ children }) => {
   }, [notification]);
 
   useEffect(() => {
-    const ws = new CBPiWebSocket(onMessage, alert);
+    const handle_status = (status) => {
+      setConnection(status);
+      if (status === WS_LIVE) {
+        setLastMessageAt(Date.now());
+      }
+    };
+    const ws = new CBPiWebSocket(onMessage, alert, handle_status);
     ws.connect();
 
-    axios.get("/system/").then((res) => {
+    axios
+      .get("/system/")
+      .then((res) => {
       const data = res.data;
       console.log(data)
       setKettle(data.kettle.data);
@@ -111,7 +123,14 @@ export const CBPiProvider = ({ children }) => {
       setStepTypes(Object.values(data.step.types));
       setStepTypesFermenter(Object.values(data.fermenter.steptypes));
       setAuth(true);
-    });
+      })
+      .catch(() => {
+        // Previously this failed silently and left the UI blank with no
+        // explanation of why nothing had loaded.
+        setConnection(WS_OFFLINE);
+      });
+
+    return () => ws.close();
   }, []);
 
   // Step API
@@ -153,7 +172,8 @@ export const CBPiProvider = ({ children }) => {
 
   const value = {
     state: { sensors, version, codename, actors, logic, kettle, fermenter, fermenterlogic, auth, plugins, temp, sensorData, 
-             actorTypes, sensorTypes, config, mashProfile, fermentersteps, FermenterProfile, mashBasic, stepTypes, stepTypesFermenter },
+             actorTypes, sensorTypes, config, mashProfile, fermentersteps, FermenterProfile, mashBasic, stepTypes, stepTypesFermenter,
+  connection, lastMessageAt },
     actions: {
       delete_kettle,
       add_kettle,
