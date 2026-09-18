@@ -42,3 +42,5 @@ packages/react-devtools-extensions/.tempUserDataDir
 packages/react-devtools-inline/dist
 packages/react-devtools-shell/dist
 packages/react-devtools-scheduling-profiler/dist
+# local test harness + screenshots, not part of the project
+e2e/
