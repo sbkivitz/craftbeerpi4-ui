@@ -6,6 +6,7 @@ import React, { createContext, useCallback, useContext, useEffect, useLayoutEffe
 import { v4 as uuidv4 } from "uuid";
 import { dashboardapi } from "../data/dashboardapi";
 import DeleteDialog from "../util/DeleteDialog";
+import LoadTemplateDialog from "../util/LoadTemplateDialog";
 import DashboardLayer from "./DashboardLayer";
 import DashboardWidgetList from "./DashboardWidgetList";
 import { DashboardContainer } from "./Elements";
@@ -315,6 +316,34 @@ export const DashboardProvider = ({ children }) => {
     });
   }, []);
 
+  // Starter layouts.
+  //
+  // load_template OVERWRITES the dashboard and the server has already written
+  // it by the time this returns, so there is nothing to undo. The caller is
+  // responsible for confirming with the user first.
+  //
+  // On success it re-reads through the same load() the page uses normally,
+  // rather than guessing at the result - so what is displayed is what was
+  // actually saved, including any binding the template could not resolve.
+  //
+  // Deliberately a plain function rather than a useCallback: it closes over
+  // width and height, and a memoised version with an empty dependency list
+  // would keep the values from first render and lay the widgets out against a
+  // stale canvas size.
+  const load_template = (DashboardID, name, onDone = () => {}, onError = () => {}) => {
+    dashboardapi.applytemplate(
+      DashboardID,
+      name,
+      () => {
+        load(width, height, DashboardID);
+        onDone();
+      },
+      (error) => {
+        onError(error);
+      }
+    );
+  };
+
   const add_path = () => {
     const id = uuidv4();
     const data = [
@@ -383,6 +412,7 @@ export const DashboardProvider = ({ children }) => {
       get_data,
       is_selected,
       clear,
+      load_template,
       setElements,
       setElements2,
       setPathes,
@@ -579,6 +609,7 @@ export const Dashboard = ({ width, height , fixdash}) => {
           <div style={{ position: "absolute", top: 0, right: leftOffset }}>
             {state.draggable ? state.dashboardX : <SelectBox options={dashboardlist} value={state.dashboardX} onChange={DashBoardChange} title="Select Dashboard"/>} 
             {state.draggable ? <DeleteDialog title="Clear Dashboard" message="Do you want to clear the Dashboard" callback={() => {actions.clear(state.dashboardX); }} /> : "" }
+            {state.draggable ? <LoadTemplateDialog dashboardid={state.dashboardX} callback={(name, onDone, onError) => actions.load_template(state.dashboardX, name, onDone, onError)} /> : "" }
             {state.draggable ? <SelectBox options={gridlist} value={state.currentgrid} onChange={GridChange} title="Select Grid"/> : "" }
             {state.draggable ? <Tooltip title="Save Dashbpard"><IconButton onClick={() => actions.save(state.dashboardX)}><SaveIcon/></IconButton></Tooltip> : "" }
                <Tooltip title={edittooltip}><IconButton onClick={() => actions.setDraggable(!state.draggable)}>{state.draggable ? <LockOpenIcon /> : <LockIcon />}</IconButton></Tooltip>

@@ -123,6 +123,31 @@ const getmeminfo = (callback_susscess = () => {}, callback_failed = () => {}) =>
     });
 };
 
+const gettemplates = (callback_susscess = () => {}, callback_failed = () => {}) => {
+  axios
+    .get("/dashboard/templates")
+    .then(function (response) {
+      callback_susscess(response.data);
+    })
+    .catch(function (error) {
+      callback_failed(error);
+    });
+};
+
+// Applying a template OVERWRITES the dashboard and cannot be undone, so the
+// failure callback is given the error rather than swallowing it - the caller
+// has to be able to tell the user that nothing happened.
+const applytemplate = (dashboardid, name, callback_susscess = () => {}, callback_failed = () => {}) => {
+  axios
+    .post("/dashboard/" + dashboardid + "/template/" + encodeURIComponent(name))
+    .then(function (response) {
+      callback_susscess(response.data);
+    })
+    .catch(function (error) {
+      callback_failed(error);
+    });
+};
+
 export const dashboardapi = {
   save,
   get,
@@ -134,5 +159,7 @@ export const dashboardapi = {
   getpipeanimation,
   setcurrentgrid,
   getcurrentgrid,
-  getmeminfo
+  getmeminfo,
+  gettemplates,
+  applytemplate
 }
