@@ -39,13 +39,13 @@ const PropsEdit = ({ config, onChange = () => {}, data={}}) => {
         //console.log(1,item.description)
         return <SelectInput description={item.description} label={item.label} options={item.options} value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} />;
       case "kettle":
-        return <KettleSelect description={item.description} value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} />;
+        return <KettleSelect description={item.description} label={item.label} value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} />;
       case "fermenter":
-        return <FermenterSelect description={item.description} value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} />;
+        return <FermenterSelect description={item.description} label={item.label} value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} />;
       case "sensor":
-        return <SensorSelect description={item.description} value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} />;
+        return <SensorSelect description={item.description} label={item.label} value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} />;
       case "actor":
-        return <ActorSelect description={item.description} value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} />;
+        return <ActorSelect description={item.description} label={item.label} value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} />;
       case "number":
         return <TextField variant="standard" helperText={item.description}  value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} type="number" label={item.label} fullWidth/>;
       default:
