@@ -145,9 +145,16 @@ const TargetTempDialog = ({ onClose, kettle, open }) => {
 
   return (
     <Dialog fullWidth onClose={handleClose} aria-labelledby="simple-dialog-title" open={open}>
-      <DialogTitle id="simple-dialog-title">Set Target Temp {kettle.name} </DialogTitle>
+      <DialogTitle id="simple-dialog-title">
+        {isBoilPower ? `Boil settings — ${kettle.name}` : `Set Target Temp ${kettle.name}`}
+      </DialogTitle>
       <DialogContent>
         <DialogContentText id="alert-dialog-description">
+          {isBoilPower ? (
+            <Typography variant="body2" style={{ color: "#9aa4b2", marginBottom: 4 }}>
+              Boil threshold — full power until the wort reaches this
+            </Typography>
+          ) : null}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Typography variant="h2" component="h2" gutterBottom>
               {value}°
@@ -156,6 +163,10 @@ const TargetTempDialog = ({ onClose, kettle, open }) => {
           <Slider min={minval} max={maxval} marks={marks} step={1} value={value} onChange={handleChange} aria-labelledby="continuous-slider" />
           {isBoilPower ? (
             <>
+              <Typography variant="body2" style={{ color: "#9aa4b2", marginTop: 18, marginBottom: 4 }}>
+                Boil power — element duty once boiling. Changes take effect immediately
+                without interrupting the boil.
+              </Typography>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <Typography variant="h4" component="h2" gutterBottom>
                   {boilPowerValue}%
