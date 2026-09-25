@@ -12,6 +12,12 @@ const configuredBoilPower = (kettle) => {
 };
 
 const liveActorPower = (actor) => {
+  // An actor keeps its last commanded power after being switched off - we
+  // observed state=False with power=85 on a stopped kettle. Reporting that
+  // number beside the setpoint would show "212 85%" with nothing heating,
+  // which is exactly the kind of readout that reads as live and is not.
+  // Off means no power is being delivered, so say zero.
+  if (actor && actor.state === false) return 0;
   const power = Number(actor?.power);
   if (!Number.isFinite(power)) return null;
   return Math.max(0, Math.min(100, Math.round(power)));
