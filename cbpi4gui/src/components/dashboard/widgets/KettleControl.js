@@ -105,8 +105,17 @@ const TargetTempDialog = ({ onClose, kettle, open }) => {
   },[kettle?.target_temp])
 
   useEffect(()=>{
-    setBoilPowerValue(getConfiguredBoilPower(kettle))
-  },[kettle, kettle?.id, kettle?.props?.Boil_Power, kettle?.type])
+    // Seed the slider when the dialog opens, and only then.
+    //
+    // This depended on the whole `kettle` object, which is replaced on every
+    // websocket update - temperature, state, actor power - so at a two second
+    // control loop the effect re-fired constantly and reset the slider to the
+    // configured Boil_Power while the brewer was still dragging it. It looked
+    // exactly like the server rejecting the change.
+    if (open) {
+      setBoilPowerValue(getConfiguredBoilPower(kettle))
+    }
+  },[open, kettle?.id])
 
   
   if (checkunit === false){
