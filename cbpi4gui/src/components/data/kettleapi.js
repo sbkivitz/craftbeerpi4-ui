@@ -86,12 +86,23 @@ export const target_temp = (id, temp, callback_susscess = () => {}, callback_fai
     });
 };
 
+export const action = (id, action, parameter = {}, callback_susscess = () => {}, callback_failed = () => {}) => {
+  axios
+    .post("/kettle/"+ id + "/action", { action, parameter })
+    .then(function (response) {
+      callback_susscess();
+    })
+    .catch(function (error) {
+      callback_failed();
+    });
+};
 
 export const kettleapi = {
   add,
   remove,
   toggle,
   target_temp,
+  action,
   save,
   start,
   stop

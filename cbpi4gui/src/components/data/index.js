@@ -142,6 +142,8 @@ export const CBPiProvider = ({ children }) => {
   const update_kettle = (id, data, onSuccess = () => {}, onError = () => {}) => kettleapi.save(id, data, onSuccess, onError);
   const delete_kettle = (id, onSuccess = () => {}, onError = () => {}) => kettleapi.remove(id, onSuccess, onError);
   const target_temp_kettle = useEventCallback((id, temp) => kettleapi.target_temp(id, temp), []);
+  const kettle_action = useEventCallback((id, action, parameter = {}) => kettleapi.action(id, action, parameter), []);
+  const set_boil_power_kettle = useEventCallback((id, power) => kettleapi.action(id, "set_boil_power", { Power: power }), []);
   const toggle_logic = useEventCallback((id) => kettleapi.toggle(id), []);
 
   const get_fermentersteps_by_id = (fermenterid, id) => fermentersteps.find((item) => item.id === fermenterid);
@@ -182,6 +184,8 @@ export const CBPiProvider = ({ children }) => {
       delete_kettle,
       add_kettle,
       target_temp_kettle,
+      kettle_action,
+      set_boil_power_kettle,
       toggle_logic,
       update_kettle,
       delete_fermenter,
@@ -282,5 +286,4 @@ export const useSensorType = (name = null) => {
   }, [sensorTypes, name]);
   return value;
 };
-
 

@@ -16,11 +16,41 @@ import { useCBPi, useKettle } from "../../data";
 import { useActor } from "../../data/index";
 import { DashboardContext, useModel } from "../DashboardContext";
 import { configapi } from "../../data/configapi";
+import { isBoilPowerKettle } from "./boilPower";
 
+const boilPowerMarks = [
+  {
+    value: 0,
+    label: "0%",
+  },
+  {
+    value: 25,
+    label: "25%",
+  },
+  {
+    value: 50,
+    label: "50%",
+  },
+  {
+    value: 75,
+    label: "75%",
+  },
+  {
+    value: 100,
+    label: "100%",
+  },
+];
+
+const getConfiguredBoilPower = (kettle) => {
+  const power = Number(kettle?.props?.Boil_Power);
+  if (!Number.isFinite(power)) return 85;
+  return Math.max(0, Math.min(100, Math.round(power)));
+};
 
 const TargetTempDialog = ({ onClose, kettle, open }) => {
   let TEMP_UNIT = "TEMP_UNIT";
   const [value, setValue] = useState(30);
+  const [boilPowerValue, setBoilPowerValue] = useState(85);
   const [checkunit, setCheckUnit] = useState(false);
   const [minval, setMinval] = useState(0);
   const [maxval, setMaxval] = useState(100);
@@ -69,9 +99,14 @@ const TargetTempDialog = ({ onClose, kettle, open }) => {
   ];
 
   const {actions} = useCBPi()
+  const isBoilPower = isBoilPowerKettle(kettle);
   useEffect(()=>{
     setValue(kettle?.target_temp)
   },[kettle?.target_temp])
+
+  useEffect(()=>{
+    setBoilPowerValue(getConfiguredBoilPower(kettle))
+  },[kettle, kettle?.id, kettle?.props?.Boil_Power, kettle?.type])
 
   
   if (checkunit === false){
@@ -93,12 +128,19 @@ const TargetTempDialog = ({ onClose, kettle, open }) => {
 
   const handleSet = () => {
     actions.target_temp_kettle(kettle.id, value)
+    if (isBoilPower) {
+      actions.set_boil_power_kettle(kettle.id, boilPowerValue)
+    }
     onClose();
   };
 
   
   const handleChange = (event, newValue) => {
     setValue(newValue);
+  };
+
+  const handleBoilPowerChange = (event, newValue) => {
+    setBoilPowerValue(newValue);
   };
 
   return (
@@ -112,6 +154,16 @@ const TargetTempDialog = ({ onClose, kettle, open }) => {
             </Typography>
           </div>
           <Slider min={minval} max={maxval} marks={marks} step={1} value={value} onChange={handleChange} aria-labelledby="continuous-slider" />
+          {isBoilPower ? (
+            <>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Typography variant="h4" component="h2" gutterBottom>
+                  {boilPowerValue}%
+                </Typography>
+              </div>
+              <Slider min={0} max={100} marks={boilPowerMarks} step={1} value={boilPowerValue} onChange={handleBoilPowerChange} aria-labelledby="boil-power-slider" />
+            </>
+          ) : ""}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Button variant="contained" onClick={handleClose} color="secondary" autoFocus>
               Cancel
