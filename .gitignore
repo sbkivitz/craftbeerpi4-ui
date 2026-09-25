@@ -44,3 +44,8 @@ packages/react-devtools-shell/dist
 packages/react-devtools-scheduling-profiler/dist
 # local test harness + screenshots, not part of the project
 e2e/
+
+# setuptools sdist output. Upstream committed this by mistake; it is a stale
+# duplicate of cbpi4gui/build and re-appears on every merge if not ignored.
+build/lib/
+
