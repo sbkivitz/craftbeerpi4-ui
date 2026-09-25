@@ -16,7 +16,41 @@ import { useCBPi, useKettle } from "../../data";
 import { useActor } from "../../data/index";
 import { DashboardContext, useModel } from "../DashboardContext";
 import { configapi } from "../../data/configapi";
+import { kettleapi } from "../../data/kettleapi";
 
+export const isBoilKettleLogic = (kettle) => kettle?.type?.toLowerCase().includes("boil") === true;
+
+const getBoilPowerTarget = (kettle) => {
+  const rawValue = kettle?.props?.Max_Boil_Output ?? kettle?.props?.Max_Output ?? 100;
+  const parsedValue = Number(rawValue);
+  if (!Number.isFinite(parsedValue)) {
+    return 100;
+  }
+  return Math.min(100, Math.max(0, parsedValue));
+};
+
+const boilPowerMarks = [
+  {
+    value: 0,
+    label: "0%",
+  },
+  {
+    value: 25,
+    label: "25%",
+  },
+  {
+    value: 50,
+    label: "50%",
+  },
+  {
+    value: 75,
+    label: "75%",
+  },
+  {
+    value: 100,
+    label: "100%",
+  },
+];
 
 const TargetTempDialog = ({ onClose, kettle, open }) => {
   let TEMP_UNIT = "TEMP_UNIT";
@@ -128,6 +162,66 @@ const TargetTempDialog = ({ onClose, kettle, open }) => {
   );
 };
 
+const TargetBoilPowerDialog = ({ onClose, kettle, open }) => {
+  const [value, setValue] = useState(100);
+  const {actions} = useCBPi()
+
+  useEffect(() => {
+    setValue(getBoilPowerTarget(kettle));
+  }, [kettle]);
+
+  if (!kettle) return "";
+
+  const handleClose = () => {
+    onClose();
+  };
+
+  const handleSet = () => {
+    const updatedKettle = {
+      ...kettle,
+      props: {
+        ...(kettle.props || {}),
+        Max_Boil_Output: value,
+      },
+    };
+    kettleapi.save(kettle.id, updatedKettle, () => {
+      if (kettle.state) {
+        actions.toggle_logic(kettle.id);
+      }
+      onClose();
+    });
+  };
+
+  const handleChange = (event, newValue) => {
+    setValue(newValue);
+  };
+
+  return (
+    <Dialog fullWidth onClose={handleClose} aria-labelledby="boil-power-dialog-title" open={open}>
+      <DialogTitle id="boil-power-dialog-title">Set Boil Power {kettle.name} </DialogTitle>
+      <DialogContent>
+        <DialogContentText id="boil-power-dialog-description">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Typography variant="h2" component="h2" gutterBottom>
+              {value}%
+            </Typography>
+          </div>
+          <Slider min={0} max={100} marks={boilPowerMarks} step={1} value={value} onChange={handleChange} aria-labelledby="continuous-slider" />
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Button variant="contained" onClick={handleClose} color="secondary" autoFocus>
+              Cancel
+            </Button>
+            <Button variant="contained" onClick={handleSet} color="primary" autoFocus>
+              Set
+            </Button>
+          </div>
+        </DialogContentText>
+      </DialogContent>
+      <DialogActions></DialogActions>
+    </Dialog>
+  );
+};
+
 export const KettleControl = ({ id }) => {
   const { state } = useContext(DashboardContext);
   const [open, setOpen] = React.useState(false);
@@ -171,12 +265,14 @@ export const KettleControl = ({ id }) => {
           {kettle?.type ? <Tooltip title={kettle ? kettle.name.concat(": Auto mode") : "Auto Mode"} placement={placement}>
             <Button variant={kettle?.state ? "contained" : "outlined"}  color="primary" startIcon={<DriveEtaIcon />} onClick={() => toggle_kettle_logic(kettle?.id)}></Button>
            </Tooltip> : ""}
-          <Tooltip title={kettle ? kettle.name.concat(": Target temperature") : "Target Temperature"} placement={placement}>
+          <Tooltip title={kettle ? kettle.name.concat(isBoilKettleLogic(kettle) ? ": Boil power" : ": Target temperature") : "Target Temperature"} placement={placement}>
             <Button variant="outlined"  color="primary" onClick={() => setOpen(true)} startIcon={<TrackChangesIcon />}></Button>
           </Tooltip>  
         </ButtonGroup>
         
-      <TargetTempDialog open={open} kettle={kettle} onClose={() => setOpen(false)} />
+      {isBoilKettleLogic(kettle)
+        ? <TargetBoilPowerDialog open={open} kettle={kettle} onClose={() => setOpen(false)} />
+        : <TargetTempDialog open={open} kettle={kettle} onClose={() => setOpen(false)} />}
       </>
     );
   }, [state.draggable, kettle, model.props.orientation, model.props.size, agitator, heater, open]);
