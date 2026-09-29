@@ -5,6 +5,7 @@ import React, {useRef, useLayoutEffect, useState} from "react";
 import { HashRouter as Router, Routes, Route, Outlet } from "react-router-dom";
 import "./App.css";
 import About from "./components/about";
+import ConnectionBanner from "./components/util/ConnectionBanner";
 import Upload from "./components/upload";
 import CBPiSystem from "./components/system";
 import {Dashboard2 , FixDashboard} from "./components/dashboard/Dashboard";
@@ -192,6 +193,7 @@ const CraftBeerPiApp = () => {
   
   const AppLayout = () => (
     <>
+      <ConnectionBanner />
       <MainMenu />
       <main className={classes.content}>
         <Root className={classes.appBarSpacer}>
