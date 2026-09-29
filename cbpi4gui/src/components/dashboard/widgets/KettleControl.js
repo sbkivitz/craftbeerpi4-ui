@@ -28,6 +28,10 @@ import PropsEdit from "../../util/PropsEdit";
 //
 // Without it the dialog opens empty and "Set" would write whatever the brewer
 // had not typed - which on a boil is a power of nothing.
+//
+// Every parameter gets an entry, even if only "". PropsEdit renders
+// value={data[item.label]}, and an undefined value makes React treat the input
+// as uncontrolled - it then warns and misbehaves the moment the brewer types.
 const seedActionProps = (action, kettle) => {
   const seeded = {};
   (action?.parameters || []).forEach((p) => {
@@ -36,6 +40,8 @@ const seedActionProps = (action, kettle) => {
       seeded[p.label] = configured;
     } else if (p.default_value !== undefined && p.default_value !== null) {
       seeded[p.label] = p.default_value;
+    } else {
+      seeded[p.label] = "";
     }
   });
   return seeded;
@@ -184,7 +190,7 @@ const TargetTempDialog = ({ onClose, kettle, open }) => {
                   <PropsEdit
                     config={a.parameters}
                     onChange={handleActionPropChange(a.method)}
-                    props={actionProps[a.method] || {}}
+                    data={actionProps[a.method] || {}}
                   />
                 </Grid>
               ) : (
