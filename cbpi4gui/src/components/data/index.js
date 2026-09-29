@@ -285,7 +285,15 @@ export const useKettleLogicType = (name = null) => {
   // nothing read the actions, so a kettle logic could declare an action and
   // have no way to offer it. Actors and fermenter steps both already render
   // theirs; kettles were the gap.
-  const { logic } = useCBPi();
+  //
+  // Read from state rather than destructured off useCBPi(): that hook exposes
+  // a hand-maintained subset of state - actorTypes is on it, logic is not - so
+  // `const { logic } = useCBPi()` is undefined and `logic.find` throws during
+  // render. React then unmounts the whole tree and the interface goes black.
+  // Defaulted to an empty array for the same reason: a component must not be
+  // one missing key away from taking the dashboard down.
+  const { state } = useCBPi();
+  const logic = (state && state.logic) || [];
   const value = useMemo(() => {
     return name === null ? logic : logic.find((item) => item.name === name);
   }, [logic, name]);
