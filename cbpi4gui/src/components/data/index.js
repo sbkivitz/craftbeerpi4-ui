@@ -143,7 +143,6 @@ export const CBPiProvider = ({ children }) => {
   const delete_kettle = (id, onSuccess = () => {}, onError = () => {}) => kettleapi.remove(id, onSuccess, onError);
   const target_temp_kettle = useEventCallback((id, temp) => kettleapi.target_temp(id, temp), []);
   const kettle_action = useEventCallback((id, action, parameter = {}) => kettleapi.action(id, action, parameter), []);
-  const set_boil_power_kettle = useEventCallback((id, power) => kettleapi.action(id, "set_boil_power", { Power: power }), []);
   const toggle_logic = useEventCallback((id) => kettleapi.toggle(id), []);
 
   const get_fermentersteps_by_id = (fermenterid, id) => fermentersteps.find((item) => item.id === fermenterid);
@@ -185,7 +184,6 @@ export const CBPiProvider = ({ children }) => {
       add_kettle,
       target_temp_kettle,
       kettle_action,
-      set_boil_power_kettle,
       toggle_logic,
       update_kettle,
       delete_fermenter,
@@ -276,6 +274,21 @@ export const useActorType = (name = null) => {
   const value = useMemo(() => {
     return name === null ? actorTypes : actorTypes.find((item) => item.name === name);
   }, [actorTypes, name]);
+  return value;
+};
+
+export const useKettleLogicType = (name = null) => {
+  // The kettle counterpart of useActorType.
+  //
+  // The server already publishes every logic type with its declared actions
+  // and their parameters - `logic` is populated from data.kettle.types - but
+  // nothing read the actions, so a kettle logic could declare an action and
+  // have no way to offer it. Actors and fermenter steps both already render
+  // theirs; kettles were the gap.
+  const { logic } = useCBPi();
+  const value = useMemo(() => {
+    return name === null ? logic : logic.find((item) => item.name === name);
+  }, [logic, name]);
   return value;
 };
 
