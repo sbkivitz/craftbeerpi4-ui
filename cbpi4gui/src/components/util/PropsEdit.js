@@ -1,4 +1,4 @@
-import { FormHelperText, Grid, InputLabel, MenuItem, Select, TextField } from "@mui/material";
+import { FormHelperText, Grid, InputLabel, MenuItem, Select, Slider, TextField, Typography } from "@mui/material";
 import { useEffect } from "react";
 import ActorSelect from "./ActorSelect";
 import KettleSelect from "./KettleSelect";
@@ -24,6 +24,54 @@ const SelectInput = ({ label, description="", options=[], value, onChange }) => 
     );
   };
 
+// A bounded number is offered as a slider rather than a free-text field.
+//
+// Opt-in and backward compatible: a Property.Number that declares neither min
+// nor max is indistinguishable from one written before these existed, and falls
+// through to the TextField below exactly as it always has.
+//
+// It is also a correctness improvement, not only ergonomics. A text field
+// accepts an empty string, a stray minus, or 800 on a percentage; a bounded
+// slider cannot produce any of them, so the value that reaches a control loop
+// is always within the range the plugin author declared.
+const isBounded = (item) =>
+  Number.isFinite(Number(item?.min)) && Number.isFinite(Number(item?.max));
+
+const NumberSlider = ({ item, value, onChange }) => {
+  const min = Number(item.min);
+  const max = Number(item.max);
+  const step = Number.isFinite(Number(item.step)) ? Number(item.step) : 1;
+  // A slider cannot render undefined or "", and an out-of-range stored value
+  // would otherwise place the thumb off the track.
+  const numeric = Number(value);
+  const current = Number.isFinite(numeric)
+    ? Math.min(max, Math.max(min, numeric))
+    : min;
+  return (
+    <>
+      <InputLabel shrink>{item.label}</InputLabel>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Typography variant="h5" component="span">
+          {current}
+          {item.unit ? <span style={{ fontSize: "0.7em" }}>{item.unit}</span> : null}
+        </Typography>
+      </div>
+      <Slider
+        min={min}
+        max={max}
+        step={step}
+        value={current}
+        marks={[
+          { value: min, label: `${min}${item.unit || ""}` },
+          { value: max, label: `${max}${item.unit || ""}` },
+        ]}
+        onChange={(e, v) => onChange(v)}
+        aria-label={item.label}
+      />
+      <FormHelperText>{item.description}</FormHelperText>
+    </>
+  );
+};
 
 const PropsEdit = ({ config, onChange = () => {}, data={}}) => {
   useEffect(() => {}, [config, data]);
@@ -47,6 +95,16 @@ const PropsEdit = ({ config, onChange = () => {}, data={}}) => {
       case "actor":
         return <ActorSelect description={item.description} label={item.label} value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} />;
       case "number":
+        // Bounded numbers get a slider; everything else is unchanged.
+        if (isBounded(item)) {
+          return (
+            <NumberSlider
+              item={item}
+              value={data[item.label]}
+              onChange={(v) => onChange(item.label, v)}
+            />
+          );
+        }
         return <TextField variant="standard" helperText={item.description}  value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} type="number" label={item.label} fullWidth/>;
       default:
         return <TextField variant="standard" helperText={item.description} value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} label={item.label} fullWidth/>;
@@ -56,9 +114,16 @@ const PropsEdit = ({ config, onChange = () => {}, data={}}) => {
   return (
     <>
       {config.map((item) => (
-        <Grid item  lg={2} sm={4} xs={12} md={6} key={item.label}>
-          {render_input(item)}
-        </Grid>
+        // A slider needs room to be draggable; a text field does not.
+        item.type === "number" && isBounded(item) ? (
+          <Grid item xs={12} key={item.label}>
+            {render_input(item)}
+          </Grid>
+        ) : (
+          <Grid item  lg={2} sm={4} xs={12} md={6} key={item.label}>
+            {render_input(item)}
+          </Grid>
+        )
       ))}
     </>
   );
