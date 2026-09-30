@@ -171,6 +171,36 @@ const Root = styled('div')((
 
 const drawerWidth = 240;
 
+// Defined at module scope, deliberately.
+//
+// This lived inside CraftBeerPiApp, which makes it a brand new component type
+// on every render of the app. React compares element types by identity, so a
+// fresh function each render is a different type - it does not update the
+// subtree, it unmounts the old one and mounts a new one. Everything below the
+// Outlet, including the router's matched route element, was torn down and
+// rebuilt on every app render.
+//
+// The symptom was navigation that changed the address and left the previous
+// page on screen: click Settings, then Analytics, and the hash reads
+// #/charting while Settings is still rendered, until a manual reload. Nothing
+// throws, so there is no error anywhere to find it by.
+//
+// appBarHeight is a prop now rather than a closure variable, which is the only
+// thing the inner definition was buying.
+const AppLayout = ({ appBarHeight }) => (
+  <>
+    <ConnectionBanner />
+    <MainMenu />
+    <main className={classes.content}>
+      <Root className={classes.appBarSpacer}>
+      <Container  maxWidth={false} className={classes.container} style={{ top: appBarHeight }}>
+        <Outlet />
+      </Container> 
+      </Root>
+      </main>
+  </>
+);
+
 const CraftBeerPiApp = () => {
 
   const navBarRef = useRef();
@@ -190,21 +220,6 @@ const CraftBeerPiApp = () => {
     return () => window.removeEventListener("resize", updateNavBarHeight);
   }, []);
 
-  
-  const AppLayout = () => (
-    <>
-      <ConnectionBanner />
-      <MainMenu />
-      <main className={classes.content}>
-        <Root className={classes.appBarSpacer}>
-        <Container  maxWidth={false} className={classes.container} style={{ top: appBarHeight }}>
-          <Outlet />
-        </Container> 
-        </Root>
-        </main>
-    </>
-  );
-
 
   return (
     <div className={classes.root}>
@@ -216,7 +231,7 @@ const CraftBeerPiApp = () => {
         />
       <Router>
         <Routes>
-          <Route path="/" element={<AppLayout /> } >
+          <Route path="/" element={<AppLayout appBarHeight={appBarHeight} /> } >
                   <Route path="/" element={<Dashboard2 />}/>   
                   <Route path="fixdash/:dashboardid" element={<FixDashboard />}/>
                   <Route path="plugins" element={<Plugins />} />
