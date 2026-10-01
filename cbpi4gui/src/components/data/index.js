@@ -46,6 +46,23 @@ export const CBPiProvider = ({ children }) => {
   const onMessage = useCallback((data) => {
     //console.log("WS", data);
     switch (data.topic) {
+      case "configupdate":
+        // Keep the settings view honest.
+        //
+        // setConfig was called exactly once, in the initial bootstrap fetch,
+        // and the server had no config topic at all - so a browser's idea of
+        // the configuration was whatever it loaded with and never changed.
+        // The settings page only appeared to work because its save path calls
+        // navigate(0), a full page reload. A change from anywhere else was
+        // invisible: the API, a plugin, a second browser, a phone in the
+        // brewery while the laptop sits in the kitchen.
+        //
+        // Observed on the rig: the server was running at SIM_TIME_SCALE 60
+        // while this menu showed 1. The same applies to TEMP_UNIT,
+        // CONFIRM_BEFORE_BOIL and NOTIFY_ON_ERROR - settings that change what
+        // the rig does and what it warns about.
+        setConfig(() => data.data);
+        break;
       case "kettleupdate":
         setKettle(() => data.data);
         break;
