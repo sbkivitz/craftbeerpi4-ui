@@ -97,14 +97,20 @@ export const DashboardProvider = ({ children }) => {
       dashboardapi.getmeminfo((data) => {
         // Reload only on a measurement we actually have.
         //
-        // This read `availmem < minmem` directly. Any value the server could
-        // not measure still took part in that comparison, and every such value
-        // compares as critically low: a missing field is undefined, a JSON
-        // null coerces to 0, and 0 < 200. So a server that could not read
-        // memory looked exactly like a server that had run out of it, and the
-        // page reloaded every five minutes for as long as the fault lasted -
-        // discarding whatever was on screen, which on a brew day can be an
-        // unanswered notification or a prompt waiting on the brewer.
+        // This read `availmem < minmem` directly, with no check that either
+        // value was measured. Not every unmeasured value compares as low -
+        // which is exactly what makes this easy to get wrong:
+        //
+        //   undefined < 200   ->  false   (NaN comparison)
+        //   null      < 200   ->  true    (null coerces to 0)
+        //   0         < 200   ->  true
+        //
+        // So an absent field happened to be harmless, while a null or a
+        // substituted 0 was read as critically low. The server used to answer a
+        // failed memory read with availmem = 0, and the page reloaded every
+        // five minutes for as long as the fault lasted - discarding whatever
+        // was on screen, which on a brew day can be an unanswered notification
+        // or a prompt waiting on the brewer.
         //
         // Number.isFinite is deliberate over a truthiness check: it rejects
         // undefined and NaN, and still accepts a genuine 0, which is a real and
@@ -114,11 +120,7 @@ export const DashboardProvider = ({ children }) => {
         // Number.isFinite(0) is true, so an explicit null would pass the finite
         // check and then satisfy 0 < minmem - the original bug, reached by a
         // different route. null and undefined are therefore rejected before any
-        // coercion happens. Verified in node:
-        //
-        //   undefined < 200            -> false
-        //   null < 200                 -> true
-        //   Number.isFinite(Number(null)) -> true
+        // coercion happens.
         const meminfo = data?.meminfo;
         if (!meminfo || meminfo.available === false) {
           return;
