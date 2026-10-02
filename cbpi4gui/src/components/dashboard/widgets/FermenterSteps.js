@@ -20,7 +20,7 @@ import { fermenterapi } from "../../data/fermenterapi";
 import ActorName from "../../util/ActorName";
 import FermenterName from "../../util/FermenterName";
 import FermenterControl from "../../util/FermenterControl";
-import PropsEdit from "../../util/PropsEdit";
+import PropsEdit, { initialProps } from "../../util/PropsEdit";
 import SensorName from "../../util/SensorName";
 import { DashboardContext, useDraggable, useModel } from "../DashboardContext";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
@@ -96,7 +96,18 @@ const StepProps = ({ config, data }) => {
 };
 
 const StepActionDialog = ({ action, config, open, onClose, onSubmit }) => {
-  const [props, setProps] = useState({});
+  // Seeded from the action's own parameter declarations, and reset whenever the
+  // dialog opens. It used to be useState({}) and was never reset: an untouched
+  // control displayed its minimum while contributing nothing to the payload, so
+  // the dialog showed a value and posted {}, and a cancelled edit leaked into
+  // the next open. See initialProps in PropsEdit.
+  const [props, setProps] = useState(() => initialProps(action?.parameters));
+
+  useEffect(() => {
+    if (open) {
+      setProps(initialProps(action?.parameters));
+    }
+  }, [open, action]);
 
   const onChangeProps = (name, value) => {
     setProps({ ...props, [name]: value });
@@ -108,7 +119,7 @@ const StepActionDialog = ({ action, config, open, onClose, onSubmit }) => {
       <DialogContent>
         <DialogContentText id="alert-dialog-description">
           <Grid container spacing={3}>
-            <PropsEdit config={action.parameters} onChange={onChangeProps} props={props} />
+            <PropsEdit config={action.parameters} onChange={onChangeProps} data={props} />
           </Grid>
         </DialogContentText>
       </DialogContent>

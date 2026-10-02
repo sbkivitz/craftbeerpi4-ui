@@ -34,13 +34,55 @@ const SelectInput = ({ label, description="", options=[], value, onChange }) => 
 // accepts an empty string, a stray minus, or 800 on a percentage; a bounded
 // slider cannot produce any of them, so the value that reaches a control loop
 // is always within the range the plugin author declared.
-const isBounded = (item) =>
-  Number.isFinite(Number(item?.min)) && Number.isFinite(Number(item?.max));
+
+// Bounds arrive from the server as JSON, where an undeclared bound is null
+// rather than absent - Property.Number emits "min": null, "max": null,
+// "step": null.
+//
+// That matters because Number(null) is 0 and Number.isFinite(0) is true. An
+// earlier version of isBounded coerced first, so EVERY unbounded numeric
+// property was judged bounded and rendered as a slider pinned to [0, 0]: a
+// control that can only ever report zero, over a stored value it also refuses
+// to display. Sixty-two native declarations carry no bounds, so that was most
+// of the numeric fields in the interface.
+//
+// Null and undefined are therefore rejected before any coercion, and an
+// explicit 0 is kept - 0 is a legitimate bound, and the whole point is to tell
+// a declared zero apart from an absent one.
+const asBound = (value) => {
+  if (value === null || value === undefined || value === "") {
+    return NaN;
+  }
+  const n = Number(value);
+  return Number.isFinite(n) ? n : NaN;
+};
+
+const isBounded = (item) => {
+  const min = asBound(item?.min);
+  const max = asBound(item?.max);
+  if (!Number.isFinite(min) || !Number.isFinite(max)) {
+    return false;
+  }
+  // An inverted or empty range cannot produce a usable control, and MUI
+  // renders a slider with max <= min as a dead track.
+  if (!(max > min)) {
+    return false;
+  }
+  // A declared step has to be positive. An absent one is fine and defaults to
+  // 1 in NumberSlider; a declared 0 or negative would make the slider
+  // unusable, so fall back to a text field rather than ship a broken control.
+  const step = asBound(item?.step);
+  if (!Number.isNaN(step) && !(step > 0)) {
+    return false;
+  }
+  return true;
+};
 
 const NumberSlider = ({ item, value, onChange }) => {
-  const min = Number(item.min);
-  const max = Number(item.max);
-  const step = Number.isFinite(Number(item.step)) ? Number(item.step) : 1;
+  const min = asBound(item.min);
+  const max = asBound(item.max);
+  const declaredStep = asBound(item.step);
+  const step = Number.isFinite(declaredStep) && declaredStep > 0 ? declaredStep : 1;
   // A slider cannot render undefined or "", and an out-of-range stored value
   // would otherwise place the thumb off the track.
   const numeric = Number(value);
@@ -130,3 +172,42 @@ const PropsEdit = ({ config, onChange = () => {}, data={}}) => {
 };
 
 export default PropsEdit;
+
+// The draft an action dialog should start from.
+//
+// Dialogs used to open with useState({}) and submit whatever was still in it.
+// Two things went wrong with that. A control the brewer never touched
+// contributed nothing to the payload, while still DISPLAYING a value - a
+// bounded slider with no value shows its minimum - so the dialog showed 0 and
+// posted {}. And the draft was never reset, so a cancelled edit leaked into
+// the next time the dialog was opened.
+//
+// Seeding fixes the first: what is displayed is what will be submitted.
+//
+// - A declared default_value is used as-is, including an explicit 0.
+// - A bounded parameter with no default is seeded with the value its slider
+//   will actually show, which is the minimum. Without this the slider shows
+//   min and the payload omits the field entirely.
+// - An unbounded parameter with no default is left absent, because its text
+//   field renders blank. Blank on screen and absent in the payload agree, and
+//   the server is then responsible for rejecting an incomplete command rather
+//   than guessing - inventing a value here is how an empty request became
+//   full power.
+export const initialProps = (config) => {
+  const draft = {};
+  (config || []).forEach((item) => {
+    if (!item || !item.label) {
+      return;
+    }
+    if (item.default_value !== null && item.default_value !== undefined) {
+      draft[item.label] = item.default_value;
+      return;
+    }
+    if (item.type === "number" && isBounded(item)) {
+      draft[item.label] = asBound(item.min);
+    }
+  });
+  return draft;
+};
+
+export { isBounded, asBound };
