@@ -95,8 +95,46 @@ export const DashboardProvider = ({ children }) => {
     useEffect(() => {
     const interval = setInterval(() => {
       dashboardapi.getmeminfo((data) => {
-          // console.log("Dashboard Memory Info - Available Memory: " + data.meminfo.availmem + " MB, Minimum Required Memory: " + data.meminfo.minmem + " MB");
-        if (data.meminfo.availmem < data.meminfo.minmem) {
+        // Reload only on a measurement we actually have.
+        //
+        // This read `availmem < minmem` directly. Any value the server could
+        // not measure still took part in that comparison, and every such value
+        // compares as critically low: a missing field is undefined, a JSON
+        // null coerces to 0, and 0 < 200. So a server that could not read
+        // memory looked exactly like a server that had run out of it, and the
+        // page reloaded every five minutes for as long as the fault lasted -
+        // discarding whatever was on screen, which on a brew day can be an
+        // unanswered notification or a prompt waiting on the brewer.
+        //
+        // Number.isFinite is deliberate over a truthiness check: it rejects
+        // undefined and NaN, and still accepts a genuine 0, which is a real and
+        // serious reading rather than a missing one.
+        //
+        // But it is not sufficient on its own. Number(null) is 0, and
+        // Number.isFinite(0) is true, so an explicit null would pass the finite
+        // check and then satisfy 0 < minmem - the original bug, reached by a
+        // different route. null and undefined are therefore rejected before any
+        // coercion happens. Verified in node:
+        //
+        //   undefined < 200            -> false
+        //   null < 200                 -> true
+        //   Number.isFinite(Number(null)) -> true
+        const meminfo = data?.meminfo;
+        if (!meminfo || meminfo.available === false) {
+          return;
+        }
+        if (meminfo.availmem === null || meminfo.availmem === undefined) {
+          return;
+        }
+        if (meminfo.minmem === null || meminfo.minmem === undefined) {
+          return;
+        }
+        const availmem = Number(meminfo.availmem);
+        const minmem = Number(meminfo.minmem);
+        if (!Number.isFinite(availmem) || !Number.isFinite(minmem)) {
+          return;
+        }
+        if (availmem < minmem) {
           window.location.reload(true);
         }
       });
