@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useCBPi } from "../data";
+import { useLoadExisting } from "../util/useLoadExisting";
 import ActorSelect from "../util/ActorSelect";
 import LogicSelect from "../util/LogicSelect";
 import PropsEdit from "../util/PropsEdit";
@@ -84,7 +85,28 @@ const KettleForm = () => {
   const [propsConfig, setPropsConfig] = useState(null);
   const [props, setProps] = useState({});
 
+  // See useLoadExisting. This is the form where a blank save costs the most: a
+  // kettle's props are its control logic's configuration, PID gains included.
+  const ready = useLoadExisting(id, kettle.find((item) => item.id === id), (item) => {
+    setName(item.name);
+    setHeater(item.heater);
+    setAgitator(item.agitator);
+    setType(item.type);
+    setSensor(item.sensor);
+    setProps(item.props);
+  });
+
+  // Separate from loading, because the logic list can arrive after the record.
+  useEffect(() => {
+    if (type) {
+      setPropsConfig(state.logic.find((i) => i.name === type)?.properties);
+    }
+  }, [type, state.logic]);
+
   const save = () => {
+    if (!ready) {
+      return;
+    }
     const data = {
       name,
       sensor,
@@ -100,23 +122,6 @@ const KettleForm = () => {
       actions.add_kettle(data, () => navigate("/hardware"));
     }
   };
-
-  useEffect(() => {
-    if (id) {
-      const item = kettle.find((item) => item.id === id);
-      if (item) {
-        setName(item.name);
-        setHeater(item.heater);
-        setAgitator(item.agitator);
-        setType(item.type);
-        setSensor(item.sensor);
-        setProps(item.props);
-        if (item.type) {
-          setPropsConfig(state.logic.find((i) => i.name === item.type)?.properties);
-        }
-      }
-    }
-  }, []);
 
   const onChangeProps = (name, value) => {
     setProps({ ...props, [name]: value });
@@ -182,6 +187,7 @@ const KettleForm = () => {
             <Button
               variant="contained"
               color="primary"
+              disabled={!ready}
               onClick={() => {
                 save();
               }}

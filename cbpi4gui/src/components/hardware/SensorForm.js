@@ -9,6 +9,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useCBPi } from "../data";
 import PropsEdit from "../util/PropsEdit";
 import SensorTypeSelect from "../util/SensorTypeSelect";
+import { useLoadExisting } from "../util/useLoadExisting";
 
 const PREFIX = 'SensorForm';
 
@@ -78,21 +79,25 @@ const SensorForm = () => {
   const [propsConfig, setPropsConfig] = useState(null);
   const [props, setProps] = useState({});
 
+  // See useLoadExisting: a mount-only load left this form blank on a reload,
+  // and Save then wrote the blank form over the real sensor.
+  const ready = useLoadExisting(id, sensor.find((item) => item.id === id), (item) => {
+    setName(item.name);
+    setType(item.type);
+    setProps(item.props);
+  });
+
+  // Separate from loading, because the type list can arrive after the record.
   useEffect(() => {
-    if (id) {
-      const item = sensor.find((item) => item.id === id);
-      if (item) {
-        setName(item.name);
-        setType(item.type);
-        setProps(item.props);
-        if (item.type) {
-          setPropsConfig(state.sensorTypes.find((i) => i.name === item.type)?.properties);
-        }
-      }
+    if (type) {
+      setPropsConfig(state.sensorTypes.find((i) => i.name === type)?.properties);
     }
-  }, []);
+  }, [type, state.sensorTypes]);
 
   const save = () => {
+    if (!ready) {
+      return;
+    }
     const data = { name, type, props };
 
     if (id) {
@@ -158,6 +163,7 @@ const SensorForm = () => {
             <Button
               variant="contained"
               color="primary"
+              disabled={!ready}
               onClick={() => {
                 save();
               }}
