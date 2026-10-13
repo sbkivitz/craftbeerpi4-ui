@@ -6,6 +6,7 @@ import TextField from "@mui/material/TextField";
 import { useContext, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { CBPiContext, useCBPi } from "../data";
+import { useLoadExisting } from "../util/useLoadExisting";
 import { stepapi } from "../data/stepapi";
 import PropsEdit from "../util/PropsEdit";
 import StepTypeSelct from "../util/StepTypeSelect";
@@ -80,7 +81,26 @@ const StepForm = () => {
 
   const { actions } = useContext(CBPiContext);
 
+  // See useLoadExisting: a mount-only load left this form blank on a reload,
+  // and Save then wrote the blank form over the real mash step - its target
+  // temperature and timer included.
+  const ready = useLoadExisting(id, id ? actions.get_step_by_id(id) : undefined, (k) => {
+    setName(k.name);
+    setType(k.type);
+    setProps(k.props);
+  });
+
+  // Separate from loading, because the step types can arrive after the step.
+  useEffect(() => {
+    if (type) {
+      setPropsConfig(state.stepTypes.find((item) => item.name === type)?.properties);
+    }
+  }, [type, state.stepTypes]);
+
   const save = () => {
+    if (!ready) {
+      return;
+    }
     const data = {
       name,
       type,
@@ -106,22 +126,6 @@ const StepForm = () => {
     setPropsConfig(type2?.properties);
   };
   const onChangeProps = (name, value) => setProps({...props, [name]: value})
-
-
-  useEffect(() => {
-    if (id) {
-      const k = actions.get_step_by_id(id);
-
-      if (k) {
-        setName(k.name);
-        setType(k.type);
-        setProps(k.props)
-        if (k.type) {
-          setPropsConfig(state.stepTypes.find((item) => item.name === k.type)?.properties);
-        }
-      }
-    }
-  }, []);
 
   return (
     (<Root>
@@ -167,6 +171,7 @@ const StepForm = () => {
            <Button
              variant="contained"
              color="primary"
+             disabled={!ready}
              onClick={() => {
                save();
              }}

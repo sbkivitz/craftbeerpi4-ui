@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useCBPi } from "../data";
+import { useLoadExisting } from "../util/useLoadExisting";
 import ActorSelect from "../util/ActorSelect";
 import FermenterLogicSelect from "../util/FermenterLogicSelect";
 import PropsEdit from "../util/PropsEdit";
@@ -90,6 +91,9 @@ const FermenterForm = () => {
   const [props, setProps] = useState({});
 
   const save = () => {
+    if (!ready) {
+      return;
+    }
     const data = {
       name,
       brewname,
@@ -111,27 +115,28 @@ const FermenterForm = () => {
     }
   };
 
+  // See useLoadExisting: a mount-only load left this form blank on a reload,
+  // and Save then wrote the blank form over the real fermenter.
+  const ready = useLoadExisting(id, fermenter.find((item) => item.id === id), (item) => {
+    setName(item.name);
+    setBrewname(item.brewname);
+    setTargettemp(item.target_temp);
+    setTargetpressure(item.target_pressure);
+    setHeater(item.heater);
+    setCooler(item.cooler);
+    setValve(item.valve);
+    setType(item.type);
+    setSensor(item.sensor);
+    setPressure_Sensor(item.pressure_sensor);
+    setProps(item.props);
+  });
+
+  // Separate from loading, because the logic list can arrive after the record.
   useEffect(() => {
-    if (id) {
-      const item = fermenter.find((item) => item.id === id);
-      if (item) {
-        setName(item.name);
-        setBrewname(item.brewname);
-        setTargettemp(item.target_temp);
-        setTargetpressure(item.target_pressure);
-        setHeater(item.heater);
-        setCooler(item.cooler);
-        setValve(item.valve);
-        setType(item.type);
-        setSensor(item.sensor);
-        setPressure_Sensor(item.pressure_sensor);
-        setProps(item.props);
-        if (item.type) {
-          setPropsConfig(state.fermenterlogic.find((i) => i.name === item.type)?.properties);
-        }
-      }
+    if (type) {
+      setPropsConfig(state.fermenterlogic.find((i) => i.name === type)?.properties);
     }
-  }, []);
+  }, [type, state.fermenterlogic]);
 
   const onChangeProps = (name, value) => {
     setProps({ ...props, [name]: value });
@@ -212,6 +217,7 @@ const FermenterForm = () => {
             <Button
               variant="contained"
               color="primary"
+              disabled={!ready}
               onClick={() => {
                 save();
               }}

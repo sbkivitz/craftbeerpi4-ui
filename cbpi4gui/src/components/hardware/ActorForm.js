@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
 import { useCBPi } from "../data";
+import { useLoadExisting } from "../util/useLoadExisting";
 import ActorTypeSelect from "../util/ActorTypeSelect";
 import PropsEdit from "../util/PropsEdit";
 
@@ -78,21 +79,25 @@ const ActorForm = () => {
   const [propsConfig, setPropsConfig] = useState(null);
   const [props, setProps] = useState({})
 
+  // See useLoadExisting: a mount-only load left this form blank on a reload,
+  // and Save then wrote the blank form over the real actor.
+  const ready = useLoadExisting(id, actor.find((item) => item.id === id), (item) => {
+    setName(item.name);
+    setType(item.type);
+    setProps(item.props);
+  });
+
+  // Separate from loading, because the type list can arrive after the record.
   useEffect(() => {
-    if (id) {
-      const item = actor.find((item) => item.id === id);
-      if (item) {
-        setName(item.name);
-        setType(item.type);
-        setProps(item.props)
-        if (item.type) {
-          setPropsConfig(state.actorTypes.find((i) => i.name === item.type)?.properties);
-        }
-      }
+    if (type) {
+      setPropsConfig(state.actorTypes.find((i) => i.name === type)?.properties);
     }
-  }, []);
+  }, [type, state.actorTypes]);
 
   const save = () => {
+    if (!ready) {
+      return;
+    }
     const data = {
       name,
       type,
@@ -164,6 +169,7 @@ const ActorForm = () => {
             <Button
               variant="contained"
               color="primary"
+              disabled={!ready}
               onClick={() => {
                 save();
               }}
