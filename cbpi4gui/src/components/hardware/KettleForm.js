@@ -84,6 +84,9 @@ const KettleForm = () => {
   const { kettle, state, actions } = useCBPi();
   const [propsConfig, setPropsConfig] = useState(null);
   const [props, setProps] = useState({});
+  // The settings each other logic last had on this kettle, from the server's
+  // props_by_type, plus any put aside while this form is open.
+  const [propsByType, setPropsByType] = useState({});
 
   // See useLoadExisting. This is the form where a blank save costs the most: a
   // kettle's props are its control logic's configuration, PID gains included.
@@ -94,6 +97,7 @@ const KettleForm = () => {
     setType(item.type);
     setSensor(item.sensor);
     setProps(item.props);
+    setPropsByType(item.props_by_type || {});
   });
 
   // Separate from loading, because the logic list can arrive after the record.
@@ -127,9 +131,21 @@ const KettleForm = () => {
     setProps({ ...props, [name]: value });
   };
 
+  // Each logic keeps its own settings. Two logics can declare a setting of the
+  // same name that means something else: P, I and D are the mash loop under
+  // PID_HERMS and the element under PIDBoil. This form used to change only
+  // which fields it showed, so the old values filled the new logic's fields -
+  // and on 25 Oct 2026 an HLT ran PID_HERMS's mash-loop gains as PIDBoil's
+  // and overshot 152 F. Now the old logic's settings are put aside, and the
+  // new logic gets the settings it last had here, or none: blank, exactly as
+  // a new kettle starts, because each logic turns a blank into its own default
+  // in the brewery's units while a pre-filled default would be taken as typed.
   const onChangeType = (e) =>  {
     const value = e.target.value
+    const kept = type ? { ...propsByType, [type]: props } : { ...propsByType };
+    setPropsByType(kept);
     setType(value)
+    setProps(value && kept[value] ? { ...kept[value] } : {});
     if (value) {
       setPropsConfig(state.logic.find((i) => i.name === value)?.properties);
     }
@@ -171,7 +187,12 @@ const KettleForm = () => {
             <Grid item xs={12} md={6}>
               <SensorSelect value={sensor} onChange={(e) => setSensor(e.target.value)} />
             </Grid>
-            <PropsEdit config={propsConfig} data={props} onChange={onChangeProps} />
+            {/* Keyed by logic: PropsEdit keys its fields by setting name, so
+                without this PIDBoil's P box would be PID_HERMS's P box, and a
+                value going from "2" to blank leaves the input uncontrolled -
+                still SHOWING 2 while the form would save nothing. A new logic
+                gets new inputs. */}
+            <PropsEdit key={type} config={propsConfig} data={props} onChange={onChangeProps} />
           </Grid>
           <div className={classes.buttons}>
             <Button
