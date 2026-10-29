@@ -1,9 +1,27 @@
-import { FormHelperText, Grid, InputLabel, MenuItem, Select, Slider, TextField, Typography } from "@mui/material";
+import { FormHelperText, Grid, InputAdornment, InputLabel, MenuItem, Select, Slider, TextField, Typography } from "@mui/material";
 import { useEffect } from "react";
 import ActorSelect from "./ActorSelect";
 import KettleSelect from "./KettleSelect";
 import FermenterSelect from "./FermenterSelect";
 import SensorSelect from "./SensorSelect";
+
+// The name a field is shown under. A plugin may give a property a
+// display_label ("Time") apart from its label ("StartTime"): the label is the
+// key the value is saved under and cannot change without losing every saved
+// profile, while the form should read in words.
+export const shownLabel = (item) => item?.display_label || item?.label;
+
+// The options a select offers, plus the value it holds when that is no longer
+// one of them - a choice a plugin has since renamed or dropped. MUI shows a
+// value it has no option for as a blank, so the form would say nothing is set
+// while the step goes on acting on the old value.
+export const selectChoices = (options = [], value) => {
+  const list = Array.isArray(options) ? options : [];
+  if (value === null || value === undefined || value === "") {
+    return list;
+  }
+  return list.some((item) => String(item) === String(value)) ? list : [...list, value];
+};
 
 const SelectInput = ({ label, description="", options=[], value, onChange }) => {
     return (
@@ -11,9 +29,9 @@ const SelectInput = ({ label, description="", options=[], value, onChange }) => 
         <InputLabel shrink id="demo-simple-select-placeholder-label-label">
           {label}
         </InputLabel>
-        <Select variant="standard" fullWidth labelId="demo-simple-select-label" id="demo-simple-select" value={value} onChange={onChange}>
+        <Select variant="standard" fullWidth labelId="demo-simple-select-label" id="demo-simple-select" value={value ?? ""} onChange={onChange}>
         <MenuItem key="actor-non" value="">---</MenuItem>
-          {options.map((item) => (
+          {selectChoices(options, value).map((item) => (
             <MenuItem key={item} value={item}>
               {item}
             </MenuItem>
@@ -23,6 +41,94 @@ const SelectInput = ({ label, description="", options=[], value, onChange }) => 
       </>
     );
   };
+
+// Whether a field applies, given the values the form holds now.
+//
+// A property may declare show_if (cbpi.api.property.PropertyType): a dict
+// needs every listed setting to hold one of its values, a list of dicts needs
+// any one of them. A blank setting matches "" only. Anything else - no
+// show_if, or one this version cannot read - shows the field, because hiding
+// a field the brewer needs is worse than showing one they do not.
+const ruleHolds = (rule, data) =>
+  Object.entries(rule).every(([label, allowed]) => {
+    const values = Array.isArray(allowed) ? allowed : [allowed];
+    const current = data?.[label] ?? "";
+    return values.some((v) => String(v ?? "") === String(current));
+  });
+
+export const isShown = (item, data = {}) => {
+  const rule = item?.show_if;
+  if (Array.isArray(rule)) {
+    const rules = rule.filter((r) => r && typeof r === "object" && !Array.isArray(r));
+    return rules.length === 0 || rules.some((r) => ruleHolds(r, data));
+  }
+  if (rule && typeof rule === "object") {
+    return ruleHolds(rule, data);
+  }
+  return true;
+};
+
+// What a browser's own date or time input can display for a stored value.
+//
+// Those inputs only take "YYYY-MM-DD" and 24-hour "HH:MM[:SS]", and show
+// anything else as empty - so a value typed in before the field had a picker,
+// "11.10.26" or "6 am", would vanish from the form while the step still used
+// it. Returns the value to give the picker, "" for nothing stored, or null for
+// a value the picker cannot show, which the form then shows as text instead.
+// "6:00" is the same time as "06:00", and is shown as that.
+const PICKER_FORMAT = {
+  date: /^\d{4}-\d{2}-\d{2}$/,
+  time: /^\d{2}:\d{2}(:\d{2})?$/,
+};
+
+export const pickerValue = (kind, value) => {
+  if (value === null || value === undefined) {
+    return "";
+  }
+  const text = String(value).trim();
+  if (text === "") {
+    return "";
+  }
+  if (kind === "time" && /^\d:\d{2}(:\d{2})?$/.test(text)) {
+    return "0" + text;
+  }
+  return PICKER_FORMAT[kind] && PICKER_FORMAT[kind].test(text) ? text : null;
+};
+
+// A date or time field, entered with the browser's own picker: a calendar and
+// a clock on a desktop, the phone's wheels on a phone, in the brewer's own
+// format (7:00 AM, 30/10/2026) while the value stored stays the plain
+// "YYYY-MM-DD" / "HH:MM" that every step can read.
+const PickerInput = ({ kind, item, value, onChange }) => {
+  const shown = pickerValue(kind, value);
+  if (shown === null) {
+    return (
+      <TextField
+        variant="standard"
+        label={shownLabel(item)}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        helperText={`${item.description ? item.description + " " : ""}Saved as "${value}", which the ${kind} picker cannot show - clear it to pick one.`}
+        fullWidth
+      />
+    );
+  }
+  return (
+    <TextField
+      variant="standard"
+      type={kind}
+      label={shownLabel(item)}
+      value={shown}
+      onChange={(e) => onChange(e.target.value)}
+      helperText={item.description}
+      fullWidth
+      slotProps={{ inputLabel: { shrink: true } }}
+      // The picker's calendar and clock icons follow the page's colour scheme
+      // only when told; on this dark theme they are otherwise drawn black.
+      sx={(theme) => ({ "& input": { colorScheme: theme.palette.mode } })}
+    />
+  );
+};
 
 // A bounded number is offered as a slider rather than a free-text field.
 //
@@ -91,7 +197,7 @@ const NumberSlider = ({ item, value, onChange }) => {
     : min;
   return (
     <>
-      <InputLabel shrink>{item.label}</InputLabel>
+      <InputLabel shrink>{shownLabel(item)}</InputLabel>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
         <Typography variant="h5" component="span">
           {current}
@@ -108,7 +214,7 @@ const NumberSlider = ({ item, value, onChange }) => {
           { value: max, label: `${max}${item.unit || ""}` },
         ]}
         onChange={(e, v) => onChange(v)}
-        aria-label={item.label}
+        aria-label={shownLabel(item)}
       />
       <FormHelperText>{item.description}</FormHelperText>
     </>
@@ -123,19 +229,19 @@ const PropsEdit = ({ config, onChange = () => {}, data={}}) => {
   }
   
   const render_input = (item) => {
-   
+    // What the brewer reads; the label stays the key the value is saved under.
+    const name = shownLabel(item);
     switch (item.type) {
       case "select":
-        //console.log(1,item.description)
-        return <SelectInput description={item.description} label={item.label} options={item.options} value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} />;
+        return <SelectInput description={item.description} label={name} options={item.options} value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} />;
       case "kettle":
-        return <KettleSelect description={item.description} label={item.label} value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} />;
+        return <KettleSelect description={item.description} label={name} value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} />;
       case "fermenter":
-        return <FermenterSelect description={item.description} label={item.label} value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} />;
+        return <FermenterSelect description={item.description} label={name} value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} />;
       case "sensor":
-        return <SensorSelect description={item.description} label={item.label} value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} />;
+        return <SensorSelect description={item.description} label={name} value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} />;
       case "actor":
-        return <ActorSelect description={item.description} label={item.label} value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} />;
+        return <ActorSelect description={item.description} label={name} value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} />;
       case "number":
         // Bounded numbers get a slider; everything else is unchanged.
         if (isBounded(item)) {
@@ -147,15 +253,31 @@ const PropsEdit = ({ config, onChange = () => {}, data={}}) => {
             />
           );
         }
-        return <TextField variant="standard" helperText={item.description}  value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} type="number" label={item.label} fullWidth/>;
+        return (
+          <TextField
+            variant="standard"
+            helperText={item.description}
+            value={data[item.label]}
+            onChange={(e) => onChange(item.label, e.target.value)}
+            type="number"
+            label={name}
+            fullWidth
+            // The unit a plugin declares (°F, W, min) after the number, as the
+            // slider already shows it - a bare 152 leaves the brewer to guess.
+            slotProps={item.unit ? { input: { endAdornment: <InputAdornment position="end">{item.unit}</InputAdornment> } } : undefined}
+          />
+        );
+      case "date":
+      case "time":
+        return <PickerInput kind={item.type} item={item} value={data[item.label]} onChange={(v) => onChange(item.label, v)} />;
       default:
-        return <TextField variant="standard" helperText={item.description} value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} label={item.label} fullWidth/>;
+        return <TextField variant="standard" helperText={item.description} value={data[item.label]} onChange={(e) => onChange(item.label, e.target.value)} label={name} fullWidth/>;
     }
   };
 
   return (
     <>
-      {config.map((item) => (
+      {config.filter((item) => isShown(item, data)).map((item) => (
         // A slider needs room to be draggable; a text field does not.
         item.type === "number" && isBounded(item) ? (
           <Grid item xs={12} key={item.label}>

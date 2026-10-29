@@ -8,7 +8,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { CBPiContext, useCBPi } from "../data";
 import { useLoadExisting } from "../util/useLoadExisting";
 import { stepapi } from "../data/stepapi";
-import PropsEdit from "../util/PropsEdit";
+import PropsEdit, { initialProps } from "../util/PropsEdit";
 import StepTypeSelct from "../util/StepTypeSelect";
 
 const PREFIX = 'StepForm';
@@ -124,6 +124,12 @@ const StepForm = () => {
     setType(name);
     const type2 = state.stepTypes.find((item) => item.name === name);
     setPropsConfig(type2?.properties);
+    // A new step starts from its type's declared defaults, so what the form
+    // shows ("Today", "Start at") is what is saved, rather than blanks whose
+    // meaning is only in the help text. An existing step keeps its settings.
+    if (!id) {
+      setProps(initialProps(type2?.properties));
+    }
   };
   const onChangeProps = (name, value) => setProps({...props, [name]: value})
 
