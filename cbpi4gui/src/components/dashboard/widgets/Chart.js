@@ -8,8 +8,51 @@ import RotateLeftIcon from '@mui/icons-material/RotateLeft';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import DeleteIcon from "@mui/icons-material/Delete";
 
+// A chart of sensor readings draws their rounding. SimVessel logs to 0.01; a
+// OneWire probe on a Fahrenheit rig steps by about 0.11. Fitted to a flat
+// stretch - a hold, a vessel at room temperature - the axis spans a handful of
+// those steps and each one is drawn tens of pixels tall, and the spline that
+// joined the points swung above and below each step: a staircase (DEFECTS U8,
+// Scott 23 Oct). So the axis spans at least MIN_STEPS of the data's own
+// rounding step, centred on the data. Never more than a tenth of the readings'
+// size, so a signal that only moves between two values - on and off, 0 and
+// 100 - is not squashed flat; and nothing changes when the data already spans
+// that much, or when its step cannot be told.
+export const MIN_STEPS = 50;
+
+// The smallest gap between two different readings: the sensor's rounding.
+export const roundingStep = (values) => {
+  const distinct = [...new Set((values || [])
+    .filter((v) => typeof v === "number" && Number.isFinite(v))
+    .map((v) => Math.round(v * 1e6) / 1e6))].sort((a, b) => a - b);
+  let step = Infinity;
+  for (let i = 1; i < distinct.length; i++) {
+    step = Math.min(step, distinct[i] - distinct[i - 1]);
+  }
+  return Number.isFinite(step) ? step : null;
+};
+
+// [low, high] for the y-axis, or null to let the chart fit the data itself.
+export const yAxisRange = (values, minSteps = MIN_STEPS) => {
+  const finite = (values || []).filter((v) => typeof v === "number" && Number.isFinite(v));
+  const step = roundingStep(finite);
+  if (!step || finite.length === 0) {
+    return null;
+  }
+  const low = finite.reduce((a, b) => Math.min(a, b));
+  const high = finite.reduce((a, b) => Math.max(a, b));
+  const size = finite.reduce((a, b) => Math.max(a, Math.abs(b)), 0);
+  const span = Math.min(minSteps * step, size / 10);
+  if (!(high - low < span)) {
+    return null;
+  }
+  const middle = (low + high) / 2;
+  return [middle - span / 2, middle + span / 2];
+};
+
 const Chart = ({ id }) => {
   const [data, setData] = useState([]);
+  const [yRange, setYRange] = useState(null);
   const model = useModel(id);
   const draggable = useDraggable();
   const [open, setOpen] = useState(false)
@@ -29,6 +72,7 @@ const Chart = ({ id }) => {
 
     const onSuccess = (data, id) => {
       setLoading(false)
+      setYRange(yAxisRange(data[id]));
       setData([
         {
           x: data.time,
@@ -38,7 +82,9 @@ const Chart = ({ id }) => {
           line: {
             color: model?.props?.linecolor || "#00FF00",
             width: 2,
-			shape: 'spline'
+            // Straight between readings: a spline overshoots each rounding
+            // step, drawing swings that were never measured.
+			shape: 'linear'
           },
         },
       ]);
@@ -125,6 +171,7 @@ const Chart = ({ id }) => {
           },
           yaxis: {
             showgrid: true,
+            ...(yRange ? { range: yRange, autorange: false } : { autorange: true }),
             tickfont: {
               size: 8,
               color: "#fff",
