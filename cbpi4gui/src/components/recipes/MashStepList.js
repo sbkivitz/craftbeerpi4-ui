@@ -5,10 +5,51 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useEffect, useState } from "react";
 import { useCBPi } from "../data";
-import PropsEdit from "../util/PropsEdit";
+import PropsEdit, { initialProps } from "../util/PropsEdit";
 import StepSummary from "../util/StepSummary";
 import StepTypeSelect from "../util/StepTypeSelect";
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
+
+// The steps with the one at `index` moved by `delta` (-1 up, +1 down), or null
+// when it is already at the top or the bottom.
+//
+// Swapped directly. This sorted the two positions with JavaScript's default
+// sort, which compares numbers as text, so [9, 10] became [10, 9]: moving a
+// step across positions 10 and 11 duplicated one step and lost another, and
+// saving made the loss permanent (DEFECTS M42, GPT's G8 on 2 Nov).
+export const moveStep = (array, index, delta) => {
+  const newIndex = index + delta;
+  if (newIndex < 0 || newIndex >= array.length) {
+    return null;
+  }
+  const values = [...array];
+  [values[index], values[newIndex]] = [values[newIndex], values[index]];
+  return values;
+};
+
+// A step's settings when it is given a type: the type's declared defaults, as
+// the Mash Profile's own form starts a new step, with what the step already
+// had kept wherever the new type has the same setting - its kettle, sensor,
+// temperature, time.
+//
+// It started from nothing. A Mash, Mash In or Boil step with AutoMode blank
+// never switches its kettle on, so the brew stalled with nothing heating, and
+// changing a step's type wiped everything entered on it (DEFECTS M41,
+// Gemini's R2 on 2 Nov).
+export const propsForType = (config, previous) => {
+  const props = initialProps(config);
+  const kept = previous || {};
+  (config || []).forEach((item) => {
+    if (!item || !item.label) {
+      return;
+    }
+    const value = kept[item.label];
+    if (value !== undefined && value !== null && value !== "") {
+      props[item.label] = value;
+    }
+  });
+  return props;
+};
 
 const MashStepLine = ({ item, items, setItems, onSelectType, handleInput, handleInputProps, index, remove }) => {
   const { state } = useCBPi();
@@ -31,13 +72,10 @@ const MashStepLine = ({ item, items, setItems, onSelectType, handleInput, handle
   };
 
   const move = function (array, index, delta) {
-    const values = [...array];
-    var newIndex = index + delta;
-    if (newIndex < 0 || newIndex === values.length) return; //Already at the top or bottom.
-    var indexes = [index, newIndex].sort(); //Sort the indixes
-    values.splice(indexes[0], 2, values[indexes[1]], values[indexes[0]]); //Replace from lowest index, two elements, reverting the order
-
-    setItems(values);
+    const values = moveStep(array, index, delta);
+    if (values) {
+      setItems(values);
+    }
   };
 
   const move_up = (index) => {
@@ -108,6 +146,7 @@ const MashStepLine = ({ item, items, setItems, onSelectType, handleInput, handle
 };
 
 export const MashStepList = ({ items = [], setItems }) => {
+  const { state } = useCBPi();
 
   const handleInputProps = (index, name, value) => {
     const values = [...items];
@@ -123,8 +162,9 @@ export const MashStepList = ({ items = [], setItems }) => {
 
   const handleSelectType = (index, value) => {
     const values = [...items];
+    const config = (state.stepTypes || []).find((item) => item.name === value)?.properties;
     values[index].type = value;
-    values[index].props = {};
+    values[index].props = propsForType(config, values[index].props);
     setItems([...values]);
   };
 

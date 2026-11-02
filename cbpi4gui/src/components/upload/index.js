@@ -82,20 +82,44 @@ const Upload = () => {
   }
 
 
+  // One import at a time from this page, and only of a chosen recipe. Create
+  // clicked twice imported the recipe twice - 12 steps, every rest and the boil
+  // doubled - and Create with nothing chosen failed on the server (DEFECTS
+  // M39). The server runs one import at a time as well; this stops the second
+  // click being sent at all.
+  const [creating, setCreating] = useState(false);
+  // Read and set synchronously, so a second click arriving before the page has
+  // redrawn the button as disabled is turned away too.
+  const sending = React.useRef(false);
+  const chosen = (id) =>
+    id !== undefined && id !== null && id !== "" && !(Array.isArray(id) && id.length === 0);
+  const submit = (send, id) => {
+    if (sending.current || !chosen(id)) {
+      return;
+    }
+    sending.current = true;
+    setCreating(true);
+    const done = () => {
+      sending.current = false;
+      setCreating(false);
+    };
+    send(id, path, done, done);
+  };
+
   const XMLSubmit = () => {
-    uploadapi.sendXML(xml, path);
+    submit(uploadapi.sendXML, xml);
   };
   
   const JSONSubmit = () => {
-    uploadapi.sendJSON(json, path);
+    submit(uploadapi.sendJSON, json);
   };
 
   const KBHSubmit = () => {
-    uploadapi.sendKBH(kbh, path);
+    submit(uploadapi.sendKBH, kbh);
   };
 
   const BFSubmit = () => {
-    uploadapi.sendBF(bf, path);
+    submit(uploadapi.sendBF, bf);
   };
 
   const reload = () => {
@@ -123,21 +147,25 @@ const Upload = () => {
     });
   }, []);
 
+  // A file with one recipe in it has that recipe chosen, so Create is ready.
   useEffect(() => {
     uploadapi.getkbh((data) => {
       setKBHList(data);
+      if (data && data.length === 1) setKBH(data[0].value);
     });
   }, []);
 
   useEffect(() => {
     uploadapi.getxml((data) => {
       setXMLList(data);
+      if (data && data.length === 1) setXML(data[0].value);
     });
   }, []);
 
   useEffect(() => {
     uploadapi.getjson((data) => {
       setJSONList(data);
+      if (data && data.length === 1) setJSON(data[0].value);
     });
   }, []);
 
@@ -247,7 +275,7 @@ const Upload = () => {
                 </TableCell>
 
                 <TableCell align="right">
-                  <Button variant="contained" component="label" >
+                  <Button variant="contained" component="label" disabled={creating || !chosen(xml)}>
                     Create Recipe from BeerXML recipe
                     <input
                       value={xml}
@@ -269,7 +297,7 @@ const Upload = () => {
 
                 </TableCell>
                 <TableCell align="right">
-                  <Button variant="contained" component="label" >
+                  <Button variant="contained" component="label" disabled={creating || !chosen(json)}>
                     Create Recipe from MMuM-JSON recipe
                     <input
                       value={json}
@@ -291,7 +319,7 @@ const Upload = () => {
                 </TableCell>
 
                 <TableCell align="right">
-                  <Button variant="contained" component="label" >
+                  <Button variant="contained" component="label" disabled={creating || !chosen(kbh)}>
                     Create Recipe from KBH Database
                     <input
                       value={kbh}
@@ -320,7 +348,7 @@ const Upload = () => {
                 </TableCell>
                 
                 <TableCell align="right">
-                  <Button variant="contained" component="label" >
+                  <Button variant="contained" component="label" disabled={creating || !chosen(bf)}>
                     Create Recipe from Brewfather Web App
                     <input
                       value={bf}
