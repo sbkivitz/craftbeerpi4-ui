@@ -6,6 +6,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useEffect, useState } from "react";
 import { useCBPi } from "../data";
 import PropsEdit from "../util/PropsEdit";
+import StepSummary from "../util/StepSummary";
 import StepTypeSelect from "../util/StepTypeSelect";
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 
@@ -57,6 +58,9 @@ const MashStepLine = ({ item, items, setItems, onSelectType, handleInput, handle
             <Typography variant="subtitle2" display="inline" color="textSecondary">
               {item.type || "NO TYPE"}
             </Typography>
+            {/* Its settings, readable without opening it - and kept up to
+                date while it is open and being edited. */}
+            <StepSummary step={item} />
           </Grid>
           <Grid item>
             <IconButton disabled={index === items.length-1}

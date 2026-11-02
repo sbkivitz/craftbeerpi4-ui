@@ -22,6 +22,7 @@ import DeleteDialog from "../util/DeleteDialog";
 import Header from "../util/Header";
 import MashControl from "../util/MashControl";
 import StepStateChip from "../util/StepStateChip";
+import StepSummary from "../util/StepSummary";
 import SortButton from "./SortButton";
 
 const PREFIX = 'MashProfile';
@@ -147,8 +148,10 @@ const MashProfile = () => {
                       <TableCell align="right" className="hidden-xs">
                         Type
                       </TableCell>
+                      {/* What the step is doing now - its settings are under
+                          its name, so this is not called Summary any more. */}
                       <TableCell align="right" className="hidden-xs">
-                        Summary
+                        Now
                       </TableCell>
                       <TableCell align="right" className="hidden-xs">
                         State
@@ -164,7 +167,10 @@ const MashProfile = () => {
                         <TableCell width="100px">
                           <SortButton index={index} length={data.length} id={row.id} moveCallback={moveCallback} />
                         </TableCell>
-                        <TableCell align="left">{row.name}</TableCell>
+                        <TableCell align="left">
+                          {row.name}
+                          <StepSummary step={row} />
+                        </TableCell>
                         <TableCell align="right" className="hidden-xs">
                           {row.type}
                         </TableCell>

@@ -1,25 +1,37 @@
 import Alert from "@mui/material/Alert";
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
-
+import AlertTitle from "@mui/material/AlertTitle";
 import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogContentText from "@mui/material/DialogContentText";
-import DialogTitle from "@mui/material/DialogTitle";
+import Stack from "@mui/material/Stack";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import React from "react";
 import buzzer from './buzzer.mp3';
 import {configapi} from '../data/configapi'
 import { notificationapi } from "../data/notificationapi";
-import { Typography } from "@mui/material";
-import { View, Text } from "react";
 
-export const ActionDialog = ({ item }) => {
+// Notifications wait in a stack in the bottom right corner, and never cover
+// the page.
+//
+// One with a button used to be a modal dialog: the whole interface stopped
+// answering until it was answered. On 1 Nov, at the boil's "Is the wort in the
+// boil kettle?", Scott could not reach the wort pump on the dashboard - the
+// very thing the question was waiting for: "I need to be able to use the
+// dashboard to operate the pump. Right now, my only option is this dialog
+// box." A prompt is still held until its button is pressed, as before; it just
+// no longer takes the rest of the screen hostage while it waits. The same
+// went for "add malt" at dough-in and the whirlpool's "cool down", both of
+// which wait for work done with the dashboard.
+//
+// Messages are shown as text. They were set as HTML, and they carry names
+// from recipe files that come from anywhere - hop names among them.
+
+// MUI knows four severities; the server sends its notification type.
+const severity = (type) => {
+  const t = String(type || "info").toLowerCase();
+  return ["success", "info", "warning", "error"].includes(t) ? t : "info";
+};
+
+export const ActionAlert = ({ item }) => {
   const alert = useAlert();
-
-  const changehtml = (key) => {
-    return <td dangerouslySetInnerHTML={{__html: key}}></td>
-  } 
 
   const call_action = (dialog_id, action) => {
     alert.remove(dialog_id);
@@ -29,21 +41,29 @@ export const ActionDialog = ({ item }) => {
   };
 
   return (
-    <Dialog open={true} aria-labelledby="alert-dialog-title" aria-describedby="alert-dialog-description">
-      <DialogTitle id="alert-dialog-title">{item.title}</DialogTitle>
-      <DialogContent>
-        <DialogContentText id="alert-dialog-description">{changehtml(item.message)}</DialogContentText>
-      </DialogContent>
-      <DialogActions>
-        {item.action.map((a) => {
-          return (
-            <Button onClick={() => call_action(item.id, a.id)} color="primary">
-              {a.label}
-            </Button>
-          );
-        })}
-      </DialogActions>
-    </Dialog>
+    <Alert
+      variant="filled"
+      severity={severity(item.type)}
+      sx={{ pointerEvents: "auto", boxShadow: 6, whiteSpace: "pre-line" }}
+      data-prompt="waiting"
+    >
+      <AlertTitle>{item.title}</AlertTitle>
+      {item.message}
+      <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 1 }}>
+        {item.action.map((a) => (
+          <Button
+            key={a.id}
+            size="small"
+            variant="contained"
+            color="inherit"
+            sx={{ color: "text.primary", backgroundColor: "background.paper" }}
+            onClick={() => call_action(item.id, a.id)}
+          >
+            {a.label}
+          </Button>
+        ))}
+      </Stack>
+    </Alert>
   );
 };
 
@@ -78,6 +98,8 @@ export const AlertProvider = ({ children }) => {
 
 
 
+    // Without a button there is nothing to wait for: gone after five seconds.
+    // With one, it stays until the button is pressed.
     if (action?.length <= 0) {
       const timerId = setTimeout(() => {
         remove(id);
@@ -97,15 +119,38 @@ export const AlertProvider = ({ children }) => {
     <AlertContext.Provider value={value}>
       {children}
 
-      <div>
+      <Stack
+        spacing={1}
+        data-notifications="stack"
+        sx={{
+          position: "fixed",
+          bottom: 16,
+          right: 16,
+          width: "min(440px, calc(100vw - 32px))",
+          maxHeight: "70vh",
+          overflowY: "auto",
+          zIndex: (theme) => theme.zIndex.snackbar,
+          // The stack itself lets clicks through to the page; only the
+          // notifications in it take them.
+          pointerEvents: "none",
+        }}
+      >
         {alerts.map((a) => {
           if (a?.action?.length > 0) {
-            return <ActionDialog key={a.id} item={a} />;
-          } else { 
-            return <Alert style={{position: "absolute", bottom: 10, right: 30}} severity={a.type || "info"} key={a.id}>{a.title} - <Typography>{a.message} </Typography></Alert>;
+            return <ActionAlert key={a.id} item={a} />;
           }
+          return (
+            <Alert
+              key={a.id}
+              severity={severity(a.type)}
+              sx={{ pointerEvents: "auto", boxShadow: 3, whiteSpace: "pre-line" }}
+            >
+              {a.title ? <AlertTitle>{a.title}</AlertTitle> : null}
+              {a.message}
+            </Alert>
+          );
         })}
-      </div>
+      </Stack>
     </AlertContext.Provider>
   );
 };
