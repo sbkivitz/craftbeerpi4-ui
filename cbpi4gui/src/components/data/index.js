@@ -100,6 +100,15 @@ export const CBPiProvider = ({ children }) => {
       case "notifiaction":
         a.show(data.id, data.title, data.message, data.type, data.action);
         break;
+      case "notification_retired":
+        // Answered - on this page or another - or no longer applying.
+        a.remove(data.id);
+        break;
+      case "notification_waiting":
+        // Sent on connecting: the prompts whose buttons still do something.
+        // Any other this page shows is left from before a server restart.
+        a.keepWaiting(data.data);
+        break;
       case "notificationupdate":
           setAllNotifiactions(() => data.data);
           break;
