@@ -110,9 +110,9 @@ const MashProfile = () => {
           </Grid>
           <Grid item>
             
-            <DeleteDialog title="Clear" callback={clear} message="Do you want to clear the Mash Profile" />
+            <DeleteDialog title="Clear" callback={clear} message="Do you want to clear the brew steps?" />
             
-            <SaveDialog title="Save" callback={savetobook} message="Do you want to save your recipe to the recipe book" />
+            <SaveDialog title="Save" callback={savetobook} message="Do you want to save these brew steps to your Recipe Book?" />
             <Tooltip title="Open Recipe Book">
             <IconButton
               variant="contained"
@@ -131,7 +131,7 @@ const MashProfile = () => {
         {/*<Grid container spacing={3}>*/}
           <Grid item sm={12}>
             <Paper className={classes.paper}>
-              <Header title="Profile">
+              <Header title="Brew Steps">
                 <div style={{ display: "flex" }}>
                   <MashControl />
                   <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => navigate("/step")}>

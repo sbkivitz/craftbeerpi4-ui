@@ -1,8 +1,9 @@
-import { Breadcrumbs, Container, Divider, Paper,InputBase, IconButton, Link, List, ListItemButton, ListItemText, ListItemIcon, Tooltip } from "@mui/material";
+import { Breadcrumbs, Button, Container, Divider, Paper,InputBase, IconButton, Link, List, ListItemButton, ListItemText, ListItemIcon, Tooltip } from "@mui/material";
 import { styled } from '@mui/material/styles';
 import Grid from "@mui/material/Grid";
 import Typography from "@mui/material/Typography";
 import AddIcon from "@mui/icons-material/Add";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { recipeapi } from "../data/recipeapi";
@@ -77,7 +78,10 @@ const Recipes = () => {
 
   }
 
- 
+  // Every import is kept here (DEFECTS M55), and says where it came from -
+  // unless the recipe has a description of its own.
+  const secondary = (item) =>
+    item.desc || (item.imported_from ? "Imported from " + item.imported_from : "");
 
 
   return (
@@ -86,7 +90,7 @@ const Recipes = () => {
         <Grid container direction="row" justifyContent="space-between" alignItems="center" style={{ marginTop: 10 }}>
           <Grid item>
             <Typography variant="h5" gutterBottom>
-              Recipes
+              Recipe Book
             </Typography>
           </Grid>
           <Grid item>
@@ -106,6 +110,10 @@ const Recipes = () => {
             </Paper>
           </Grid>
           <Grid item>
+          <Button variant="contained" color="primary" startIcon={<CloudUploadIcon />}
+            onClick={() => navigate("/upload")}>
+            Import recipe
+          </Button>
           <Tooltip title="Create new recipe">
             <IconButton variant="contained" onClick={createRecipe}>
               <AddIcon />
@@ -121,19 +129,19 @@ const Recipes = () => {
               navigate("/mashprofile");
             }}
           >
-            Active Recipe
+            Brew Steps
           </Link>
-          <Typography color="textPrimary">Recipes</Typography>
+          <Typography color="textPrimary">Recipe Book</Typography>
         </Breadcrumbs>
         <Divider style={{ marginBottom: 10, marginTop: 10 }} />
         <List>
           {list.map((item) => (
-            <Tooltip title="Click to select recipe">
+            <Tooltip key={item.file} title="Click to select recipe">
             <ListItemButton onClick={() => openRecipe(item.file)}>
               <ListItemIcon>
                 <CBPiBeerIcon/>
               </ListItemIcon>
-              <ListItemText primary={item.name || "No Name"} secondary={item.desc} />
+              <ListItemText primary={item.name || "No Name"} secondary={secondary(item)} />
             </ListItemButton>
             </Tooltip>
           ))}

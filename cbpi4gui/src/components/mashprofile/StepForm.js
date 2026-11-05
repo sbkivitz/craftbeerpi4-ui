@@ -146,7 +146,7 @@ const StepForm = () => {
              navigate("/mashprofile");
            }}
          >
-           Mash Profile
+           Brew Steps
          </Link>
          <Typography color="textPrimary">{name}</Typography>
        </Breadcrumbs>
