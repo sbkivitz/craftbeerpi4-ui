@@ -1,6 +1,7 @@
-import { IconButton, Tooltip, Button, Grid, Typography, Divider, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Container } from "@mui/material";
+import { IconButton, Tooltip, Button, Grid, Typography, Divider, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Container, Breadcrumbs, Link } from "@mui/material";
 import { styled } from '@mui/material/styles';
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
 import InputLabel from '@mui/material/InputLabel';
@@ -67,6 +68,7 @@ const SelectBox = ({ options, value, onChange }) => {
 const Upload = () => {
 
   const hiddenFileInput = React.useRef(null);
+  const navigate = useNavigate();
   let { state } = useCBPi();
   const handleChange = event => {
     const fileUploaded = event.target.files[0];
@@ -217,17 +219,27 @@ const Upload = () => {
       <Grid container direction="row" justifyContent="space-between" alignItems="center" style={{ marginTop: 10 }}>
         <Grid item>
           <Typography variant="h5" gutterBottom>
-            Recipe Upload
+            Import recipe
           </Typography>
         </Grid>
         <Grid item></Grid>
       </Grid>
+      {/* Opened from the Recipe Book, which keeps every import (DEFECTS M55). */}
+      <Breadcrumbs aria-label="breadcrumb">
+        <Link color="inherit" onClick={() => navigate("/mashprofile")}>
+          Brew Steps
+        </Link>
+        <Link color="inherit" onClick={() => navigate("/recipes")}>
+          Recipe Book
+        </Link>
+        <Typography color="textPrimary">Import recipe</Typography>
+      </Breadcrumbs>
       <Divider style={{ marginBottom: 10, marginTop: 10 }} />
 
       <Grid component={Paper} container spacing={2} className={classes.root}>
         <Grid item spacing={2} xs={12}>
           <Paper style={{ padding: 10 }}>
-            <p>You can upload recipes from BeerXML, MMuM-JSON, Brewfather or the Kleiner Brauhelfer V2 database .</p>
+            <p>You can upload recipes from BeerXML, MMuM-JSON, Brewfather or the Kleiner Brauhelfer V2 database. A recipe you import becomes your brew steps, and is kept in your Recipe Book.</p>
           </Paper>
         </Grid>
         <Grid item spacing={2} xs={12}>

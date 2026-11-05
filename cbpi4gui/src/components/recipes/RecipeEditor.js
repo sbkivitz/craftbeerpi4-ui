@@ -87,7 +87,7 @@ const RecipeEditor = () => {
             navigate("/mashprofile");
           }}
         >
-          Active Recipe
+          Brew Steps
         </Link>
         <Link
           color="inherit"
