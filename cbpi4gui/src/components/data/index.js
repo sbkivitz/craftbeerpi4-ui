@@ -42,6 +42,10 @@ export const CBPiProvider = ({ children }) => {
   const [connection, setConnection] = useState(false);
   const [bf_recipes,setBF_recipes] = useState([]);
   const [system, setSystem] = useState([]) ;
+  // The brew-day screen's rest timer, kept by the server so every screen shows
+  // the same one: {remaining, running, scale}, plus when this page heard it,
+  // to count down between messages.
+  const [resttimer, setRestTimer] = useState(null);
 
   const onMessage = useCallback((data) => {
     //console.log("WS", data);
@@ -119,6 +123,9 @@ export const CBPiProvider = ({ children }) => {
       case "systemupdate":
           setSystem(() => data.data);
           break;
+      case "resttimer":
+          setRestTimer(data.data ? { ...data.data, received: Date.now() } : null);
+          break;
       default:
         break;
     }
@@ -159,6 +166,7 @@ export const CBPiProvider = ({ children }) => {
       setAllNotifiactions(data.notifications);
       setBF_recipes(data.bf_recipes);
       setSystem(data.system);
+      if (data.resttimer) setRestTimer({ ...data.resttimer, received: Date.now() });
       });
   }, []);
 
@@ -204,7 +212,7 @@ export const CBPiProvider = ({ children }) => {
 
   const value = {
     state: { sensors, version, guiversion, codename, actors, logic, kettle, fermenter, fermenterlogic, auth, plugins, temp, sensorData, sensorDataType, sensorInRange, spindledata,
-             actorTypes, sensorTypes, config, mashProfile, fermentersteps, FermenterProfile, mashBasic, stepTypes, stepTypesFermenter, connection, allnotifications, bf_recipes, system },
+             actorTypes, sensorTypes, config, mashProfile, fermentersteps, FermenterProfile, mashBasic, stepTypes, stepTypesFermenter, connection, allnotifications, bf_recipes, system, resttimer },
     actions: {
       delete_kettle,
       add_kettle,

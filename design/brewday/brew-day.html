@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Brew day · CraftBeerPi dashboard proposal (mockup)</title>
+<!--
+DIRECTION CONTRACT (Impeccable, final; source: .impeccable/decisions/direction-log.md)
+THESIS: A brewhouse control panel for one rig: a PID faceplate per vessel, the vessels as plumbed, the
+recipe beside them; it refuses the card grid of numbers and toggles.
+OWN-WORLD: Dark slate panel; black PID faces with a big red PV over a smaller green SV, plus OUT and MODE;
+buttons topped by lamp strips that also say their state (orange heating, green running, grey off, red
+failed); a line drawing of the rig with cyan liquor and gold wort pipes that move only while pumped.
+STORY: From across the garage Scott sees what is heating, how close each vessel is, and the step now and
+next; heat starts only on a held press; every command answers at its own button.
+FIRST VIEWPORT: Left: recipe with Start, Stop, Next step. Right: three faceplates across the top, the line
+drawing below with each vessel under its own faceplate. Alarms in the title bar; last event and screen tabs
+under it.
+FORM: Brewhouse touch panel with process-mimic plumbing (Scott's picks, rounds 2-5); layout B (D3, chosen
+9 Nov 2026 over A/D1); seed fad8ffb4.
+
+This is a proposal mockup with demo data. It does not talk to CraftBeerPi.
+Scenes: #mash (default), #hop, #fail, #manual, #offline. Add ?bare to hide the mockup strip.
+Layouts: ?layout=b (default, chosen) or ?layout=a (the D1 alternative, kept for comparison).
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="brew-day.css">
+</head>
+<body>
+<nav class="mock" id="mock" aria-label="Mockup scenes (not part of the design)">
+  <strong>Mockup with demo data.</strong> Show:
+  <a href="#mash">Mid-mash</a>
+  <a href="#hop">Hop addition due</a>
+  <a href="#fail">A command failed</a>
+  <a href="#manual">Brewing by hand</a>
+  <a href="#offline">Connection lost</a>
+  <span class="lay">Layout: <a data-layout="a" href="?layout=a">A · recipe right</a> <a data-layout="b" href="?layout=b">B · recipe left</a></span>
+</nav>
+<div class="app" id="app" data-link="ok">
+  <header class="topbar">
+    <p class="brand"><span class="long">CraftBeerPi Brewery</span><span class="short">CraftBeerPi</span></p>
+    <p class="link" id="link" data-link="ok"><i aria-hidden="true"></i><span id="link-t">Connected</span></p>
+    <button class="alloff" id="alloff" data-cmd="alloff" type="button">ALL OFF</button>
+    <p class="clock" id="clock">14:32</p>
+  </header>
+
+  <section class="status" aria-label="Alarms and the last event">
+    <div class="banner" id="banner" data-tone="ok"></div>
+    <div class="event" id="event"></div>
+  </section>
+
+  <main class="main">
+    <section class="brewhouse" aria-label="Brewhouse">
+      <div class="rig" id="rig"></div>
+      <div class="now" id="now"></div>
+      <div class="plates" id="plates"></div>
+    </section>
+    <aside class="recipe" id="recipe" aria-label="Recipe"></aside>
+  </main>
+
+  <nav class="tabs" aria-label="Screens">
+    <a href="#tab" data-tab="" aria-current="page">Brew day</a>
+    <a href="#tab" data-tab="Brew Steps"><span class="long">Brew steps</span><span class="short">Steps</span></a>
+    <a href="#tab" data-tab="Recipe Book"><span class="long">Recipe book</span><span class="short">Recipes</span></a>
+    <a href="#tab" data-tab="Analytics">Analytics</a>
+    <a href="#tab" data-tab="Hardware">Hardware</a>
+    <a href="#tab" data-tab="Settings">Settings</a>
+    <a href="#tab" data-tab="More">More</a>
+  </nav>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+<p class="sr" id="sr" aria-live="polite"></p>
+<p class="sr" id="sr-alert" role="alert"></p>
+<script src="rig.js"></script>
+<script src="brew-day.js"></script>
+</body>
+</html>

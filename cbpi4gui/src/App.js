@@ -9,6 +9,7 @@ import ConnectionBanner from "./components/util/ConnectionBanner";
 import Upload from "./components/upload";
 import CBPiSystem from "./components/system";
 import {Dashboard2 , FixDashboard} from "./components/dashboard/Dashboard";
+import BrewDay from "./components/brewday/BrewDay";
 import Hardware from "./components/hardware";
 import ActorForm from "./components/hardware/ActorForm";
 import KettleForm from "./components/hardware/KettleForm";
@@ -187,8 +188,19 @@ const drawerWidth = 240;
 //
 // appBarHeight is a prop now rather than a closure variable, which is the only
 // thing the inner definition was buying.
+//
+// CssBaseline and the page colour belong to these pages, not the whole app:
+// the brew-day screen at / sits outside this frame and is styled only by its
+// own stylesheet, which must not have MUI's body font, line height or bold
+// weights under it (it has to look exactly like the approved mockup).
 const AppLayout = ({ appBarHeight }) => (
   <>
+    <CssBaseline />
+    <GlobalStyles
+        styles={{
+          body: { backgroundColor: "#444444" },
+        }}
+      />
     <ConnectionBanner />
     <MainMenu />
     <main className={classes.content}>
@@ -223,16 +235,12 @@ const CraftBeerPiApp = () => {
 
   return (
     <div className={classes.root}>
-      <CssBaseline />
-      <GlobalStyles
-          styles={{
-            body: { backgroundColor: "#444444" },
-          }}
-        />
       <Router>
         <Routes>
-          <Route path="/" element={<AppLayout appBarHeight={appBarHeight} /> } >
-                  <Route path="/" element={<Dashboard2 />}/>   
+          {/* The brew-day screen (Scott, 9 Nov 2026): the first page, with its own title bar and tabs. */}
+          <Route path="/" element={<BrewDay />} />
+          <Route element={<AppLayout appBarHeight={appBarHeight} /> } >
+                  <Route path="dashboard" element={<Dashboard2 />}/>   
                   <Route path="fixdash/:dashboardid" element={<FixDashboard />}/>
                   <Route path="plugins" element={<Plugins />} />
                   <Route path="about" element={<About />}/>

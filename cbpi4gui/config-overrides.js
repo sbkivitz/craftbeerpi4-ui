@@ -2,6 +2,7 @@
  * Webpack tweaks that Create React App does not allow directly.
  *
  * Two things here, and the second one is why the build stopped working.
+ * (A third, below, keeps the brew-day screen's stylesheets as they are.)
  *
  * 1. Node core modules. CRA 5 / webpack 5 no longer polyfill them, and parts of
  *    this app still expect them, so they are provided explicitly.
@@ -40,6 +41,20 @@ module.exports = function override(config) {
   config.module.rules.push({
     test: /\.m?js$/,
     resolve: { fullySpecified: false },
+  });
+
+  // 3. The brew-day screen's stylesheets, as text, untouched. It must look
+  //    exactly like the approved mockup (Scott, 9 Nov 2026), and the CSS
+  //    pipeline does not leave a stylesheet alone: the minifier rewrote the
+  //    mockup's rgb(0 0 0/.26) as #00000042, an alpha of 66/255 instead of .26,
+  //    and Chrome draws gradients with the difference. screen.js puts the text
+  //    in a <style> element as it is. (Its fonts, fonts/barlow.css, still go
+  //    through the pipeline, which bundles the font files.)
+  const oneOf = config.module.rules.find((rule) => Array.isArray(rule.oneOf));
+  if (!oneOf) throw new Error("config-overrides: no oneOf rule in the webpack config");
+  oneOf.oneOf.unshift({
+    test: /components[\\/]brewday[\\/]brewday(-extra)?\.css$/,
+    type: "asset/source",
   });
 
   config.plugins = (config.plugins || []).concat([

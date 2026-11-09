@@ -73,6 +73,13 @@ export const AlertProvider = ({ children }) => {
   const [alerts, setAlerts] = useState([]);
   // The ids on show, known at once - the state above is updated later.
   const shown = useRef(new Set());
+  // Hidden while the brew-day screen is open: its title bar shows the prompts
+  // and errors, and the stack would cover its buttons. A count, so two
+  // screens asking for it never undo each other.
+  const [stackHidden, setStackHidden] = useState(0);
+  const hideStack = useCallback((hide) => {
+    setStackHidden((n) => Math.max(0, n + (hide ? 1 : -1)));
+  }, []);
   const audio = new Audio(buzzer);
 
   const remove = useCallback((id) => {
@@ -139,13 +146,14 @@ export const AlertProvider = ({ children }) => {
     show,
     remove,
     keepWaiting,
+    hideStack,
   };
 
   return (
     <AlertContext.Provider value={value}>
       {children}
 
-      <Stack
+      {stackHidden ? null : <Stack
         spacing={1}
         data-notifications="stack"
         sx={{
@@ -176,7 +184,7 @@ export const AlertProvider = ({ children }) => {
             </Alert>
           );
         })}
-      </Stack>
+      </Stack>}
     </AlertContext.Provider>
   );
 };

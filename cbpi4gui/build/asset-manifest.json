@@ -1,17 +1,35 @@
 {
   "files": {
-    "main.css": "./static/css/main.814ce619.css",
-    "main.js": "./static/js/main.3d19dc13.js",
+    "main.css": "./static/css/main.edcdafcb.css",
+    "main.js": "./static/js/main.438a17c5.js",
     "static/media/cbpi.png": "./static/media/cbpi.f1a4ae594af1e1df335b.png",
     "static/media/buzzer.mp3": "./static/media/buzzer.4d5932be5f2519107768.mp3",
     "static/media/Reacticon.png": "./static/media/Reacticon.62b41405c3951389251c.png",
     "static/media/cbpi_no_border.png": "./static/media/cbpi_no_border.5446caa7c8efc97bdcc1.png",
+    "static/media/Barlow-600-latin.woff2": "./static/media/Barlow-600-latin.7750026b025162207e22.woff2",
+    "static/media/BarlowCondensed-700-latin.woff2": "./static/media/BarlowCondensed-700-latin.c2d0c2005a3617b41dbe.woff2",
+    "static/media/BarlowCondensed-600-latin.woff2": "./static/media/BarlowCondensed-600-latin.97b90fcdb8d1045d8cc8.woff2",
+    "static/media/Barlow-400-latin.woff2": "./static/media/Barlow-400-latin.bd1dfa097b26c2912bc2.woff2",
+    "static/media/Barlow-500-latin.woff2": "./static/media/Barlow-500-latin.21faf72ff9da543b9907.woff2",
+    "static/media/BarlowCondensed-500-latin.woff2": "./static/media/BarlowCondensed-500-latin.93cf9cdda79b2ecb7ae3.woff2",
+    "static/media/Barlow-600-latin-ext.woff2": "./static/media/Barlow-600-latin-ext.160a6dbf2a66d1372279.woff2",
+    "static/media/BarlowCondensed-700-latin-ext.woff2": "./static/media/BarlowCondensed-700-latin-ext.2208665bd73a14022800.woff2",
+    "static/media/BarlowCondensed-600-latin-ext.woff2": "./static/media/BarlowCondensed-600-latin-ext.7a9ee8dbf9d4f8dd3ba1.woff2",
+    "static/media/Barlow-500-latin-ext.woff2": "./static/media/Barlow-500-latin-ext.ade58802b48eae4047e0.woff2",
+    "static/media/Barlow-400-latin-ext.woff2": "./static/media/Barlow-400-latin-ext.5415fd14253885586e43.woff2",
+    "static/media/BarlowCondensed-500-latin-ext.woff2": "./static/media/BarlowCondensed-500-latin-ext.98c072d7d4d63700027c.woff2",
+    "static/media/Barlow-600-vietnamese.woff2": "./static/media/Barlow-600-vietnamese.a860116e6084725a7f12.woff2",
+    "static/media/BarlowCondensed-600-vietnamese.woff2": "./static/media/BarlowCondensed-600-vietnamese.b7dfbbfb5c524757890c.woff2",
+    "static/media/Barlow-500-vietnamese.woff2": "./static/media/Barlow-500-vietnamese.e17c572244fd8c7c65f6.woff2",
+    "static/media/BarlowCondensed-700-vietnamese.woff2": "./static/media/BarlowCondensed-700-vietnamese.36533878cfafa0ea21dd.woff2",
+    "static/media/Barlow-400-vietnamese.woff2": "./static/media/Barlow-400-vietnamese.dc5a681d89efbabfce95.woff2",
+    "static/media/BarlowCondensed-500-vietnamese.woff2": "./static/media/BarlowCondensed-500-vietnamese.dc7f6c1497100a0a1974.woff2",
     "static/media/tank2.svg": "./static/media/tank2.891ce17091e46c74c1157a9c7013ea70.svg",
     "static/media/kettle.svg": "./static/media/kettle.77e9dd6425b5f8f52bbf9fb5e82777c0.svg",
     "index.html": "./index.html"
   },
   "entrypoints": [
-    "static/css/main.814ce619.css",
-    "static/js/main.3d19dc13.js"
+    "static/css/main.edcdafcb.css",
+    "static/js/main.438a17c5.js"
   ]
 }

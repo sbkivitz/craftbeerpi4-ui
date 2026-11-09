@@ -9,6 +9,7 @@ import PowerIcon from '@mui/icons-material/Power';
 import SettingsIcon from '@mui/icons-material/Settings';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
+import SportsBarIcon from '@mui/icons-material/SportsBar';
 import ComputerIcon from '@mui/icons-material/Computer';
 import TroubleshootIcon from '@mui/icons-material/Troubleshoot';
 import React from 'react';
@@ -43,8 +44,11 @@ const Menu = ({onClose}) => {
     // from there. Scott, 5 Nov: Recipe Upload was six places below "Mash
     // Profile", which runs the whole brew day and not only the mash, and the
     // Recipe Book was not in the menu at all (DEFECTS M55, mockup 08).
+    // Brew Day is the brew-day screen, the first page since 9 Nov; Dashboard is
+    // the free-form dashboard it replaced there.
     return <List>
-        <MenuItem onClose={onClose} label="Dashboard"><DashboardIcon /></MenuItem>
+        <MenuItem onClose={onClose} label="Brew Day"><SportsBarIcon /></MenuItem>
+        <MenuItem onClose={onClose} label="Dashboard" path="/dashboard"><DashboardIcon /></MenuItem>
         <MenuItem onClose={onClose} label="Brew Steps" path="/mashprofile"><BallotIcon /></MenuItem>
         <MenuItem onClose={onClose} label="Recipe Book" path="/recipes"><MenuBookIcon /></MenuItem>
         <MenuItem onClose={onClose} label="Fermenter Profile" path="/fermenterprofile"><BallotIcon /></MenuItem>

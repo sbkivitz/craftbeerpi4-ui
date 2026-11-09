@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A or B? · CraftBeerPi brew-day screen (proposal)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;display:grid;grid-template-rows:auto auto minmax(0,1fr);background:#080c10;color:#e8eef3;font:500 15px/1.35 "Barlow","Segoe UI",system-ui,sans-serif}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 22px;padding:10px 16px;background:#f2efe6;color:#1d232a;border-bottom:2px dashed #1d232a}
+.bar h1{margin:0 6px 0 0;font:700 19px/1 "Barlow",sans-serif}
+.grp{display:flex;align-items:center;gap:6px}
+.grp>span{font-weight:600;margin-right:2px}
+.grp button{min-height:36px;padding:0 12px;border:1px solid #1d232a;border-radius:6px;background:#fff;color:#1d232a;font:600 14px/1 "Barlow",sans-serif;cursor:pointer}
+.grp button:hover{background:#e6e1d4}
+.grp button[aria-pressed=true]{background:#1d232a;color:#f2efe6}
+.grp.ab button{min-width:52px;font-size:17px}
+:focus-visible{outline:3px solid #2a6fc0;outline-offset:2px}
+.hint{margin:0;padding:8px 16px;background:#11181f;color:#b6c3cf;border-bottom:1px solid #2a3b4b}
+.hint b{color:#fff}
+.hint a{color:#9fd0ff}
+.stage{display:grid;place-content:center;gap:28px;padding:22px;min-height:0;overflow:hidden}
+.stage.flip{grid-template-areas:"x"}
+.stage.flip .frame{grid-area:x}
+.stage.both{grid-auto-flow:column}
+.frame{margin:0;display:grid;gap:10px;justify-items:center}
+.frame.off{visibility:hidden}
+.screen{position:relative;overflow:hidden;border-radius:8px;background:#0f161d;box-shadow:0 0 0 1px #2a3b4b,0 24px 60px rgb(0 0 0/.55)}
+.phone .screen{border-radius:36px;border:10px solid #000;box-shadow:0 0 0 2px #3a4652,0 24px 60px rgb(0 0 0/.55)}
+.screen iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0;background:#0f161d}
+figcaption{font:600 16px/1.3 "Barlow",sans-serif;color:#d7e1ea;text-align:center;max-width:100%}
+figcaption b{display:inline-block;min-width:26px;margin-right:8px;padding:2px 8px;border-radius:5px;background:#e8eef3;color:#0f161d}
+</style>
+</head>
+<body>
+<header class="bar">
+  <h1>A or B?</h1>
+  <div class="grp ab" role="group" aria-label="Which design">
+    <button type="button" data-view="a">A</button><button type="button" data-view="b">B</button><button type="button" data-view="both">Side by side</button>
+  </div>
+  <div class="grp" role="group" aria-label="Screen">
+    <span>Screen:</span>
+    <button type="button" data-size="monitor">Monitor 1920×1080</button><button type="button" data-size="laptop">Laptop 1440×900</button><button type="button" data-size="phone">Phone</button>
+  </div>
+  <div class="grp" role="group" aria-label="Moment in the brew day">
+    <span>Moment:</span>
+    <button type="button" data-scene="mash">Mid-mash</button><button type="button" data-scene="hop">Hop addition due</button><button type="button" data-scene="fail">A command failed</button><button type="button" data-scene="manual">Brewing by hand</button><button type="button" data-scene="offline">Connection lost</button>
+  </div>
+</header>
+<p class="hint">Both designs use the same parts, data and controls; only the arrangement and the drawing differ. Press <b>Space</b> to flip between A and B. The screens are live: buttons respond, and timers run. <a id="full" href="brew-day.html?layout=a#mash" target="_blank" rel="noopener">Open the shown design full size</a>.</p>
+<main class="stage flip" id="stage">
+  <figure class="frame" data-k="a"><div class="screen"><iframe title="Design A" src="brew-day.html?bare&amp;layout=a#mash"></iframe></div>
+    <figcaption><b>A</b>Recipe on the right · kettle drawing on top, faceplates under it · screen tabs along the bottom</figcaption></figure>
+  <figure class="frame" data-k="b"><div class="screen"><iframe title="Design B" src="brew-day.html?bare&amp;layout=b#mash"></iframe></div>
+    <figcaption><b>B</b>Recipe on the left · faceplates across the top, line drawing under them · screen tabs along the top</figcaption></figure>
+</main>
+<script>
+"use strict";
+const SIZES = {monitor: [1920, 1080], laptop: [1440, 900], phone: [390, 844]};
+const q = new URLSearchParams(location.hash.slice(1));
+const S = {view: q.get("view") || "a", size: q.get("size") || "monitor", scene: q.get("scene") || "mash"};
+const stage = document.getElementById("stage"), frames = [...document.querySelectorAll(".frame")];
+
+function fit() {
+  const [w, h] = SIZES[S.size], both = S.view === "both", phone = S.size === "phone";
+  const bez = phone ? 20 : 0, cap = 40, gap = 28;
+  const r = stage.getBoundingClientRect();
+  const aw = (r.width - 44 - (both ? gap : 0)) / (both ? 2 : 1) - bez;
+  const ah = r.height - 44 - cap - bez;
+  const s = Math.min(1, aw / w, ah / h);
+  frames.forEach(f => {
+    const scr = f.querySelector(".screen"), fr = f.querySelector("iframe");
+    f.classList.toggle("phone", phone);
+    f.classList.toggle("off", !both && f.dataset.k !== S.view);
+    f.setAttribute("aria-hidden", !both && f.dataset.k !== S.view ? "true" : "false");
+    scr.style.width = (w * s + bez) + "px"; scr.style.height = (h * s + bez) + "px";
+    fr.style.width = w + "px"; fr.style.height = h + "px"; fr.style.transform = `scale(${s})`;
+    f.querySelector("figcaption").style.width = (w * s + bez) + "px";
+  });
+}
+function apply() {
+  stage.className = "stage " + (S.view === "both" ? "both" : "flip");
+  document.querySelectorAll("[data-view]").forEach(b => b.setAttribute("aria-pressed", b.dataset.view === S.view));
+  document.querySelectorAll("[data-size]").forEach(b => b.setAttribute("aria-pressed", b.dataset.size === S.size));
+  document.querySelectorAll("[data-scene]").forEach(b => b.setAttribute("aria-pressed", b.dataset.scene === S.scene));
+  frames.forEach(f => {
+    const fr = f.querySelector("iframe"), want = `brew-day.html?bare&layout=${f.dataset.k}#${S.scene}`;
+    if (fr.getAttribute("src") !== want) fr.setAttribute("src", want);
+  });
+  document.getElementById("full").href = `brew-day.html?layout=${S.view === "b" ? "b" : "a"}#${S.scene}`;
+  history.replaceState(null, "", `#view=${S.view}&size=${S.size}&scene=${S.scene}`);
+  fit();
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  if (b.dataset.view) S.view = b.dataset.view;
+  if (b.dataset.size) S.size = b.dataset.size;
+  if (b.dataset.scene) S.scene = b.dataset.scene;
+  apply();
+});
+document.addEventListener("keydown", e => {
+  if (e.target.closest && e.target.closest("button") && (e.key === " " || e.key === "Enter")) return;
+  const k = e.key.toLowerCase();
+  if (k === " ") { e.preventDefault(); S.view = S.view === "a" ? "b" : "a"; apply(); }
+  else if (k === "a" || k === "b") { S.view = k; apply(); }
+  else if (k === "s") { S.view = "both"; apply(); }
+});
+addEventListener("resize", fit);
+apply();
+</script>
+</body>
+</html>
