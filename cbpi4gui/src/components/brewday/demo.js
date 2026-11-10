@@ -107,3 +107,27 @@ const SCENES = {
 };
 
 export { RECIPE, VNAME, VACT, ACT, HERMS_DELTA, BOOK, SCENES };
+
+// Not the mockup's: two moments of the screen's own, for checking how the title bar holds what CraftBeerPi
+// really asks (the dashboard agent's review, 9 Nov). Not compared with the mockup, which has neither.
+// ?demo=resume: the server restarted mid-mash and asks, with two buttons.
+// ?demo=longprompt: the hold before the boil, CraftBeerPi's longest question, with the boil waiting for you.
+const EXTRA = {
+  resume: () => Object.assign(mash(), {
+    banner: {tone: "prompt", title: "Resume brew?", text: "'Saccharification' was interrupted when the server stopped. About 16 min 19 s of it had already run, and that is remembered - resuming continues from there rather than starting the step again. Check your kettle first, then choose.",
+      acts: [{label: "RESUME", cmd: "b:ok"}, {label: "SKIP THIS STEP", cmd: "b:ok"}]},
+    a: {hltEl: {on: false, pct: 0}, hltPump: {on: false}, wortPump: {on: false}, bkEl: {on: false, pct: 0}},
+    v: {hlt: {pv: 152.9, sv: 154.4, own: 168.0, mode: "manual"}, mt: {pv: 147.8, sv: 149.0, mode: "manual"}, bk: {pv: 68.0, sv: null, mode: "manual"}},
+    recipe: {state: "stopped", cur: 2, left: 23 * 60 + 41, adds: []}
+  }),
+  longprompt: () => Object.assign(mash(), {
+    t: 15 * 3600 + 53 * 60 + 12,
+    banner: {tone: "prompt", title: "Boil", text: "Ready to boil? Move the wort to the boil kettle first - the dashboard is yours meanwhile. The boil kettle stays off until you press Start the boil, or Start on the Brew Steps page. (Set CONFIRM_BEFORE_BOIL to No to go straight on.)", act: "START THE BOIL", cmd: "b:ok"},
+    v: {hlt: {pv: 170.2, sv: null, own: 168.0, mode: "manual"}, mt: {pv: 166.9, sv: null, mode: "manual"}, bk: {pv: 151.3, sv: null, mode: "manual"}},
+    a: {hltEl: {on: false, pct: 0}, hltPump: {on: true}, wortPump: {on: true}, bkEl: {on: false, pct: 0}},
+    fill: {mtLiq: true, bk: true},
+    recipe: {state: "ready", cur: 4, left: 90 * 60, adds: [], wait: "WAITING FOR YOU"}
+  })
+};
+
+export { EXTRA };

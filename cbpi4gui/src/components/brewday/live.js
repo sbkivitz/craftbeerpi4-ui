@@ -137,7 +137,12 @@ export function stepModel(s, roleOf, U) {
   if (s.type === "BoilStep") {
     m.boil = true;
     const adds = additions(p);
-    if (adds.length) m.adds = adds;
+    if (adds.length) {
+      m.adds = adds;
+      // which reminders the boil gave - all of them, unless it was skipped or ended early
+      const done = new Set((p._hops_done || []).map(Number));
+      m.addsDone = adds.map((a) => (a[3] === "fw" ? !!p._first_wort_done : done.has(a[3])));
+    }
   }
   return m;
 }

@@ -22,7 +22,7 @@
 import { rigSVG, RIG_H } from "./rig";
 import * as DEMO from "./demo";
 import { api, why as failWhy } from "./api";
-import { model, num, parseLeft, bookLine, isHerms, ROLES } from "./live";
+import { model, num, parseLeft, bookLine, isHerms, unitText, ROLES } from "./live";
 // As text, exactly as written (config-overrides.js): the CSS pipeline would rewrite the mockup's colours.
 import BREWDAY_CSS from "./brewday.css";
 import EXTRA_CSS from "./brewday-extra.css";
@@ -39,7 +39,8 @@ const WAIT = "Waiting for CraftBeerPi to answer.";
 const ICON = {
   ok: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M6.5 12.5l3.5 3.5 7-8" fill="none" stroke="#0a1016" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   bell: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a6 6 0 0 0-6 6v4.5L4 16v1.5h16V16l-2-3.5V8a6 6 0 0 0-6-6zm-2.5 17a2.5 2.5 0 0 0 5 0z"/></svg>',
-  warn: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 1.8 23 21.5H1z"/><path d="M12 8.5v6M12 17.5v.5" stroke="#6e1414" stroke-width="2.6" stroke-linecap="round"/></svg>'
+  warn: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 1.8 23 21.5H1z"/><path d="M12 8.5v6M12 17.5v.5" stroke="#6e1414" stroke-width="2.6" stroke-linecap="round"/></svg>',
+  wait: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-dasharray="4.2 3.2"/></svg>'
 };
 const LAYOUT = "b"; // Scott chose layout B (D3) on 9 Nov 2026
 const ACTS = ["hltEl", "hltPump", "wortPump", "bkEl"];
@@ -51,6 +52,11 @@ const EXPECT_MS = 3000;
 // The websocket's own "server down" and "connected" messages (data/websocket.js): the screen shows the
 // connection itself.
 const OWN_ALERTS = new Set(["1", "2"]);
+// How long the screen says "Connecting…" calmly before a page that has never connected turns red.
+const CONNECTING_MS = 5000;
+// CraftBeerPi's routine step notices: the event line already says these in its own words.
+const ROUTINE = /^(?:timer started|step finished|boiling completed)$/i;
+const WAITING_FOR_YOU = "WAITING FOR YOU";
 
 /* ---------- the screen's markup: the mockup's page, after layout B's moves ---------- */
 const MORE = [["#/dashboard", "Dashboard"], ["#/fermenterprofile", "Fermenter profile"], ["#/plugins", "Plugins"], ["#/system", "System"], ["#/about", "About"]];
@@ -133,6 +139,9 @@ let st, M, timers = [], noteTimers = {}, hold = null, toastT = 0, raf = 0, rigW 
 let last = null, everConnected = false, book = [], bookBusy = false, bookShown = false;
 const answered = new Set(), own = {};
 const $ = s => root.querySelector(s);
+// Temperatures in CraftBeerPi's own words follow its unit's sign: "170 F" -> "170 °F".
+const ut = s => unitText(s, M.U);
+const connecting = () => !DEMO_MODE && !everConnected && Date.now() - st.openedAt < CONNECTING_MS;
 const hermsOn = () => M.HERMS !== false && st.v.mt.mode === "auto";
 const noVessel = v => `CraftBeerPi has no ${M.VNAME[v].toLowerCase()} set up.`;
 
@@ -195,12 +204,13 @@ function editorHTML(v) {
     <button type="button" class="ok" data-cmd="tset">SET <span id="tok">${x}</span> ${M.U}</button><button type="button" class="no" data-cmd="tcancel">CANCEL</button></div>`;
 }
 function devHTML(v) {
-  if (st.link === "lost") return st.age == null ? "No reading yet" : `<span class="age">Last reading ${st.age} s ago</span>`;
+  const stale = s => `<span class="stale">${s}</span>`;
+  if (st.link === "lost") return st.age == null ? stale("No reading yet") : `<span class="age">Last reading ${st.age} s ago</span>`;
   const V = st.v[v];
-  if (V.missing) return "Not set up";
+  if (V.missing) return stale("Not set up");
+  if (V.pv == null) return stale("No reading yet");
   const driven = V.mode === "auto" || (v === "hlt" && hermsOn());
   if (!driven || V.sv == null) return v === "mt" ? "MANUAL · wort pump by hand" : "MANUAL · element by hand";
-  if (V.pv == null) return "No reading";
   if (v === "bk" && V.pv >= V.sv - 0.5) return "Boiling";
   const d = V.sv - V.pv;
   if (Math.abs(d) < 0.3) return "At target";
@@ -256,20 +266,25 @@ function confirmHTML() {
   const r = st.recipe, cur = M.RECIPE.steps[r.cur], nx = M.RECIPE.steps[r.cur + 1];
   return `<div class="confirm" role="group" aria-labelledby="cf-t"><p id="cf-t">Skip the rest of <b>${esc(cur.n)}</b>${cur.min ? ` (${mmss(r.left)} left)` : ""} and start <b>${esc(nx.n)}</b>${nx.temp ? ` at ${nx.temp} ${M.U}` : ""}?</p><div><button type="button" class="yes" data-cmd="r:next-yes">SKIP TO ${esc(nx.n.toUpperCase())}</button><button type="button" data-cmd="r:next-no">KEEP GOING</button></div></div>`;
 }
-/* r.wait: a running step whose timer has not started yet says what it is waiting for (HEATING, COOLING, WAITING) */
+/* r.wait: a running step whose timer has not started yet says what it is waiting for (HEATING, COOLING, WAITING,
+   WAITING FOR YOU, or a BrewStart's STARTS 05:30); a step held for the brewer says WAITING FOR YOU */
+const waitHTML = w => w === WAITING_FOR_YOU ? `<span class="wfy">${w}</span>` : w;
 function stepHTML(s, i) {
   const r = st.recipe, state = i < r.cur ? "done" : i === r.cur ? "cur" : "";
   const p = [s.temp != null ? `${s.temp} ${M.U}` : "", s.min ? `${s.min} min` : ""].filter(Boolean).join(" · ");
-  const right = state === "done" ? "✓ DONE" : state === "cur" ? (r.state === "running" ? (r.wait || (s.min ? `<span id="r-left">${mmss(r.left)}</span> LEFT` : "NOW")) : r.state === "ready" ? "READY" : "STOPPED") : '<i class="todo" aria-hidden="true"></i><span class="sr">to come</span>';
+  const right = state === "done" ? "✓ DONE" : state === "cur" ? (r.state === "running" ? (r.wait ? waitHTML(r.wait) : (s.min ? `<span id="r-left">${mmss(r.left)}</span> LEFT` : "NOW")) : r.state === "ready" ? (r.wait ? waitHTML(r.wait) : "READY") : "STOPPED") : '<i class="todo" aria-hidden="true"></i><span class="sr">to come</span>';
   const pct = s.min ? pctOf(r.left, s.min) : 0;
   const bar = state === "cur" && s.min ? `<span class="bar"><i id="r-bar" style="width:${pct}%"></i></span>` : "";
-  const adds = s.adds ? `<span class="adds">${s.adds.map((a, j) => addHTML(a, j, state)).join("")}</span>` : "";
+  const adds = s.adds ? `<span class="adds">${s.adds.map((a, j) => addHTML(a, j, state, s)).join("")}</span>` : "";
   return `<li class="step${state === "done" ? " done" : ""}"${state === "cur" ? ' aria-current="step"' : ""}><span class="n">${i + 1}</span><span class="t">${esc(s.n)}</span>${p ? `<span class="p">${p}</span>` : ""}${s.note ? `<span class="p">${esc(s.note)}</span>` : ""}<span class="s">${right}</span>${bar}${adds}</li>`;
 }
-function addHTML(a, j, state) {
-  const s = state === "done" ? "done" : state === "cur" ? (st.recipe.adds[j] || "") : "";
-  const c = s === "due" ? "due" : s === "done" ? "gone" : "";
-  return `<span class="${c}">${s === "done" ? "✓ " : ""}${typeof a[0] === "number" ? `${a[0]} min` : esc(a[0])}</span><span class="${c}">${esc(a[1])}${s === "due" ? " · add now" : ""}</span><span class="${c}">${esc(a[2])}</span>`;
+/* a finished boil ticks the additions it asked for; one it never asked for (skipped, or ended early) is dimmed,
+   without a tick. The demo's steps don't say, so all of a finished step's are ticked, as in the mockup. */
+function addHTML(a, j, state, step) {
+  const missed = state === "done" && step && step.addsDone && !step.addsDone[j];
+  const s = state === "done" ? (missed ? "missed" : "done") : state === "cur" ? (st.recipe.adds[j] || "") : "";
+  const c = s === "due" ? "due" : s === "done" ? "gone" : s === "missed" ? "gone missed" : "";
+  return `<span class="${c}">${s === "done" ? "✓ " : ""}${typeof a[0] === "number" ? `${a[0]} min` : esc(a[0])}${s === "missed" ? '<span class="sr"> not added</span>' : ""}</span><span class="${c}">${esc(a[1])}${s === "due" ? " · add now" : ""}</span><span class="${c}">${esc(a[2])}</span>`;
 }
 function handHTML() {
   const t = st.timer, pt = st.pend.tm, off = st.link === "lost" ? PAUSED : "", ld = st.pend["r:load"] ? WAIT : "";
@@ -290,7 +305,7 @@ function nowHTML() {
   const p = [s.temp != null ? `${s.temp} ${M.U}` : "", s.min ? `${s.min} min` : "", `step ${r.cur + 1} of ${S.length}`].filter(Boolean).join(" · ");
   const nx = S[r.cur + 1];
   const nxt = nx ? `<span class="nx">Next: ${esc(nx.n)}${nx.temp != null ? ` · ${nx.temp} ${M.U}` : ""}${nx.min ? ` · ${nx.min} min` : ""}</span>` : `<span class="nx">Last step</span>`;
-  return `<span class="n">${r.cur + 1}</span><b>${esc(s.n)}</b><span class="p">${p}</span><span class="left">${r.state === "running" ? (r.wait ? r.wait.toLowerCase() : s.min ? `<span id="now-left">${mmss(r.left)}</span> left` : "now") : r.state === "ready" ? "ready" : "stopped"}</span>${s.min ? `<span class="bar"><i id="now-bar" style="width:${pct}%"></i></span>` : ""}${nxt}`;
+  return `<span class="n">${r.cur + 1}</span><b>${esc(s.n)}</b><span class="p">${p}</span><span class="left">${r.state === "running" ? (r.wait ? waitHTML(r.wait).toLowerCase() : s.min ? `<span id="now-left">${mmss(r.left)}</span> left` : "now") : r.state === "ready" ? (r.wait ? waitHTML(r.wait).toLowerCase() : "ready") : "stopped"}</span>${s.min ? `<span class="bar"><i id="now-bar" style="width:${pct}%"></i></span>` : ""}${nxt}`;
 }
 
 /* ---------- alarms, last event, rig ---------- */
@@ -300,10 +315,11 @@ function bannerHTML() {
   if (!x) return `${ICON.ok}<span class="msg">No alarms</span>`;
   const acts = x.acts || (x.act ? [{label: x.act, cmd: x.cmd}] : []);
   const act = acts.map(y => b("act", st.pend.b && (acts.length === 1 || st.pend.b === y.cmd) ? "SENDING…" : esc(y.label), "", {cmd: y.cmd, why: st.pend.b ? WAIT : ""})).join("");
-  return `${x.tone === "prompt" ? ICON.bell : ICON.warn}<span class="msg"><b>${esc(x.title)}${x.more ? ` · ${x.more} more waiting` : ""}</b>${esc(x.text).replace("{age}", `<span id="ban-age">${st.age}</span>`)}</span>${act}`;
+  return `${x.tone === "prompt" ? ICON.bell : x.tone === "connecting" ? ICON.wait : ICON.warn}<span class="msg"><b>${esc(x.title)}${x.more ? ` · ${x.more} more waiting` : ""}</b>${esc(x.text).replace("{age}", `<span id="ban-age">${st.age}</span>`)}</span>${act}`;
 }
+/* an event with no result word (the connection coming and going) has no " · " after it */
 function eventHTML() {
-  const e = st.events[0], row = e => `<time>${e[0]}</time>${esc(e[1])} · <span class="res ${e[3]}">${e[2]}</span>${e[4] ? ` · <span class="res">${esc(e[4])}</span>` : ""}`;
+  const e = st.events[0], row = e => `<time>${e[0]}</time>${esc(e[1])}${e[2] ? ` · <span class="res ${e[3]}">${esc(e[2])}</span>` : ""}${e[4] ? ` · <span class="res">${esc(e[4])}</span>` : ""}`;
   return `<span class="line">${row(e)}</span><button type="button" class="logbtn" data-cmd="log" aria-expanded="${!!st.logOpen}" aria-controls="log">LOG</button>${st.logOpen ? `<ol class="log" id="log" aria-label="Recent events">${st.events.slice(0, 8).map(e => `<li>${row(e)}</li>`).join("")}</ol>` : ""}`;
 }
 const needleAngle = pv => -120 + 240 * (Math.min(220, Math.max(50, pv)) - 50) / 170;
@@ -381,10 +397,10 @@ function drawRig() {
 function renderAll() {
   if (!root || !st) return;
   if (!DEMO_MODE) liveBanner();
-  const lost = st.link === "lost";
+  const lost = st.link === "lost", hello = lost && connecting();
   $("#app").dataset.link = st.link;
-  $("#link").dataset.link = st.link;
-  setText($("#link-t"), lost ? "No connection" : "Connected");
+  $("#link").dataset.link = hello ? "connecting" : st.link;
+  setText($("#link-t"), hello ? "Connecting…" : lost ? "No connection" : "Connected");
   setText($("#clock"), hhmm(st.t));
   const ho = $("#alloff");
   setText(ho, st.pend.alloff ? "SWITCHING OFF…" : "ALL OFF");
@@ -590,7 +606,7 @@ function liveAct(id) {
       st.fail[id] = want ? "on" : "off";
       const still = want ? "off" : A.kind === "pump" ? "running" : "heating";
       // heat is not switched on from the title bar: the button itself takes a held press
-      if (want && A.kind === "heat") alarm(`${A.name} did not switch on. It is still off.`, "OK", "b:ok");
+      if (want && A.kind === "heat") alarm(`${A.name} did not switch on. It is still off. Hold its button to try again.`, "OK", "b:ok");
       else alarm(`${A.name} did not switch ${want ? "on" : "off"}. It is still ${still}.`, "TRY AGAIN", "act:" + id);
     }
   });
@@ -610,7 +626,7 @@ function liveMode(v, m) {
   }, {
     ok: () => expect("m:" + v, auto),
     fail: () => auto
-      ? alarm(`The ${M.VNAME[v].toLowerCase()} did not switch to AUTO. It is still MANUAL.`, "OK", "b:ok")
+      ? alarm(`The ${M.VNAME[v].toLowerCase()} did not switch to AUTO. It is still MANUAL. Hold AUTO to try again.`, "OK", "b:ok")
       : alarm(`The ${M.VNAME[v].toLowerCase()} did not switch to MANUAL. Its AUTO may still be running.`, "TRY AGAIN", `mode:${v}:manual`)
   });
 }
@@ -728,6 +744,7 @@ function run(cmd) {
       return renderAll();
     case "p": return livePrompt(x, y);
     case "e": st.errors = st.errors.filter(e => String(e.id) !== x); return renderAll();
+    case "w": st.warnings = st.warnings.filter(w => String(w.id) !== x); return renderAll();
     case "alloff": return DEMO_MODE ? cmdAllOff() : liveAllOff();
     case "log": st.logOpen = !st.logOpen; return renderAll();
     case "tm": return DEMO_MODE ? cmdTimer(x) : liveTimer(x);
@@ -744,7 +761,7 @@ function blankMoment() {
   ACTS.forEach(x => { a[x] = {on: false, pct: 0}; });
   return {t: daySeconds(), link: "lost", age: null, banner: null, v, a, recipe: null, timer: {left: 3600, running: false},
     events: loadEvents(), pend: {}, notes: {}, edit: null, confirmNext: false, logOpen: false,
-    fail: {}, expect: {}, alarm: null, errors: [], prompts: [], lostAt: null};
+    fail: {}, expect: {}, alarm: null, errors: [], warnings: [], prompts: [], lostAt: null, openedAt: Date.now()};
 }
 function expected(key, raw) {
   const x = st.expect[key];
@@ -814,7 +831,15 @@ function liveRecipe(snap) {
   if (cur < 0) return null;
   const s = S[cur], text = String(s.text || "").trim(), left = parseLeft(text);
   let wait = null;
-  if (state === "running" && left == null && text && (s.min || s.temp != null)) {
+  // a question CraftBeerPi asks under the step's own name that holds the step up - the malt, a notification step,
+  // the boil's hold - but not one asked while the step's timer runs on (the whirlpool's "Heat and hold?")
+  if (((state === "running" && left == null) || state === "ready") && st.prompts.some(q => String(q.title || "") === s.n)) wait = WAITING_FOR_YOU;
+  else if (state === "running" && s.type === "BrewStart") {
+    // cbpi4_BrewStart: "Start Fri Oct 30, 07:00 · 2:35:10 to go", "Ready … · heating from Fri Oct 30, 05:30 · …"
+    const at = /(?:^start|heating from)\s+[^·]*?(\d{1,2}:\d{2})\s*·/i.exec(text);
+    if (at) wait = `STARTS ${at[1]}`;
+  }
+  if (!wait && state === "running" && left == null && text && (s.min || s.temp != null)) {
     const pv = st.v[s.k] ? st.v[s.k].pv : null;
     wait = /cool/i.test(s.type || "") || (/target temp/i.test(text) && pv != null && s.temp != null && pv > s.temp + 0.5) ? "COOLING"
       : /target temp/i.test(text) ? "HEATING" : "WAITING";
@@ -828,42 +853,55 @@ function liveRecipe(snap) {
   });
   return {state, cur, left: left ?? (s.min ? s.min * 60 : 0), wait, adds};
 }
-// The title bar: no connection first, then a command that failed, then CraftBeerPi's errors, then its prompts.
+// The title bar: no connection first, then a command that failed, then CraftBeerPi's errors, its warnings, then
+// its prompts. For its first few seconds a page that has not connected yet says so calmly.
 function liveBanner() {
   if (st.link === "lost") {
     st.banner = everConnected
       ? {tone: "alarm", title: "No connection", text: "Readings are {age} s old. Trying again every 5 s. Controls are paused until CraftBeerPi answers."}
+      : connecting()
+      ? {tone: "connecting", title: "Connecting", text: "Waiting for CraftBeerPi to answer."}
       : {tone: "alarm", title: "Connecting", text: "Waiting for CraftBeerPi to answer. Controls are paused until it does."};
     return;
   }
   const queue = [];
   if (st.alarm) queue.push(st.alarm);
-  st.errors.forEach(e => queue.push({tone: "alarm", title: e.title || "Error", text: e.message || "", act: "OK", cmd: `e:${e.id}`}));
-  st.prompts.forEach(p => queue.push({tone: "prompt", title: p.title || "CraftBeerPi", text: p.message || "", acts: p.action.map(a => ({label: String(a.label || "OK").toUpperCase(), cmd: `p:${p.id}:${a.id}`}))}));
+  st.errors.forEach(e => queue.push({tone: "alarm", title: ut(e.title || "Error"), text: ut(e.message || ""), act: "OK", cmd: `e:${e.id}`}));
+  st.warnings.forEach(w => queue.push({tone: "warning", title: ut(w.title || "Warning"), text: ut(w.message || ""), act: "OK", cmd: `w:${w.id}`}));
+  st.prompts.forEach(p => queue.push({tone: "prompt", title: ut(p.title || "CraftBeerPi"), text: ut(p.message || ""), acts: p.action.map(a => ({label: String(a.label || "OK").toUpperCase(), cmd: `p:${p.id}:${a.id}`}))}));
   st.banner = queue.length ? {...queue[0], more: queue.length - 1} : null;
 }
-// What happened since the last update, for the event line: the connection, CraftBeerPi's prompts and errors,
-// and the recipe's steps starting, finishing and starting their timers. Commands from this screen log
-// themselves.
+/* a warning stays in the title bar until OK; the same one again is not shown twice */
+function addWarning(id, title, message) {
+  if (st.warnings.some(w => w.title === title && w.message === message)) return;
+  st.warnings.push({id, title, message});
+  if (st.warnings.length > 10) st.warnings.shift();
+}
+// What happened since the last update, for the event line: the connection, everything CraftBeerPi says, and the
+// recipe's steps starting, finishing and starting their timers. Commands from this screen log themselves.
 function observe(prev, snap) {
   if (!prev) return;
   if (prev.connected && !snap.connected) logEvent("Connection to CraftBeerPi lost", "trying again", "bad");
   if (!prev.connected && snap.connected && everConnected) {
-    logEvent("Connection to CraftBeerPi back", "connected", "ok");
+    logEvent("Connection to CraftBeerPi back", "", "");
     if (!st.recipe) loadBook();
   }
   const before = new Map((prev.alerts || []).map(a => [String(a.id), a]));
   const now = new Set((snap.alerts || []).map(a => String(a.id)));
   for (const a of snap.alerts || []) {
-    const id = String(a.id), type = String(a.type || "").toLowerCase(), line = `${a.title}: ${a.message}`;
+    const id = String(a.id), type = String(a.type || "").toLowerCase(), title = ut(a.title), msg = ut(a.message), line = `${title}: ${msg}`;
     if (before.has(id) || OWN_ALERTS.has(id)) continue;
-    if (Array.isArray(a.action) && a.action.length) { logEvent(line, "waiting for you", "wait"); say(`${a.title}. ${a.message}`, true); }
-    else if (type === "error") { st.errors.push({id, title: a.title, message: a.message}); logEvent(line, "from CraftBeerPi", "bad"); say(`${a.title}. ${a.message}`, true); }
-    else if (type === "warning") logEvent(line, "from CraftBeerPi", "wait");
+    if (Array.isArray(a.action) && a.action.length) { logEvent(line, "waiting for you", "wait"); say(`${title}. ${msg}`, true); }
+    else if (type === "error") { st.errors.push({id, title: a.title, message: a.message}); logEvent(line, "from CraftBeerPi", "bad"); say(`${title}. ${msg}`, true); }
+    else if (type === "warning") { addWarning(id, a.title, a.message); logEvent(line, "from CraftBeerPi", "wait"); say(`${title}. ${msg}`); }
+    else if (!ROUTINE.test(String(a.message || "").trim())) logEvent(line, "from CraftBeerPi", "");
   }
+  // a prompt gone without an answer from here: answered on another screen, or CraftBeerPi no longer needs it
   for (const [id, a] of before) {
     if (now.has(id) || !Array.isArray(a.action) || !a.action.length) continue;
-    if (!answered.delete(id)) logEvent(`${a.title}: ${a.message}`, "no longer waiting", "");
+    if (answered.delete(id)) continue;
+    const why = typeof snap.retired === "function" ? snap.retired(a.id) : null;
+    logEvent(`${ut(a.title)}: ${ut(a.message)}`, why === "answered" ? "answered on another screen" : "no longer needed", "");
   }
   const old = new Map((prev.steps || []).filter(Boolean).map(s => [s.id, s]));
   const steps = (snap.steps || []).filter(Boolean);
@@ -908,8 +946,9 @@ async function loadBook() {
   try {
     const res = await api.recipes();
     if (g !== gen || !res.ok || !Array.isArray(res.data)) return;
+    // the newest first - the one just imported or edited is the one about to be brewed - then by name
     const list = res.data.filter(x => x && x.file)
-      .sort((p, q) => String(p.name || "").localeCompare(String(q.name || ""), undefined, {sensitivity: "base"}))
+      .sort((p, q) => (num(q.modified) ?? 0) - (num(p.modified) ?? 0) || String(p.name || "").localeCompare(String(q.name || ""), undefined, {sensitivity: "base"}))
       .slice(0, 5);
     const found = await Promise.all(list.map(x => api.recipe(x.file)));
     if (g !== gen) return;
@@ -1061,6 +1100,8 @@ function liveTick() {
   st.t = daySeconds();
   setText($("#clock"), hhmm(st.t));
   if (st.link === "lost") {
+    // never connected: calm for the first few seconds, then red
+    if (!everConnected) { renderAll(); return; }
     if (everConnected && st.lostAt != null) st.age = Math.floor((Date.now() - st.lostAt) / 1000);
     if (st.age != null) {
       root.querySelectorAll(".age").forEach(n => setText(n, `Last reading ${st.age} s ago`));
@@ -1093,16 +1134,16 @@ export function createBrewDay(el, o = {}) {
   html.dataset.layout = LAYOUT;
   root.innerHTML = skeleton(DEMO_MODE);
   if (DEMO_MODE) {
-    const key = DEMO.SCENES[o.demo] ? o.demo : "mash";
+    const key = DEMO.SCENES[o.demo] || DEMO.EXTRA[o.demo] ? o.demo : "mash";
     M = {RECIPE: DEMO.RECIPE, VNAME: DEMO.VNAME, VACT: DEMO.VACT, ACT: DEMO.ACT, HERMS_DELTA: DEMO.HERMS_DELTA, BOOK: DEMO.BOOK, U: "°F", LIMITS: [32, 230]};
-    st = DEMO.SCENES[key]();
+    st = (DEMO.SCENES[key] || DEMO.EXTRA[key])();
     Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, logOpen: false});
     applyLocks();
   } else {
     st = blankMoment();
     M = model({book});
     // shown until the first connection, and never kept: e[5] is 0
-    if (!st.events.length) st.events.unshift([hhmmss(st.t), "Connecting to CraftBeerPi", "waiting", "wait", "", 0]);
+    if (!st.events.length) st.events.unshift([hhmmss(st.t), "Connecting to CraftBeerPi", "", "", "", 0]);
   }
   renderAll();
   for (const k in handlers) document.addEventListener(k, handlers[k]);
@@ -1139,7 +1180,7 @@ export function createBrewDay(el, o = {}) {
       applyLive(snap);
       if (snap.connected && !everConnected) {
         if (st.events[0] && st.events[0][5] === 0) st.events.shift();
-        if (!st.events.length) logEvent("Connected to CraftBeerPi", "connected", "ok");
+        if (!st.events.length) logEvent("Connected to CraftBeerPi", "", "");
         if (!st.recipe) loadBook();
       }
       observe(prev, snap);

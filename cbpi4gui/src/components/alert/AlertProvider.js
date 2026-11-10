@@ -73,6 +73,7 @@ export const AlertProvider = ({ children }) => {
   const [alerts, setAlerts] = useState([]);
   // The ids on show, known at once - the state above is updated later.
   const shown = useRef(new Set());
+  const reasons = useRef(new Map());
   // Hidden while the brew-day screen is open: its title bar shows the prompts
   // and errors, and the stack would cover its buttons. A count, so two
   // screens asking for it never undo each other.
@@ -82,12 +83,21 @@ export const AlertProvider = ({ children }) => {
   }, []);
   const audio = new Audio(buzzer);
 
-  const remove = useCallback((id) => {
+  const remove = useCallback((id, reason) => {
     shown.current.delete(id);
+    // Why the server took it down ("answered" or "withdrawn"), for a page that
+    // did not answer it itself: the brew-day screen's event line says which.
+    if (reason) {
+      reasons.current.set(id, reason);
+      if (reasons.current.size > 100) {
+        reasons.current.delete(reasons.current.keys().next().value);
+      }
+    }
     setAlerts((value) => {
       return value.filter((a) => a.id !== id);
     });
   }, []);
+  const retiredReason = useCallback((id) => reasons.current.get(id), []);
 
   // Drop every prompt - a notification with buttons - but those the server
   // still waits on. After a restart a page kept the prompts from before it,
@@ -145,6 +155,7 @@ export const AlertProvider = ({ children }) => {
     alerts,
     show,
     remove,
+    retiredReason,
     keepWaiting,
     hideStack,
   };

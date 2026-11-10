@@ -9,3 +9,19 @@
 :where(html.bd-page) .moremenu li+li{border-top:1px solid var(--line)}
 :where(html.bd-page) .moremenu a{display:flex;align-items:center;min-height:52px;padding:0 18px;font:600 18px/1.1 var(--cond);letter-spacing:.08em;text-transform:uppercase;color:var(--text-2);text-decoration:none}
 :where(html.bd-page) .moremenu a:hover{background:var(--panel);color:#fff}
+
+/* The dashboard agent's review, 9 Nov: states the mockup did not draw.
+   A warning from CraftBeerPi waits in the title bar until OK, in the prompt's amber. */
+:where(html.bd-page) .banner[data-tone=warning]{background:var(--prompt-bg);border:2px solid var(--prompt);color:#fff1d2}
+:where(html.bd-page) .banner[data-tone=warning] svg{color:var(--prompt)}
+/* For its first five seconds, a page that has not reached CraftBeerPi yet says so calmly: grey, nothing blinking. */
+:where(html.bd-page) .banner[data-tone=connecting]{background:var(--panel-2);border:2px solid var(--edge);color:var(--text)}
+:where(html.bd-page) .banner[data-tone=connecting] svg{color:var(--text-3)}
+:where(html.bd-page) .link[data-link=connecting]{color:var(--text-2)}
+:where(html.bd-page) .link[data-link=connecting] i{background:var(--off);border:0;animation:none}
+/* No reading, or no vessel set up: the faceplate's stale grey. */
+:where(html.bd-page) .dev .stale{color:#6b7785}
+/* A finished boil's addition it never asked for: dimmer than those it did, and no tick. */
+:where(html.bd-page) .adds .missed{opacity:.55}
+/* The step held up by a question for the brewer. */
+:where(html.bd-page) .wfy{color:#ffd27a}
