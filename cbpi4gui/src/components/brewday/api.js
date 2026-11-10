@@ -52,6 +52,11 @@ export const api = {
   actor: (actorId, on) => post(`/actor/${id(actorId)}/${on ? "on" : "off"}`),
   kettle: (kettleId, on) => post(`/kettle/${id(kettleId)}/${on ? "on" : "off"}`),
   target: (kettleId, temp) => post(`/kettle/${id(kettleId)}/target_temp`, { temp }),
+  // An action the kettle's logic declares, e.g. BoilPower's set_boil_power {Boil_Power: 60}. CraftBeerPi hands it
+  // to the running logic, or keeps it for the next run when the logic allows that.
+  kettleAction: (kettleId, action, parameter) => post(`/kettle/${id(kettleId)}/action`, { action, parameter }),
+  // The level a switch runs at: the brewer's own, which it comes on at by hand (M61).
+  power: (actorId, power) => post(`/actor/${id(actorId)}/set_power`, { power }),
   start: () => post("/step2/start"),
   stop: () => post("/step2/stop"),
   next: () => post("/step2/next"),
