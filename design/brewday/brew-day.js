@@ -7,7 +7,7 @@ const RECIPE = {
     {n: "Protein Rest", temp: 126, min: 20, k: "mt"},
     {n: "Saccharification", temp: 149, min: 40, k: "mt"},
     {n: "Sparge", temp: 168, min: 40, k: "mt"},
-    {n: "Boil", temp: 210.2, min: 90, k: "bk", adds: [[60, "Centennial", "3.00 oz"], [15, "Willamette", "6.00 oz"], [15, "Whirlfloc tablet", "1"], [5, "Citra", "3.00 oz"]]},
+    {n: "Boil", temp: 210.2, min: 90, k: "bk", boil: true, adds: [[60, "Centennial", "3.00 oz"], [15, "Willamette", "6.00 oz"], [15, "Whirlfloc tablet", "1"], [5, "Citra", "3.00 oz"]]},
     {n: "Whirlpool Hop", k: "bk", note: "Cool down to 170 °F. Then add 1.50 oz Calypso."},
     {n: "Whirlpool", temp: 170, min: 20, k: "bk"}
   ]
@@ -58,6 +58,21 @@ const SCENES = {
       ["15:30:04", "Boil: 210.2 °F reached, 90 min timer started", "by recipe", ""],
       ["15:01:47", "Boil started, boil kettle AUTO", "by recipe", ""],
       ["14:58:30", "Sparge finished", "by recipe", ""]
+    ]
+  }),
+  /* fly sparge (Scott, 9 Nov): the HLT pump sends sparge water to the top of the mash tun while the wort pump runs
+     the wort off to the boil kettle. The mash tun's AUTO (HERMS) still runs the wort pump and the HLT element. */
+  sparge: () => Object.assign(mash(), {
+    t: 15 * 3600 + 12 * 60 + 40,
+    v: {hlt: {pv: 171.6, sv: 173.4, own: 168.0, mode: "manual"}, mt: {pv: 168.1, sv: 168.0, mode: "auto"}, bk: {pv: 146.8, sv: null, mode: "manual"}},
+    a: {hltEl: {on: true, pct: 74}, hltPump: {on: true}, wortPump: {on: true}, bkEl: {on: false, pct: 0}},
+    fill: {mtLiq: true, bk: true},
+    recipe: {state: "running", cur: 3, left: 31 * 60 + 30, adds: []},
+    events: [
+      ["15:04:10", "Sparge: 168 °F reached, 40 min timer started", "by recipe", ""],
+      ["14:56:21", "Sparge started, mash tun target 168.0 °F", "by recipe", ""],
+      ["14:56:19", "Saccharification finished", "by recipe", ""],
+      ...MASH_EVENTS.map(e => e.slice())
     ]
   }),
   fail: () => {
@@ -268,6 +283,44 @@ function eventHTML() {
   return `<span class="line">${row(e)}</span><button type="button" class="logbtn" data-cmd="log" aria-expanded="${!!st.logOpen}" aria-controls="log">LOG</button>${st.logOpen ? `<ol class="log" id="log" aria-label="Recent events">${st.events.slice(0, 8).map(e => `<li>${row(e)}</li>`).join("")}</ol>` : ""}`;
 }
 const needleAngle = pv => -120 + 240 * (Math.min(220, Math.max(50, pv)) - 50) / 170;
+/* ---------- which way the hand valves are drawn ----------
+   CraftBeerPi can't see the valves, so the drawing goes by the recipe. It finds the runoff the way the core finds
+   it for the first-wort reminder (StepController._collects_wort): from the start of the step named for the runoff
+   until the boil starts, the wort pump sends wort to the boil kettle and the HLT pump sends sparge water to the top
+   of the mash tun (Scott, 9 Nov: "I fly sparge"). At any other time, and with no recipe, it shows recirculating. */
+const RUNOFF_NAME = /^(?:step \d+ )?(?:(?:start|begin) )?(?:(?:fly|batch|continuous) )?(?:sparge|sparging|lauter|lautering|run ?off)(?: |$)/;
+const NOT_RUNOFF = /\b(?:water|heat|heating|prepare|preparation|salts|treatment)\b/;
+function collectsWort(s) {
+  if (s.type === "HeatStep") return false;
+  const name = s.n.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return RUNOFF_NAME.test(name) && !NOT_RUNOFF.test(name);
+}
+/* a step's status as CraftBeerPi reports it: D done, A active, S stopped, I waiting (a boil held for "Ready to boil?" is I) */
+function stepStatus(i) {
+  const r = st.recipe;
+  return i < r.cur ? "D" : i > r.cur ? "I" : r.state === "running" ? "A" : r.state === "stopped" ? "S" : "I";
+}
+/* the runoff step's index while the wort should be on its way to the boil kettle, else -1 */
+function runoffStep() {
+  const S = RECIPE.steps;
+  if (!st.recipe) return -1;
+  const ro = S.findIndex(s => collectsWort(s)), bo = S.findIndex((s, i) => i > ro && s.boil);
+  return ro >= 0 && stepStatus(ro) !== "I" && (bo < 0 || stepStatus(bo) === "I") ? ro : -1;
+}
+function rigDesc(ro) {
+  const spLine = !!$("#ln-sparge"), head = "Hot liquor tank, mash tun and boil kettle. ";
+  if (ro < 0) return head + "The HLT pump circulates hot water around the hot liquor tank. The wort pump moves wort from the mash tun, through the coil inside the hot liquor tank, and back into the mash tun. The valves are set by hand and CraftBeerPi can't see them: they are shown for recirculating, with the lines to the boil kettle"
+    + (spLine ? " and to the top of the mash tun" : "") + " closed.";
+  return head + (spLine ? "The HLT pump sends hot water over to the top of the mash tun for the sparge. " : "The HLT pump circulates hot water around the hot liquor tank. ")
+    + `The wort pump moves wort from the mash tun down and across to the boil kettle, past the HERMS coil. The valves are set by hand and CraftBeerPi can't see them: they are shown as step ${ro + 1}, ${RECIPE.steps[ro].n}, needs them.`;
+}
+function setValve(id, open, flowing) {
+  const g = $("#vl-" + id), t = $("#vt-" + id);
+  if (!g) return;
+  g.classList.toggle("shut", !open);
+  g.classList.toggle("live", open && flowing);
+  t.textContent = open ? "OPEN" : "CLOSED";
+}
 function renderRig() {
   if (!st || !$("#rigsvg")) return;
   const a = st.a, on = (sel, x) => { const n = $(sel); if (n) n.classList.toggle("on", !!x); };
@@ -278,7 +331,14 @@ function renderRig() {
     $(`#pump-${id} .p-st`).textContent = (live ? "" : "LAST: ") + (p.on ? "RUNNING" : "OFF");
     $(`#pump-${id} .p-ovr`).textContent = ACT[k].override && !p.on ? "UNLESS OVERRIDE SWITCH IS ON" : "";
   });
-  on("#ln-hlt", live && a.hltPump.on); on("#ln-wort", live && a.wortPump.on); on("#coil", live && a.wortPump.on);
+  /* layout A's drawing has no sparge line: its HLT pump always goes back round the hot liquor tank */
+  const ro = runoffStep(), out = ro >= 0, sp = out && !!$("#ln-sparge");
+  const wp = live && a.wortPump.on, hp = live && a.hltPump.on;
+  on("#ln-wort-in", wp); on("#ln-wort-out", wp); on("#ln-wort-coil", wp && !out); on("#ln-xfer", wp && out); on("#coil", wp && !out);
+  on("#ln-hlt-in", hp); on("#ln-hlt-up", hp); on("#ln-hlt-ret", hp && !sp); on("#ln-sparge", hp && sp);
+  setValve("coil", !out, wp); setValve("bk", out, wp); setValve("ret", !sp, hp); setValve("sp", sp, hp);
+  $("#vnote-2").textContent = out ? `SHOWN FOR STEP ${ro + 1} (${RECIPE.steps[ro].n.toUpperCase()})` : "SHOWN FOR RECIRCULATING";
+  $("#rig-d").textContent = rigDesc(ro);
   on("#el-hlt", live && a.hltEl.on); on("#el-bk", live && a.bkEl.on);
   ["hlt", "mt", "bk"].forEach(v => { const n = $("#needle-" + v); if (n) n.setAttribute("transform", `rotate(${needleAngle(st.v[v].pv).toFixed(1)})`); });
 }

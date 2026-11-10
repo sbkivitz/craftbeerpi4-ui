@@ -408,7 +408,7 @@ Gently squared corners: 6px on every panel, button, banner, step row and list it
 
 Borders do the separating: 1px Hairline Slate around panels and rows, 1px Control Edge around buttons, 2px in the state colour around prompts, alarms and a failed command, and 2px #7d8fa2 around ALL OFF. Each recipe step's number sits in a darker 48px band at the left of its row.
 
-The drawing has its own simple geometry: tanks with domed tops, rounded bottoms and short legs; pipes that run only horizontally and vertically, with rounded joins; pumps drawn as a circle holding a triangle; small arrow-heads along a pumped pipe.
+The drawing has its own simple geometry: tanks with domed tops, rounded bottoms and short legs; pipes that run only horizontally and vertically, with rounded joins; pumps drawn as a circle holding a triangle; hand valves drawn as a bowtie on the pipe; small arrow-heads along a pumped pipe.
 
 ### Named Rules
 **The Dashed Means Someone Else Rule.** A dashed outline on a see-through button means another controller is in charge of that device (the vessel's AUTO, or the mash tun's HERMS running the hot liquor tank). It still explains itself when tapped. Solid buttons are yours to press.
@@ -475,9 +475,11 @@ The signature component: one per vessel, like the controller on a cabinet door. 
 
 ### Rig Line Drawing
 - 3px Drawing Line Steel outlines over Vessel Interior Slate, with names inside the tanks (700 24px condensed, Drawing Label Steel). The hot liquor tank shows the HERMS coil and an element, the mash tun a false bottom drawn as dots, the boil kettle an element.
-- Idle coils and elements are Idle Element Steel. The coil turns Wort Gold while the wort pump runs; an element turns Element Orange, with its glow, while it heats.
+- Idle coils and elements are Idle Element Steel. The coil turns Wort Gold while the wort pump runs and the wort is drawn going through it; an element turns Element Orange, with its glow, while it heats.
 - Pipes are 5px and Still Pipe Slate when idle. While their pump is confirmed running they take their liquid's colour, white dashes (5px on, 19px off) flow along them once every 0.9s, and arrow-heads in the same colour show the direction.
-- Each pump is labelled underneath, with RUNNING in Running Green or OFF in Dim Steel. While a pump with its own override switch is off, a third line in the tag style reads "UNLESS OVERRIDE SWITCH IS ON". The closed line to the boil kettle carries a valve symbol and "VALVE CLOSED".
+- Each pump's line branches, as on the rig. The wort pump's line splits at a tee just past the pump: round the HERMS coil and back into the mash tun, or down and across to the boil kettle. The HLT pump's line splits at the top corner: back round the hot liquor tank, or along the sparge line over to the top of the mash tun.
+- **Hand valves:** one on each branch, four in all: the coil line, the boil kettle line, the HLT return and the sparge line. Open is a hollow bowtie whose outline takes the liquid's colour while that pipe flows; closed is a solid Drawing Line Steel bowtie. Each valve says OPEN or CLOSED in the tag style. Under the boil kettle, two lines in the tag style say where the positions come from: "VALVES ARE SET BY HAND", then "SHOWN FOR RECIRCULATING" or "SHOWN FOR STEP 4 (SPARGE)".
+- Each pump is labelled underneath, with RUNNING in Running Green or OFF in Dim Steel. While a pump with its own override switch is off, a third line in the tag style reads "UNLESS OVERRIDE SWITCH IS ON".
 
 ### Connection Lost and Reduced Motion
 - **Connection lost:** the connection lamp blinks; the banner says "No connection" and how old the readings are; readings turn Stale Grey without their glow and show "Last reading 48 s ago"; the drawing drops to half strength, with the pipes stopped and the pumps reading "LAST: RUNNING"; lamp strips dim to 35%; and every control is paused with "No connection. Controls are paused."
@@ -490,7 +492,9 @@ The signature component: one per vessel, like the controller on a cabinet door. 
 
 **The Say Why Rule.** A control that can't be used right now stays on screen. When tapped, it explains why in its faceplate's note line (cleared after six seconds), in the recipe column's note line, or in a toast.
 
-**The Pumped-Only Flow Rule.** A pipe shows its liquid's colour and moves only while CraftBeerPi reports its pump running. Before a start is confirmed, and whenever the connection is lost, the pipe stays still and slate. CraftBeerPi can't see a pump's own override switch, so a pump that has one says so under its label instead of the drawing guessing.
+**The Pumped-Only Flow Rule.** A pipe shows its liquid's colour and moves only while CraftBeerPi reports its pump running, and only along the branches its hand valves are drawn open for (The Hand Valve Rule). Before a start is confirmed, and whenever the connection is lost, the pipe stays still and slate. CraftBeerPi can't see a pump's own override switch, so a pump that has one says so under its label instead of the drawing guessing.
+
+**The Hand Valve Rule.** CraftBeerPi can't see the hand valves, so the drawing never claims to know them: it draws them as the recipe needs them and says so under the boil kettle. From the start of the step named for the runoff (a name starting Sparge, Fly Sparge, Batch Sparge, Continuous Sparge, Lauter or Runoff, the same test as the core's first-wort reminder) until the boil starts, including the hold at "Ready to boil?", the wort goes to the boil kettle and the HLT pump's water goes to the top of the mash tun: Scott fly sparges (9 Nov). That holds even while the mash tun's AUTO still runs the wort pump for the HERMS. At any other time, and with no recipe, the drawing shows recirculating.
 
 ## Do's and Don'ts
 
@@ -502,6 +506,7 @@ The signature component: one per vessel, like the controller on a cabinet door. 
 - **Do** keep unavailable controls visible and explain why when they are tapped, in the note line (#ffd9a0) or a toast.
 - **Do** keep the recipe on the brew-day screen: down the left on a monitor, below the faceplates on narrower screens.
 - **Do** colour and animate a pipe only while its pump is confirmed running: cyan (#46b8ea) for hot liquor, gold (#e9b33b) for wort.
+- **Do** draw the hand valves as the recipe needs them and say so under the boil kettle ("VALVES ARE SET BY HAND"); CraftBeerPi can't see them.
 - **Do** grey out readings and show their age when the connection is lost, stop the pipes and pause the controls.
 - **Do** keep tap targets at least 44px tall: lamp buttons 72px and command buttons 62px on a monitor, 56px and 50px on a phone.
 - **Do** set vessel names, tags, tabs and button labels in Barlow Condensed capitals, and give every changing number tabular figures.

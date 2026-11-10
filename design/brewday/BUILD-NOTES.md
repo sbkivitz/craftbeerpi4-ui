@@ -4,7 +4,8 @@ This folder is a proposal. Nothing in it changes CraftBeerPi, and nothing is com
 
 - `compare.html` flips between the two layouts Scott compared (press Space). Use it to check either design
   on a monitor, a laptop or a phone, in five moments of a brew day.
-- `brew-day.html` is layout B on its own: Scott chose it on 9 Nov 2026. Add `?layout=a` to see layout A.
+- `brew-day.html` is layout B on its own: Scott chose it on 9 Nov 2026. Add `?layout=a` to see layout A. It has
+  a sixth moment, `#sparge`, for the runoff to the boil kettle.
 - The pages run on demo data copied from the simulator's config (`C:\src\personal\cbpi-testbench\config`).
   They do not talk to CraftBeerPi. Buttons respond and timers run, but nothing is sent anywhere.
 
@@ -35,6 +36,7 @@ them.
 | Next step asks once, in place: "Skip the rest of Saccharification (23:41 left) and start Sparge?" | React UI | |
 | Hop and lid alerts in the title bar with their own button (ADDED, DONE) | React UI | Existing notifications with actions. Since the S2 fix they stay until answered. |
 | Line drawing of the rig: liquor and wort pipes that move only while their pump runs; elements glow while heating | React UI | A new drawing component driven by actor state. The 3-vessel HERMS plumbing is built in; the mapping above says which switch is which pump. |
+| The drawing's hand valves and which way the liquid goes: through the HERMS coil and round the HLT while mashing; to the boil kettle, with sparge water from the HLT pump to the top of the mash tun, during the runoff | React UI | Scott's request and answers (9 Nov): see the end of this file. CraftBeerPi can't see the valves, so the screen works the positions out from the recipe and says so under the boil kettle ("VALVES ARE SET BY HAND · SHOWN FOR STEP 4 (SPARGE)"). The runoff runs from the moment the step named for it has started (status A, S or D) until the boil step leaves I, so it includes the hold at "Ready to boil?". The step is found the way the core finds it for the first-wort reminder, `StepController._collects_wort`: not a HeatStep; the name, split at camel case, lower-cased and with anything but letters and digits turned to spaces, matches `^(?:step \d+ )?(?:(?:start\|begin) )?(?:(?:fly\|batch\|continuous) )?(?:sparge\|sparging\|lauter\|lautering\|run ?off)(?: \|$)` and contains none of the words water, heat, heating, prepare, preparation, salts or treatment. The boil step is the first BoilStep after it. At any other time, and with no recipe, the drawing shows recirculating. In Test Recipe v5 the Sparge step keeps the mash tun in AUTO, so CraftBeerPi reports the wort pump running "for the HERMS"; during the runoff the drawing still sends it to the boil kettle and leaves the coil dark. The mockup's `runoffStep()` and `renderRig()` are the reference, and `#sparge` is the demo moment. |
 | Phone layout: current step on top, faceplates stacked, recipe below, tabs along the bottom | React UI | Fixes U4 (the dashboard does not adapt to small screens). The phone keeps every control the monitor has. |
 | Connection lost: readings turn grey and show their age, controls pause, an alert says what is happening | React UI | Uses the websocket's connection state. Reconnecting cleanly is the separate open defect HC-UI-02. |
 | ALL OFF in the title bar: recipe stopped, every kettle to MANUAL, both elements and both pumps off | React UI, or server optional | Scott kept it on 9 Nov and asked for it to stop the HLT pump too, so it was renamed from ALL HEAT OFF. The UI can send the separate commands and report any that fail: stop the recipe first (`/step2/stop`) so it can't switch a kettle back on, then each kettle's `/off`, then `/off` for all four switches. A single server endpoint would make it one command that either works or fails as a whole. The HLT pump's override switch can still run that pump; see the next row. |
@@ -91,5 +93,21 @@ The D3 layout Scott chose does not show these. Each one is in the mockup for a r
    It is its own actor, `Recirc_PUMP` on GPIO 7, and also the HLT kettle's agitator. It has an override
    switch that runs it whatever CraftBeerPi says (`C:\src\personal\cbpi-rig-comms\rig\2026-10-09.md`,
    line 11).
+
+From his test of the built screen on port 8012, also 9 Nov (Brett passed these on):
+
+4. The drawing should show the wort's path to the boil kettle: "before the boil step, I will run the wort
+   pump to move wort from mash tun to [boil] kettle. Animation should reflect that path." And, at the hold
+   before the boil: "I should be pumping wort from mash tun to boil kettle at this step".
+5. "maybe there should be an icon for a valve between the pump and the HERMS coil too?" The drawing now has
+   a hand valve on every branch, that one included.
+6. When the wort starts going to the boil kettle: "From the start of the Sparge step: I fly sparge, so wort
+   runs to the boil kettle during the sparge".
+7. Whether the HLT pump moves the sparge water: "Yes, the HLT pump moves the sparge water to the mash tun".
+   Before the sparge it recirculates the HLT; Brett's server change starts it whenever the HLT heats.
+
+Assumed, not asked: the HLT pump's two ways (back round the HLT, or over to the mash tun) are drawn with
+hand valves, like the wort pump's. If Scott moves a hose instead, the two HLT-side valves can go and the
+paths stay as they are.
 
 Nothing in the design is waiting on Scott. Whether and when to build it is Brett's and Scott's call.

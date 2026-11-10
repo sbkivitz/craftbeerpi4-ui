@@ -20,8 +20,9 @@ FORM: Brewhouse touch panel with process-mimic plumbing (Scott's picks, rounds 2
 9 Nov 2026 over A/D1); seed fad8ffb4.
 
 This is a proposal mockup with demo data. It does not talk to CraftBeerPi.
-Scenes: #mash (default), #hop, #fail, #manual, #offline. Add ?bare to hide the mockup strip.
-Layouts: ?layout=b (default, chosen) or ?layout=a (the D1 alternative, kept for comparison).
+Scenes: #mash (default), #sparge, #hop, #fail, #manual, #offline. Add ?bare to hide the mockup strip.
+Layouts: ?layout=b (default, chosen) or ?layout=a (the D1 alternative, kept for comparison; its drawing has no
+sparge line, so its HLT pump always goes back round the hot liquor tank).
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -32,6 +33,7 @@ Layouts: ?layout=b (default, chosen) or ?layout=a (the D1 alternative, kept for 
 <nav class="mock" id="mock" aria-label="Mockup scenes (not part of the design)">
   <strong>Mockup with demo data.</strong> Show:
   <a href="#mash">Mid-mash</a>
+  <a href="#sparge">Sparge</a>
   <a href="#hop">Hop addition due</a>
   <a href="#fail">A command failed</a>
   <a href="#manual">Brewing by hand</a>

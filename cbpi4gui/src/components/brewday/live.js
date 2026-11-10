@@ -135,6 +135,7 @@ export function stepModel(s, roleOf, U) {
   if (s.type === "MashInStep") m.note = temp != null ? `Add the malt when it reaches ${temp} ${U}` : "Add the malt when it is up to temperature";
   else if (s.type === "NotificationStep" && p.Notification) m.note = unitText(p.Notification, U);
   if (s.type === "BoilStep") {
+    m.boil = true;
     const adds = additions(p);
     if (adds.length) m.adds = adds;
   }

@@ -1,5 +1,5 @@
-// The approved mockup's demo data (design/brewday/brew-day.js), unchanged: the five moments of
-// a brew day it shows. The screen's demo mode (?demo=mash, hop, fail, manual or offline) runs
+// The approved mockup's demo data (design/brewday/brew-day.js), unchanged: the six moments of
+// a brew day it shows. The screen's demo mode (?demo=mash, sparge, hop, fail, manual or offline) runs
 // on this, so it can be compared with the mockup pixel for pixel.
 
 const RECIPE = {
@@ -9,7 +9,7 @@ const RECIPE = {
     {n: "Protein Rest", temp: 126, min: 20, k: "mt"},
     {n: "Saccharification", temp: 149, min: 40, k: "mt"},
     {n: "Sparge", temp: 168, min: 40, k: "mt"},
-    {n: "Boil", temp: 210.2, min: 90, k: "bk", adds: [[60, "Centennial", "3.00 oz"], [15, "Willamette", "6.00 oz"], [15, "Whirlfloc tablet", "1"], [5, "Citra", "3.00 oz"]]},
+    {n: "Boil", temp: 210.2, min: 90, k: "bk", boil: true, adds: [[60, "Centennial", "3.00 oz"], [15, "Willamette", "6.00 oz"], [15, "Whirlfloc tablet", "1"], [5, "Citra", "3.00 oz"]]},
     {n: "Whirlpool Hop", k: "bk", note: "Cool down to 170 °F. Then add 1.50 oz Calypso."},
     {n: "Whirlpool", temp: 170, min: 20, k: "bk"}
   ]
@@ -60,6 +60,21 @@ const SCENES = {
       ["15:30:04", "Boil: 210.2 °F reached, 90 min timer started", "by recipe", ""],
       ["15:01:47", "Boil started, boil kettle AUTO", "by recipe", ""],
       ["14:58:30", "Sparge finished", "by recipe", ""]
+    ]
+  }),
+  /* fly sparge (Scott, 9 Nov): the HLT pump sends sparge water to the top of the mash tun while the wort pump runs
+     the wort off to the boil kettle. The mash tun's AUTO (HERMS) still runs the wort pump and the HLT element. */
+  sparge: () => Object.assign(mash(), {
+    t: 15 * 3600 + 12 * 60 + 40,
+    v: {hlt: {pv: 171.6, sv: 173.4, own: 168.0, mode: "manual"}, mt: {pv: 168.1, sv: 168.0, mode: "auto"}, bk: {pv: 146.8, sv: null, mode: "manual"}},
+    a: {hltEl: {on: true, pct: 74}, hltPump: {on: true}, wortPump: {on: true}, bkEl: {on: false, pct: 0}},
+    fill: {mtLiq: true, bk: true},
+    recipe: {state: "running", cur: 3, left: 31 * 60 + 30, adds: []},
+    events: [
+      ["15:04:10", "Sparge: 168 °F reached, 40 min timer started", "by recipe", ""],
+      ["14:56:21", "Sparge started, mash tun target 168.0 °F", "by recipe", ""],
+      ["14:56:19", "Saccharification finished", "by recipe", ""],
+      ...MASH_EVENTS.map(e => e.slice())
     ]
   }),
   fail: () => {

@@ -204,14 +204,16 @@ html.bare .mock{display:none}
 .v-body{fill:#c3cfda;stroke:#6b7c8e;stroke-width:1.5}.v-lever{fill:#3d7cc0}.v-neck{fill:#8e9eaf}
 .stand rect{fill:#0b1015}.stand-hi rect{fill:#2a3644}.bolts circle{fill:#3a4756}
 .fit{fill:#a6b5c3;stroke:#56677a;stroke-width:1.5}
-.ln .po{fill:none;stroke:#04070a;stroke-width:15;stroke-linejoin:round;stroke-linecap:round}
+.ln-o .po{fill:none;stroke:#04070a;stroke-width:15;stroke-linejoin:round;stroke-linecap:round}
 .ln .pf{fill:none;stroke:#3e4c5a;stroke-width:9;stroke-linejoin:round;stroke-linecap:round}
 .ln .pd{fill:none;stroke:none;stroke-width:4;stroke-linecap:round;stroke-dasharray:.01 23.99}
 .ln.on.liq .pf{stroke:var(--liquor)}.ln.on.wrt .pf{stroke:var(--wort)}
 .ln.on .pd{stroke:rgb(255 255 255/.75);animation:flow .9s linear infinite}
 .ln .ch{display:none;fill:none;stroke:#0a1016;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 .ln.on .ch{display:inline}
+/* hand valves: hollow when open, solid when closed, and the word under or beside each */
 .valve path{fill:#3b4b5b;stroke:#8193a5;stroke-width:2}
+.valve.shut path{fill:#a6b5c3}
 .tag{font:600 18px var(--cond);letter-spacing:.06em;fill:var(--text-3)}
 .p-base{fill:#2a3642}
 .p-ring{fill:#24303c;stroke:#93a3b4;stroke-width:3}
@@ -230,12 +232,15 @@ html.bare .mock{display:none}
 .rig-line .coil.on>*{stroke:var(--wort)}
 .rig-line .element{stroke:#6f8194;stroke-width:3.5}
 .rig-line .element.on{stroke:var(--heat)}
-.rig-line .ln .po{display:none}
+.rig-line .ln-o{display:none}
 .rig-line .ln .pf{stroke:#4a5a6b;stroke-width:5}
 .rig-line .ln .pd{stroke-width:2.2;stroke-dasharray:5 19}
 .rig-line .ln.on .ch{stroke-width:3;stroke-linecap:butt}
 .rig-line .ln.on.liq .ch{fill:var(--liquor);stroke:var(--liquor)}.rig-line .ln.on.wrt .ch{fill:var(--wort);stroke:var(--wort)}
 .rig-line .ln .ch{transform-box:fill-box}
+.rig-line .valve path{fill:#1b2833;stroke:#b9c6d2;stroke-width:2.5;stroke-linejoin:round}
+.rig-line .valve.shut path{fill:#b9c6d2}
+.rig-line .valve.live.liq path{stroke:var(--liquor)}.rig-line .valve.live.wrt path{stroke:var(--wort)}
 .rig-line .p-ring{fill:#1b2833;stroke:#b9c6d2}
 .rig-line .p-tri{fill:#b9c6d2}
 .rig-line .p-base{fill:none;stroke:#b9c6d2;stroke-width:2.5}

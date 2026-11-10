@@ -197,7 +197,7 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .stand-hi rect{fill:#2a3644}
 :where(html.bd-page) .bolts circle{fill:#3a4756}
 :where(html.bd-page) .fit{fill:#a6b5c3;stroke:#56677a;stroke-width:1.5}
-:where(html.bd-page) .ln .po{fill:none;stroke:#04070a;stroke-width:15;stroke-linejoin:round;stroke-linecap:round}
+:where(html.bd-page) .ln-o .po{fill:none;stroke:#04070a;stroke-width:15;stroke-linejoin:round;stroke-linecap:round}
 :where(html.bd-page) .ln .pf{fill:none;stroke:#3e4c5a;stroke-width:9;stroke-linejoin:round;stroke-linecap:round}
 :where(html.bd-page) .ln .pd{fill:none;stroke:none;stroke-width:4;stroke-linecap:round;stroke-dasharray:.01 23.99}
 :where(html.bd-page) .ln.on.liq .pf{stroke:var(--liquor)}
@@ -206,6 +206,7 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .ln .ch{display:none;fill:none;stroke:#0a1016;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 :where(html.bd-page) .ln.on .ch{display:inline}
 :where(html.bd-page) .valve path{fill:#3b4b5b;stroke:#8193a5;stroke-width:2}
+:where(html.bd-page) .valve.shut path{fill:#a6b5c3}
 :where(html.bd-page) .tag{font:600 18px var(--cond);letter-spacing:.06em;fill:var(--text-3)}
 :where(html.bd-page) .p-base{fill:#2a3642}
 :where(html.bd-page) .p-ring{fill:#24303c;stroke:#93a3b4;stroke-width:3}
@@ -224,13 +225,17 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .rig-line .coil.on>*{stroke:var(--wort)}
 :where(html.bd-page) .rig-line .element{stroke:#6f8194;stroke-width:3.5}
 :where(html.bd-page) .rig-line .element.on{stroke:var(--heat)}
-:where(html.bd-page) .rig-line .ln .po{display:none}
+:where(html.bd-page) .rig-line .ln-o{display:none}
 :where(html.bd-page) .rig-line .ln .pf{stroke:#4a5a6b;stroke-width:5}
 :where(html.bd-page) .rig-line .ln .pd{stroke-width:2.2;stroke-dasharray:5 19}
 :where(html.bd-page) .rig-line .ln.on .ch{stroke-width:3;stroke-linecap:butt}
 :where(html.bd-page) .rig-line .ln.on.liq .ch{fill:var(--liquor);stroke:var(--liquor)}
 :where(html.bd-page) .rig-line .ln.on.wrt .ch{fill:var(--wort);stroke:var(--wort)}
 :where(html.bd-page) .rig-line .ln .ch{transform-box:fill-box}
+:where(html.bd-page) .rig-line .valve path{fill:#1b2833;stroke:#b9c6d2;stroke-width:2.5;stroke-linejoin:round}
+:where(html.bd-page) .rig-line .valve.shut path{fill:#b9c6d2}
+:where(html.bd-page) .rig-line .valve.live.liq path{stroke:var(--liquor)}
+:where(html.bd-page) .rig-line .valve.live.wrt path{stroke:var(--wort)}
 :where(html.bd-page) .rig-line .p-ring{fill:#1b2833;stroke:#b9c6d2}
 :where(html.bd-page) .rig-line .p-tri{fill:#b9c6d2}
 :where(html.bd-page) .rig-line .p-base{fill:none;stroke:#b9c6d2;stroke-width:2.5}

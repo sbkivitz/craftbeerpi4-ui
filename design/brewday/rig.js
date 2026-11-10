@@ -19,12 +19,15 @@ const RIG_V = [
   {id: "bk", name: "BOIL KETTLE", el: true, box: 1, vx: 0}
 ];
 
+/* ySp: the sparge line, from the HLT pump over the hot liquor tank to the top of the mash tun.
+   vCoil, vBk, vRet, vSp: the hand valves on the coil line, the boil kettle line, the HLT return and the sparge line. */
 function rigGeom(W) {
   const a = W / 6, m = W / 2, k = W * 5 / 6;
-  return {W, a, m, k, x: [a, m, k], yTop: 50, yPump: 352, yLow: 458,
+  return {W, a, m, k, x: [a, m, k], yTop: 50, ySp: 22, yPump: 352, yLow: 458,
     hltPump: a - 60, wortPump: m - 70, hltValve: a + 10, mtValve: m - 10,
     hltRiser: a - 160, coilRiser: a + 160, coilTopRiser: a + 186, tee: m - 120, xferRiser: k - 165,
-    hltRet: a - 70, mtRet: m - 75, bkRet: k - 95};
+    hltRet: a - 70, mtRet: m - 75, bkRet: k - 95, spargeIn: m,
+    vCoil: (a + 160 + m - 120) / 2, vBk: (m - 120 + k - 165) / 2, vRet: a - 115, vSp: a + 60};
 }
 function zigzag(y) {
   let d = `M-84 ${y} H-70 l7 -9`;
@@ -89,25 +92,39 @@ function rigPump(id, x, y, med, name) {
 function rigLine(id, med, paths, chev) {
   const layer = c => paths.map(d => `<path class="${c}" d="${d}"/>`).join("");
   const ch = chev.map(([x, y, a]) => `<path class="ch" d="M-4.5 -5.5 L3.5 0 L-4.5 5.5" transform="translate(${r1(x)} ${r1(y)}) rotate(${a})"/>`).join("");
-  return `<g class="ln ${med}" id="${id}">${layer("po")}${layer("pf")}${layer("pd")}${ch}</g>`;
+  return `<g class="ln ${med}" id="${id}">${layer("pf")}${layer("pd")}${ch}</g>`;
+}
+/* a hand valve: CraftBeerPi can't see it, so its position is drawn from the recipe step (renderRig) */
+function rigValve(id, x, y, med, tx, ty, anchor) {
+  return `<g class="valve ${med}" id="vl-${id}" transform="translate(${r1(x)} ${y})"><path d="M-13 -9 L13 9 V-9 L-13 9 Z"/></g><text class="tag vtag" id="vt-${id}" x="${r1(tx)}" y="${ty}"${anchor ? ` text-anchor="${anchor}"` : ""}></text>`;
 }
 
 function rigSVG(style, W) {
   const S = RIG_ST[style], g = rigGeom(W), A = style === "kettle";
-  const {a, m, k, yTop, yPump, yLow} = g, n = r1;
+  const {a, m, k, yTop, ySp, yPump, yLow} = g, n = r1;
   const hRet = S.lidY(g.hltRet - a) + 1, mRet = S.lidY(g.mtRet - m) + 1, bRet = S.lidY(g.bkRet - k) + 1;
   const hOut = S.outY(g.hltValve - a), mOut = S.outY(g.mtValve - m);
   const hp = g.hltPump, wp = g.wortPump;
-  const hlt = [`M${n(g.hltValve)} ${n(hOut)} V${yPump} H${n(hp + 22)}`,
-    `M${n(hp - 22)} ${yPump} H${n(g.hltRiser)} V${yTop} H${n(g.hltRet)} V${n(hRet)}`];
-  const wort = [`M${n(g.mtValve)} ${n(mOut)} V${yPump} H${n(wp + 22)}`,
-    `M${n(wp - 22)} ${yPump} H${n(g.coilRiser)} V242 H${n(a + 112)}`,
+  /* each pump's line is split where it branches, so the drawing can show either way:
+     HLT pump: back round the hot liquor tank, or (layout B only) over to the top of the mash tun for the sparge;
+     wort pump: through the HERMS coil and back into the mash tun, or down and across to the boil kettle */
+  const hltIn = [`M${n(g.hltValve)} ${n(hOut)} V${yPump} H${n(hp + 22)}`];
+  const hltUp = [`M${n(hp - 22)} ${yPump} H${n(g.hltRiser)} V${yTop}`];
+  const hltRet = [`M${n(g.hltRiser)} ${yTop} H${n(g.hltRet)} V${n(hRet)}`];
+  const sparge = [`M${n(g.hltRiser)} ${yTop} V${ySp} H${n(g.spargeIn)} V70`];
+  const wortIn = [`M${n(g.mtValve)} ${n(mOut)} V${yPump} H${n(wp + 22)}`];
+  const wortOut = [`M${n(wp - 22)} ${yPump} H${n(g.tee)}`];
+  const coil = [`M${n(g.tee)} ${yPump} H${n(g.coilRiser)} V242 H${n(a + 112)}`,
     `M${n(a + 112)} 164 H${n(g.coilTopRiser)} V${yTop} H${n(g.mtRet)} V${n(mRet)}`];
   const xfer = [`M${n(g.tee)} ${yPump} V${yLow} H${n(g.xferRiser)} V${yTop} H${n(g.bkRet)} V${n(bRet)}`];
-  const chH = [[g.hltValve, (hOut + yPump) / 2, 90], [g.hltRiser, (yTop + yPump) / 2, -90], [(g.hltRiser + g.hltRet) / 2, yTop, 0]];
-  const chW = [[g.mtValve, (mOut + yPump) / 2, 90], [(g.tee + g.coilRiser) / 2, yPump, 180], [g.coilRiser, (242 + yPump) / 2, -90],
-    [g.coilTopRiser, (164 + yTop) / 2, -90], [(g.coilTopRiser + g.mtRet) / 2, yTop, 0]];
-  const vx = (g.tee + g.xferRiser) / 2;
+  const outline = [...(A ? [] : sparge), ...hltRet, ...hltIn, ...hltUp, ...xfer, ...coil, ...wortIn, ...wortOut];
+  const chIn = [[g.hltValve, (hOut + yPump) / 2, 90]], chUp = [[g.hltRiser, (yTop + yPump) / 2, -90]];
+  const chRet = [[g.hltRet, (yTop + hRet) / 2, 90]];
+  const chSp = [[(g.hltRiser + g.vSp) / 2, ySp, 0], [(g.vSp + g.spargeIn) / 2, ySp, 0], [g.spargeIn, (ySp + 70) / 2, 90]];
+  const chWin = [[g.mtValve, (mOut + yPump) / 2, 90]];
+  const chCoil = [[g.coilRiser, (242 + yPump) / 2, -90], [g.coilTopRiser, (164 + yTop) / 2, -90], [(g.coilTopRiser + g.mtRet) / 2, yTop, 0]];
+  const chX = [[g.tee, (yPump + yLow) / 2, 90], [(g.vBk + g.xferRiser) / 2, yLow, 0], [g.xferRiser, (yTop + yLow) / 2, -90], [(g.xferRiser + g.bkRet) / 2, yTop, 0]];
+  const nx = g.xferRiser + 26;
   const legs = [10, W / 3 - 8, W * 2 / 3 - 8, W - 26];
   const defs = `<defs><filter id="glow" x="-20%" y="-80%" width="140%" height="260%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>${A ? `
 <linearGradient id="g-body">${bands("#5d6e81 0 .05|#9cacbd .05 .15|#8596a8 .15 .74|#78899c .74 .92|#637487 .92 1")}</linearGradient>
@@ -120,14 +137,24 @@ function rigSVG(style, W) {
   const fits = A ? [[g.hltRet, hRet], [g.mtRet, mRet], [g.bkRet, bRet]].map(([x, y]) => `<rect class="fit" x="${n(x - 10)}" y="${n(y - 8)}" width="20" height="9" rx="2"/>`).join("") : "";
   return `<svg id="rigsvg" class="rig-${style}" viewBox="0 0 ${n(W)} ${RIG_H}" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="rig-t rig-d">
 <title id="rig-t">Brewhouse drawing</title>
-<desc id="rig-d">Hot liquor tank, mash tun and boil kettle. The HLT pump circulates hot water around the hot liquor tank. The wort pump moves wort from the mash tun, through the coil inside the hot liquor tank, and back into the mash tun. The line to the boil kettle has a closed valve.</desc>
+<desc id="rig-d"></desc>
 ${defs}${stand}${names}
 ${vessels}
-${rigLine("ln-xfer", "wrt", xfer, [])}
-<g class="valve" transform="translate(${n(vx)} ${yLow})"><path d="M-13 -9 L13 9 V-9 L-13 9 Z"/></g><text class="tag" x="${n(vx + 22)}" y="${yLow - 13}">VALVE CLOSED</text>
-${rigLine("ln-hlt", "liq", hlt, chH)}
-${rigLine("ln-wort", "wrt", wort, chW)}
+<g class="ln-o">${outline.map(d => `<path class="po" d="${d}"/>`).join("")}</g>
+${A ? "" : rigLine("ln-sparge", "liq", sparge, chSp)}
+${rigLine("ln-hlt-ret", "liq", hltRet, chRet)}
+${rigLine("ln-hlt-in", "liq", hltIn, chIn)}
+${rigLine("ln-hlt-up", "liq", hltUp, chUp)}
+${rigLine("ln-xfer", "wrt", xfer, chX)}
+${rigLine("ln-wort-coil", "wrt", coil, chCoil)}
+${rigLine("ln-wort-in", "wrt", wortIn, chWin)}
+${rigLine("ln-wort-out", "wrt", wortOut, [])}
+${A ? "" : rigValve("sp", g.vSp, ySp, "liq", g.vSp, ySp + 26, "middle")}
+${rigValve("ret", g.vRet, yTop, "liq", g.vRet, yTop + 32, "middle")}
+${rigValve("coil", g.vCoil, yPump, "wrt", g.vCoil, yPump + 36, "middle")}
+${rigValve("bk", g.vBk, yLow, "wrt", g.vBk + 22, yLow - 13, "")}
 ${fits}
 ${rigPump("hlt", hp, yPump, "liq", "HLT PUMP")}${rigPump("wort", wp, yPump, "wrt", "WORT PUMP")}
+<text class="tag vnote" x="${n(nx)}" y="${yPump + 68}">VALVES ARE SET BY HAND<tspan id="vnote-2" x="${n(nx)}" dy="22"></tspan></text>
 </svg>`;
 }
