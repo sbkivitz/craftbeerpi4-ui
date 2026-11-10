@@ -17,8 +17,12 @@
 //   phone from scrolling the page at all.
 //   body also gets -moz-osx-font-smoothing:auto, the mockup's default, back
 //   from index.css's grayscale (Firefox on a Mac).
-// - [data-layout=b] matched <html> in the mockup; the screen sets it there too.
+// - [data-layout=b] and [data-graphs=face] matched <html> in the mockup; the
+//   screen sets them there too.
 // - The mockup's own strip (.mock, html.bare) is left out, and --mock-h is 0.
+//   So is graphs option B (.gpanel, .ghead, .gcol, .gwin, .gview and
+//   [data-graphs=panel]), kept in the mockup only as the record of what Scott
+//   chose from.
 // - Its animations are renamed bd-blink, bd-march and bd-flow: names are
 //   global, and another stylesheet's @keyframes of the same name would win.
 import { readFileSync, writeFileSync } from "node:fs";
@@ -33,10 +37,12 @@ const SCOPE = ":where(html.bd-page)";
 function scopeSelector(sel) {
   const s = sel.trim();
   if (s.startsWith(".mock") || s.startsWith("html.bare")) return null;
+  // Graphs option B, the DRAWING / GRAPHS switch Scott turned down (10 Nov), stays in the mockup only.
+  if (/^\.(gpanel|ghead|gcol|gwin|gview)\b/.test(s) || s.startsWith("[data-graphs=panel]")) return null;
   if (s === ":root") return SCOPE;
   if (s === "html") return "html.bd-page";
   if (s === "body") return "html.bd-page body";
-  if (s.startsWith("[data-layout=")) return SCOPE + s;
+  if (s.startsWith("[data-layout=") || s.startsWith("[data-graphs=")) return SCOPE + s;
   return `${SCOPE} ${s}`;
 }
 

@@ -21,6 +21,9 @@ const ACT = {
   bkEl: {name: "BOIL ELEMENT", kind: "heat", v: "bk"}
 };
 const HERMS_DELTA = 5.4; // PID_HERMS DeltaTemp in the simulator
+/* BoilPower, the boil kettle's logic: below Boil_Threshold it heats at full power (Max_Output); at or above it, it holds
+   the element at Boil_Power, which Scott sets with set_boil_power (45 % on the simulators) */
+const BOIL_TH = 210.2;
 const BOOK = [ // the simulator's Recipe Book (config/recipes/*.yaml)
   {n: "Craftbeerpi Test Recipe v5", d: "7 steps · mash 126, 149 and 168 °F · 90 min boil"},
   {n: "Craftbeerpi Test Recipe v4", d: "6 steps · mash 126 and 149 °F · 90 min boil"},
@@ -60,6 +63,16 @@ const SCENES = {
       ["14:58:30", "Sparge finished", "by recipe", ""]
     ]
   }),
+  /* boil power mid-recipe (Scott, 10 Nov: "I need to be able to adjust boil element power even while running a recipe"):
+     step 5, the Boil, runs the boil kettle's AUTO; the hop is in, and Scott turns the boil down from 45 to 40 % */
+  boilpower: () => {
+    const s = SCENES.hop();
+    s.t = 16 * 3600 + 4 * 60 + 12; s.banner = null;
+    s.recipe.left = 55 * 60 + 48; s.recipe.adds = ["done"];
+    s.events[0] = ["16:00:02", "Hop alert: add 3.00 oz Centennial (1)", "answered", ""];
+    s.events.unshift(["16:00:31", "Hop alert answered: 3.00 oz Centennial added", "confirmed", "ok"]);
+    return Object.assign(s, {base: "hop", open: {edit: {v: "bk", kind: "pwr", what: "boil", val: 40}}});
+  },
   /* fly sparge (Scott, 9 Nov): the HLT pump sends sparge water to the top of the mash tun while the wort pump runs
      the wort off to the boil kettle. The mash tun's AUTO (HERMS) still runs the wort pump and the HLT element. */
   sparge: () => Object.assign(mash(), {
@@ -135,7 +148,7 @@ function lockWhy(id) {
 }
 function b(cls, label, small, o = {}) {
   const dis = !!o.why, h = o.hold && !dis;
-  return `<button type="button" class="${cls}"${o.pressed != null ? ` aria-pressed="${o.pressed}"` : ""}${o.cmd ? ` data-cmd="${o.cmd}"` : ""}${h ? " data-hold" : ""}${dis ? ` aria-disabled="true" data-why="${esc(o.why)}"` : ""}>${h ? '<span class="fill"></span>' : ""}<span class="lb">${label}</span>${small ? `<small>${small}</small>` : ""}</button>`;
+  return `<button type="button" class="${cls}"${o.pressed != null ? ` aria-pressed="${o.pressed}"` : ""}${o.expanded != null ? ` aria-expanded="${o.expanded}"` : ""}${o.cmd ? ` data-cmd="${o.cmd}"` : ""}${h ? " data-hold" : ""}${dis ? ` aria-disabled="true" data-why="${esc(o.why)}"` : ""}>${h ? '<span class="fill"></span>' : ""}<span class="lb">${label}</span>${small ? `<small>${small}</small>` : ""}</button>`;
 }
 
 /* ---------- faceplates ---------- */
@@ -168,7 +181,25 @@ function tgtHTML(v) {
   const why = st.link === "lost" ? PAUSED : by ? `The mash tun sets this target while it runs the HERMS: up to its own target plus ${HERMS_DELTA} °F.` : pend ? WAIT : "";
   return b("tgtbtn", "TARGET", by ? "set by mash tun" : pend ? "sending…" : "change SV", {cmd: `tgt:${v}`, why});
 }
+/* only a kettle whose logic declares set_boil_power has this (on Scott's rig, the boil kettle). It sits beside the
+   element it governs and works at any time, also while a recipe runs (Scott, 10 Nov). In AUTO it sets the logic's
+   Boil_Power, used from the boil threshold up; in MANUAL it sets the element's own level, used when it is on by hand.
+   Changing it is a tap on SET, like a target: it changes a level, it doesn't switch heat on */
+function powerHTML() {
+  const V = st.v.bk, auto = V.mode === "auto", pend = st.pend["p:bk"], why = st.link === "lost" ? PAUSED : pend ? WAIT : "";
+  return b("tgtbtn pwrbtn", auto ? `BOIL POWER ${V.bp} %` : `POWER ${st.a.bkEl.lvl} %`,
+    pend ? "sending…" : auto ? `used from ${BOIL_TH} °F · change` : "used by hand · change",
+    {cmd: "pwr:bk", why, expanded: !!st.edit && st.edit.kind === "pwr"});
+}
 function editorHTML(v) {
+  if (st.edit.kind === "pwr") {
+    const p = st.edit.val;
+    return `<div class="editor pwr" role="group" aria-label="${st.edit.what === "boil" ? "New boil power for the boil kettle" : "New power for the boil element by hand"}">
+    <button type="button" data-cmd="pstep:-5" aria-label="Down 5 percent">−5</button><button type="button" data-cmd="pstep:-1" aria-label="Down 1 percent">−1</button>
+    <input id="tin" inputmode="numeric" value="${p}" aria-label="New boil power in percent">
+    <button type="button" data-cmd="pstep:1" aria-label="Up 1 percent">+1</button><button type="button" data-cmd="pstep:5" aria-label="Up 5 percent">+5</button>
+    <button type="button" class="ok" data-cmd="pset">SET <span id="tok">${p}</span> %</button><button type="button" class="no" data-cmd="tcancel">CANCEL</button></div>`;
+  }
   const x = st.edit.val.toFixed(1);
   return `<div class="editor" role="group" aria-label="New target for the ${VNAME[v].toLowerCase()}">
     <button type="button" data-cmd="tstep:-1" aria-label="Down 1 degree">−1</button><button type="button" data-cmd="tstep:-0.1" aria-label="Down 0.1 degree">−.1</button>
@@ -183,7 +214,8 @@ function devHTML(v) {
   if (v === "bk" && V.pv >= V.sv - 0.5) return "Boiling";
   const d = V.sv - V.pv;
   if (Math.abs(d) < 0.3) return "At target";
-  return d > 0 ? `${d.toFixed(1)} °F below target` : `${(-d).toFixed(1)} °F above target`;
+  const eta = GRAPHS ? graphETA(v) : "";
+  return (d > 0 ? `${d.toFixed(1)} °F below target` : `${(-d).toFixed(1)} °F above target`) + (eta ? ` · ${eta}` : "");
 }
 /* layout B's faceplate also shows output and mode, like a hardware PID controller */
 function auxHTML(v) {
@@ -204,9 +236,10 @@ function plateHTML(v) {
       <dl class="pvsv"><dt>PV</dt><dd class="pv">${f1(V.pv)}<span class="u">°F</span></dd>
       <dt>SV</dt><dd class="sv">${V.sv == null ? "– –" : f1(V.sv) + '<span class="u">°F</span>'}</dd></dl>
       ${LAYOUT === "b" ? auxHTML(v) : ""}
+      ${GRAPHS ? graphHTML(v, "f") : ""}
     </div>
     <p class="dev">${devHTML(v)}${by ? " · SV set by the mash tun" : ""}</p>
-    <div class="ctrls">${VACT[v].map(lampHTML).join("")}</div>
+    <div class="ctrls">${VACT[v].map(lampHTML).join("")}${v === "bk" ? powerHTML() : ""}</div>
     ${st.edit && st.edit.v === v ? editorHTML(v) : v === "hlt" && st.v.mt.mode === "auto" ? hermsRowHTML() : `<div class="moderow">${modeHTML(v)}${tgtHTML(v)}</div>`}
     <p class="note">${st.notes[v] || ""}</p>
   </section>`;
@@ -342,19 +375,22 @@ function renderRig() {
   on("#el-hlt", live && a.hltEl.on); on("#el-bk", live && a.bkEl.on);
   ["hlt", "mt", "bk"].forEach(v => { const n = $("#needle-" + v); if (n) n.setAttribute("transform", `rotate(${needleAngle(st.v[v].pv).toFixed(1)})`); });
 }
-let rigW = 0;
+let rigW = 0, rigRs = 1;
 function drawRig() {
   const box = $("#rig"), w = box.clientWidth - 12, h = box.clientHeight - 12;
   if (w < 60 || h < 60) return;
   const W = Math.max(1200, Math.round(RIG_H * w / h));
-  if (Math.abs(W - rigW) < 4 && $("#rigsvg")) return;
-  rigW = W;
-  box.innerHTML = rigSVG(LAYOUT === "b" ? "line" : "kettle", W);
+  /* with graphs in the faceplates the drawing gets shorter, so its labels grow to stay readable (up to 1.3 times) */
+  const rs = GRAPHS === "face" ? Math.round(Math.min(1.3, Math.max(1, 0.68 / Math.min(h / RIG_H, w / 1200))) * 100) / 100 : 1;
+  if (Math.abs(W - rigW) < 4 && rs === rigRs && $("#rigsvg")) return;
+  rigW = W; rigRs = rs;
+  box.innerHTML = rigSVG(LAYOUT === "b" ? "line" : "kettle", W, rs);
   renderRig();
 }
 function renderAll() {
   const lost = st.link === "lost";
   $("#app").dataset.link = st.link;
+  $("#app").toggleAttribute("data-editing", !!st.edit);
   $("#link").dataset.link = st.link;
   $("#link-t").textContent = lost ? "No connection" : "Connected";
   $("#clock").textContent = hhmm(st.t);
@@ -369,6 +405,7 @@ function renderAll() {
   $("#recipe").innerHTML = recipeHTML();
   $("#now").innerHTML = nowHTML();
   renderRig();
+  if (GRAPHS) { renderGraphPanel(); drawGraphs(); }
 }
 /* ---------- commands (simulated: each one answers after a short delay) ---------- */
 let toastT;
@@ -397,7 +434,7 @@ function send(key, dir, label, apply, cav = "") {
   }, 700 + Math.random() * 400));
 }
 const actLabel = (id, on) => `${ACT[id].name} ${ACT[id].kind === "pump" ? (on ? "started" : "stopped") : (on ? "on" : "off")}`;
-function setActor(id, on) { const a = st.a[id]; a.on = on; a.failed = null; if (ACT[id].kind === "heat") a.pct = on ? 100 : 0; }
+function setActor(id, on) { const a = st.a[id]; a.on = on; a.failed = null; if (ACT[id].kind === "heat") a.pct = on ? (a.lvl ?? 100) : 0; }
 function cmdAct(id) {
   const a = st.a[id], want = a.failed ? a.failed === "on" : !a.on;
   send("a:" + id, want ? "on" : "off", actLabel(id, want), () => {
@@ -417,30 +454,59 @@ function setMode(v, m) {
     a.hltEl.on = m === "auto"; a.hltEl.pct = m === "auto" ? (V.sv - V.pv > 2 ? 100 : 40) : 0;
   } else {
     if (m === "auto" && V.sv == null) V.sv = 210.2;
-    a.bkEl.on = m === "auto"; a.bkEl.pct = m === "auto" ? (V.pv >= V.sv - 0.5 ? 45 : 100) : 0;
+    a.bkEl.on = m === "auto"; a.bkEl.pct = m === "auto" ? (V.pv >= BOIL_TH ? V.bp : 100) : 0;
+    /* the power editor edits the setting its button named when it opened; if a step or ALL OFF changes the mode,
+       that setting is no longer the one in use, so the editor closes without sending anything */
+    if (st.edit && st.edit.kind === "pwr" && st.edit.what !== (m === "auto" ? "boil" : "hand")) {
+      st.edit = null;
+      note("bk", `The boil kettle switched to ${m.toUpperCase()}, so the button now sets ${m === "auto" ? "the boil power" : "the element's power by hand"}. Nothing was changed.`);
+    }
   }
   ["hltEl", "wortPump", "bkEl"].forEach(id => { a[id].failed = null; });
 }
 function cmdMode(v, m) { send("m:" + v, m, `${VNAME[v]} ${m.toUpperCase()}`, () => setMode(v, m)); }
 function cmdTgtOpen(v) {
   const V = st.v[v];
-  st.edit = {v, val: V.sv ?? (v === "bk" ? 210.2 : v === "mt" ? 149.0 : V.own)};
+  st.edit = {v, kind: "tgt", val: V.sv ?? (v === "bk" ? 210.2 : v === "mt" ? 149.0 : V.own)};
   renderAll(); setTimeout(() => $("#tin")?.focus(), 0);
 }
 function cmdTgtStep(d) { st.edit.val = Math.round((st.edit.val + d) * 10) / 10; renderAll(); }
 function cmdTgtSet() {
   const v = st.edit.v, val = st.edit.val;
   if (!(val >= 32 && val <= 230)) { note(v, "Enter a target between 32 and 230 °F."); return; }
-  st.edit = null;
+  st.edit = null; st.notes[v] = "";
   send("t:" + v, "set", `${VNAME[v]} target ${val.toFixed(1)} °F`, () => {
     st.v[v].sv = val;
     if (v === "hlt") st.v.hlt.own = val;
     if (v === "mt" && st.v.mt.mode === "auto") st.v.hlt.sv = +(val + HERMS_DELTA).toFixed(1);
   });
 }
+/* set_boil_power: kept in the kettle's Boil_Power setting, so it can be set at any time, also during a recipe; AUTO uses it
+   at its next control decision (every 2 s) once the kettle is at or above the boil threshold. In MANUAL the button sets
+   the element's own level instead (set_power), which it runs at when it is on by hand. */
+function cmdPwrOpen() {
+  const boil = st.v.bk.mode === "auto";
+  st.edit = {v: "bk", kind: "pwr", what: boil ? "boil" : "hand", val: boil ? st.v.bk.bp : st.a.bkEl.lvl};
+  renderAll(); setTimeout(() => $("#tin")?.focus(), 0);
+}
+function cmdPwrStep(d) { st.edit.val = Math.min(100, Math.max(0, st.edit.val + d)); renderAll(); }
+function cmdPwrSet() {
+  const {what, val} = st.edit, boil = what === "boil", V = st.v.bk, el = st.a.bkEl, was = boil ? V.bp : el.lvl;
+  if (!(Number.isInteger(val) && val >= 0 && val <= 100)) { note("bk", `Enter a ${boil ? "boil power" : "power"} from 0 to 100 %.`); return; }
+  st.edit = null; st.notes.bk = "";
+  if (val === was) { renderAll(); return; }
+  /* when the new level isn't in use yet, the event says when it will be, so an OUT that doesn't move isn't taken for a failure */
+  const cav = boil ? (V.mode === "auto" && V.pv >= BOIL_TH ? "" : `used from ${BOIL_TH} °F, full power until then`)
+    : (el.on ? "" : "used when you switch the element on");
+  send("p:bk", "set", boil ? `Boil power ${val} % (was ${was} %)` : `Boil element by hand ${val} % (was ${was} %)`, () => {
+    if (boil) { V.bp = val; if (V.mode === "auto" && el.on && V.pv >= BOIL_TH) el.pct = val; }
+    else { el.lvl = val; if (V.mode !== "auto" && el.on) el.pct = val; }
+  }, cav);
+}
 function stepStart(i) {
   const r = st.recipe, s = RECIPE.steps[i];
   r.cur = i; r.left = (s.min || 0) * 60; r.adds = [];
+  if (st.hist) st.hist.steps.push([st.t, i + 1]);
   if (s.k === "bk") { st.fill.bk = true; st.fill.mtLiq = false; if (st.v.mt.mode === "auto") setMode("mt", "manual"); }
   if (s.temp != null) {
     st.v[s.k].sv = s.temp;
@@ -451,6 +517,7 @@ function stepStart(i) {
 function cmdStart() {
   send("r:start", "start", "Recipe started", () => {
     const r = st.recipe, s = RECIPE.steps[r.cur];
+    if (r.state === "ready" && st.hist) st.hist.steps.push([st.t, r.cur + 1]);
     r.state = "running";
     if (s.temp != null && st.v[s.k].mode !== "auto") setMode(s.k, "auto");
   });
@@ -510,6 +577,9 @@ function run(cmd) {
     case "tstep": return cmdTgtStep(parseFloat(x));
     case "tset": return cmdTgtSet();
     case "tcancel": st.edit = null; return renderAll();
+    case "pwr": if (st.edit && st.edit.kind === "pwr") { st.edit = null; return renderAll(); } return cmdPwrOpen();
+    case "pstep": return cmdPwrStep(parseInt(x, 10));
+    case "pset": return cmdPwrSet();
     case "r":
       if (x === "start") return cmdStart();
       if (x === "stop") return cmdStop();
@@ -521,6 +591,7 @@ function run(cmd) {
     case "tm": return cmdTimer(x);
     case "tab": return toast(`Mockup: this opens the existing ${x} page.`);
     case "load": return cmdLoad(+x);
+    case "gspan": case "gview": return graphCmd(k, x);
   }
 }
 
@@ -554,14 +625,14 @@ document.addEventListener("contextmenu", e => { if (e.target.closest("[data-hold
 document.addEventListener("keydown", e => {
   const el = e.target.closest ? e.target.closest("[data-hold]") : null;
   if (el && (e.key === " " || e.key === "Enter")) { e.preventDefault(); if (!e.repeat) holdStart(el); return; }
-  if (e.target.id === "tin" && e.key === "Enter") { e.preventDefault(); cmdTgtSet(); return; }
+  if (e.target.id === "tin" && e.key === "Enter") { e.preventDefault(); if (st.edit && st.edit.kind === "pwr") cmdPwrSet(); else cmdTgtSet(); return; }
   if (e.key === "Escape" && (st.edit || st.logOpen || st.confirmNext)) { st.edit = null; st.logOpen = false; st.confirmNext = false; renderAll(); }
 });
 document.addEventListener("keyup", e => { if (hold && (e.key === " " || e.key === "Enter")) { e.preventDefault(); holdEnd(true); } });
 document.addEventListener("input", e => {
   if (e.target.id !== "tin" || !st.edit) return;
-  const x = parseFloat(e.target.value);
-  if (Number.isFinite(x)) { st.edit.val = Math.round(x * 10) / 10; const ok = $("#tok"); if (ok) ok.textContent = st.edit.val.toFixed(1); }
+  const x = parseFloat(e.target.value), pwr = st.edit.kind === "pwr";
+  if (Number.isFinite(x)) { st.edit.val = pwr ? Math.round(x) : Math.round(x * 10) / 10; const ok = $("#tok"); if (ok) ok.textContent = pwr ? String(st.edit.val) : st.edit.val.toFixed(1); }
 });
 document.addEventListener("click", e => {
   const tab = e.target.closest(".tabs a");
@@ -585,6 +656,7 @@ setInterval(() => {
   if (!st) return;
   st.t++;
   $("#clock").textContent = hhmm(st.t);
+  if (GRAPHS) graphTick();
   if (st.link === "lost") {
     st.age++;
     document.querySelectorAll(".age").forEach(n => { n.textContent = `Last reading ${st.age} s ago`; });
@@ -615,7 +687,13 @@ function load(name) {
   timers.forEach(clearTimeout); timers = []; holdEnd(false);
   const key = SCENES[name] ? name : "mash";
   st = SCENES[key]();
-  Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, logOpen: false});
+  /* a moment can open an editor (open) and borrow another moment's graph history (base) */
+  const open = st.open, base = st.base || key;
+  delete st.open; delete st.base;
+  Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, logOpen: false}, open);
+  if (st.v.bk.bp == null) st.v.bk.bp = 45; // the boil kettle's Boil_Power setting, read from its props
+  if (st.a.bkEl.lvl == null) st.a.bkEl.lvl = 100; // the boil element's own level (its power), used when it is on by hand
+  if (GRAPHS) st.hist = gHistory(base);
   applyLocks(); renderAll();
   document.querySelectorAll(".mock a[href^='#']").forEach(a => a.setAttribute("aria-current", a.getAttribute("href") === "#" + key ? "true" : "false"));
   document.querySelectorAll(".mock a[data-layout]").forEach(a => {
@@ -635,6 +713,10 @@ if (LAYOUT === "b") {
   $(".main").prepend($("#recipe"));
   $(".brewhouse").append($("#rig"));
 }
+/* temperature graphs (graphs.js), in the faceplates as Scott chose on 10 Nov 2026. ?graphs=none shows the screen
+   without them; ?graphs=panel is option B, which he turned down, kept only for graphs.html. Layout A has none. */
+const GRAPHS = LAYOUT === "a" || QS.get("graphs") === "none" ? "" : QS.get("graphs") === "panel" ? "panel" : "face";
+if (GRAPHS) { document.documentElement.dataset.graphs = GRAPHS; graphSetup(QS); }
 window.addEventListener("hashchange", () => load(location.hash.slice(1)));
 load(location.hash.slice(1));
 new ResizeObserver(drawRig).observe($("#rig"));

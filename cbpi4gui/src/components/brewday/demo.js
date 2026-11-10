@@ -1,5 +1,5 @@
-// The approved mockup's demo data (design/brewday/brew-day.js), unchanged: the six moments of
-// a brew day it shows. The screen's demo mode (?demo=mash, sparge, hop, fail, manual or offline) runs
+// The approved mockup's demo data (design/brewday/brew-day.js), unchanged: the seven moments of
+// a brew day it shows. The screen's demo mode (?demo=mash, sparge, hop, boilpower, fail, manual or offline) runs
 // on this, so it can be compared with the mockup pixel for pixel.
 
 const RECIPE = {
@@ -23,6 +23,9 @@ const ACT = {
   bkEl: {name: "BOIL ELEMENT", kind: "heat", v: "bk"}
 };
 const HERMS_DELTA = 5.4; // PID_HERMS DeltaTemp in the simulator
+/* BoilPower, the boil kettle's logic: below Boil_Threshold it heats at full power (Max_Output); at or above it, it holds
+   the element at Boil_Power, which Scott sets with set_boil_power (45 % on the simulators) */
+const BOIL_TH = 210.2;
 const BOOK = [ // the simulator's Recipe Book (config/recipes/*.yaml)
   {n: "Craftbeerpi Test Recipe v5", d: "7 steps · mash 126, 149 and 168 °F · 90 min boil"},
   {n: "Craftbeerpi Test Recipe v4", d: "6 steps · mash 126 and 149 °F · 90 min boil"},
@@ -62,6 +65,16 @@ const SCENES = {
       ["14:58:30", "Sparge finished", "by recipe", ""]
     ]
   }),
+  /* boil power mid-recipe (Scott, 10 Nov: "I need to be able to adjust boil element power even while running a recipe"):
+     step 5, the Boil, runs the boil kettle's AUTO; the hop is in, and Scott turns the boil down from 45 to 40 % */
+  boilpower: () => {
+    const s = SCENES.hop();
+    s.t = 16 * 3600 + 4 * 60 + 12; s.banner = null;
+    s.recipe.left = 55 * 60 + 48; s.recipe.adds = ["done"];
+    s.events[0] = ["16:00:02", "Hop alert: add 3.00 oz Centennial (1)", "answered", ""];
+    s.events.unshift(["16:00:31", "Hop alert answered: 3.00 oz Centennial added", "confirmed", "ok"]);
+    return Object.assign(s, {base: "hop", open: {edit: {v: "bk", kind: "pwr", what: "boil", val: 40}}});
+  },
   /* fly sparge (Scott, 9 Nov): the HLT pump sends sparge water to the top of the mash tun while the wort pump runs
      the wort off to the boil kettle. The mash tun's AUTO (HERMS) still runs the wort pump and the HLT element. */
   sparge: () => Object.assign(mash(), {
@@ -106,7 +119,7 @@ const SCENES = {
   }
 };
 
-export { RECIPE, VNAME, VACT, ACT, HERMS_DELTA, BOOK, SCENES };
+export { RECIPE, VNAME, VACT, ACT, HERMS_DELTA, BOIL_TH, BOOK, SCENES };
 
 // Not the mockup's: two moments of the screen's own, for checking how the title bar holds what CraftBeerPi
 // really asks (the dashboard agent's review, 9 Nov). Not compared with the mockup, which has neither.

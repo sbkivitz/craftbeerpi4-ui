@@ -84,10 +84,12 @@ ${v.el ? `<path class="element" id="el-${v.id}" d="${zigzag(268)}"/>` : ""}
 </g>`;
 }
 
-function rigPump(id, x, y, med, name) {
+/* rs: how much bigger to set the labels when the drawing is drawn small (the faceplate-graphs proposal); 1 = as designed */
+function rigPump(id, x, y, med, name, rs = 1) {
+  const y1 = r1(68 - 33 * (rs - 1)), y2 = r1(y1 + 22 * rs), y3 = r1(y2 + 22 * rs);
   return `<g class="pump ${med}" id="pump-${id}" transform="translate(${r1(x)} ${y})">
 <path class="p-base" d="M-20 24 L-14 15 H14 L20 24 Z"/><circle class="p-ring" r="22"/><path class="p-tri" d="M8 -11 L-11 0 L8 11 Z"/>
-<text class="p-name" x="-24" y="68">${name}</text><text class="p-st" x="-24" y="90">OFF</text><text class="tag p-ovr" x="-24" y="112"></text></g>`;
+<text class="p-name" x="-24" y="${y1}">${name}</text><text class="p-st" x="-24" y="${y2}">OFF</text><text class="tag p-ovr" x="-24" y="${y3}"></text></g>`;
 }
 function rigLine(id, med, paths, chev) {
   const layer = c => paths.map(d => `<path class="${c}" d="${d}"/>`).join("");
@@ -99,7 +101,7 @@ function rigValve(id, x, y, med, tx, ty, anchor) {
   return `<g class="valve ${med}" id="vl-${id}" transform="translate(${r1(x)} ${y})"><path d="M-13 -9 L13 9 V-9 L-13 9 Z"/></g><text class="tag vtag" id="vt-${id}" x="${r1(tx)}" y="${ty}"${anchor ? ` text-anchor="${anchor}"` : ""}></text>`;
 }
 
-function rigSVG(style, W) {
+function rigSVG(style, W, rs = 1) {
   const S = RIG_ST[style], g = rigGeom(W), A = style === "kettle";
   const {a, m, k, yTop, ySp, yPump, yLow} = g, n = r1;
   const hRet = S.lidY(g.hltRet - a) + 1, mRet = S.lidY(g.mtRet - m) + 1, bRet = S.lidY(g.bkRet - k) + 1;
@@ -135,7 +137,7 @@ function rigSVG(style, W) {
   const names = A ? RIG_V.map((v, i) => `<text class="k-name" x="${n(g.x[i])}" y="30">${v.name}</text>`).join("") : "";
   const vessels = RIG_V.map((v, i) => (A ? kettleA : vesselB)(v, g.x[i])).join("\n");
   const fits = A ? [[g.hltRet, hRet], [g.mtRet, mRet], [g.bkRet, bRet]].map(([x, y]) => `<rect class="fit" x="${n(x - 10)}" y="${n(y - 8)}" width="20" height="9" rx="2"/>`).join("") : "";
-  return `<svg id="rigsvg" class="rig-${style}" viewBox="0 0 ${n(W)} ${RIG_H}" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="rig-t rig-d">
+  return `<svg id="rigsvg" class="rig-${style}" viewBox="0 0 ${n(W)} ${RIG_H}" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="rig-t rig-d"${rs !== 1 ? ` style="--rs:${rs}"` : ""}>
 <title id="rig-t">Brewhouse drawing</title>
 <desc id="rig-d"></desc>
 ${defs}${stand}${names}
@@ -154,7 +156,7 @@ ${rigValve("ret", g.vRet, yTop, "liq", g.vRet, yTop + 32, "middle")}
 ${rigValve("coil", g.vCoil, yPump, "wrt", g.vCoil, yPump + 36, "middle")}
 ${rigValve("bk", g.vBk, yLow, "wrt", g.vBk + 22, yLow - 13, "")}
 ${fits}
-${rigPump("hlt", hp, yPump, "liq", "HLT PUMP")}${rigPump("wort", wp, yPump, "wrt", "WORT PUMP")}
-<text class="tag vnote" x="${n(nx)}" y="${yPump + 68}">VALVES ARE SET BY HAND<tspan id="vnote-2" x="${n(nx)}" dy="22"></tspan></text>
+${rigPump("hlt", hp, yPump, "liq", "HLT PUMP", rs)}${rigPump("wort", wp, yPump, "wrt", "WORT PUMP", rs)}
+<text class="tag vnote" x="${n(nx)}" y="${yPump + 68}">VALVES ARE SET BY HAND<tspan id="vnote-2" x="${n(nx)}" dy="${n(22 * rs)}"></tspan></text>
 </svg>`;
 }

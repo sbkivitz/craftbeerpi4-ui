@@ -85,6 +85,19 @@ export const hermsLogics = (logic) =>
 export const isHerms = (k, herms) =>
   !!(k && (herms && herms.size ? herms.has(k.type) : /herms/i.test(String(k.type || ""))));
 
+// Does a kettle's logic declare this action, as BoilPower declares set_boil_power? Read from the logic types
+// CraftBeerPi publishes, as the old dashboard's kettle dialog read them.
+export const declares = (logic, type, method) =>
+  !!type && (logic || []).some((t) => t && t.name === type && (t.actions || []).some((a) => a && a.method === method));
+
+// Where BoilPower's boil power starts to be used (BoilPower._threshold): the kettle's target when it has one,
+// else its Boil_Threshold setting, else BoilPower's default, 99 °C / 210.2 °F.
+export function boilThreshold(k, C) {
+  const sv = num(k && k.target_temp);
+  if (sv != null && sv > 0) return sv;
+  return num(k && k.props && k.props.Boil_Threshold) ?? (C === "F" ? 210.2 : 99);
+}
+
 // Timer.format_time: "HH:MM:SS", or "DDD HH:MM:SS" past a day. -> seconds, or null.
 export function parseLeft(text) {
   const m = /^(?:(\d+)D )?(\d{1,2}):(\d{2}):(\d{2})$/.exec(String(text || "").trim());
@@ -168,6 +181,9 @@ export function model(snap) {
     HERMS: isHerms(K.mt, herms),
     HERMS_LOGICS: herms,
     HERMS_DELTA: num(K.mt && K.mt.props && K.mt.props.DeltaTemp) ?? 0,
+    // the boil power button (Scott, 10 Nov): only for a boil kettle whose logic declares set_boil_power
+    BOILPOWER: !!K.bk && declares(snap.logic, K.bk.type, "set_boil_power"),
+    BOIL_TH: boilThreshold(K.bk, C),
     RECIPE: { name: (snap.basic && snap.basic.name) || "Brew steps", steps },
     BOOK: snap.book || [],
     LIMITS: C === "F" ? [32, 230] : [0, 110],

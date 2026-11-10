@@ -117,6 +117,8 @@ html.bare .mock{display:none}
 [data-hold]{-webkit-touch-callout:none}
 .holding .fill{transform:scaleX(1);transition:transform 1s linear}
 .moderow{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:8px}
+/* while one faceplate's editor is open (the rows are shared), the other faceplates' buttons keep their size */
+.app[data-editing] .moderow{align-self:start}
 .seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--edge);border-radius:var(--r);overflow:hidden}
 .seg button,.tgtbtn,.cmdbtn{position:relative;overflow:hidden;min-height:62px;padding:6px 4px;border:0;background:var(--panel-2);font:700 clamp(16px,calc(5.6 * var(--pu)),21px)/1 var(--cond);letter-spacing:.06em;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .seg button+button{border-left:1px solid var(--edge)}
@@ -133,6 +135,9 @@ html.bare .mock{display:none}
 .editor input{min-width:0;min-height:54px;border:2px solid #3d7fd0;border-radius:var(--r);background:var(--face);color:var(--sv);font:600 28px/1 var(--cond);text-align:center;font-variant-numeric:tabular-nums}
 .editor .ok{grid-column:1/4;background:var(--select);border-color:var(--select);color:#fff}
 .editor .no{grid-column:4/6}
+/* boil power: a level, not a temperature, so its digits are plain white (green is for targets, orange for heating now) */
+.editor.pwr input{color:var(--text)}
+.pwrbtn[aria-expanded=true]{border-color:var(--select);box-shadow:inset 0 0 0 1px var(--select)}
 
 /* recipe column */
 .recipe{container-type:inline-size;--pu:1cqi;display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0;padding:14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
@@ -250,10 +255,11 @@ html.bare .mock{display:none}
 /* HLT while the mash tun's HERMS runs it */
 .moderow .herms{grid-column:1/-1;border-style:dashed;background:transparent;color:var(--text-2)!important}
 .moderow .herms small{color:var(--text-3)}
-/* brewing by hand: the Recipe Book, ready to load */
-.book{display:grid;gap:8px}
+/* brewing by hand: the Recipe Book, ready to load. On a short screen its list scrolls inside the column, as the
+   step list does, so the page itself never scrolls (The One Screen Rule) */
+.book{display:grid;grid-template-rows:auto minmax(0,1fr);gap:8px;min-height:0}
 .book h3{margin:4px 0 0;font:700 20px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase}
-.book ul{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.book ul{display:grid;align-content:start;gap:6px;min-height:0;margin:0;padding:0;list-style:none;overflow:auto;overscroll-behavior:contain}
 .book li{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:center;padding:8px 8px 8px 12px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel-2)}
 .book .bn{font:600 19px/1.15 var(--cond);letter-spacing:.02em}
 .book .bd{grid-column:1;font:500 15px/1.3 var(--cond);color:var(--text-2)}
@@ -280,12 +286,15 @@ html.bare .mock{display:none}
 
 /* desktop: one fixed screen */
 @media (min-width:1180px){.app{height:max(calc(100dvh - var(--mock-h)),860px)}}
+/* while a value editor is open the drawing may shrink further, so a note under the editor can't push the page past the screen */
+@media (min-width:1180px){.app[data-editing] .rig{min-height:160px}}
 /* tablet: stack, page scrolls */
 @media (max-width:1179px){
   .main{grid-template-columns:minmax(0,1fr)}
   .brewhouse{grid-template-rows:auto auto}
   .rig{min-height:0;aspect-ratio:1200/470}
   .steps{overflow:visible}
+  .book ul{overflow:visible}
   [data-layout=b] .recipe{order:2}
   [data-layout=b] .main{grid-template-columns:minmax(0,1fr)}
   [data-layout=b] .brewhouse{grid-template-rows:auto auto}
@@ -342,4 +351,68 @@ html.bare .mock{display:none}
   [data-layout=b] .tabs{margin-top:0;border-bottom:0}
   [data-layout=b] .face .pv{font-size:clamp(44px,calc(16 * var(--pu)),68px)}
   [data-layout=b] .face .sv{font-size:clamp(24px,calc(8.5 * var(--pu)),36px)}
+}
+
+/* ---------- temperature graphs: a proposal, only with ?graphs=face or ?graphs=panel (graphs.js) ---------- */
+:root{--graph-h:clamp(58px,calc(28dvh - 200px),110px)}
+/* with graphs in the faceplates the drawing is shorter, so its labels are set larger (drawRig's --rs, up to 1.3) */
+/* the One Screen Rule wins: on a short screen the drawing gives up height, never the PV digits */
+@media (min-width:1180px){[data-graphs=face] .rig{min-height:140px}[data-graphs=face] .app[data-editing] .rig{min-height:110px}}
+/* a browser window on a 1080-line monitor is about 950 px tall: there the faceplates tighten their gaps,
+   buttons (still at least 56 px) and span labels, so the drawing keeps readable labels */
+@media (min-width:1180px) and (max-height:1000px){
+  [data-graphs=face] .plates,[data-graphs=face] .plate{row-gap:8px}
+  [data-graphs=face] .lamp{min-height:58px;padding:12px 8px 5px}
+  [data-graphs=face] .seg button,[data-graphs=face] .tgtbtn{min-height:54px}
+  [data-graphs=face] .graph{margin-top:7px;padding-top:7px}
+  [data-graphs=face] .gspans{gap:2px}
+  [data-graphs=face] .gspans span{padding:4px}
+}
+[data-graphs=face] .rig-line .tag,[data-graphs=face] .rig-line .p-st{font-size:calc(18px * var(--rs,1))}
+[data-graphs=face] .rig-line .p-name{font-size:calc(21px * var(--rs,1))}
+[data-graphs=face] .rig-line .v-name{font-size:calc(24px * min(var(--rs,1),1.15))}
+.graph{grid-column:1/-1;display:grid;grid-template-columns:subgrid;align-items:stretch;margin-top:clamp(6px,calc(2.5 * var(--pu)),10px);padding-top:clamp(6px,calc(2.5 * var(--pu)),10px);border-top:1px solid #1a2530}
+.gplot{display:block;min-width:0;padding:0;border:0;border-radius:2px;background:none;text-align:left;cursor:pointer;touch-action:manipulation}
+.gsvg{display:block;height:var(--graph-h)}
+.gsvg svg{display:block}
+.gspans{display:grid;align-content:center;gap:5px;padding-left:clamp(10px,calc(3.5 * var(--pu)),16px);border-left:1px solid #2a3846}
+.gspans span{padding:6px 4px;border:1px solid transparent;border-radius:3px;font:600 13px/1 var(--cond);letter-spacing:.08em;color:var(--text-3);text-align:center;white-space:nowrap;cursor:pointer;user-select:none;-webkit-user-select:none}
+.gspans span.on{border-color:#7f91a3;background:#0e171f;color:#fff}
+.gspans span:not(.on):hover{color:var(--text)}
+.g-grid{fill:none;stroke:#16202a;stroke-width:1}
+.g-mark{fill:none;stroke:#3a4a5a;stroke-width:1;stroke-dasharray:3 3}
+.g-mn rect{fill:#1e2b37;stroke:#3a4a5a;stroke-width:1}
+.g-mn text{font:600 11px var(--cond);fill:var(--text-2);text-anchor:middle}
+.g-gl text,.g-tl text,.g-bl{font:600 12px var(--cond);letter-spacing:.04em;fill:var(--text-3);paint-order:stroke;stroke:var(--face);stroke-width:3px;stroke-linejoin:round}
+.g-tl text{text-anchor:middle}
+.g-bl{font-size:10px;letter-spacing:.08em}
+.g-base{fill:none;stroke:#1d2833;stroke-width:1}
+.g-out{fill:rgb(255 123 28/.6);stroke:none}
+.g-sv{fill:none;stroke:var(--sv);stroke-width:1.6;stroke-linejoin:round}
+.g-pv{fill:none;stroke:var(--pv);stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round;filter:drop-shadow(0 0 3px rgb(255 75 62/.5))}
+.g-dot{fill:var(--pv)}
+.g-gap{fill:#0b1117}
+svg.stale .g-pv,svg.stale .g-sv{stroke:#6b7785;filter:none}
+svg.stale .g-dot{fill:#6b7785}
+svg.stale .g-out{fill:rgb(107 119 133/.45)}
+/* the panel option: the graphs share the drawing's place, with a DRAWING / GRAPHS switch in its corner */
+[data-graphs=panel] .brewhouse>.plates{grid-row:1}
+[data-graphs=panel] .brewhouse>.rig,[data-graphs=panel] .brewhouse>.gpanel,[data-graphs=panel] .brewhouse>.gview{grid-row:2;grid-column:1}
+.gpanel{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:auto minmax(0,1fr);gap:0 var(--gap);min-height:0}
+.gpanel[hidden],.rig[hidden]{display:none}
+.ghead{grid-column:1/-1;display:flex;align-items:center;min-height:58px;margin:0;padding:0 270px 0 4px;font:500 15px/1.3 var(--sans);color:var(--text-3)}
+.gcol{display:grid;min-height:0;padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.gwin{display:grid;min-height:0;padding:10px 12px;background:var(--face);border:1px solid #000;border-radius:4px;box-shadow:inset 0 3px 10px rgb(0 0 0/.9),inset 0 0 0 1px #1a2530,0 1px 0 rgb(255 255 255/.06)}
+.gwin .graph{grid-template-columns:minmax(0,1fr) auto;column-gap:12px;margin:0;padding:0;border:0}
+.gwin .gsvg{height:100%;min-height:200px}
+.gview{display:grid;grid-template-columns:1fr 1fr;justify-self:end;align-self:start;z-index:3;margin:8px;border:1px solid var(--edge);border-radius:var(--r);overflow:hidden}
+.gview button{min-height:42px;padding:0 16px;border:0;background:var(--panel-2);font:700 16px/1 var(--cond);letter-spacing:.08em;color:var(--text-2)}
+.gview button+button{border-left:1px solid var(--edge)}
+.gview button[aria-pressed=true]{background:#070c11;color:#fff;box-shadow:inset 0 0 0 2px #a9bfd4}
+.gview button:not([aria-pressed=true]):hover{background:#253545}
+@media (min-width:701px){[data-graphs=panel] .face .graph{display:none}}
+@media (max-width:700px){
+  :root{--graph-h:108px}
+  .gpanel,.gview{display:none!important}
+  .gspans span{padding:7px 3px}
 }

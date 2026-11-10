@@ -8,9 +8,10 @@
 DIRECTION CONTRACT (Impeccable, final; source: .impeccable/decisions/direction-log.md)
 THESIS: A brewhouse control panel for one rig: a PID faceplate per vessel, the vessels as plumbed, the
 recipe beside them; it refuses the card grid of numbers and toggles.
-OWN-WORLD: Dark slate panel; black PID faces with a big red PV over a smaller green SV, plus OUT and MODE;
-buttons topped by lamp strips that also say their state (orange heating, green running, grey off, red
-failed); a line drawing of the rig with cyan liquor and gold wort pipes that move only while pumped.
+OWN-WORLD: Dark slate panel; black PID faces with a big red PV over a smaller green SV, plus OUT and MODE, and
+the vessel's temperature graph under them; buttons topped by lamp strips that also say their state (orange
+heating, green running, grey off, red failed); a line drawing of the rig with cyan liquor and gold wort pipes
+that move only while pumped.
 STORY: From across the garage Scott sees what is heating, how close each vessel is, and the step now and
 next; heat starts only on a held press; every command answers at its own button.
 FIRST VIEWPORT: Left: recipe with Start, Stop, Next step. Right: three faceplates across the top, the line
@@ -20,9 +21,11 @@ FORM: Brewhouse touch panel with process-mimic plumbing (Scott's picks, rounds 2
 9 Nov 2026 over A/D1); seed fad8ffb4.
 
 This is a proposal mockup with demo data. It does not talk to CraftBeerPi.
-Scenes: #mash (default), #sparge, #hop, #fail, #manual, #offline. Add ?bare to hide the mockup strip.
+Scenes: #mash (default), #sparge, #hop, #boilpower, #fail, #manual, #offline. Add ?bare to hide the mockup strip.
 Layouts: ?layout=b (default, chosen) or ?layout=a (the D1 alternative, kept for comparison; its drawing has no
 sparge line, so its HLT pump always goes back round the hot liquor tank).
+Graphs: in the faceplates by default (option A, chosen 10 Nov 2026). ?graphs=none shows the screen without them,
+as first built; ?graphs=panel is option B, kept only for graphs.html. ?span=10|30|day picks the starting span.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,6 +38,7 @@ sparge line, so its HLT pump always goes back round the hot liquor tank).
   <a href="#mash">Mid-mash</a>
   <a href="#sparge">Sparge</a>
   <a href="#hop">Hop addition due</a>
+  <a href="#boilpower">Turning the boil down</a>
   <a href="#fail">A command failed</a>
   <a href="#manual">Brewing by hand</a>
   <a href="#offline">Connection lost</a>
@@ -76,6 +80,7 @@ sparge line, so its HLT pump always goes back round the hot liquor tank).
 <p class="sr" id="sr" aria-live="polite"></p>
 <p class="sr" id="sr-alert" role="alert"></p>
 <script src="rig.js"></script>
+<script src="graphs.js"></script>
 <script src="brew-day.js"></script>
 </body>
 </html>

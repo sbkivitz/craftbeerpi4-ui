@@ -43,6 +43,8 @@ export function why(res) {
   if (!res || res.ok) return "";
   if (res.error === "timeout") return `no answer in ${Math.round(TIMEOUT_MS / 1000)} s`;
   if (res.error === "network") return "no connection";
+  // it answered, but went on holding the old value (the boil power button checks what it holds afterwards)
+  if (res.error === "kept") return "CraftBeerPi kept the old value";
   return `CraftBeerPi said no (${res.status})`;
 }
 

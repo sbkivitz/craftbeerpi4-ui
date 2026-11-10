@@ -11,7 +11,7 @@ import { createBrewDay } from "./screen";
 // its own title bar and tabs - and while it is open the corner stack of notifications is hidden: its title
 // bar shows CraftBeerPi's prompts instead.
 //
-// ?demo=mash, sparge, hop, fail, manual or offline shows one of the mockup's moments, on its demo data, instead of
+// ?demo=mash, sparge, hop, boilpower, fail, manual or offline shows one of the mockup's moments, on its demo data, instead of
 // CraftBeerPi (design/brewday/check_identity.py compares it with the mockup). ?demo=resume and longprompt are the
 // screen's own, for the title bar with two buttons and with CraftBeerPi's longest question (demo.js EXTRA).
 const BrewDay = () => {

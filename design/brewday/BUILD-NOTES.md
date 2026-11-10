@@ -5,7 +5,9 @@ This folder is a proposal. Nothing in it changes CraftBeerPi, and nothing is com
 - `compare.html` flips between the two layouts Scott compared (press Space). Use it to check either design
   on a monitor, a laptop or a phone, in five moments of a brew day.
 - `brew-day.html` is layout B on its own: Scott chose it on 9 Nov 2026. Add `?layout=a` to see layout A. It has
-  a sixth moment, `#sparge`, for the runoff to the boil kettle.
+  a sixth moment, `#sparge`, for the runoff to the boil kettle, and a seventh, `#boilpower`, for the boil
+  power control Scott asked to have back on 10 Nov. It shows a temperature graph in each
+  faceplate, which Scott chose on 10 Nov; add `?graphs=none` to see the screen as first built.
 - The pages run on demo data copied from the simulator's config (`C:\src\personal\cbpi-testbench\config`).
   They do not talk to CraftBeerPi. Buttons respond and timers run, but nothing is sent anywhere.
 
@@ -17,6 +19,11 @@ other reading and command it needs already exists. Which kettle is which, and wh
 comes from CraftBeerPi's own kettle settings, so there is no separate file to keep in step. Three more
 extras would be better with server work; they are marked "server, optional" and the screen works without
 them.
+
+The temperature graphs Scott chose on 10 Nov follow the same pattern. Their temperature line works on today's
+server. For the target and element-power lines to reach back before the screen was opened, the
+`PID_LOGGING` setting has to be on; heating by hand and the step tags need small server changes to do the
+same. The section at the end has the detail.
 
 ## Change by change
 
@@ -32,6 +39,7 @@ them.
 | Error messages a person can read | Server, optional | Today most failures come back as a bare 500 or 204. A short reason in the response would let the alert say why. |
 | Separate AUTO and MANUAL buttons | React UI | Use the existing `POST /kettle/{id}/on` and `/off`. Do not use `/toggle`: on a screen that is a few seconds out of date, toggle can switch the wrong way. |
 | Target editor: −1, −0.1, +0.1, +1 or type a value, then SET | React UI | Existing `POST /kettle/{id}/target_temp`. |
+| Boil power beside the boil element: BOIL POWER 45 % in AUTO, POWER 100 % (the element's own level) in MANUAL; tap, adjust, SET; works while a recipe runs | React UI | Scott's top priority, 10 Nov. Existing `set_boil_power` kettle action and `/actor/{id}/set_power`. See "Boil power" below. |
 | Recipe column: every step, the current step's time left and progress bar, hop additions with "add now" when due | React UI | Existing step data. Boil additions are already there, for example `Hop_1: 60` and `Hop_1_text: "3.00 oz Centennial"`. Start, Stop and Next step use the existing `/step2/start`, `/step2/stop` and `/step2/next`. |
 | Next step asks once, in place: "Skip the rest of Saccharification (23:41 left) and start Sparge?" | React UI | |
 | Hop and lid alerts in the title bar with their own button (ADDED, DONE) | React UI | Existing notifications with actions. Since the S2 fix they stay until answered. |
@@ -106,8 +114,166 @@ From his test of the built screen on port 8012, also 9 Nov (Brett passed these o
 7. Whether the HLT pump moves the sparge water: "Yes, the HLT pump moves the sparge water to the mash tun".
    Before the sparge it recirculates the HLT; Brett's server change starts it whenever the HLT heats.
 
-Assumed, not asked: the HLT pump's two ways (back round the HLT, or over to the mash tun) are drawn with
-hand valves, like the wort pump's. If Scott moves a hose instead, the two HLT-side valves can go and the
-paths stay as they are.
+Assumed at first, answered on 10 Nov: the HLT pump's two ways (back round the HLT, or over to the mash tun)
+are drawn with hand valves, like the wort pump's. Scott actually moves hoses, but wants the valves drawn.
 
-Nothing in the design is waiting on Scott. Whether and when to build it is Brett's and Scott's call.
+The screen isn't waiting on Scott. Two questions about the drawing have been answered but not drawn yet (see
+"Open questions about the drawing" below).
+
+## A fix to the screen as built (10 Nov)
+
+When brewing by hand, the recipe column holds the rest timer and the recipe book. On a screen under about
+1000 px tall that is taller than the column, so the whole page scrolled: 34 px in a 1920×950 browser window
+(Scott's usual set-up) and 131 px on a 1440×900 laptop, breaking the One Screen Rule. Now the recipe book's
+list scrolls inside the column, as the step list does while a recipe runs (`.book` and `.book ul` in
+`brew-day.css`). Where nothing overflowed, the screen is unchanged, apart from one or two levels of
+anti-aliasing on the list's rounded corners, because the list is now a scroll box.
+
+## Boil power: Scott's top priority (10 Nov), ships before the graphs
+
+Scott, 10 Nov: "I seem to have lost the critical ability to set the boil power percentage with this redesign.
+Work with the design agent to add it back. This is next high priority." A few minutes later: "I need to be
+able to adjust boil element power even while running a recipe".
+
+Brett is releasing this on the screen as built, before the graphs. So the reference is
+`brew-day.html?graphs=none#boilpower`; `brew-day.html#boilpower` is the same control with the graphs.
+
+What Scott sees:
+
+- On the boil kettle's faceplate, a button beside the BOIL ELEMENT lamp. The lamp used to fill that row on its
+  own; now each takes half, so the faceplate gets no taller.
+  - Boil kettle in AUTO: **BOIL POWER 45 %**, with "used from 210.2 °F · change" under it. This is BoilPower's
+    `Boil_Power`.
+  - Boil kettle in MANUAL: **POWER 100 %**, with "used by hand · change". This is the element's own level, the
+    one it runs at when switched on by hand.
+- Tapping it opens an editor in place of the mode row, the same shape as the target editor: −5, −1, the value,
+  +1, +5, then SET 40 % and CANCEL. Whole numbers from 0 to 100; the keys stop at 0 and 100. Enter sets,
+  Escape cancels, and a second tap on the button closes it. While it is open the button has a blue outline.
+- After SET the button says "sending…", then the button, the lamp ("HEATING 40 %") and OUT all show the new
+  level, and the last-event line says "Boil power 40 % (was 45 %) · confirmed". When the new level isn't in
+  use yet, the event line says when it will be, so an OUT that doesn't move isn't taken for a failure:
+  "used from 210.2 °F, full power until then" (AUTO, still heating up) or "used when you switch the element
+  on" (MANUAL, element off).
+- It works while a recipe runs. During the Boil step the kettle is in AUTO and its element lamp is locked
+  ("run by AUTO"), but the power button is a separate button and no step locks it. The demo moment
+  `#boilpower` is step 5, the Boil, running, with the 60-minute hop already in, and Scott turning 45 % down to
+  40 %. (Test Recipe v5's boil is step 5.)
+- With no connection it pauses like every other control.
+
+Decisions I made, from Brett's facts. Scott hasn't seen the first two yet:
+
+- **One button for both modes**, as Brett suggested: BOIL POWER in AUTO, POWER in MANUAL, and the hint says
+  when the level is used. Hardware boil controllers work the same way: their output keys set the boil output
+  in boil mode and the element output in manual mode. If Scott would rather set the by-hand level somewhere
+  else, only the MANUAL half changes.
+- **If the kettle's mode changes while the editor is open** (the Boil step starting, a step stopping), the
+  editor closes without sending anything, and the note under the faceplate says "The boil kettle switched to
+  AUTO, so the button now sets the boil power. Nothing was changed." Otherwise SET could change the by-hand
+  level while the button above it says BOIL POWER.
+- **No held press for SET.** The Held Heat Rule is about switching heat on. SET changes a level and never
+  switches the element on; when it is heating, a held press or AUTO already switched it on. It is already a
+  deliberate tap, adjust, SET, and the urgent case, turning a boil-over down, has to be quick. DESIGN.md's
+  Held Heat Rule now says so.
+- **White digits in the editor**, not green (that means a target) or orange (heating now).
+- **The hold temperature is left out** (`set_hold_target`, "Hold a temperature (whirlpool / hop stand)" in
+  the old dialog). The Whirlpool step sets and clears it itself. Brett will ask Scott whether he wants it.
+
+| Part | What it needs | Notes |
+|---|---|---|
+| Which kettle gets the button | React UI | Only a kettle whose logic declares the `set_boil_power` action, read from the logic's actions as the old KettleControl dialog did. On the rig, the boil kettle. |
+| BOIL POWER value and hint | React UI | The kettle's `Boil_Power` prop. The 210.2 °F in the hint is the kettle's `Boil_Threshold` prop, not a constant. |
+| Setting it (AUTO) | React UI | `POST /kettle/{id}/action` with `{"action": "set_boil_power", "parameter": {"Boil_Power": N}}`. Works with the kettle off or on and at any step, and is kept in the kettle's settings, so a step restarting the logic keeps it. BoilPower uses it at its next control decision, about 2 s later, so OUT can lag "confirmed" by up to 2 s. A warning from CraftBeerPi (a value it can't use) is a failure: the button says so and the value stays as it was. |
+| POWER value and setting it (MANUAL) | React UI | The element actor's `power`, and `POST /actor/{id}/set_power` with `{"power": N}`. Since M61 this level is the brewer's own and stays put when AUTO stops. |
+| The lamp and OUT | React UI | Unchanged: the element's power while it is on. In AUTO below the threshold that is Max_Output (100 %), so OUT reads 100 % while the button reads the boil power. That is right, and the hint says why. |
+| The editor | React UI | The target editor's layout with −5/−1/+1/+5, whole numbers and `inputmode="numeric"` (`.editor.pwr`). In the mockup: `powerHTML`, `editorHTML`, `cmdPwrOpen`, `cmdPwrStep` and `cmdPwrSet`, the `pwr`, `pstep` and `pset` cases in `run()`, the Enter and input handlers, and the `kind` and `what` fields of `st.edit`. The mode-change rule is at the end of the boil kettle's branch of `setMode`. |
+| Two small fixes that come with it | React UI | (1) While any value editor is open, `#app` gets `data-editing`. Then the other faceplates' button rows stop stretching to the editor's height (the faceplates share row heights), and the drawing may shrink further (to 160 px, or 110 px with the graphs), so a two-line note under an editor can't make the page scroll. Before this, tapping the locked element lamp with the editor open scrolled the page 6–20 px at 1920×950 and 1440×900. With no editor open neither rule applies. (2) A valid SET clears a "Enter a … from … to …" note left from an earlier try, in both editors. |
+| The demo moment | Mockup | `#boilpower`. Scenes can now carry `open` (state applied after `load()` resets the editor and notes) and `base` (whose graph history to use). |
+
+Checked in the mockup (Edge), both with `?graphs=none` and with the graphs:
+
+- At 1920×1080, 1920×950, 1440×900 and a 390×844 phone the button fits and its words don't overflow. No
+  monitor size scrolls with the editor open, with a warning under it, or with a two-line explanation.
+- Walked through: 36 % set mid-boil (lamp, OUT and event follow); 150 refused with "Enter a boil power from 0
+  to 100 %."; an unchanged SET just closes; Escape and a second tap close; 60 % set in AUTO while still heating
+  up (OUT stays 100 % and the event says when the new level applies); 70 % set in MANUAL with the element off,
+  then the element held on (HEATING 70 %), then 55 % while on; NEXT STEP into the Boil with the by-hand editor
+  open (it closes, says why, sends nothing); no connection (paused). No script errors.
+- With no editor open, the six existing moments change only in the boil kettle's lamp row.
+
+## Open questions about the drawing
+
+Both were answered by Scott on 10 Nov; the drawing hasn't been changed for them yet, and the change will come
+to Brett separately, after boil power:
+
+- Valves or hoses: he moves hoses between ports on quick-disconnects, but wants the drawing to keep the
+  valves: "I like the valve representation - it is professional looking process control".
+- After the boil: the wort pump does not run during the boil. Once the boil is over it runs the boil kettle
+  round through the chiller and back into the kettle (an optional whirlpool), and then sends the wort through
+  the chiller to the fermenter. Until the drawing has that path, running the wort pump then still shows wort
+  going round the HERMS coil into the mash tun, which is wrong.
+
+## Temperature graphs: Scott chose option A on 10 Nov, to be built
+
+Scott asked (9 Nov): "Can you mock up a way to add temperature graphs to the dashboard? It should be natural
+looking and not like a bolt-on". Asked what a graph should show at a glance, he answered: "I'd like the
+ability to toggle between a,b, and c by clicking the temperature graph". The three were (a) the last 30
+minutes, to see whether a vessel will reach its target and roughly when; (b) the last 10 minutes, to see how
+steadily it is holding; (c) the whole brew day.
+
+He then chose option A, "graphs always showing, with a smaller rig drawing", over option B, a DRAWING /
+GRAPHS switch that would have swapped the drawing for the graphs, and asked for it to go to Brett to build.
+Asked how CraftBeerPi shows on his monitor, he said he usually runs a normal browser window with tabs and the
+address bar showing, and that full screen "is a good idea and I may start to use that in the future". So A
+has to work in a browser window about 950 px tall on his 1080-line monitor, and now does.
+
+How to look at it:
+
+- `brew-day.html` shows the graphs by default; `?graphs=none` shows the screen as first built. `&span=10`,
+  `30` or `day` picks the starting span.
+- `graphs.html` is the comparison Scott chose from: A, B and the screen without graphs, on a full-screen
+  monitor, a browser window on that monitor and a phone. B (`?graphs=panel`) is kept only for that record:
+  don't port `renderGraphPanel`, `.gpanel`, `.ghead`, `.gcol`, `.gwin` or `.gview`.
+- The code is `graphs.js`, hooks in `brew-day.js` (search for `GRAPHS` and `graph`), the label scale `rs` in
+  `rig.js`, and the block at the end of `brew-day.css`. With `?graphs=none` the page matches the screen as
+  built pixel for pixel: checked against `design\brewday` in all six moments at 1920×1080, 1440×900 and
+  390×844, 18 of 18 identical.
+
+What it is:
+
+- One graph per vessel, in its PID window under the PV and SV, with its own temperature scale. The three
+  are never put on one shared plot, which Scott turned down. Red line for PV, green step line for SV, orange
+  band for OUT (element power), numbered tags where steps started, clock times along the bottom when the
+  graph is at least 90 px tall. The three share their clock marks.
+- 10 MIN, 30 MIN and DAY beside each graph. Tapping a graph moves all three to the next span; tapping a
+  label goes straight to it. 30 MIN to start with.
+- When readings stop, the lines turn grey and a dark stretch covers the time with no readings.
+- When a vessel is heading for its target and is at least 1 °F away, its status line adds "about N min at
+  this rate", worked out from the last 3 minutes and shown only if it's under 2 hours.
+- On a phone the graph sits in each faceplate too, 108 px tall.
+
+What it costs on a monitor, and how the screen makes up for it:
+
+- The drawing gets shorter: 289 px instead of 413 px on a 1920×1080 screen at full screen, and 221 px
+  instead of 283 px in a browser window about 950 px tall.
+- Its labels are set larger as it shrinks, up to 1.3 times (vessel names up to 1.15 times). In a browser
+  window they come out the same size as on the screen as first built.
+- When the screen is 1000 px tall or less, the faceplates tighten. The PV and SV keep their size.
+  - Faceplate rows 8 px apart instead of 10.
+  - Lamp buttons 66 px tall instead of 73 (padding 12px 8px 5px, min-height 58px).
+  - The mode row 56 px instead of 64 (min-height 54px).
+  - The graph's top margin and padding 7 px instead of 10.
+  - The span labels closer together (gap 2 px, padding 4 px).
+- The drawing never goes below 140 px. Only a screen under about 900 px tall scrolls, and only a little,
+  when an alarm makes the title bar taller.
+
+| Change | What it needs | Notes |
+|---|---|---|
+| The graphs, the spans, tapping to change span, the grey lines and dark stretch when readings stop, the time-to-target | React UI | `graphs.js` is the reference. Remember the span on each device in `localStorage`; the mockup forgets it when the page reloads. Each graph is drawn to its box, so redraw when the fonts finish loading (the mockup listens for `document.fonts` `loadingdone`) or watch each box with a `ResizeObserver`; otherwise a graph keeps the width it had before the fonts arrived. |
+| The faceplates tightening at 1000 px tall or less | React UI | The `@media (min-width:1180px) and (max-height:1000px)` block in `brew-day.css`, all under `[data-graphs=face]`. |
+| PV history | React UI on today's server; sharper with a server change | `GET /log/{name}` and `POST /log/logs` return a sensor's whole log thinned to about 500 points (the highest reading in each slice), with no time window. Over a 6-hour log that's a point every 43 s or so: fine for DAY and 30 MIN, coarse for 10 MIN. The screen can start from that and then add the live readings it already receives (`sensorupdate`). A `since` parameter on `/log` would give full detail straight away (server, optional). |
+| SV and OUT history | One setting; a server change for heating by hand | The kettle logics log their target and element power only when the `PID_LOGGING` setting is "Yes" (it defaults to "No"): PIDHerms as `<mash tun id>.mash_setpoint`, `.hlt_setpoint` and `.duty`, PIDBoil as `<kettle id>.setpoint` and `.duty`. Nothing is logged while a kettle is in MANUAL, and switching an actor is never logged (`CBpiActor.log_data` exists but nothing calls it). Without server work, the screen can only draw SV and OUT for the time it has been open. |
+| Step tags, and where DAY starts | Server, optional | CraftBeerPi doesn't keep the time each step started. The screen can tag the steps it saw start while it was open. To keep them after a reload, and to start DAY when the recipe started, the server would have to keep the start times. BrewScribe may already record them, so ask Scott and Porter before adding a second record. Until then DAY can show the last 8 hours. |
+| The drawing's labels set larger when it is shorter | React UI | `rigSVG(style, W, rs)` and `rigPump(…, rs)` in `rig.js`; `drawRig` in `brew-day.js` works out `rs` (at most 1.3). With `rs` = 1 the drawing is unchanged. |
+
+The graphs show the brew day so far only to help Scott run it. They don't save anything; recording the brew
+day stays BrewScribe's job.

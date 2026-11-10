@@ -1,0 +1,1067 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-10T19:38:56Z",
+  "title": "Design System: CraftBeerPi Brew Day",
+  "extensions": {
+    "colorMeta": {
+      "bg": {
+        "role": "neutral",
+        "displayName": "Garage Slate",
+        "canonical": "#0f161d",
+        "tonalRamp": [
+          "#060c12",
+          "#1e262d",
+          "#3b434b",
+          "#5a626b",
+          "#7a838d",
+          "#9da6b0",
+          "#c1cad4",
+          "#e6f0fa"
+        ]
+      },
+      "bar": {
+        "role": "neutral",
+        "displayName": "Cabinet Black",
+        "canonical": "#0a1016",
+        "tonalRamp": [
+          "#060c12",
+          "#1f262d",
+          "#3c434a",
+          "#5b626a",
+          "#7b838c",
+          "#9ea6af",
+          "#c2cad3",
+          "#e7f0f9"
+        ]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Panel Slate",
+        "canonical": "#17212b",
+        "tonalRamp": [
+          "#040c15",
+          "#1c2630",
+          "#38434e",
+          "#57636f",
+          "#788490",
+          "#9aa7b4",
+          "#becbd8",
+          "#e3f0fe"
+        ]
+      },
+      "panel-2": {
+        "role": "neutral",
+        "displayName": "Raised Slate",
+        "canonical": "#1e2b37",
+        "tonalRamp": [
+          "#030c16",
+          "#1a2632",
+          "#364451",
+          "#546371",
+          "#758493",
+          "#97a7b6",
+          "#bbcbdb",
+          "#e2f1ff"
+        ]
+      },
+      "panel-hover": {
+        "role": "neutral",
+        "displayName": "Hover Slate",
+        "canonical": "#253545",
+        "tonalRamp": [
+          "#010c19",
+          "#172636",
+          "#334454",
+          "#526375",
+          "#728597",
+          "#94a7bb",
+          "#b8cce0",
+          "#e2f0ff"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Hairline Slate",
+        "canonical": "#2a3b4b",
+        "tonalRamp": [
+          "#010c19",
+          "#162736",
+          "#334454",
+          "#516375",
+          "#728597",
+          "#94a8bb",
+          "#b7cce0",
+          "#e2f1ff"
+        ]
+      },
+      "edge": {
+        "role": "neutral",
+        "displayName": "Control Edge",
+        "canonical": "#33475a",
+        "tonalRamp": [
+          "#000c1b",
+          "#142738",
+          "#304457",
+          "#4f6478",
+          "#6f859a",
+          "#91a8be",
+          "#b5cce3",
+          "#e2f1ff"
+        ]
+      },
+      "face": {
+        "role": "neutral",
+        "displayName": "PID Window Black",
+        "canonical": "#030609",
+        "tonalRamp": [
+          "#070c10",
+          "#20262a",
+          "#3d4348",
+          "#5c6267",
+          "#7c8389",
+          "#9fa6ac",
+          "#c3cad0",
+          "#e8f0f6"
+        ]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "Panel White",
+        "canonical": "#e8eef3",
+        "tonalRamp": [
+          "#080c0f",
+          "#212629",
+          "#3e4347",
+          "#5d6266",
+          "#7e8388",
+          "#a0a6aa",
+          "#c4cacf",
+          "#e9eff4"
+        ]
+      },
+      "text-2": {
+        "role": "neutral",
+        "displayName": "Soft Steel",
+        "canonical": "#b6c3cf",
+        "tonalRamp": [
+          "#040c14",
+          "#1c262f",
+          "#39434d",
+          "#57636d",
+          "#78848f",
+          "#9aa7b2",
+          "#becbd7",
+          "#e3f0fd"
+        ]
+      },
+      "text-3": {
+        "role": "neutral",
+        "displayName": "Dim Steel",
+        "canonical": "#8b9cad",
+        "tonalRamp": [
+          "#020c18",
+          "#192634",
+          "#354452",
+          "#536373",
+          "#748495",
+          "#96a7b8",
+          "#bacbdd",
+          "#e2f0ff"
+        ]
+      },
+      "on-fill": {
+        "role": "neutral",
+        "displayName": "On-Fill White",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "stale": {
+        "role": "neutral",
+        "displayName": "Stale Grey",
+        "canonical": "#6b7785",
+        "tonalRamp": [
+          "#040c16",
+          "#1c2632",
+          "#384350",
+          "#576270",
+          "#778492",
+          "#9aa6b5",
+          "#bdcbda",
+          "#e3f0ff"
+        ]
+      },
+      "pv": {
+        "role": "primary",
+        "displayName": "Process Red",
+        "canonical": "#ff4b3e",
+        "tonalRamp": [
+          "#1f0000",
+          "#4d0001",
+          "#810003",
+          "#b90006",
+          "#e83229",
+          "#ff7364",
+          "#ffb3a8",
+          "#ffe9e5"
+        ]
+      },
+      "sv": {
+        "role": "primary",
+        "displayName": "Setpoint Green",
+        "canonical": "#3ddc6f",
+        "tonalRamp": [
+          "#001003",
+          "#002e0f",
+          "#005120",
+          "#007631",
+          "#009d44",
+          "#11c55a",
+          "#51ec7e",
+          "#c8ffd0"
+        ]
+      },
+      "run": {
+        "role": "primary",
+        "displayName": "Running Green",
+        "canonical": "#3ddc6f",
+        "tonalRamp": [
+          "#001003",
+          "#002e0f",
+          "#005120",
+          "#007631",
+          "#009d44",
+          "#11c55a",
+          "#51ec7e",
+          "#c8ffd0"
+        ]
+      },
+      "heat": {
+        "role": "primary",
+        "displayName": "Element Orange",
+        "canonical": "#ff7b1c",
+        "tonalRamp": [
+          "#180500",
+          "#3f1800",
+          "#6b2d00",
+          "#9a4500",
+          "#cc5d00",
+          "#fe7a1a",
+          "#ffb68f",
+          "#ffeadf"
+        ]
+      },
+      "lamp-off": {
+        "role": "primary",
+        "displayName": "Dark Lamp Grey",
+        "canonical": "#3a4856",
+        "tonalRamp": [
+          "#030c17",
+          "#192633",
+          "#364451",
+          "#546372",
+          "#758494",
+          "#97a7b7",
+          "#bbcbdc",
+          "#e2f0ff"
+        ]
+      },
+      "liquor": {
+        "role": "secondary",
+        "displayName": "Hot Liquor Cyan",
+        "canonical": "#46b8ea",
+        "tonalRamp": [
+          "#000d15",
+          "#00293a",
+          "#004963",
+          "#006a8f",
+          "#008ebe",
+          "#3fb2e4",
+          "#80d5ff",
+          "#dcf3ff"
+        ]
+      },
+      "wort": {
+        "role": "secondary",
+        "displayName": "Wort Gold",
+        "canonical": "#e9b33b",
+        "tonalRamp": [
+          "#110a00",
+          "#322200",
+          "#563d00",
+          "#7d5b00",
+          "#a67a00",
+          "#d09b14",
+          "#f6c04b",
+          "#ffecc9"
+        ]
+      },
+      "drawing-ink": {
+        "role": "secondary",
+        "displayName": "Drawing Line Steel",
+        "canonical": "#b9c6d2",
+        "tonalRamp": [
+          "#040c14",
+          "#1c262f",
+          "#39434d",
+          "#57636d",
+          "#78848f",
+          "#9aa7b2",
+          "#becbd7",
+          "#e3f0fd"
+        ]
+      },
+      "drawing-label": {
+        "role": "secondary",
+        "displayName": "Drawing Label Steel",
+        "canonical": "#c3cfda",
+        "tonalRamp": [
+          "#050c13",
+          "#1d262e",
+          "#39434c",
+          "#58636c",
+          "#79848e",
+          "#9ba7b1",
+          "#bfcbd6",
+          "#e4f0fc"
+        ]
+      },
+      "drawing-idle": {
+        "role": "secondary",
+        "displayName": "Idle Element Steel",
+        "canonical": "#6f8194",
+        "tonalRamp": [
+          "#010c1a",
+          "#172636",
+          "#334455",
+          "#526375",
+          "#728498",
+          "#94a7bb",
+          "#b8cce0",
+          "#e2f0ff"
+        ]
+      },
+      "pipe-still": {
+        "role": "secondary",
+        "displayName": "Still Pipe Slate",
+        "canonical": "#4a5a6b",
+        "tonalRamp": [
+          "#020c19",
+          "#182635",
+          "#344454",
+          "#536374",
+          "#738497",
+          "#95a7ba",
+          "#b9cbdf",
+          "#e3f0ff"
+        ]
+      },
+      "vessel-fill": {
+        "role": "secondary",
+        "displayName": "Vessel Interior Slate",
+        "canonical": "#1b2833",
+        "tonalRamp": [
+          "#030c16",
+          "#1a2732",
+          "#364450",
+          "#556370",
+          "#758492",
+          "#97a7b5",
+          "#bbccda",
+          "#e1f1ff"
+        ]
+      },
+      "prompt": {
+        "role": "tertiary",
+        "displayName": "Prompt Amber",
+        "canonical": "#ffb21e",
+        "tonalRamp": [
+          "#130900",
+          "#342100",
+          "#5a3b00",
+          "#825800",
+          "#ad7600",
+          "#da9600",
+          "#ffbb4b",
+          "#ffebd0"
+        ]
+      },
+      "prompt-bg": {
+        "role": "tertiary",
+        "displayName": "Dark Amber Wash",
+        "canonical": "#3a2a06",
+        "tonalRamp": [
+          "#110a00",
+          "#322200",
+          "#503f1d",
+          "#705f3c",
+          "#92805c",
+          "#b6a37e",
+          "#dbc7a1",
+          "#ffecc9"
+        ]
+      },
+      "prompt-ink": {
+        "role": "tertiary",
+        "displayName": "Prompt Cream",
+        "canonical": "#fff1d2",
+        "tonalRamp": [
+          "#110a00",
+          "#2e2309",
+          "#4c4127",
+          "#6c6045",
+          "#8e8165",
+          "#b1a487",
+          "#d5c8aa",
+          "#fbedce"
+        ]
+      },
+      "note": {
+        "role": "tertiary",
+        "displayName": "Note Amber",
+        "canonical": "#ffd9a0",
+        "tonalRamp": [
+          "#120900",
+          "#342100",
+          "#593c00",
+          "#7c5a22",
+          "#9e7c45",
+          "#c39f67",
+          "#e8c38a",
+          "#ffeccf"
+        ]
+      },
+      "alarm": {
+        "role": "tertiary",
+        "displayName": "Alarm Red",
+        "canonical": "#ff4a4a",
+        "tonalRamp": [
+          "#1f0001",
+          "#4d0006",
+          "#80000f",
+          "#b8001b",
+          "#e83137",
+          "#ff726b",
+          "#ffb2ab",
+          "#ffe9e6"
+        ]
+      },
+      "alarm-bg": {
+        "role": "tertiary",
+        "displayName": "Alarm Oxblood",
+        "canonical": "#6e1414",
+        "tonalRamp": [
+          "#1f0001",
+          "#4d0004",
+          "#761d1b",
+          "#9b403a",
+          "#c1625a",
+          "#e8857b",
+          "#ffb3aa",
+          "#ffe9e6"
+        ]
+      },
+      "fault-bg": {
+        "role": "tertiary",
+        "displayName": "Fault Wash",
+        "canonical": "#2b1315",
+        "tonalRamp": [
+          "#190406",
+          "#361d1f",
+          "#55393b",
+          "#76585a",
+          "#99797a",
+          "#bd9b9d",
+          "#e2bfc1",
+          "#ffe8e9"
+        ]
+      },
+      "alarm-ink": {
+        "role": "tertiary",
+        "displayName": "Alarm Pink",
+        "canonical": "#ffc9c4",
+        "tonalRamp": [
+          "#1f0001",
+          "#3e1715",
+          "#5f3431",
+          "#815350",
+          "#a57470",
+          "#c99692",
+          "#efbab5",
+          "#ffe9e6"
+        ]
+      },
+      "ok-bg": {
+        "role": "tertiary",
+        "displayName": "All-Clear Wash",
+        "canonical": "#11331f",
+        "tonalRamp": [
+          "#001005",
+          "#0a2d19",
+          "#294b35",
+          "#486b54",
+          "#698c74",
+          "#8bb096",
+          "#aed4ba",
+          "#d3fadf"
+        ]
+      },
+      "ok-ink": {
+        "role": "tertiary",
+        "displayName": "All-Clear Mint",
+        "canonical": "#c9f2d6",
+        "tonalRamp": [
+          "#000f05",
+          "#072d19",
+          "#274b35",
+          "#466b53",
+          "#678d74",
+          "#89b096",
+          "#add5b9",
+          "#d1fbde"
+        ]
+      },
+      "select": {
+        "role": "tertiary",
+        "displayName": "Selection Blue",
+        "canonical": "#2a6fc0",
+        "tonalRamp": [
+          "#000b1f",
+          "#00244d",
+          "#004081",
+          "#1961b0",
+          "#3f83d6",
+          "#62a7fd",
+          "#a5ccff",
+          "#e4f0ff"
+        ]
+      },
+      "active": {
+        "role": "tertiary",
+        "displayName": "Current Step Blue",
+        "canonical": "#1c5796",
+        "tonalRamp": [
+          "#000b1e",
+          "#00254b",
+          "#00427e",
+          "#2963a3",
+          "#4b85c8",
+          "#6da9ee",
+          "#a3cdff",
+          "#e3f0ff"
+        ]
+      },
+      "active-edge": {
+        "role": "tertiary",
+        "displayName": "Current Step Edge",
+        "canonical": "#3c7fcc",
+        "tonalRamp": [
+          "#000b1e",
+          "#00254c",
+          "#00417f",
+          "#1c62ac",
+          "#4184d2",
+          "#64a8f8",
+          "#a4cdff",
+          "#e4f0ff"
+        ]
+      },
+      "active-ink": {
+        "role": "tertiary",
+        "displayName": "Current Step Ink",
+        "canonical": "#dce9f7",
+        "tonalRamp": [
+          "#040c15",
+          "#1c2630",
+          "#39434e",
+          "#57636e",
+          "#788490",
+          "#9aa7b4",
+          "#becbd8",
+          "#e3f0fe"
+        ]
+      },
+      "progress": {
+        "role": "tertiary",
+        "displayName": "Progress Blue",
+        "canonical": "#9bcbff",
+        "tonalRamp": [
+          "#000b1d",
+          "#002648",
+          "#17446f",
+          "#386492",
+          "#5886b6",
+          "#7aa9dc",
+          "#a0ceff",
+          "#e3f0ff"
+        ]
+      },
+      "progress-track": {
+        "role": "tertiary",
+        "displayName": "Progress Track Navy",
+        "canonical": "#0d2b48",
+        "tonalRamp": [
+          "#000b1c",
+          "#082643",
+          "#264463",
+          "#456485",
+          "#6585a8",
+          "#87a9cc",
+          "#aacdf2",
+          "#e3f0ff"
+        ]
+      },
+      "focus": {
+        "role": "tertiary",
+        "displayName": "Focus Ring Blue",
+        "canonical": "#8cc2ff",
+        "tonalRamp": [
+          "#000b1d",
+          "#00254a",
+          "#0c4377",
+          "#30639a",
+          "#5286bf",
+          "#74a9e5",
+          "#a2cdff",
+          "#e3f0ff"
+        ]
+      },
+      "answer": {
+        "role": "tertiary",
+        "displayName": "Answer White",
+        "canonical": "#f4f6f8",
+        "tonalRamp": [
+          "#0a0b0d",
+          "#242527",
+          "#414244",
+          "#606163",
+          "#818284",
+          "#a3a5a7",
+          "#c7c9cb",
+          "#edeff1"
+        ]
+      },
+      "answer-ink": {
+        "role": "tertiary",
+        "displayName": "Answer Ink",
+        "canonical": "#10161c",
+        "tonalRamp": [
+          "#070c11",
+          "#1f262c",
+          "#3c434a",
+          "#5b626a",
+          "#7b838b",
+          "#9ea6ae",
+          "#c2cad3",
+          "#e7f0f9"
+        ]
+      },
+      "graph-grid": {
+        "role": "neutral",
+        "displayName": "Graph Grid",
+        "canonical": "#16202a",
+        "tonalRamp": [
+          "#040c15",
+          "#1c2631",
+          "#38434f",
+          "#57626e",
+          "#788491",
+          "#9aa7b4",
+          "#becbd9",
+          "#e3f1ff"
+        ]
+      },
+      "graph-gap": {
+        "role": "neutral",
+        "displayName": "Graph Gap",
+        "canonical": "#0b1117",
+        "tonalRamp": [
+          "#060c11",
+          "#20262d",
+          "#3c434a",
+          "#5a626a",
+          "#7c848c",
+          "#9ea6af",
+          "#c2cad3",
+          "#e7f0f9"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "pv": {
+        "displayName": "PV readout",
+        "purpose": "The measured temperature on each faceplate: the largest type on the panel, Process Red with a glow."
+      },
+      "sv": {
+        "displayName": "SV readout",
+        "purpose": "The target temperature under the PV, about half its size, in Setpoint Green."
+      },
+      "readout": {
+        "displayName": "OUT and MODE readout",
+        "purpose": "OUT and MODE values beside PV and SV in the PID window."
+      },
+      "headline": {
+        "displayName": "Recipe name",
+        "purpose": "The recipe name at the top of the recipe column, in capitals."
+      },
+      "title": {
+        "displayName": "Vessel name",
+        "purpose": "Vessel names on the faceplates, in capitals."
+      },
+      "lamp-state": {
+        "displayName": "Lamp state",
+        "purpose": "The state word on a lamp button: HEATING 62 %, RUNNING, OFF, DID NOT STOP."
+      },
+      "button": {
+        "displayName": "Button label",
+        "purpose": "Command labels such as TARGET, STOP, NEXT STEP and AUTO."
+      },
+      "row": {
+        "displayName": "Step title",
+        "purpose": "Recipe step titles; banner text and recipe book names speak in the same voice."
+      },
+      "detail": {
+        "displayName": "Detail",
+        "purpose": "Step temperatures and times, additions, the deviation line and the last-event line."
+      },
+      "label": {
+        "displayName": "Tag",
+        "purpose": "PV, SV, OUT and MODE tags, step status, LOG and the connection label, in capitals."
+      },
+      "nav": {
+        "displayName": "Tab",
+        "purpose": "Screen tabs, in capitals; 14px on a phone."
+      },
+      "body": {
+        "displayName": "Sentence",
+        "purpose": "Regular-width Barlow for whole sentences only: notes, confirmation questions and toasts."
+      }
+    },
+    "shadows": [
+      {
+        "name": "sunken-window",
+        "value": "inset 0 3px 10px rgb(0 0 0 / .9), inset 0 0 0 1px #1a2530, 0 1px 0 rgb(255 255 255 / .06)",
+        "purpose": "The black PID window, sunk into the faceplate, with a 1px black border."
+      },
+      {
+        "name": "pv-glow",
+        "value": "0 0 18px rgb(255 75 62 / .38)",
+        "purpose": "text-shadow on the PV digits; removed when readings go stale."
+      },
+      {
+        "name": "sv-glow",
+        "value": "0 0 14px rgb(61 220 111 / .32)",
+        "purpose": "text-shadow on the SV digits; removed when readings go stale."
+      },
+      {
+        "name": "lamp-glow-heating",
+        "value": "0 2px 14px rgb(255 123 28 / .6)",
+        "purpose": "Under a heating lamp strip."
+      },
+      {
+        "name": "lamp-glow-running",
+        "value": "0 2px 14px rgb(61 220 111 / .5)",
+        "purpose": "Under a running lamp strip."
+      },
+      {
+        "name": "element-glow",
+        "value": "SVG filter: feGaussianBlur stdDeviation 3, merged under the source",
+        "purpose": "A heating element in the rig drawing."
+      },
+      {
+        "name": "pressed-ring",
+        "value": "inset 0 0 0 2px #a9bfd4",
+        "purpose": "The active half of the AUTO | MANUAL switch."
+      },
+      {
+        "name": "floating-list",
+        "value": "0 18px 40px rgb(0 0 0 / .5)",
+        "purpose": "The event log list that LOG opens."
+      },
+      {
+        "name": "toast",
+        "value": "0 12px 30px rgb(0 0 0 / .45)",
+        "purpose": "The toast. With the log list, the only lifted surfaces."
+      }
+    ],
+    "motion": [
+      {
+        "name": "hold-press",
+        "value": "transform 1s linear",
+        "purpose": "Element Orange fill at 32% sweeps left to right while a heat, AUTO or recipe START button is held (pointer, Space or Enter). Letting go early starts nothing. Kept under reduced motion."
+      },
+      {
+        "name": "pending-march",
+        "value": "background-position 0.6s linear infinite (diagonal stripes, 17px repeat)",
+        "purpose": "The lamp strip while a command waits for CraftBeerPi. Stops under reduced motion."
+      },
+      {
+        "name": "pipe-flow",
+        "value": "stroke-dashoffset -24 over 0.9s linear infinite (dashes 5px on, 19px off)",
+        "purpose": "White dashes along a pipe whose pump is confirmed running. Stops under reduced motion."
+      },
+      {
+        "name": "link-blink",
+        "value": "opacity .25 at 50%, 1s steps(2, start) infinite",
+        "purpose": "The connection lamp when the link is lost; the lamp is then a hollow Alarm Red ring rather than a filled dot, so the change is one of shape as well as colour. Stops under reduced motion."
+      },
+      {
+        "name": "coil-change",
+        "value": "stroke 0.3s",
+        "purpose": "The HERMS coil turning Wort Gold when the wort pump runs and the wort is drawn going through it."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "phone",
+        "value": "700px"
+      },
+      {
+        "name": "stacked-faceplates",
+        "value": "899px"
+      },
+      {
+        "name": "shared-rows",
+        "value": "900px"
+      },
+      {
+        "name": "single-column",
+        "value": "1179px"
+      },
+      {
+        "name": "fixed-screen",
+        "value": "1180px"
+      },
+      {
+        "name": "short-screen-height",
+        "value": "1000px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "PID Faceplate",
+      "kind": "custom",
+      "refersTo": "faceplate",
+      "description": "One per vessel, like a hardware PID controller: name, black window with PV over SV plus OUT and MODE and the vessel's temperature graph under them, and the deviation line.",
+      "html": "<section class=\"ds-plate\"><h2 class=\"ds-plate-name\">Boil kettle</h2><div class=\"ds-face\"><dl class=\"ds-pvsv\"><dt>PV</dt><dd class=\"ds-pv\">210.6<span class=\"ds-u\">°F</span></dd><dt>SV</dt><dd class=\"ds-sv\">210.2<span class=\"ds-u\">°F</span></dd></dl><dl class=\"ds-aux\"><dt>OUT</dt><dd>45 %<span class=\"ds-outbar\"><i style=\"width:45%\"></i></span></dd><dt>MODE</dt><dd>AUTO</dd></dl></div><p class=\"ds-dev\">Boiling</p></section>",
+      "css": ".ds-plate{--pu:3.6px;display:grid;gap:10px;width:360px;padding:12px;background:var(--panel,#17212b);border:1px solid var(--line,#2a3b4b);border-radius:6px;color:var(--text,#e8eef3);font-family:\"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif} .ds-plate-name{margin:0;font-weight:700;font-size:clamp(18px,calc(7 * var(--pu)),27px);line-height:1;letter-spacing:.06em;text-transform:uppercase} .ds-face{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:clamp(10px,calc(3.5 * var(--pu)),16px);padding:clamp(6px,calc(2.5 * var(--pu)),12px) clamp(10px,calc(4 * var(--pu)),18px);background:var(--face,#030609);border:1px solid #000;border-radius:4px;box-shadow:inset 0 3px 10px rgb(0 0 0/.9),inset 0 0 0 1px #1a2530,0 1px 0 rgb(255 255 255/.06)} .ds-pvsv{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;column-gap:clamp(10px,calc(4 * var(--pu)),18px);margin:0;min-width:0} .ds-pvsv dt{font-weight:600;font-size:clamp(15px,calc(5 * var(--pu)),22px);line-height:1;letter-spacing:.08em;color:var(--text-3,#8b9cad)} .ds-pvsv dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap} .ds-pv{color:var(--pv,#ff4b3e);text-shadow:0 0 18px rgb(255 75 62/.38);font-size:clamp(48px,calc(21 * var(--pu)),110px);line-height:1} .ds-sv{color:var(--sv,#3ddc6f);text-shadow:0 0 14px rgb(61 220 111/.32);font-size:clamp(26px,calc(9.5 * var(--pu)),50px);line-height:1.05} .ds-u{font-size:.4em;margin-left:.12em;vertical-align:1em} .ds-aux{display:grid;align-self:stretch;align-content:center;margin:0;padding-left:clamp(10px,calc(3.5 * var(--pu)),16px);border-left:1px solid #2a3846} .ds-aux dt{font-weight:600;font-size:clamp(12px,calc(3.6 * var(--pu)),15px);line-height:1;letter-spacing:.1em;color:var(--text-3,#8b9cad)} .ds-aux dd{margin:3px 0 10px;font-weight:600;font-size:clamp(20px,calc(6.6 * var(--pu)),32px);line-height:1;letter-spacing:.03em;font-variant-numeric:tabular-nums;white-space:nowrap} .ds-aux dd:last-child{margin-bottom:0} .ds-outbar{display:block;height:5px;margin-top:6px;border-radius:3px;background:#1d2833;overflow:hidden} .ds-outbar i{display:block;height:100%;background:var(--heat,#ff7b1c)} .ds-dev{margin:0;font-weight:500;font-size:clamp(15px,calc(4.8 * var(--pu)),19px);line-height:1.2;letter-spacing:.03em;color:var(--text-2,#b6c3cf)}"
+    },
+    {
+      "name": "Temperature Graph",
+      "kind": "custom",
+      "refersTo": "graph",
+      "description": "In each PID window, under the PV and SV: the vessel's own scale, PV red, SV green as a step line, OUT as an orange band, numbered step tags and clock times; 10 MIN, 30 MIN and DAY beside it. Tapping any graph moves all three to the next span.",
+      "html": "<div class=\"ds-graph\"><svg class=\"ds-gsvg\" viewBox=\"0 0 330 110\" width=\"330\" height=\"110\" role=\"img\" aria-label=\"Hot liquor tank, the last 30 minutes: rose from about 130 to 154 °F as step 3 began; target 154.4 °F; element power along the bottom.\"><defs><clipPath id=\"dsg-c\"><rect x=\"0\" y=\"0\" width=\"330\" height=\"81\"/></clipPath></defs><path class=\"ds-g-grid\" d=\"M0 75.9H330M0 48.4H330M0 20.9H330M82.3 3V78M192.3 3V78M302.3 3V78\"/><path class=\"ds-g-mark\" d=\"M78.7 18V78\"/><path class=\"ds-g-base\" d=\"M0 93H330\"/><path class=\"ds-g-out\" d=\"M-0.2 93V88.6H1.7V88.4H3.5V88.2H5.3V87.9H7.2V87.8H9.0V87.7H10.8V87.6H12.6V87.5H14.5V87.5H16.3V87.5H18.1V87.6H20.0V87.6H21.8V87.8H23.7V87.9H25.5V88.0H27.3V88.3H29.1V88.5H31.0V88.7H32.8V88.9H34.6V89.2H36.5V89.3H38.3V89.5H40.1V89.6H42.0V89.6H43.8V89.7H45.6V89.7H47.5V89.7H49.3V89.6H51.1V89.5H53.0V89.4H54.8V89.3H56.6V89.0H58.5V88.8H60.3V88.6H62.1V88.4H64.0V88.3H65.8V88.0H67.6V87.8H69.5V87.7H71.3V87.6H73.2V87.5H75.0V87.5H76.8V87.5H78.7V82.0H80.5V82.0H82.3V82.0H84.2V82.0H86.0V82.0H87.8V82.0H89.7V82.0H91.5V82.0H93.3V82.0H95.2V82.0H97.0V82.0H98.8V82.0H100.6V82.0H102.5V82.0H104.3V82.0H106.1V82.0H108.0V82.0H109.8V82.0H111.6V82.0H113.5V82.0H115.3V82.0H117.1V82.0H119.0V82.0H120.8V82.0H122.6V82.0H124.5V82.0H126.3V82.0H128.2V82.0H130.0V82.0H131.8V82.0H133.7V82.0H135.5V82.0H137.3V82.0H139.2V82.0H141.0V82.0H142.8V82.0H144.7V82.0H146.5V82.0H148.3V82.0H150.2V82.0H152.0V82.0H153.8V82.0H155.7V82.0H157.5V82.0H159.3V82.0H161.2V82.0H163.0V82.0H164.8V87.3H166.7V87.3H168.5V87.3H170.3V87.3H172.1V87.2H174.0V87.1H175.8V86.8H177.7V86.7H179.5V86.5H181.3V86.3H183.2V86.2H185.0V86.0H186.8V85.7H188.7V85.5H190.5V85.4H192.3V85.3H194.2V85.2H196.0V85.1H197.8V85.1H199.7V85.1H201.5V85.2H203.3V85.2H205.2V85.4H207.0V85.5H208.8V85.7H210.7V85.8H212.5V86.1H214.3V86.3H216.2V86.5H218.0V86.7H219.8V86.8H221.6V87.1H223.5V87.2H225.3V87.2H227.2V87.3H229.0V87.3H230.8V87.3H232.6V87.2H234.5V87.1H236.3V87.0H238.2V86.7H240.0V86.6H241.8V86.4H243.6V86.2H245.5V86.0H247.3V85.7H249.2V85.6H251.0V85.4H252.8V85.3H254.6V85.2H256.5V85.1H258.3V85.1H260.1V85.1H262.0V85.1H263.8V85.2H265.7V85.3H267.5V85.5H269.3V85.6H271.1V85.8H273.0V86.1H274.8V86.3H276.7V86.4H278.5V86.6H280.3V86.8H282.1V87.0H284.0V87.1H285.8V87.2H287.7V87.3H289.5V87.3H291.3V87.3H293.1V87.2H295.0V87.1H296.8V87.0H298.7V86.8H300.5V86.6H302.3V86.4H304.1V86.3H306.0V86.1H307.8V86.0H309.7V85.8H311.5V85.7H313.3V85.7H315.1V85.7H317.0V85.7H318.8V85.8H320.6V85.8H322.5V86.0H324.3V86.0H326.1V86.1H328.0V86.2H329.8V86.2H329.8V93Z\"/><text class=\"ds-g-bl\" x=\"3\" y=\"91\">OUT</text><g clip-path=\"url(#dsg-c)\"><path class=\"ds-g-sv\" d=\"M-0.2 72.1H1.7V72.1H3.5V72.1H5.3V72.1H7.2V72.1H9.0V72.1H10.8V72.1H12.6V72.1H14.5V72.1H16.3V72.1H18.1V72.1H20.0V72.1H21.8V72.1H23.7V72.1H25.5V72.1H27.3V72.1H29.1V72.1H31.0V72.1H32.8V72.1H34.6V72.1H36.5V72.1H38.3V72.1H40.1V72.1H42.0V72.1H43.8V72.1H45.6V72.1H47.5V72.1H49.3V72.1H51.1V72.1H53.0V72.1H54.8V72.1H56.6V72.1H58.5V72.1H60.3V72.1H62.1V72.1H64.0V72.1H65.8V72.1H67.6V72.1H69.5V72.1H71.3V72.1H73.2V72.1H75.0V72.1H76.8V72.1H78.7V8.8H80.5V8.8H82.3V8.8H84.2V8.8H86.0V8.8H87.8V8.8H89.7V8.8H91.5V8.8H93.3V8.8H95.2V8.8H97.0V8.8H98.8V8.8H100.6V8.8H102.5V8.8H104.3V8.8H106.1V8.8H108.0V8.8H109.8V8.8H111.6V8.8H113.5V8.8H115.3V8.8H117.1V8.8H119.0V8.8H120.8V8.8H122.6V8.8H124.5V8.8H126.3V8.8H128.2V8.8H130.0V8.8H131.8V8.8H133.7V8.8H135.5V8.8H137.3V8.8H139.2V8.8H141.0V8.8H142.8V8.8H144.7V8.8H146.5V8.8H148.3V8.8H150.2V8.8H152.0V8.8H153.8V8.8H155.7V8.8H157.5V8.8H159.3V8.8H161.2V8.8H163.0V8.8H164.8V8.8H166.7V8.8H168.5V8.8H170.3V8.8H172.1V8.8H174.0V8.8H175.8V8.8H177.7V8.8H179.5V8.8H181.3V8.8H183.2V8.8H185.0V8.8H186.8V8.8H188.7V8.8H190.5V8.8H192.3V8.8H194.2V8.8H196.0V8.8H197.8V8.8H199.7V8.8H201.5V8.8H203.3V8.8H205.2V8.8H207.0V8.8H208.8V8.8H210.7V8.8H212.5V8.8H214.3V8.8H216.2V8.8H218.0V8.8H219.8V8.8H221.6V8.8H223.5V8.8H225.3V8.8H227.2V8.8H229.0V8.8H230.8V8.8H232.6V8.8H234.5V8.8H236.3V8.8H238.2V8.8H240.0V8.8H241.8V8.8H243.6V8.8H245.5V8.8H247.3V8.8H249.2V8.8H251.0V8.8H252.8V8.8H254.6V8.8H256.5V8.8H258.3V8.8H260.1V8.8H262.0V8.8H263.8V8.8H265.7V8.8H267.5V8.8H269.3V8.8H271.1V8.8H273.0V8.8H274.8V8.8H276.7V8.8H278.5V8.8H280.3V8.8H282.1V8.8H284.0V8.8H285.8V8.8H287.7V8.8H289.5V8.8H291.3V8.8H293.1V8.8H295.0V8.8H296.8V8.8H298.7V8.8H300.5V8.8H302.3V8.8H304.1V8.8H306.0V8.8H307.8V8.8H309.7V8.8H311.5V8.8H313.3V8.8H315.1V8.8H317.0V8.8H318.8V8.8H320.6V8.8H322.5V8.8H324.3V8.8H326.1V8.8H328.0V8.8H329.8V8.8\"/><path class=\"ds-g-pv\" d=\"M-0.2 72.1L1.7 71.9L3.5 72.0L5.3 72.0L7.2 71.8L9.0 71.9L10.8 72.3L12.6 72.4L14.5 72.5L16.3 72.8L18.1 72.7L20.0 72.4L21.8 72.4L23.7 72.3L25.5 72.1L27.3 72.3L29.1 72.5L31.0 72.3L32.8 72.3L34.6 72.2L36.5 71.8L38.3 71.5L40.1 71.6L42.0 71.5L43.8 71.5L45.6 71.9L47.5 71.9L49.3 71.7L51.1 71.8L53.0 71.7L54.8 71.4L56.6 71.7L58.5 72.0L60.3 72.0L62.1 72.3L64.0 72.6L65.8 72.4L67.6 72.3L69.5 72.4L71.3 72.2L73.2 72.2L75.0 72.6L76.8 72.7L78.7 72.5L80.5 71.2L82.3 69.6L84.2 67.6L86.0 66.1L87.8 64.7L89.7 63.0L91.5 61.7L93.3 60.5L95.2 58.9L97.0 57.3L98.8 55.8L100.6 54.0L102.5 52.4L104.3 51.3L106.1 49.9L108.0 48.5L109.8 47.5L111.6 46.2L113.5 44.5L115.3 43.1L117.1 41.7L119.0 40.0L120.8 38.8L122.6 37.8L124.5 36.4L126.3 35.0L128.2 33.7L130.0 32.0L131.8 30.2L133.7 28.8L135.5 27.2L137.3 25.7L139.2 24.5L141.0 23.1L142.8 21.4L144.7 19.9L146.5 18.3L148.3 16.4L150.2 14.9L152.0 13.6L153.8 12.1L155.7 11.3L157.5 11.0L159.3 10.3L161.2 9.7L163.0 9.5L164.8 9.2L166.7 8.9L168.5 9.1L170.3 9.3L172.1 9.2L174.0 9.5L175.8 9.5L177.7 9.2L179.5 9.1L181.3 9.1L183.2 9.0L185.0 9.1L186.8 9.4L188.7 9.4L190.5 9.2L192.3 9.2L194.2 8.9L196.0 8.5L197.8 8.5L199.7 8.6L201.5 8.4L203.3 8.7L205.2 8.8L207.0 8.5L208.8 8.4L210.7 8.4L212.5 8.2L214.3 8.2L216.2 8.6L218.0 8.7L219.8 8.8L221.6 9.2L223.5 9.2L225.3 8.9L227.2 9.0L229.0 9.1L230.8 9.0L232.6 9.3L234.5 9.7L236.3 9.6L238.2 9.6L240.0 9.6L241.8 9.2L243.6 9.0L245.5 9.1L247.3 9.0L249.2 9.0L251.0 9.3L252.8 9.2L254.6 8.9L256.5 8.8L258.3 8.7L260.1 8.3L262.0 8.4L263.8 8.7L265.7 8.7L267.5 8.9L269.3 9.2L271.1 9.0L273.0 8.8L274.8 9.0L276.7 8.9L278.5 9.0L280.3 9.5L282.1 9.7L284.0 9.7L285.8 9.8L287.7 9.8L289.5 9.5L291.3 9.4L293.1 9.6L295.0 9.5L296.8 9.6L298.7 9.8L300.5 9.6L302.3 9.4L304.1 9.4L306.0 9.1L307.8 8.9L309.7 9.1L311.5 9.2L313.3 9.1L315.1 9.3L317.0 9.3L318.8 9.2L320.6 9.2L322.5 9.2L324.3 9.2L326.1 9.3L328.0 9.4L329.8 9.4\"/></g><circle class=\"ds-g-dot\" cx=\"329.8\" cy=\"9.4\" r=\"3\"/><g class=\"ds-g-gl\"><text x=\"3\" y=\"72.9\">130</text><text x=\"3\" y=\"45.4\">140</text><text x=\"3\" y=\"17.9\">150</text></g><g class=\"ds-g-tl\"><text x=\"82.3\" y=\"107\">14:10</text><text x=\"192.3\" y=\"107\">14:20</text><text x=\"302.3\" y=\"107\">14:30</text></g><g class=\"ds-g-mn\"><g transform=\"translate(78.7 3)\"><rect x=\"-8\" y=\"0\" width=\"16\" height=\"15\" rx=\"2\"/><text y=\"11.5\">3</text></g></g></svg><span class=\"ds-gspans\"><span>10 MIN</span><span class=\"ds-on\">30 MIN</span><span>DAY</span></span></div>",
+      "css": ".ds-graph{display:grid;grid-template-columns:330px auto;gap:0 14px;width:max-content;padding:10px 14px;background:var(--face,#030609);border:1px solid #000;border-radius:4px;box-shadow:inset 0 3px 10px rgb(0 0 0/.9),inset 0 0 0 1px #1a2530,0 1px 0 rgb(255 255 255/.06)} .ds-gsvg{display:block} .ds-gspans{display:grid;align-content:center;gap:5px;padding-left:14px;border-left:1px solid #2a3846} .ds-gspans span{padding:6px 4px;border:1px solid transparent;border-radius:3px;font:600 13px/1 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;letter-spacing:.08em;color:var(--text-3,#8b9cad);text-align:center} .ds-gspans .ds-on{border-color:#7f91a3;background:#0e171f;color:#fff} .ds-g-grid{fill:none;stroke:#16202a;stroke-width:1} .ds-g-mark{fill:none;stroke:#3a4a5a;stroke-width:1;stroke-dasharray:3 3} .ds-g-mn rect{fill:#1e2b37;stroke:#3a4a5a;stroke-width:1} .ds-g-mn text{font:600 11px \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;fill:var(--text-2,#b6c3cf);text-anchor:middle} .ds-g-gl text,.ds-g-tl text,.ds-g-bl{font:600 12px \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;letter-spacing:.04em;fill:var(--text-3,#8b9cad);paint-order:stroke;stroke:#030609;stroke-width:3px;stroke-linejoin:round} .ds-g-tl text{text-anchor:middle} .ds-g-bl{font-size:10px;letter-spacing:.08em} .ds-g-base{fill:none;stroke:#1d2833;stroke-width:1} .ds-g-out{fill:rgb(255 123 28/.6);stroke:none} .ds-g-sv{fill:none;stroke:var(--sv,#3ddc6f);stroke-width:1.6;stroke-linejoin:round} .ds-g-pv{fill:none;stroke:var(--pv,#ff4b3e);stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round;filter:drop-shadow(0 0 3px rgb(255 75 62/.5))} .ds-g-dot{fill:var(--pv,#ff4b3e)} .ds-g-gap{fill:#0b1117}"
+    },
+    {
+      "name": "Lamp Button",
+      "kind": "button",
+      "refersTo": "lamp-button",
+      "description": "Switches equipment. An 8px lamp strip across the top plus the state in words: heating, running, off (hold to turn heat on), waiting, failed, and run by someone else.",
+      "html": "<div class=\"ds-lamps\"><button type=\"button\" class=\"ds-lamp\" data-state=\"heating\"><span class=\"ds-st\">HEATING 62 %</span><span class=\"ds-nm\">HLT ELEMENT · tap to turn off</span></button><button type=\"button\" class=\"ds-lamp\" data-state=\"running\"><span class=\"ds-st\">RUNNING</span><span class=\"ds-nm\">HLT PUMP · tap to stop</span></button><button type=\"button\" class=\"ds-lamp\" data-state=\"off\" data-hold><span class=\"ds-fill\"></span><span class=\"ds-st\">OFF</span><span class=\"ds-nm\">BOIL ELEMENT · hold to turn on</span></button><button type=\"button\" class=\"ds-lamp\" data-state=\"pending\"><span class=\"ds-st\">SWITCHING OFF…</span><span class=\"ds-nm\">WORT PUMP · waiting for CraftBeerPi</span></button><button type=\"button\" class=\"ds-lamp\" data-state=\"failed\"><span class=\"ds-st\">DID NOT STOP</span><span class=\"ds-nm\">HLT PUMP · still running · tap to try again</span></button><button type=\"button\" class=\"ds-lamp ds-locked\" data-state=\"heating\" aria-disabled=\"true\"><span class=\"ds-st\">HEATING 62 %</span><span class=\"ds-nm\">HLT ELEMENT · run by mash tun</span></button></div>",
+      "css": ".ds-lamps{display:grid;grid-template-columns:repeat(3,180px);gap:8px;font-family:\"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif} .ds-lamp{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:72px;padding:17px 8px 8px;border:1px solid var(--edge,#33475a);border-radius:6px;background:var(--panel-2,#1e2b37);color:var(--text,#e8eef3);font-family:inherit;text-align:center;overflow:hidden;cursor:pointer;user-select:none;touch-action:manipulation} .ds-lamp::before{content:\"\";position:absolute;inset:0 0 auto;height:8px;background:#3a4856} .ds-lamp:hover{background:#253545} .ds-lamp:focus-visible{outline:3px solid #8cc2ff;outline-offset:2px} .ds-st{position:relative;font-weight:700;font-size:22px;line-height:1;letter-spacing:.05em} .ds-nm{position:relative;font-weight:500;font-size:15px;line-height:1.15;letter-spacing:.05em;color:var(--text-2,#b6c3cf)} .ds-lamp[data-state=heating]::before{background:var(--heat,#ff7b1c);box-shadow:0 2px 14px rgb(255 123 28/.6)} .ds-lamp[data-state=running]::before{background:var(--run,#3ddc6f);box-shadow:0 2px 14px rgb(61 220 111/.5)} .ds-lamp[data-state=pending]::before{background:repeating-linear-gradient(-45deg,#a9bccd 0 6px,#33475a 6px 12px);background-size:17px 8px;animation:ds-march .6s linear infinite} .ds-lamp[data-state=failed]{border:2px solid var(--alarm,#ff4a4a);background:#2b1315} .ds-lamp[data-state=failed]::before{background:var(--alarm,#ff4a4a)} .ds-lamp[data-state=failed] .ds-nm{color:#ffd0cc} .ds-lamp.ds-locked{border-style:dashed;background:transparent;cursor:not-allowed} .ds-fill{position:absolute;inset:0;background:rgb(255 123 28/.32);transform:scaleX(0);transform-origin:left center;pointer-events:none} .ds-lamp[data-hold]:active .ds-fill{transform:scaleX(1);transition:transform 1s linear} @keyframes ds-march{to{background-position:17px 0}} @media (prefers-reduced-motion:reduce){.ds-lamp::before{animation:none}}"
+    },
+    {
+      "name": "Mode Switch and Command Button",
+      "kind": "button",
+      "refersTo": "command-button",
+      "description": "AUTO | MANUAL as a two-part switch (AUTO needs a held press) beside TARGET. Each button carries a hint line saying what a press does.",
+      "html": "<div class=\"ds-moderow\"><div class=\"ds-seg\" role=\"group\" aria-label=\"Mash tun mode\"><button type=\"button\" aria-pressed=\"true\">AUTO</button><button type=\"button\" aria-pressed=\"false\">MANUAL<small>tap to stop AUTO</small></button></div><button type=\"button\" class=\"ds-cmd\">TARGET<small>change SV</small></button></div>",
+      "css": ".ds-moderow{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:8px;width:360px;font-family:\"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif} .ds-seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--edge,#33475a);border-radius:6px;overflow:hidden} .ds-seg button,.ds-cmd{position:relative;min-height:62px;padding:6px 4px;border:0;background:var(--panel-2,#1e2b37);color:var(--text,#e8eef3);font:700 20px/1 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;letter-spacing:.06em;cursor:pointer;user-select:none;touch-action:manipulation} .ds-seg button+button{border-left:1px solid var(--edge,#33475a)} .ds-seg button[aria-pressed=true]{background:#070c11;color:#fff;box-shadow:inset 0 0 0 2px #a9bfd4} .ds-cmd{border:1px solid var(--edge,#33475a);border-radius:6px} .ds-seg small,.ds-cmd small{display:block;margin-top:5px;font-weight:500;font-size:13px;line-height:1.1;letter-spacing:.04em;color:var(--text-3,#8b9cad)} .ds-seg button[aria-pressed=true] small{color:#c9d6e2} .ds-seg button:not([aria-pressed=true]):hover,.ds-cmd:hover{background:#253545} .ds-seg button:focus-visible,.ds-cmd:focus-visible{outline:3px solid #8cc2ff;outline-offset:2px} .ds-cmd[aria-disabled=true]{color:var(--text-3,#8b9cad);cursor:not-allowed}"
+    },
+    {
+      "name": "Alarm Banner",
+      "kind": "custom",
+      "refersTo": "banner-prompt",
+      "description": "Sits in the middle of the title bar. All clear, prompt (amber, waits for an answer) or alarm (red); always an icon, a title and words, with an Answer White button.",
+      "html": "<div class=\"ds-banners\"><div class=\"ds-banner\" data-tone=\"ok\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"11\" fill=\"currentColor\"/><path d=\"M6.5 12.5l3.5 3.5 7-8\" fill=\"none\" stroke=\"#0a1016\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg><span class=\"ds-msg\">No alarms</span></div><div class=\"ds-banner\" data-tone=\"prompt\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"M12 2a6 6 0 0 0-6 6v4.5L4 16v1.5h16V16l-2-3.5V8a6 6 0 0 0-6-6zm-2.5 17a2.5 2.5 0 0 0 5 0z\"/></svg><span class=\"ds-msg\"><b>Hop alert</b>Please add 3.00 oz Centennial (1)</span><button type=\"button\" class=\"ds-answer\">ADDED</button></div><div class=\"ds-banner\" data-tone=\"alarm\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"M12 1.8 23 21.5H1z\"/><path d=\"M12 8.5v6M12 17.5v.5\" stroke=\"#6e1414\" stroke-width=\"2.6\" stroke-linecap=\"round\"/></svg><span class=\"ds-msg\"><b>Command failed</b>HLT PUMP did not switch off. It is still running.</span><button type=\"button\" class=\"ds-answer\">TRY AGAIN</button></div></div>",
+      "css": ".ds-banners{display:grid;gap:10px;width:620px;font-family:\"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif} .ds-banner{display:flex;align-items:center;gap:12px;min-height:50px;padding:5px 6px 5px 14px;border-radius:6px;font-weight:600;font-size:18px;line-height:1.2;letter-spacing:.03em} .ds-banner svg{flex:none;width:26px;height:26px} .ds-banner[data-tone=ok]{width:max-content;padding-right:18px;background:#11331f;border:1px solid #2b6a42;color:#c9f2d6;text-transform:uppercase;letter-spacing:.08em} .ds-banner[data-tone=ok] svg{color:var(--run,#3ddc6f)} .ds-banner[data-tone=prompt]{background:var(--prompt-bg,#3a2a06);border:2px solid var(--prompt,#ffb21e);color:#fff1d2} .ds-banner[data-tone=prompt] svg{color:var(--prompt,#ffb21e)} .ds-banner[data-tone=alarm]{background:var(--alarm-bg,#6e1414);border:2px solid var(--alarm,#ff4a4a);color:#fff} .ds-msg{flex:1;min-width:0} .ds-msg b{display:block;font-size:20px;letter-spacing:.06em;text-transform:uppercase} .ds-answer{flex:none;min-height:48px;padding:0 20px;border:0;border-radius:6px;background:#f4f6f8;color:#10161c;font:700 18px/1 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;letter-spacing:.06em;cursor:pointer} .ds-answer:focus-visible{outline:3px solid #8cc2ff;outline-offset:2px}"
+    },
+    {
+      "name": "Recipe Step List",
+      "kind": "custom",
+      "refersTo": "recipe-step",
+      "description": "Steps down the recipe column: done steps dimmed with a green tick, the current step in Current Step Blue with its countdown and progress bar, steps to come marked with an empty ring.",
+      "html": "<ol class=\"ds-steps\" aria-label=\"Recipe steps\"><li class=\"ds-step ds-done\"><span class=\"ds-n\">2</span><span class=\"ds-t\">Protein Rest</span><span class=\"ds-p\">126 °F · 20 min</span><span class=\"ds-s\">✓ DONE</span></li><li class=\"ds-step\" aria-current=\"step\"><span class=\"ds-n\">3</span><span class=\"ds-t\">Saccharification</span><span class=\"ds-p\">149 °F · 40 min</span><span class=\"ds-s\">23:41 LEFT</span><span class=\"ds-bar\"><i style=\"width:41%\"></i></span></li><li class=\"ds-step\"><span class=\"ds-n\">4</span><span class=\"ds-t\">Sparge</span><span class=\"ds-p\">168 °F · 40 min</span><span class=\"ds-s\"><i class=\"ds-todo\" aria-hidden=\"true\"></i></span></li></ol>",
+      "css": ".ds-steps{display:flex;flex-direction:column;gap:6px;width:400px;margin:0;padding:0;list-style:none;color:var(--text,#e8eef3);font-family:\"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif} .ds-step{display:grid;grid-template-columns:36px minmax(0,1fr) auto;column-gap:12px;row-gap:3px;align-items:center;padding:8px 12px 8px 6px;border:1px solid var(--line,#2a3b4b);border-radius:6px;background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),var(--panel-2,#1e2b37)} .ds-n{grid-row:1/3;font-weight:700;font-size:26px;line-height:1;text-align:center;color:var(--text-2,#b6c3cf)} .ds-t{grid-column:2;font-weight:600;font-size:20px;line-height:1.1;letter-spacing:.02em} .ds-p{grid-column:2;font-weight:500;font-size:16px;line-height:1.25;letter-spacing:.02em;color:var(--text-2,#b6c3cf)} .ds-s{grid-column:3;grid-row:1/3;font-weight:600;font-size:15px;line-height:1;letter-spacing:.06em;color:var(--text-3,#8b9cad);text-align:right;white-space:nowrap} .ds-done .ds-t,.ds-done .ds-p,.ds-done .ds-n{color:var(--text-3,#8b9cad)} .ds-done .ds-s{color:var(--run,#3ddc6f)} .ds-step[aria-current=step]{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),var(--active,#1c5796);border-color:#3c7fcc} .ds-step[aria-current=step] .ds-n,.ds-step[aria-current=step] .ds-p{color:#dce9f7} .ds-step[aria-current=step] .ds-s{font-weight:700;font-size:26px;color:#fff;font-variant-numeric:tabular-nums} .ds-bar{grid-column:2/-1;display:block;height:8px;border-radius:4px;background:#0d2b48;overflow:hidden} .ds-bar i{display:block;height:100%;background:#9bcbff} .ds-todo{display:inline-block;width:16px;height:16px;border:2px solid #6b7c8d;border-radius:50%;vertical-align:middle}"
+    },
+    {
+      "name": "Screen Tabs",
+      "kind": "nav",
+      "refersTo": "tab",
+      "description": "Equal-width tabs under the last-event line on a monitor; the current tab in Selection Blue. On a phone they become a fixed two-row bar at the bottom.",
+      "html": "<nav class=\"ds-tabs\" aria-label=\"Screens\"><a href=\"#\" aria-current=\"page\">Brew day</a><a href=\"#\">Brew steps</a><a href=\"#\">Recipe book</a><a href=\"#\">Analytics</a><a href=\"#\">Hardware</a><a href=\"#\">Settings</a><a href=\"#\">More</a></nav>",
+      "css": ".ds-tabs{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);width:900px;min-height:56px;background:var(--bar,#0a1016);border-top:1px solid var(--line,#2a3b4b);border-bottom:1px solid var(--line,#2a3b4b)} .ds-tabs a{display:flex;align-items:center;justify-content:center;padding:0 6px;font:600 clamp(15px,1.15vw,19px)/1.05 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--text-2,#b6c3cf);text-decoration:none;text-align:center} .ds-tabs a+a{border-left:1px solid var(--line,#2a3b4b)} .ds-tabs a:hover{background:var(--panel,#17212b)} .ds-tabs a[aria-current=page]{background:var(--select,#2a6fc0);color:#fff} .ds-tabs a:focus-visible{outline:3px solid #8cc2ff;outline-offset:2px}"
+    },
+    {
+      "name": "Target Editor",
+      "kind": "input",
+      "refersTo": "target-input",
+      "description": "Replaces a faceplate’s mode row in place when TARGET is pressed: step keys, a small PID-window input in Setpoint Green, SET in Selection Blue, and CANCEL.",
+      "html": "<div class=\"ds-editor\" role=\"group\" aria-label=\"New target for the mash tun\"><button type=\"button\" aria-label=\"Down 1 degree\">−1</button><button type=\"button\" aria-label=\"Down 0.1 degree\">−.1</button><input inputmode=\"decimal\" value=\"149.0\" aria-label=\"New target in °F\"><button type=\"button\" aria-label=\"Up 0.1 degree\">+.1</button><button type=\"button\" aria-label=\"Up 1 degree\">+1</button><button type=\"button\" class=\"ds-ok\">SET 149.0 °F</button><button type=\"button\" class=\"ds-no\">CANCEL</button></div>",
+      "css": ".ds-editor{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) minmax(0,1.7fr) repeat(2,minmax(0,1fr));gap:6px;width:360px;font-family:\"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif} .ds-editor button{min-height:54px;padding:0 2px;border:1px solid var(--edge,#33475a);border-radius:6px;background:var(--panel-2,#1e2b37);color:var(--text,#e8eef3);font:700 18px/1 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;cursor:pointer} .ds-editor input{min-width:0;min-height:54px;border:2px solid #3d7fd0;border-radius:6px;background:var(--face,#030609);color:var(--sv,#3ddc6f);font:600 28px/1 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;text-align:center;font-variant-numeric:tabular-nums} .ds-editor .ds-ok{grid-column:1/4;background:var(--select,#2a6fc0);border-color:var(--select,#2a6fc0);color:#fff} .ds-editor .ds-no{grid-column:4/6} .ds-editor button:focus-visible,.ds-editor input:focus-visible{outline:3px solid #8cc2ff;outline-offset:2px}"
+    },
+    {
+      "name": "Boil Power",
+      "kind": "input",
+      "refersTo": "power-button",
+      "description": "Only on a kettle whose logic declares set_boil_power (the boil kettle on Scott's rig). A command button beside the BOIL ELEMENT lamp, as tall as the lamp, labelled with the level it sets and when that level is used: BOIL POWER 45 % over \"used from 210.2 °F · change\" in AUTO (BoilPower's boil power, used from the boil threshold up), POWER 100 % over \"used by hand · change\" in MANUAL (the element's own level). A running recipe step never locks it. Tapping it swaps the mode row for an editor shaped like the target editor: −5, −1, the value in Panel White, +1, +5, SET in Selection Blue and CANCEL; the button has a Selection Blue outline while it is open. SET is a tap, not a held press: it changes a level, it doesn't switch heat on. Scott asked for it back on 10 Nov 2026.",
+      "html": "<div class=\"ds-bp\"><div class=\"ds-bp-row\"><button type=\"button\" class=\"ds-bp-lamp\" data-state=\"heating\" aria-disabled=\"true\"><span class=\"ds-st\">HEATING 45 %</span><span class=\"ds-nm\">BOIL ELEMENT · run by AUTO</span></button><button type=\"button\" class=\"ds-bp-btn\" aria-expanded=\"true\">BOIL POWER 45 %<small>used from 210.2 °F · change</small></button></div><div class=\"ds-bp-ed\" role=\"group\" aria-label=\"New boil power for the boil kettle\"><button type=\"button\" aria-label=\"Down 5 percent\">−5</button><button type=\"button\" aria-label=\"Down 1 percent\">−1</button><input inputmode=\"numeric\" value=\"40\" aria-label=\"New boil power in percent\"><button type=\"button\" aria-label=\"Up 1 percent\">+1</button><button type=\"button\" aria-label=\"Up 5 percent\">+5</button><button type=\"button\" class=\"ds-ok\">SET 40 %</button><button type=\"button\" class=\"ds-no\">CANCEL</button></div></div>",
+      "css": ".ds-bp{display:grid;gap:8px;width:400px;font-family:\"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif} .ds-bp-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px} .ds-bp-lamp{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:72px;padding:17px 8px 8px;border:1px dashed var(--edge,#33475a);border-radius:6px;background:transparent;color:var(--text,#e8eef3);font-family:inherit;text-align:center;overflow:hidden;cursor:not-allowed} .ds-bp-lamp::before{content:\"\";position:absolute;inset:0 0 auto;height:8px;background:var(--heat,#ff7b1c);box-shadow:0 2px 14px rgb(255 123 28/.6)} .ds-bp-lamp .ds-st{position:relative;font-weight:700;font-size:22px;line-height:1;letter-spacing:.05em} .ds-bp-lamp .ds-nm{position:relative;font-weight:500;font-size:15px;line-height:1.15;letter-spacing:.05em;color:var(--text-2,#b6c3cf)} .ds-bp-btn{position:relative;min-height:72px;padding:6px 4px;border:1px solid var(--edge,#33475a);border-radius:6px;background:var(--panel-2,#1e2b37);color:var(--text,#e8eef3);font:700 20px/1 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;letter-spacing:.06em;cursor:pointer;user-select:none;touch-action:manipulation} .ds-bp-btn small{display:block;margin-top:5px;font-weight:500;font-size:13px;line-height:1.1;letter-spacing:.04em;color:var(--text-3,#8b9cad)} .ds-bp-btn:hover{background:#253545} .ds-bp-btn[aria-expanded=true]{border-color:var(--select,#2a6fc0);box-shadow:inset 0 0 0 1px var(--select,#2a6fc0)} .ds-bp-ed{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) minmax(0,1.7fr) repeat(2,minmax(0,1fr));gap:6px} .ds-bp-ed button{min-height:54px;padding:0 2px;border:1px solid var(--edge,#33475a);border-radius:6px;background:var(--panel-2,#1e2b37);color:var(--text,#e8eef3);font:700 18px/1 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;cursor:pointer} .ds-bp-ed input{min-width:0;min-height:54px;border:2px solid #3d7fd0;border-radius:6px;background:var(--face,#030609);color:var(--text,#e8eef3);font:600 28px/1 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;text-align:center;font-variant-numeric:tabular-nums} .ds-bp-ed .ds-ok{grid-column:1/4;background:var(--select,#2a6fc0);border-color:var(--select,#2a6fc0);color:#fff} .ds-bp-ed .ds-no{grid-column:4/6} .ds-bp button:focus-visible,.ds-bp input:focus-visible{outline:3px solid #8cc2ff;outline-offset:2px}"
+    },
+    {
+      "name": "Title Bar and ALL OFF",
+      "kind": "nav",
+      "refersTo": "heat-off-button",
+      "description": "Cabinet Black bar: brand, the alarm banner in the middle, the connection lamp, ALL OFF (neutral at rest, one tap, warms red only under the pointer; stops the recipe and switches every element and pump off) and the clock.",
+      "html": "<header class=\"ds-topbar\"><p class=\"ds-brand\">CraftBeerPi Brewery</p><div class=\"ds-allclear\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"11\" fill=\"currentColor\"/><path d=\"M6.5 12.5l3.5 3.5 7-8\" fill=\"none\" stroke=\"#0a1016\" stroke-width=\"2.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg><span>No alarms</span></div><p class=\"ds-link\"><i aria-hidden=\"true\"></i>Connected</p><button type=\"button\" class=\"ds-alloff\">ALL OFF</button><p class=\"ds-clock\">14:32</p></header>",
+      "css": ".ds-topbar{display:flex;align-items:center;gap:16px;width:1040px;padding:10px 20px;background:var(--bar,#0a1016);border-bottom:1px solid var(--line,#2a3b4b);color:var(--text,#e8eef3);font-family:\"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif} .ds-topbar p{margin:0} .ds-brand{font-weight:700;font-size:30px;line-height:1;letter-spacing:.04em;text-transform:uppercase} .ds-allclear{display:flex;align-items:center;gap:12px;margin:0 auto;min-height:50px;padding:5px 18px 5px 14px;border:1px solid #2b6a42;border-radius:6px;background:#11331f;color:#c9f2d6;font-weight:600;font-size:18px;line-height:1.2;letter-spacing:.08em;text-transform:uppercase} .ds-allclear svg{flex:none;width:26px;height:26px;color:var(--run,#3ddc6f)} .ds-link{display:flex;align-items:center;gap:8px;font-weight:600;font-size:16px;line-height:1;letter-spacing:.06em;text-transform:uppercase;color:var(--text-2,#b6c3cf)} .ds-link i{width:12px;height:12px;border-radius:50%;background:var(--run,#3ddc6f)} .ds-alloff{min-height:48px;padding:0 16px;border:2px solid #7d8fa2;border-radius:6px;background:var(--panel-2,#1e2b37);color:var(--text,#e8eef3);font:700 17px/1 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;letter-spacing:.06em;cursor:pointer} .ds-alloff:hover{border-color:#ff8a80;background:#2b1315} .ds-alloff:focus-visible{outline:3px solid #8cc2ff;outline-offset:2px} .ds-clock{min-width:3.2ch;text-align:right;font-weight:600;font-size:36px;line-height:1;font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "Pumped Pipe (rig drawing excerpt)",
+      "kind": "custom",
+      "description": "From the line drawing: the wort pump running, its pipe gold with flowing white dashes and arrow-heads; below, a hot liquor pipe whose pump is off, still and slate.",
+      "html": "<svg class=\"ds-rig\" viewBox=\"0 0 440 180\" role=\"img\" aria-label=\"Wort pump running: gold pipe with flowing dashes. HLT pump off: still slate pipe.\"><g class=\"ds-ln ds-on ds-wrt\"><path class=\"ds-pf\" d=\"M20 50 H138 M182 50 H420\"/><path class=\"ds-pd\" d=\"M20 50 H138 M182 50 H420\"/><path class=\"ds-ch\" d=\"M-4.5 -5.5 L3.5 0 L-4.5 5.5\" transform=\"translate(80 50) rotate(180)\"/><path class=\"ds-ch\" d=\"M-4.5 -5.5 L3.5 0 L-4.5 5.5\" transform=\"translate(300 50) rotate(180)\"/></g><g class=\"ds-pump ds-on ds-wrt\" transform=\"translate(160 50)\"><path class=\"ds-pb\" d=\"M-20 24 L-14 15 H14 L20 24 Z\"/><circle class=\"ds-pr\" r=\"22\"/><path class=\"ds-pt\" d=\"M8 -11 L-11 0 L8 11 Z\"/></g><text class=\"ds-pn\" x=\"136\" y=\"104\">WORT PUMP</text><text class=\"ds-ps ds-run\" x=\"136\" y=\"126\">RUNNING</text><g class=\"ds-ln ds-liq\"><path class=\"ds-pf\" d=\"M20 160 H420\"/><path class=\"ds-pd\" d=\"M20 160 H420\"/><path class=\"ds-ch\" d=\"M-4.5 -5.5 L3.5 0 L-4.5 5.5\" transform=\"translate(220 160) rotate(180)\"/></g></svg>",
+      "css": ".ds-rig{display:block;width:440px;height:180px;background:var(--panel,#17212b);border:1px solid var(--line,#2a3b4b);border-radius:6px} .ds-pf{fill:none;stroke:#4a5a6b;stroke-width:5;stroke-linejoin:round;stroke-linecap:round} .ds-pd{fill:none;stroke:none;stroke-width:2.2;stroke-linecap:round;stroke-dasharray:5 19} .ds-ch{display:none;stroke-width:3;stroke-linejoin:round} .ds-on.ds-wrt .ds-pf{stroke:var(--wort,#e9b33b)} .ds-on.ds-liq .ds-pf{stroke:var(--liquor,#46b8ea)} .ds-on .ds-pd{stroke:rgb(255 255 255/.75);animation:ds-flow .9s linear infinite} .ds-on .ds-ch{display:inline} .ds-on.ds-wrt .ds-ch{fill:var(--wort,#e9b33b);stroke:var(--wort,#e9b33b)} .ds-on.ds-liq .ds-ch{fill:var(--liquor,#46b8ea);stroke:var(--liquor,#46b8ea)} .ds-pr{fill:#1b2833;stroke:#b9c6d2;stroke-width:3} .ds-pt{fill:#b9c6d2} .ds-pb{fill:none;stroke:#b9c6d2;stroke-width:2.5} .ds-pump.ds-on.ds-wrt .ds-pr{fill:#3a2e12;stroke:var(--wort,#e9b33b)} .ds-pump.ds-on.ds-wrt .ds-pt{fill:var(--wort,#e9b33b)} .ds-pn{font:700 21px \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;letter-spacing:.06em;fill:#c3cfda} .ds-ps{font:600 18px \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;letter-spacing:.06em;fill:var(--text-3,#8b9cad)} .ds-ps.ds-run{fill:var(--run,#3ddc6f)} @keyframes ds-flow{to{stroke-dashoffset:-24}} @media (prefers-reduced-motion:reduce){.ds-pd{animation:none}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Brewhouse Touch Panel",
+    "overview": "This is the screen on the front of a brewhouse control cabinet, made for one rig: Scott's electric three-vessel HERMS. Each vessel gets a faceplate like a hardware PID controller: a big red measured temperature (PV) over a smaller green target (SV) in a black window, plus element power (OUT) and MODE, with the vessel's temperature graph under them in the same window. The vessels appear once more as a clean line drawing, plumbed the way the rig is plumbed, each one under its own faceplate. The recipe runs down the left. The screen refuses the generic dashboard made of a card grid of numbers and toggle switches.\n\nEverything is read from across a garage, through steam, often with wet hands. So the panel holds a few large things rather than many small ones: condensed capitals, numbers that fill their windows, buttons 62-72px tall, and a hint on each button saying what a press will do. Colour works like indicator lamps on real equipment: each hue has one job, and every state shown by a colour is also written in words. The dark slate panel is Scott's stated preference over a light theme, even though the garage is lit.\n\nScott has turned down dial gauges, plotting all three temperatures on one shared scale, and the shaded kettle pictures of an earlier version, which he called crude. A generic web-app look is what he named as the thing that would make a redesign feel wrong. This record describes layout B of the built mockup (`proposal/brew-day.html`, the default). Layout A (`?layout=a`: recipe on the right, steel kettle pictures, tabs along the bottom) is kept only for comparison and is not part of the system.",
+    "keyCharacteristics": [
+      "Dark slate panel; flat surfaces separated by 1px borders and small steps of tone.",
+      "One PID faceplate per vessel: PV big and red, SV smaller and green, OUT and MODE beside them, and the vessel's own temperature graph underneath.",
+      "Controls topped by an 8px lamp strip, with the state also written on the button.",
+      "A line drawing of the rig whose pipes take their liquid's colour and move only while pumped.",
+      "Barlow Condensed capitals for everything printed on the panel; regular Barlow only for sentences.",
+      "Heat starts only on a held press, and every command answers at its own button."
+    ],
+    "rules": [
+      {
+        "name": "The Red Is Reserved Rule",
+        "body": "Red means the measured temperature (PV) or something gone wrong: an alarm, a failed command, a lost connection. Off and stop are never red; even ALL OFF is neutral at rest and warms to red only under the pointer.",
+        "section": "colors"
+      },
+      {
+        "name": "The Say It Twice Rule",
+        "body": "Colour never carries a state alone. Lamp strips come with words (HEATING 62 %, RUNNING, OFF, DID NOT STOP), banners come with an icon and a title, pumped pipes come with moving dashes and arrow-heads, and finished steps say \"✓ DONE\".",
+        "section": "colors"
+      },
+      {
+        "name": "The One Blue Rule",
+        "body": "Blue marks where you are and what you are choosing: the current tab, the current recipe step, the target and power editors and the focus ring. Blue never shows the state of equipment.",
+        "section": "colors"
+      },
+      {
+        "name": "The PV Leads Rule",
+        "body": "The PV is the largest thing on its faceplate, about twice the size of the SV, red above green. Never make them the same size and never swap the colours.",
+        "section": "typography"
+      },
+      {
+        "name": "The Cabinet Lettering Rule",
+        "body": "Everything printed on the panel (names, tags, buttons, numbers) is Barlow Condensed, with names, tags, tabs and button labels in capitals and spacing between 0.02em and 0.1em. Regular-width Barlow is only for sentences addressed to the brewer.",
+        "section": "typography"
+      },
+      {
+        "name": "The Steady Digits Rule",
+        "body": "Every number that changes (PV, SV, OUT, the clock, countdowns, event times) uses tabular figures, so the digits don't shift as they tick.",
+        "section": "typography"
+      },
+      {
+        "name": "The One Screen Rule",
+        "body": "On a monitor, everything needed to run the brew (faceplates, drawing, recipe, alarms, last event) is visible at once, without scrolling the page. When height runs short, the drawing gives it up first, down to 140px; the PV digits never shrink for it. Only a screen under about 900px tall scrolls, and then only a little.",
+        "section": "layout"
+      },
+      {
+        "name": "The Under Its Plate Rule",
+        "body": "Each vessel in the drawing sits directly under its own faceplate. The drawing is generated at the width of its box, with the vessels centred at one sixth, one half and five sixths of the width.",
+        "section": "layout"
+      },
+      {
+        "name": "The Shared Rows Rule",
+        "body": "When the faceplates sit side by side (900px and wider), they share row heights through a CSS subgrid of six rows (name, window, deviation line, lamp buttons, mode row, note), so the windows and button rows line up across all three vessels.",
+        "section": "layout"
+      },
+      {
+        "name": "The Lit, Not Lifted Rule",
+        "body": "Things look important because they are lit, not because they float. Glows belong to readings and to equipment that is on; panels and buttons never cast shadows.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Dashed Means Someone Else Rule",
+        "body": "A dashed outline on a see-through button means another controller is in charge of that device (the vessel's AUTO, or the mash tun's HERMS running the hot liquor tank). It still explains itself when tapped. Solid buttons are yours to press.",
+        "section": "shapes"
+      },
+      {
+        "name": "The Held Heat Rule",
+        "body": "Switching heat on by hand (an element, a vessel's AUTO, the recipe's START) needs a press held for one second, by pointer or with Space or Enter. Letting go early starts nothing and says \"Keep holding for one second.\" Starting a pump, and anything that switches off or stops, is one tap. Once started, a recipe changes targets and modes as its steps require, and skipping ahead to the next step asks first. Changing a level is not switching heat on: a new target, boil power or element power is set with a tap on SET after adjusting it, whether or not the element is heating, because turning a boil down to stop a boil-over has to be quick.",
+        "section": "components"
+      },
+      {
+        "name": "The Answer At The Button Rule",
+        "body": "Every command shows what happened on the button that sent it: waiting (marching stripes, \"SWITCHING ON…\", \"SENDING…\"), done (the new state, and \"confirmed\" on the last-event line), or failed (a red outline and \"DID NOT STOP · tap to try again\", plus an alarm banner).",
+        "section": "components"
+      },
+      {
+        "name": "The Say Why Rule",
+        "body": "A control that can't be used right now stays on screen. When tapped, it explains why in its faceplate's note line (cleared after six seconds), in the recipe column's note line, or in a toast.",
+        "section": "components"
+      },
+      {
+        "name": "The Trend In The Window Rule",
+        "body": "A vessel's temperature history belongs in its own PID window, under the PV and SV it explains, on its own scale, with real gridline values and clock times. Never a separate chart panel, never one plot shared by the three vessels, never a bare sparkline. The three graphs always show the same span.",
+        "section": "components"
+      },
+      {
+        "name": "The Pumped-Only Flow Rule",
+        "body": "A pipe shows its liquid's colour and moves only while CraftBeerPi reports its pump running, and only along the branches its hand valves are drawn open for (The Hand Valve Rule). Before a start is confirmed, and whenever the connection is lost, the pipe stays still and slate. CraftBeerPi can't see a pump's own override switch, so a pump that has one says so under its label instead of the drawing guessing.",
+        "section": "components"
+      },
+      {
+        "name": "The Hand Valve Rule",
+        "body": "CraftBeerPi can't see the hand valves, so the drawing never claims to know them: it draws them as the recipe needs them and says so under the boil kettle (\"VALVES ARE SET BY HAND\", then \"SHOWN FOR RECIRCULATING\" or \"SHOWN FOR STEP 4 (SPARGE)\"). From the start of the step named for the runoff (a name starting Sparge, Fly Sparge, Batch Sparge, Continuous Sparge, Lauter or Runoff, the same test as the core's first-wort reminder) until the boil starts, including the hold at \"Ready to boil?\", the wort goes to the boil kettle and the HLT pump's water goes to the top of the mash tun: Scott fly sparges (9 Nov). That holds even while the mash tun's AUTO still runs the wort pump for the HERMS. At any other time, and with no recipe, the drawing shows recirculating. Open valves are hollow bowties, closed ones solid, and each says OPEN or CLOSED.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do give every vessel a PID faceplate: PV in Process Red (#ff4b3e) at about twice the size of the SV in Setpoint Green (#3ddc6f), in a black window, with OUT and MODE beside them.",
+      "Do put each vessel's temperature graph in its PID window under its PV and SV: PV red, SV green, OUT as an orange band, its own scale, and 10 MIN, 30 MIN and DAY beside it; tapping any graph steps all three to the next span.",
+      "Do top every equipment control with an 8px lamp strip and write the state on the same button: HEATING 62 %, RUNNING, OFF, DID NOT STOP.",
+      "Do require a one-second held press (pointer, Space or Enter) to switch on an element, a vessel's AUTO or the recipe, and make switching off and stopping a single tap.",
+      "Do keep the boil power beside the boil element, settable at any time, also while a recipe runs, with its level on the button and when that level is used under it (from the boil threshold in AUTO, by hand in MANUAL).",
+      "Do show each command's outcome on its own button: marching stripes while waiting, the new state once confirmed, a 2px red outline and \"tap to try again\" when it fails.",
+      "Do keep unavailable controls visible and explain why when they are tapped, in the note line (#ffd9a0) or a toast.",
+      "Do keep the recipe on the brew-day screen: down the left on a monitor, below the faceplates on narrower screens.",
+      "Do colour and animate a pipe only while its pump is confirmed running: cyan (#46b8ea) for hot liquor, gold (#e9b33b) for wort.",
+      "Do draw the hand valves as the recipe needs them and say so under the boil kettle (\"VALVES ARE SET BY HAND\"); CraftBeerPi can't see them.",
+      "Do grey out readings and show their age when the connection is lost, stop the pipes and pause the controls.",
+      "Do keep tap targets at least 44px tall: lamp buttons 72px and command buttons 62px on a monitor (66px and 56px when the screen is 1000px tall or less), 56px and 50px on a phone.",
+      "Do set vessel names, tags, tabs and button labels in Barlow Condensed capitals, and give every changing number tabular figures."
+    ],
+    "donts": [
+      "Don't show vessel temperatures as dial gauges or needles; Scott turned them down.",
+      "Don't plot the three vessels' temperatures on one shared scale; Scott turned that down too.",
+      "Don't draw a graph without its scale and times, or move the graphs out of the faceplates into a panel of their own.",
+      "Don't draw the vessels as shaded or realistic steel kettles; the rig is a clean line drawing.",
+      "Don't make the SV as big as the PV, or swap their colours.",
+      "Don't fall back to a grid of cards with numbers and toggle switches, or anything else that looks like a generic web app.",
+      "Don't use red for off or stop. Red is the PV and faults; off is a dark grey lamp strip (#3a4856).",
+      "Don't let colour be the only sign of a state.",
+      "Don't let a single tap or click switch on an element, a vessel's AUTO or the recipe.",
+      "Don't put the boil power behind the element's button or lock it while a recipe step runs; Scott turns the boil down mid-recipe.",
+      "Don't switch to a light theme; the dark panel is Scott's stated preference.",
+      "Don't remove controls on a phone; the phone drops only the drawing.",
+      "Don't use blue for equipment state; blue is for where you are and what you are choosing."
+    ]
+  }
+}
