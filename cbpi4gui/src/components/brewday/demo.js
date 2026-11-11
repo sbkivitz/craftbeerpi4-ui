@@ -616,9 +616,10 @@ const EXTRA = {
   }),
   longprompt: () => Object.assign(mash(), {
     t: 15 * 3600 + 53 * 60 + 12,
-    banner: {tone: "prompt", title: "Boil", text: "Ready to boil? Move the wort to the boil kettle first - the dashboard is yours meanwhile. The boil kettle stays off until you press Start the boil, or Start on the Brew Steps page. (Set CONFIRM_BEFORE_BOIL to No to go straight on.)", act: "START THE BOIL", cmd: "b:ok"},
+    banner: {tone: "prompt", title: "Boil", text: "Ready to boil? Move the wort to the boil kettle first - the dashboard is yours meanwhile. The boil kettle stays off until you press Start the boil, or Start on the Brew Steps page. That also switches the wort pump off, so you can move its hoses. (Set CONFIRM_BEFORE_BOIL to No to go straight on.)", act: "START THE BOIL", cmd: "b:ok"},
     v: {hlt: {pv: 170.2, sv: null, own: 168.0, mode: "manual"}, mt: {pv: 166.9, sv: null, mode: "manual"}, bk: {pv: 151.3, sv: null, mode: "manual"}},
-    a: {hltEl: {on: false, pct: 0}, hltPump: {on: true}, wortPump: {on: true}, bkEl: {on: false, pct: 0}},
+    // the HLT pump switched off as the sparge ended (core M71); the wort pump still running, finishing the runoff
+    a: {hltEl: {on: false, pct: 0}, hltPump: {on: false}, wortPump: {on: true}, bkEl: {on: false, pct: 0}},
     fill: {mtLiq: true, bk: true},
     recipe: {state: "ready", cur: 4, left: 90 * 60, adds: [], wait: "WAITING FOR YOU"}
   })

@@ -32,6 +32,7 @@ import { rigSVG, RIG_H } from "./rig";
 import * as DEMO from "./demo";
 import { api, why as failWhy } from "./api";
 import { model, num, parseLeft, bookLine, isHerms, unitText, ROLES, cfg, timerNames } from "./live";
+import { play as playSound, soundOf, DEFAULT_SOUND, SOUNDS } from "./alarm";
 import { GSPANS, GSAY, graphHTML, graphSVG, graphETA } from "./graphs";
 import { createHistory } from "./history";
 // As text, exactly as written (config-overrides.js): the CSS pipeline would rewrite the mockup's colours.
@@ -160,8 +161,9 @@ let root = null, DEMO_MODE = false, opts = {}, gen = 0;
 let st, M, timers = [], noteTimers = {}, hold = null, toastT = 0, raf = 0, rigW = 0, rigRs = 1, teardown = () => {};
 let last = null, everConnected = false, book = [], bookBusy = false, bookShown = false;
 /* the timers: tAns, a command's answer, newer than the websocket's last word until that catches up; tMsg, the word the
-   screen counts from; lastBannerKey, the title bar's last alert, so a new one beeps once; actx, the page's sound */
-let tAns = null, tMsg = null, lastBannerKey = null, actx = null;
+   screen counts from; lastBannerKey, the title bar's last alert, so a new one beeps once; actx, the page's sound; rangAt,
+   when a timer's alarm last played (Date.now()) */
+let tAns = null, tMsg = null, lastBannerKey = null, actx = null, rangAt = 0;
 /* the temperature graphs in the faceplates (Scott, 10 Nov: option A, "graphs always showing"); ?graphs=none leaves
    them out, as the screen was first built. gSpan: the span the three show, kept on each device. H: the live history. */
 let GRAPHS = "face", gSpan = "30", H = null;
@@ -1403,8 +1405,8 @@ function teditHTML(off) {
 /* SOUND: this screen's own setting, for its timers and CraftBeerPi's alerts. A browser plays sound only after a tap on the
    page, so after a reload it says so until the first tap anywhere */
 function soundHTML() {
-  const s = st.snd, blocked = s.on && !s.ok;
-  return `<button type="button" class="keep snd${blocked ? " blocked" : ""}" role="switch" aria-checked="${s.on}" data-cmd="snd"><span class="box" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.2 8.4l3 3 6.6-7"/></svg></span><span class="kl">${blocked ? "SOUND · TAP TO ALLOW" : "SOUND"}</span><span class="sr"> for timers and alerts, on this screen${blocked ? ". The browser allows it after the first tap on this page" : ""}</span></button>`;
+  const s = st.snd, blocked = s.on && !s.ok, alarm = SOUNDS[soundOf(st.alarmSound)].label;
+  return `<button type="button" class="keep snd${blocked ? " blocked" : ""}" role="switch" aria-checked="${s.on}" data-cmd="snd" data-sound="${soundOf(st.alarmSound)}"><span class="box" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.2 8.4l3 3 6.6-7"/></svg></span><span class="kl">${blocked ? "SOUND · TAP TO ALLOW" : "SOUND"}</span><span class="sr"> for timers and alerts, on this screen, as the ${esc(alarm)} sound${blocked ? ". The browser allows it after the first tap on this page" : ""}</span></button>`;
 }
 /* the phone's step strip: the timers that are counting, paused or have run out, one tap from their section */
 function tmlHTML() {
@@ -1500,8 +1502,8 @@ function cmdTm2(x, id, y) {
   if (x === "ok") return tSend(key, "ok", `${t.name}: alarm answered`, () => { answer(); t.state = "stopped"; t.left = t.run = t.set; }, () => api.timersOk(t.id), o);
   return tSend(key, "plus5", `${t.name}: 5 more minutes`, () => { answer(); t.state = "running"; t.left = t.run = 300; }, () => api.timersPlus5(t.id), o);
 }
-/* the alarm sound: a piezo-style beep, as a panel controller's buzzer, softened (a sine at 1760 Hz, 120 ms each). One sound
-   for now; choosing between presets modelled on real controllers is Scott's later todo */
+/* the alarm sound: the one chosen in Settings, BREWDAY_ALARM_SOUND (alarm.js; Scott, 11 Nov: "The alert sound is kinda
+   weak", then "Make the alarm timer sound configurable"). ring() plays its whole burst, ring(2) its first two pulses */
 function audioOK() {
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
@@ -1509,15 +1511,9 @@ function audioOK() {
     return true;
   } catch (_) { return false; }
 }
-function ring(n) {
+function ring(pulses) {
   if (!M.TIMERS || !st.snd || !st.snd.on || !st.snd.ok || !actx) return;
-  const t0 = actx.currentTime + 0.02;
-  for (let i = 0; i < n; i++) {
-    const o = actx.createOscillator(), g = actx.createGain(), s = t0 + i * 0.2;
-    o.type = "sine"; o.frequency.value = 1760;
-    g.gain.setValueAtTime(0.0001, s); g.gain.exponentialRampToValueAtTime(0.3, s + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, s + 0.12);
-    o.connect(g).connect(actx.destination); o.start(s); o.stop(s + 0.13);
-  }
+  playSound(actx, actx.destination, actx.currentTime + 0.02, st.alarmSound, pulses);
 }
 /* SOUND as this device left it. A browser set to play sound without a tap (a kiosk's --autoplay-policy) is allowed at once */
 function soundInit() {
@@ -1529,11 +1525,11 @@ function soundInit() {
 }
 function cmdSnd() {
   const s = st.snd;
-  /* pressed while it says TAP TO ALLOW: the press allows it and leaves it on, and the two beeps say it can be heard */
-  if (s.on && !s.ok) { s.ok = audioOK(); ring(2); return renderAll(); }
+  /* pressed while it says TAP TO ALLOW: the press allows it and leaves it on, and the alarm says it can be heard */
+  if (s.on && !s.ok) { s.ok = audioOK(); ring(); return renderAll(); }
   s.on = !s.on;
   if (!DEMO_MODE) { try { window.localStorage.setItem(SOUND_KEY, s.on ? "on" : "off"); } catch (e) { /* private mode: for this page */ } }
-  if (s.on) { s.ok = audioOK(); ring(2); } // the tap itself lets the page play sound, and two beeps say what it sounds like
+  if (s.on) { s.ok = audioOK(); ring(); } // the tap itself lets the page play sound, and the alarm plays, as a timer will
   renderAll();
 }
 /* the first tap or key on the page lets it play sound; not Escape, which a browser doesn't count. A browser counts a mouse
@@ -1549,7 +1545,7 @@ function unlockSound(target) {
   renderAll();
 }
 /* the demo's every brewing second, as the mockup's: the running timers count down and the finished ones up; a finished one's
-   alarm takes the title bar when it is free (behind another prompt it waits its turn); three beeps every 3 s while any
+   alarm takes the title bar when it is free (behind another prompt it waits its turn); the alarm sound every 3 s while any
    alarm waits */
 function tmTick() {
   let changed = false;
@@ -1568,7 +1564,7 @@ function tmTick() {
   if (!st.banner) { const d = st.tmrs.find(t => t.state === "done"); if (d) { st.banner = DEMO.tBanner(d, st.tmrs); changed = true; } }
   if (changed) renderAll();
   else { const m = $("#tml-t"); if (m) m.innerHTML = tmlText(); }
-  if (st.tmrs.some(t => t.state === "done") && st.t % 3 === 0) ring(3);
+  if (st.tmrs.some(t => t.state === "done") && st.t % 3 === 0) ring();
 }
 function tmShow(t) {
   setText($("#tt-" + t.id), tfmt(t.left));
@@ -1610,7 +1606,9 @@ function liveTmTick() {
     else if (t.state === "done") setText($("#tt-" + t.id), "+" + tfmt(tUp(t)));
   }
   const m = $("#tml-t"); if (m) m.innerHTML = tmlText();
-  if (st.tmrs.some(t => t.state === "done") && st.t % 3 === 0) ring(3);
+  // every 3 s while one waits, from the moment it runs out. Timed from the last, not by the clock's seconds: a tick a few
+  // ms early or late could land twice in one second, and two bursts a second apart would run into each other
+  if (st.tmrs.some(t => t.state === "done") && Date.now() - rangAt >= 2500) { rangAt = Date.now(); ring(); }
 }
 const TAB_PATH = {"Recipe Book": "/recipes", "Brew Steps": "/mashprofile"};
 function go(path) { if (opts.navigate) opts.navigate(path); else window.location.hash = "#" + path; }
@@ -1737,6 +1735,9 @@ function applyLive(snap) {
   // the names to pick: BREWDAY_TIMER_NAMES as the settings have it now, or as CraftBeerPi last sent it with the timers
   const raw = cfg(snap.config, "BREWDAY_TIMER_NAMES");
   st.names = raw != null ? timerNames(raw) : tMsg && Array.isArray(tMsg.names) ? tMsg.names.map(String) : [];
+  // the alarm sound: BREWDAY_ALARM_SOUND as the settings have it now; an older CraftBeerPi has none, the default. Not
+  // st.alarm, which is a command that failed, in the title bar
+  st.alarmSound = soundOf(cfg(snap.config, "BREWDAY_ALARM_SOUND"));
   if (st.tedit && st.tedit.id != null) {
     const t = tById(st.tedit.id);
     if (!t || (t.state === "done" && was && was.state !== "done")) st.tedit = null;
@@ -2168,7 +2169,7 @@ export function createBrewDay(el, o = {}) {
   const myGen = ++gen;
   root = el; opts = o; DEMO_MODE = !!o.demo;
   timers = []; noteTimers = {}; hold = null; afterHold = null; rigW = 0; last = null; everConnected = false; book = []; bookBusy = false; bookShown = false;
-  tAns = null; tMsg = null; lastBannerKey = null;
+  tAns = null; tMsg = null; lastBannerKey = null; rangAt = 0;
   answered.clear(); Object.keys(own).forEach(k => delete own[k]);
   const html = document.documentElement;
   // The stylesheets go in once and stay: every rule is scoped to html.bd-page, so they rest while it is off.
@@ -2211,6 +2212,8 @@ export function createBrewDay(el, o = {}) {
     if (st.tedit === undefined) st.tedit = null;
     // BREWDAY_TIMER_NAMES: its default, or the moment's own list
     st.names = st.names || TNAMES.slice();
+    // BREWDAY_ALARM_SOUND: its default, or the moment's own
+    st.alarmSound = soundOf(st.alarmSound || DEFAULT_SOUND);
     // the moment's own alert was there as it opened: it doesn't beep
     lastBannerKey = bannerKey(st.banner);
     if (GRAPHS) st.hist = DEMO.history(base, st.t);
