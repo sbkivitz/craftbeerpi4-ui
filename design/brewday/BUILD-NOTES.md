@@ -7,12 +7,14 @@ This folder is a proposal. Nothing in it changes CraftBeerPi, and nothing is com
 - `brew-day.html` is layout B on its own: Scott chose it on 9 Nov 2026. Add `?layout=a` to see layout A. It has
   a sixth moment, `#sparge`, for the runoff to the boil kettle, and a seventh, `#boilpower`, for the boil
   power control Scott asked to have back on 10 Nov. It shows a temperature graph in each
-  faceplate, which Scott chose on 10 Nov; add `?graphs=none` to see the screen as first built. Add
-  `?bk=power` for the boil kettle Scott approved on 10 Nov (`boil-kettle.html` shows it beside today's), with
-  more moments for it: `#heatup`, `#pause`, `#pause-long`, `#boiling`, `#hold`, `#keepboil`, `#letfall`,
+  faceplate, which Scott chose on 10 Nov; add `?graphs=none` to see the screen as first built. Its boil kettle is
+  the one Scott approved on 10 Nov, built on the screen that evening and the default since; add `?bk=today` for
+  the faceplate the screen keeps for an older BoilPower (`boil-kettle.html` shows the two side by side). The boil
+  kettle has more moments: `#heatup`, `#pause`, `#pause-long`, `#boiling`, `#hold`, `#keepboil`, `#letfall`,
   `#bktarget` and `#handhold`. `#notarget` and `#notarget-hlt` show a vessel in AUTO with no target.
   `#sparge-heat`, `#sparge-ready`, `#sparge-run` and `#sparge-batch` show the new SpargeStep (core
-  4.7.7.post35); `#sparge` keeps the old MashStep sparge that recipes already in the book still have.
+  4.7.7.post35); `#sparge` keeps the old MashStep sparge that recipes already in the book still have. Add
+  `&timers=new` for the timers proposal (`#timers`, `#timer-done`, `#timer-new`, `#timers-hand`, `#sound-allow`).
 - The pages run on demo data copied from the simulator's config (`C:\src\personal\cbpi-testbench\config`).
   They do not talk to CraftBeerPi. Buttons respond and timers run, but nothing is sent anywhere.
 
@@ -330,10 +332,11 @@ ideas from commercial boil controllers. Of three ideas taken from them, he chose
 +5 %, pausing the heat for a boil-over, and a usual power that each brew day starts at. Shown the result, he
 answered "Yes, hand it to Brett".
 
-It is the mockup's `?bk=power`, compared with today in `boil-kettle.html`. The mockup's default stays
-`?bk=today`, exactly as built, until you tell me this is built; then I'll make power the default. Until then,
-compare your screen with `brew-day.html?bk=power#<moment>` (with `&graphs=none` while the graphs aren't
-released). Every moment's boil kettle changes, so test them all. The HLT and the mash tun don't change.
+It is the mockup's `?bk=power`, compared with today in `boil-kettle.html`. (You built it on 10 Nov, so since then
+`?bk=power` is the mockup's default and `?bk=today` shows the old faceplate.) Before that, the default stayed
+`?bk=today`, exactly as built, and you compared your screen with `brew-day.html?bk=power#<moment>` (with
+`&graphs=none` while the graphs weren't released). Every moment's boil kettle changes, so test them all. The HLT
+and the mash tun don't change.
 
 | Part | Today | Proposed (`?bk=power`) |
 |---|---|---|
@@ -461,8 +464,8 @@ The readout's kind comes from T and B alone: a hold when 0 < T < B − 3.6 °F, 
   full power to 210.2 °F    change
 ```
 - It opens at the current target, BOIL or the hold, with the number selected, so typing replaces it ("BOIL"
-  too). Your built screen only focuses the box; the HLT's and mash tun's boxes would gain from the same
-  `select()`, since typing 150 into "168.0" gives "150168.0" there today. That one is your call.
+  too). You made every target box do the same, the HLT's and mash tun's too, since typing 150 into "168.0" gave
+  "150168.0"; the mockup's `cmdTgtOpen` ends `renderAll(); focusTin(true);` to match.
 - From B − 3.6 °F up everything is BOIL, as in your BoilPower (206.6 °F with B at 210.2). So the steps run
   ...205.6, 206.5, BOIL: from BOIL, −.1 gives 206.5 and −1 gives 205.6. At BOIL, +.1 and +1 are refused with
   "BOIL is the top. BOIL AT, under BOIL POWER, sets where the boil starts."
@@ -499,6 +502,9 @@ The readout's kind comes from T and B alone: a hold when 0 < T < B − 3.6 °F, 
 
 - The power box is as approved, opened from the framed 45 % or from BOIL POWER in TARGET's box, with its
   number selected.
+- With no `Usual_Boil_Power` set, its third row reads "USUAL – –" over "none · set one in Hardware", and
+  starting a recipe leaves the boil power alone. (Your port says "none set · set in Hardware"; this avoids "set"
+  twice. No moment shows it.)
 - BOIL AT now opens a box of its own, two rows like the HLT's (aria-label "New boil temperature for the boil
   kettle"). It sends `set_boil_at(Boil_Threshold)`, 190-212 °F, with the same two refusals as before.
 - Event: "Boil kettle boils at 205.0 °F (was 210.2 °F) · confirmed". In a hold it adds "not used while it holds
@@ -638,7 +644,8 @@ the book keep the old MashStep sparge until they are imported again.
   drawing units; "SET CLOSED" is 87 units wide without graphs and 112 with them, so under the valve it would sit
   on both pipes. While marked, it goes to the left of the riser, level with its valve: x = `hltRiser - 14`,
   y = `yTop + 8`, `text-anchor="end"` (`rigValve`'s new `alt` argument, applied in `setValve`). At any other
-  time, and every other tag, stays where it is now, so no other moment changes.
+  time it stays under its valve. (Later the same evening, two tags under their valves learned to move down as
+  they grow with graphs: see "After your port" below.)
 - The drawing's description for screen readers (`rigDesc`) adds, while it waits: "Step 4, Sparge, is waiting for
   you to set them for the sparge: close the coil line and the HLT return, and open the line to the boil kettle
   and the sparge line to the top of the mash tun." Layout A leaves out the HLT return and the sparge line.
@@ -741,6 +748,198 @@ All four use the `#mash` day and recipe with step 4 replaced by a SpargeStep (`S
   waiting (prompt down, valves unmarked) and START (heats, asks again); STOP and START while heating; NEXT STEP
   from the fly sparge (the HLT stays MANUAL at SV 168.0, the pumps as they were).
 - `#mash`, `#sparge` and the 22 boil kettle moments are unchanged.
+
+## After your port: five small changes (10 Nov, late)
+
+You built the boil kettle's target model, KEEP BOILING, the forgotten pause and the SpargeStep, and your identity
+test compared all 22 moments at five sizes, with and without graphs, plus 15 presses: 281/281. Since then, in
+`proposal\`:
+
+1. **The boil kettle you built is the mockup's default.** `brew-day.js`:
+   `const BK = ["words", "today"].includes(QS.get("bk")) ? QS.get("bk") : "power";`. `?bk=today` shows the
+   faceplate the screen keeps for an older BoilPower; the strip calls the two "as built" and "older BoilPower".
+   Addresses with `bk=power` still work. Nothing to port.
+2. **Every target box opens with its number selected**, as you built it: `cmdTgtOpen` ends
+   `renderAll(); focusTin(true);`. Nothing to port.
+3. **Two valve tags move down as they grow.** With graphs the drawing's labels are set larger (`rs`, up to 1.3),
+   but the tags under the sparge valve and the HLT return valve stayed where they were, so they touched their
+   bowties. `rig.js`, `rigSVG`, two lines:
+   - `${A ? "" : rigValve("sp", g.vSp, ySp, "liq", g.vSp, n(ySp + 10 + 20 * rs), "middle")}`
+     (was `ySp + 26`, 48; now 52 without graphs and up to 58 with them);
+   - `${rigValve("ret", g.vRet, yTop, "liq", g.vRet, n(yTop + 19 + 13 * rs), "middle", A ? null : [g.hltRiser - 14, yTop + 8, "end"])}`
+     (was `yTop + 32`; still 82 without graphs, up to 85.9 with them).
+   13 is the height of a tag's capitals at `rs` 1, so each tag moves down as much as it grows. The sparge valve's
+   tag also moves 4 units further down at every size, because without graphs it was only 0-2 px clear. The
+   HLT return's `alt` place (SET CLOSED, left of the riser) doesn't change. Every moment's drawing changes with
+   graphs; without graphs only the sparge valve's tag moves.
+4. **The clock and ALL OFF keep their size in the title bar** on a monitor or laptop. `brew-day.css`, after
+   `.clock`: `@media (min-width:1180px){.alloff,.clock{flex:none}}`. Found while checking 3: `.clock` has
+   `min-width:3.2ch`, about two thirds of "15:04", and could shrink to it, so a long prompt squeezed its box and the
+   time spilled out. In `#sparge-ready` it ran off the right edge of the screen by 3-5 px at 1366×768 and
+   1440×900, and at 1920 wide ALL OFF wrapped onto two lines. Now only the prompt gives way, as it should: it
+   wraps. No prompt got taller and no page scrolls more. Moments that change: `#sparge-ready` at every desktop
+   size; `#pause-long`, `#notarget` and `#notarget-hlt` at 1366×768; `#pause-long` by 1 px at 1440×900. At 1280
+   and 1180 wide, which aren't among your test sizes, `#offline` changes too.
+   Narrower than 1180 px nothing changes (see "Not fixed" below).
+5. **No usual boil power set**: "USUAL – –" over "none · set one in Hardware", and starting a recipe leaves the
+   boil power alone (`cmdStart` checks `usual != null`; `load()` gives 45 only when `usual` is undefined). Yours,
+   "none set · set in Hardware", works too; mine avoids "set" twice. No moment shows it.
+
+### Your port decisions: agreed
+
+- An older BoilPower (no `set_boil_at`) keeps the old faceplate.
+- The two new event lines: "Sparge: sparge started, 40 min timer started" with "from another screen", and just
+  "Sparge resumed" for a Start after Sparge started. The mockup's START after the press doesn't heat again either.
+- NEXT and Stop leaving the HLT's target at 168, as CraftBeerPi's other steps do.
+- Leaving the 3.6 °F edge.
+
+### For new designs: the class name `box`
+
+`App.css` gives every element with class `box` a dark shadow, on every page. KEEP BOILING's tick box is
+`.keep .box`, which `scope-css.mjs` now cancels. The timers proposal's SOUND switch reuses that button
+(`.keep.snd`, with its `.box`), so the same cancel covers it. Nothing new will use the name `box`.
+
+### Not fixed: the title bar between 701 and 1179 px wide
+
+Wider than a phone but narrower than 1180 px (a tablet, or a browser window snapped to half a 1920 monitor), the
+title bar stays one row, and a long prompt is squeezed into a narrow column: in `#sparge-ready` at 768 px wide
+the title bar is 318 px tall, and the clock spills out of its box by up to 20 px, into the page's margin (at
+1179 px it reaches the screen's edge). Keeping ALL OFF and the clock whole there would make it 534 px, so 4 leaves
+those widths alone. The real fix is to give the prompt its own row under the title bar at those widths, as the
+phone does. I haven't designed that; it matters only if Scott uses those widths.
+
+### Checked
+
+- Tags, measured on screen (each tag's letters against its own valve, with three pictures: neither, only the
+  valve, only the tag) in every moment at 1920×1080, 1920×950, 1440×900, 1366×768, 1280×800 and 2560×1440, with
+  and without graphs: at your four desktop sizes the sparge valve's tag now has at least 2 clean px under its
+  bowtie (before: touching, or overlapping by up to 2 px with graphs; 0-2 px without), and the HLT return's at
+  least 1 with graphs (2 or more on 99 of 101 pages, where before it had 1) and 3 without. In close-ups, nothing
+  else in the drawing lies within 1 px of a tag's letters. While an editor is open on a short screen, the drawing
+  shrinks to a thumbnail (3-5 px lettering) where every tag sits within a pixel of its valve; that was so before.
+- The drawing is never rebuilt as the clock ticks (every moment, four sizes, 6 s each).
+- Title bar: 810 pages (every moment; default, `?graphs=none`, `?bk=today`, `&timers=new` and `?layout=a`; at
+  1920×1080, 1920×950, 1440×900, 1366×768, 1280×800 and 1180×820): the clock spilled out of its box on 65 and
+  came within 2 px of the screen's edge, or past it, on 16; now on none. Phones (390 and 360 wide) and 768 and
+  1179 px: unchanged.
+- Sweep: 540 pages (every moment, layouts A and B, with and without graphs, the default and `?bk=today`, and
+  `&timers=new`, at 1920×950 and 390×844): no page errors. What still overflows is on purpose (the phone's hidden
+  "Connected" label and the last-event line's "…"), plus 2 px inside the finished timer's row and banner in the
+  timers proposal (`#timer-done`), where nothing shows cut off.
+- Pressed: the HLT's, mash tun's and boil kettle's target boxes (both faceplates) open focused with the whole
+  number selected, and typing 150 gives 150. USUAL with none set reads as above and fits; a recipe started then
+  keeps a boil power of 40, and with 45 set it goes back to 45.
+
+## Timers: a proposal for Scott to review (10 Nov, evening). Not approved yet
+
+Scott, 10 Nov, after using the rest timer: "why is it named that? lots of things use a timer during a brew day. I
+want an optionally audible alarm and more attention grabbing but still elegant visual alerting when timer expires.
+Also want to have multiple timers in parallel if I click a + or something like that. Nice to have= ability to name
+timers". Asked whether the sound should cover only his timers, he chose "my timers and CraftBeerPi's alerts".
+
+The mockup is `brew-day.html?bk=power&timers=new`, moments `#timers`, `#timer-done`, `#timer-new`, `#timers-hand`
+and `#sound-allow`; without `&timers=new` the same moments show the screen as built. It is modelled on a
+four-channel kitchen timer, ThermoWorks' TimeStack: four timers in view at once, digits that flash until the alarm is
+stopped and then count up, and a Set that recalls the last time. The alarm follows process-control practice
+(ISA-18.2 and ISA-101 displays): something blinks only while an alarm waits for an answer, and the alarm sits in a
+banner on every screen. WCAG 2.2.2 (anything that blinks for more than 5 s needs a way to stop it: OK) and 2.3.1 (no
+more than 3 flashes a second: this is one slow pulse) are met.
+
+### What changes
+
+- **The name.** "Rest timer" goes. The section is TIMERS; each timer has a name, "Timer 1", "Timer 2" and so on
+  unless he gives it one.
+- **Where.** In the recipe column, during a recipe as well as by hand: below the steps while a recipe runs (the
+  step list gets shorter and keeps the current step in view), and where the rest timer is today when brewing by
+  hand. On a phone, and anywhere the page stacks, the timers come before the steps or the recipe book, and the
+  step strip at the top gets a line, "TIMERS Stir 7:12 · Yeast paused 6:12", that jumps to them.
+- **A timer's row.** Its name and state on the left ("of 15:00", "PAUSED · of 15:00", "ready", "TIME'S UP"), its
+  time large on the right, and one button: START, PAUSE, or START "carry on". A 4 px bar along the row's bottom
+  edge shows how far this countdown has gone. The left part is a button that opens the timer's editor.
+- **+ TIMER** under the rows. Up to four timers; a fifth is refused with "Four timers at most. Remove one to add
+  another." in the timers' own note line.
+- **The editor**, one at a time, in place under its timer (or where + TIMER was). Its title sits in its blue
+  border: NEW TIMER or CHANGE STIR. While it is open, the other timers shrink to one 44 px line with their name and
+  time.
+  - NAME, a text box (placeholder: the default name), and three ideas: HOP STAND, YEAST, VORLAUF. A tap fills the
+    name; a second tap clears it.
+  - For a stopped or new timer: MINUTES with −1, a box (1 to 300) and +1, and six presets: 5, 10, 15, 20, 30, 60.
+    New: CANCEL, SAVE ("start it later") and START ("counts down now"). Stopped: REMOVE, CANCEL, SET.
+  - For a running or paused timer: "Time left 7:08" with −1 MIN, +1 MIN and +5 MIN, which apply at once ("Changes
+    the time left at once, on every screen."), then REMOVE and DONE. Removing a timer that has time left asks once,
+    in place, as NEXT STEP does: "Remove Stir? It has 8:02 left." REMOVE IT / KEEP IT.
+  - Enter in a box presses the main button; Escape closes the editor.
+- **When a timer runs out**, on every screen, until somebody answers it on any one:
+  - its row turns Prompt Amber: "TIME'S UP", the time counting up from zero ("+0:12"), and two buttons, +5 MIN and
+    a white OK ("stops the alarm");
+  - CraftBeerPi's kept prompt in the title bar, titled with the timer's name: "The 15:00 timer has run out.", with
+    +5 MIN (drawn as the lesser button: no fill, an amber outline) and OK. Two at once: "Timer 2 · 1 more waiting",
+    as the screen as built shows it;
+  - the row, the title bar's prompt and a frame round the whole screen (a 4 px Prompt Amber edge with a soft glow
+    inside it) pulse together: opacity from 0.15 to 1 and back, 1 s each way, ease-in-out. With reduced motion they
+    stay lit and still. Nothing else on the screen pulses;
+  - with SOUND on, the screen beeps three times every 3 s;
+  - the event line: "Stir finished · waiting for you".
+  - OK puts the timer back to its own time, stopped, ready to start again ("Stir: alarm answered"). +5 MIN runs it
+    for 5 more minutes ("Stir: 5 more minutes"; its row then says "of 5:00").
+- **SOUND**, at the right of the TIMERS heading: this screen's own switch, KEEP BOILING's lit box with role
+  "switch". It covers this screen's timers and CraftBeerPi's alerts: three beeps every 3 s while a timer's alarm
+  waits, two beeps once when any other prompt, warning or error appears. Turning it on plays the two beeps, so he
+  hears what it sounds like. It is kept in the browser (localStorage), not in CraftBeerPi, so the phone can be quiet
+  while the monitor beeps.
+- **A browser plays sound only after a tap on the page.** After a reload with SOUND on, the switch says "SOUND · TAP
+  TO ALLOW" in amber, its box unlit amber, until the first tap anywhere, which unlocks it (`#sound-allow`).
+- **The sound** (one for now; choosing between presets modelled on real controllers is Scott's later todo): a
+  softened piezo beep, a sine at 1760 Hz, 120 ms (12 ms rise, then falling away), three of them 200 ms apart (Web
+  Audio).
+
+### What it needs
+
+- **CraftBeerPi (server):** the rest timer becomes a list of up to four timers, kept as the rest timer is (in memory,
+  on the brewing clock, pushed to every screen on a websocket topic). Each has an id, a name, its own time (`set`),
+  this countdown's length (`run`), the time left, and whether it is stopped, running, paused or finished (with when
+  it finished). Commands: add (name, seconds, start or not), change (name, seconds), start, pause, add or take
+  seconds (never below 10 s left), remove, and the two answers. At zero it raises a kept prompt titled with the
+  timer's name, "The 15:00 timer has run out.", with two actions, "+5 MIN" and "OK", that every screen shows until
+  one is pressed. Removing a finished timer takes its prompt down.
+- **The web UI:** everything above. The 4 px bar, the editor's legend title and the shrunken rows are new CSS; the
+  rest reuses the screen's buttons, editor input, confirm box and KEEP BOILING's box. The banner's lesser button
+  needs to know the prompt belongs to a timer (from the timers list), so other prompts with two actions don't
+  change.
+- **Identity tests:** run `#timer-done` with reduced motion, or the pulse differs from frame to frame.
+
+### Questions for Scott
+
+1. Hop additions also come due at a moment. Should they pulse and repeat the sound like a timer that has run out?
+   (I think yes: it's the same kind of moment. They don't in the mockup yet.)
+2. Are HOP STAND, YEAST and VORLAUF the right name ideas, or should the ideas be the last three names he used?
+3. Is four timers enough?
+
+### Changed, all in `proposal\`
+
+- `brew-day.js`: new `TIMERS` (the `?timers=new` flag), `TMAX`, `TSUG`, `TPRE`, `tfmt`, `tById`, `tPct`,
+  `tDefaultName`, `tBanner`, `timersHTML`, `trowHTML`, `teditHTML`, `soundHTML`, `tmlHTML`, `tmlText`,
+  `keepStepInView`, `cmdTe`, `cmdTm2`, `audioOK`, `ring`, `cmdSnd`, `tmTick`; changed `bannerHTML` (several
+  answers, "N more waiting", the lesser button), `handHTML`, `recipeHTML`, `nowHTML`, `renderAll`, `explain`
+  (the timers' note line), `run`, the 1 s tick, `load()`, the input and key handlers; scenes `timers`, `timer-done`,
+  `timer-new`, `timers-hand`, `sound-allow`.
+- `brew-day.css`: the `.tmrs`, `.trow`, `.tsel`, `.tedit`, `.tfield`, `.tsug`, `.tpre`, `.tkeys`, `.tact`, `.tml`
+  rules, `.keep.snd.blocked`, `.banner .act.sec`, the `ring` pulse and its reduced-motion line, and the stacked
+  order.
+- `brew-day.html`: moment links and the "Timers: today / proposed" switch.
+
+### Checked
+
+- The five moments at 1920×950, 1366×768 and 390×844, with and without graphs: no page errors. Nothing scrolls more
+  than the same moment today, except NEW TIMER's editor at 1366×768 (118 px against 92), as the other editors
+  there. Every button is at least 44 px; SOUND has KEEP BOILING's 44 px tap area.
+- Pressed through: + TIMER with an idea and a preset, START and SAVE; PAUSE and carry on; −1/+1 MIN on a running
+  timer (its "of" and bar follow); renaming; typing 12 and Enter; REMOVE at once when stopped and with the question
+  when running; four timers and the refusal; one and then two running out (the second waits its turn, "1 more
+  waiting"); OK and +5 MIN from the row and from the title bar; SOUND off and on; the first tap allowing sound;
+  Escape; the phone's strip jumping to the timers.
+- Every moment of the page in every view: 567 loads, no errors. Today's view of the timer moments shows the screen
+  as built ("Rest timer · The rest timer has finished." in `#timer-done`).
 
 ## Open questions about the drawing
 

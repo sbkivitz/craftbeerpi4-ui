@@ -51,11 +51,11 @@ figcaption b{display:inline-block;min-width:26px;margin-right:8px;padding:2px 8p
     <button type="button" data-scene="mash">Mid-mash</button><button type="button" data-scene="hop">Hop addition due</button><button type="button" data-scene="fail">A command failed</button><button type="button" data-scene="manual">Brewing by hand</button><button type="button" data-scene="offline">Connection lost</button>
   </div>
 </header>
-<p class="hint">Both designs use the same parts, data and controls; only the arrangement and the drawing differ. Press <b>Space</b> to flip between A and B. The screens are live: buttons respond, and timers run. <a id="full" href="brew-day.html?layout=a#mash" target="_blank" rel="noopener">Open the shown design full size</a>.</p>
+<p class="hint">Both designs use the same parts, data and controls; only the arrangement and the drawing differ. Press <b>Space</b> to flip between A and B. The screens are live: buttons respond, and timers run. <a id="full" href="brew-day.html?layout=a&amp;graphs=none#mash" target="_blank" rel="noopener">Open the shown design full size</a>.</p>
 <main class="stage flip" id="stage">
-  <figure class="frame" data-k="a"><div class="screen"><iframe title="Design A" src="brew-day.html?bare&amp;layout=a#mash"></iframe></div>
+  <figure class="frame" data-k="a"><div class="screen"><iframe title="Design A" src="brew-day.html?bare&amp;layout=a&amp;graphs=none#mash"></iframe></div>
     <figcaption><b>A</b>Recipe on the right · kettle drawing on top, faceplates under it · screen tabs along the bottom</figcaption></figure>
-  <figure class="frame" data-k="b"><div class="screen"><iframe title="Design B" src="brew-day.html?bare&amp;layout=b#mash"></iframe></div>
+  <figure class="frame" data-k="b"><div class="screen"><iframe title="Design B" src="brew-day.html?bare&amp;layout=b&amp;graphs=none#mash"></iframe></div>
     <figcaption><b>B</b>Recipe on the left · faceplates across the top, line drawing under them · screen tabs along the top</figcaption></figure>
 </main>
 <script>
@@ -88,10 +88,10 @@ function apply() {
   document.querySelectorAll("[data-size]").forEach(b => b.setAttribute("aria-pressed", b.dataset.size === S.size));
   document.querySelectorAll("[data-scene]").forEach(b => b.setAttribute("aria-pressed", b.dataset.scene === S.scene));
   frames.forEach(f => {
-    const fr = f.querySelector("iframe"), want = `brew-day.html?bare&layout=${f.dataset.k}#${S.scene}`;
+    const fr = f.querySelector("iframe"), want = `brew-day.html?bare&layout=${f.dataset.k}&graphs=none#${S.scene}`;
     if (fr.getAttribute("src") !== want) fr.setAttribute("src", want);
   });
-  document.getElementById("full").href = `brew-day.html?layout=${S.view === "b" ? "b" : "a"}#${S.scene}`;
+  document.getElementById("full").href = `brew-day.html?layout=${S.view === "b" ? "b" : "a"}&graphs=none#${S.scene}`;
   history.replaceState(null, "", `#view=${S.view}&size=${S.size}&scene=${S.scene}`);
   fit();
 }

@@ -356,7 +356,7 @@ function keepHTML() {
   return `<button type="button" class="keep${lost ? " stale" : ""}" role="checkbox" aria-checked="${on}" data-cmd="keep:bk"${pend ? ' data-state="pending"' : ""}${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}><span class="box" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.2 8.4l3 3 6.6-7"/></svg></span><span class="kl">KEEP BOILING</span><span class="sr">: full power again if the wort falls ${margin()} ${M.U} below a boil</span></button>`;
 }
 /* the usual boil power (Usual_Boil_Power), a reading in the power box: blank in Hardware, each recipe keeps the last */
-const usualHTML = () => st.v.bk.usual == null ? `USUAL – –<small>none set · set in Hardware</small>`
+const usualHTML = () => st.v.bk.usual == null ? `USUAL – –<small>none · set one in Hardware</small>`
   : `USUAL ${st.v.bk.usual} %<small>starts each recipe · set in Hardware</small>`;
 function editorHTML(v) {
   if (st.edit.kind === "pwr") {
@@ -1825,7 +1825,7 @@ export function createBrewDay(el, o = {}) {
     Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, logOpen: false}, open);
     if (st.v.bk.bp == null) st.v.bk.bp = 45; // the boil kettle's Boil_Power setting, read from its props
     if (st.a.bkEl.lvl == null) st.a.bkEl.lvl = 100; // the boil element's own level (its power), used when it is on by hand
-    if (st.v.bk.usual == null) st.v.bk.usual = 45; // its Usual_Boil_Power setting
+    if (st.v.bk.usual === undefined) st.v.bk.usual = 45; // its Usual_Boil_Power setting; null: none set
     if (st.v.bk.keep == null) st.v.bk.keep = true; // its Keep_Boiling setting, "Yes" unless Scott unticks it
     if (st.v.bk.boilAt == null) st.v.bk.boilAt = DEMO.BOIL_TH; // its boil point, Boil_Threshold (BOIL AT)
     if (GRAPHS) st.hist = DEMO.history(base, st.t);

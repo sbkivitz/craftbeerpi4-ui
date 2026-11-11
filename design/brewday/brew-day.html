@@ -27,9 +27,10 @@ Layouts: ?layout=b (default, chosen) or ?layout=a (the D1 alternative, kept for 
 sparge line, so its HLT pump always goes back round the hot liquor tank).
 Graphs: in the faceplates by default (option A, chosen 10 Nov 2026). ?graphs=none shows the screen without them,
 as first built; ?graphs=panel is option B, kept only for graphs.html. ?span=10|30|day picks the starting span.
-Boil kettle: ?bk=today (default, as built), or the proposed boil kettle, ?bk=power, which Scott said yes to on 10 Nov
-with three additions (one-tap −5/+5 %, a pause for boil-overs, a usual boil power); compared in boil-kettle.html.
-?bk=words is an earlier option he didn't take. ?focus=bk is for that page.
+Boil kettle: the redesign Scott said yes to on 10 Nov, built on the screen that evening, is the default (?bk=power):
+one-tap −5/+5 %, a pause for boil-overs, a usual boil power, TARGET (BOIL or a hold) and KEEP BOILING.
+?bk=today is the faceplate from before it, which the screen keeps for an older BoilPower (one without set_boil_at);
+boil-kettle.html compares the two. ?bk=words is an earlier option he didn't take. ?focus=bk is for that page.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -61,7 +62,13 @@ with three additions (one-tap −5/+5 %, a pause for boil-overs, a usual boil po
   <a href="#offline">Connection lost</a>
   <a href="#notarget">Mash tun AUTO, no target</a>
   <a href="#notarget-hlt">HLT AUTO, no target</a>
-  <span class="lay">Boil kettle: <a data-bk="today" href="?bk=today">today</a> <a data-bk="power" href="?bk=power">proposed</a></span>
+  <a href="#timers">Timers in a recipe</a>
+  <a href="#timer-done">A timer runs out</a>
+  <a href="#timer-new">Adding a timer</a>
+  <a href="#timers-hand">Timers by hand</a>
+  <a href="#sound-allow">Sound waiting for a tap</a>
+  <span class="lay">Timers: <a data-tm="today" href="?">today</a> <a data-tm="new" href="?timers=new">proposed</a></span>
+  <span class="lay">Boil kettle: <a data-bk="power" href="?bk=power">as built</a> <a data-bk="today" href="?bk=today">older BoilPower</a></span>
   <span class="lay">Layout: <a data-layout="a" href="?layout=a">A · recipe right</a> <a data-layout="b" href="?layout=b">B · recipe left</a></span>
 </nav>
 <div class="app" id="app" data-link="ok">

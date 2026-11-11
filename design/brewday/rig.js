@@ -97,7 +97,12 @@ function rigLine(id, med, paths, chev) {
   return `<g class="ln ${med}" id="${id}">${layer("pf")}${layer("pd")}${ch}</g>`;
 }
 /* a hand valve: CraftBeerPi can't see it, so its position is drawn from the recipe step (renderRig). alt: where its tag
-   goes instead while it reads SET OPEN or SET CLOSED, for a valve whose run is too short for those words */
+   goes instead while it reads SET OPEN or SET CLOSED, for a valve whose run is too short for those words.
+   A tag under its valve moves down as it grows with rs (13 units is the height of its capitals at rs 1), so with graphs
+   it doesn't touch the bowtie. The sparge valve's sits closest: ySp + 10 + 20 * rs, which also clears it a little more
+   without graphs, so the gap stays about a third of the tag's height (at least 2 clean px from 1366 wide up, while
+   the drawing is at its usual size). The HLT return's is yTop + 19 + 13 * rs: unchanged without graphs (82). The
+   coil's, lower down, already has room */
 function rigValve(id, x, y, med, tx, ty, anchor, alt) {
   const at = alt ? ` data-alt="${r1(alt[0])} ${alt[1]} ${alt[2]}"` : "";
   return `<g class="valve ${med}" id="vl-${id}" transform="translate(${r1(x)} ${y})"><path d="M-13 -9 L13 9 V-9 L-13 9 Z"/></g><text class="tag vtag" id="vt-${id}" x="${r1(tx)}" y="${ty}"${anchor ? ` text-anchor="${anchor}"` : ""}${at}></text>`;
@@ -153,8 +158,8 @@ ${rigLine("ln-xfer", "wrt", xfer, chX)}
 ${rigLine("ln-wort-coil", "wrt", coil, chCoil)}
 ${rigLine("ln-wort-in", "wrt", wortIn, chWin)}
 ${rigLine("ln-wort-out", "wrt", wortOut, [])}
-${A ? "" : rigValve("sp", g.vSp, ySp, "liq", g.vSp, ySp + 26, "middle")}
-${rigValve("ret", g.vRet, yTop, "liq", g.vRet, yTop + 32, "middle", A ? null : [g.hltRiser - 14, yTop + 8, "end"])}
+${A ? "" : rigValve("sp", g.vSp, ySp, "liq", g.vSp, n(ySp + 10 + 20 * rs), "middle")}
+${rigValve("ret", g.vRet, yTop, "liq", g.vRet, n(yTop + 19 + 13 * rs), "middle", A ? null : [g.hltRiser - 14, yTop + 8, "end"])}
 ${rigValve("coil", g.vCoil, yPump, "wrt", g.vCoil, yPump + 36, "middle")}
 ${rigValve("bk", g.vBk, yLow, "wrt", g.vBk + 22, yLow - 13, "")}
 ${fits}

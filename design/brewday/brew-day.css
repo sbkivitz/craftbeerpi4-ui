@@ -41,6 +41,9 @@ html.bare .mock{display:none}
 .alloff:hover{border-color:#ff8a80;background:#2b1315}
 .alloff[aria-disabled=true]{opacity:.5;cursor:not-allowed}
 .clock{font:600 clamp(26px,2.4vw,40px)/1 var(--cond);font-variant-numeric:tabular-nums;min-width:3.2ch;text-align:right}
+/* on a monitor or laptop only the alarm or prompt gives way to a long message in the title bar (it wraps): ALL OFF keeps
+   its shape and the clock its digits. Narrower, both still give way, so the prompt doesn't grow taller still */
+@media (min-width:1180px){.alloff,.clock{flex:none}}
 
 /* alarms and the last event */
 .status{display:grid;grid-template-columns:minmax(280px,34%) minmax(0,1fr);gap:var(--gap);padding:10px var(--pad) 0}
@@ -229,6 +232,72 @@ html.bare .mock{display:none}
 .timer output{font:600 clamp(52px,calc(22 * var(--pu)),88px)/1 var(--cond);font-variant-numeric:tabular-nums}
 .timer div,.handlinks{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .timer .go{grid-column:1/-1}
+/* the proposed timers (?timers=new): up to four rows, each a name, a big time and its one button; the row's left part
+   opens its editor in place. A finished one is Prompt Amber, counts up, and offers +5 MIN and OK */
+.tmrs{flex:none;display:grid;gap:8px}
+.tmrs .thead{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px}
+.tmrs h3{margin:0;font:700 20px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+.trow{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;padding:6px 6px 6px 4px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel-2);overflow:hidden}
+.tsel{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:center;min-height:56px;padding:4px 8px;border:0;border-radius:4px;background:none;color:inherit;text-align:left;cursor:pointer;touch-action:manipulation}
+.tsel:not([aria-disabled=true]):hover{background:#253545}
+.tsel[aria-expanded=true]{box-shadow:inset 0 0 0 2px var(--select)}
+.tsel .tn{grid-column:1;font:600 20px/1.15 var(--cond);letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tsel .ts{grid-column:1;font:600 14px/1.2 var(--cond);letter-spacing:.05em;color:var(--text-3)}
+.tsel .tt{grid-column:2;grid-row:1/3;font:600 clamp(32px,calc(10.5 * var(--pu)),44px)/1 var(--cond);font-variant-numeric:tabular-nums}
+.trow .tbtn{display:flex;gap:8px}
+.trow .cmdbtn{min-height:56px;min-width:100px;padding:6px 10px}
+.trow .bar{position:absolute;left:0;right:0;bottom:0;height:4px;border-radius:0}
+.trow[data-state=paused] .tt{color:var(--text-3)}
+.trow[data-state=paused] .bar i{background:#6b7c8d}
+/* while an editor is open, the other timers keep their name and time on one short line */
+.tmrs[data-editing] .trow:not(.editing){padding:2px 6px 2px 4px}
+.tmrs[data-editing] .trow:not(.editing) .tsel{min-height:44px;padding:2px 8px}
+.tmrs[data-editing] .trow:not(.editing) .ts,.tmrs[data-editing] .trow:not(.editing) .tbtn{display:none}
+.tmrs[data-editing] .trow:not(.editing) .tsel .tt{grid-row:1;font-size:24px}
+.tmrs[data-editing] .trow:not(.editing) .tsel .tn{font-size:18px}
+.trow[data-state=done]{border-color:var(--prompt);background:var(--prompt-bg)}
+.trow[data-state=done] .ts,.trow[data-state=done] .tt{color:var(--prompt)}
+.trow[data-state=done] .tbtn{grid-column:1/-1;display:grid;grid-template-columns:1fr 1.4fr}
+.trow .tok{background:#f4f6f8;color:#10161c;border-color:#f4f6f8}
+.trow .tok small{color:#3a4652}
+.trow .tok:not([aria-disabled=true]):hover{background:#dfe5ea}
+.tplus{min-height:56px}
+.tedit{display:grid;gap:8px;margin-top:8px;padding:14px 12px 12px;border:2px solid var(--select);border-radius:var(--r);background:var(--panel)}
+/* the editor's title sits in its top border, as a legend does */
+.tedit .tet{justify-self:start;margin:-26px 0 -2px -4px;padding:0 6px;background:var(--panel);font:700 17px/1.2 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+.tfield{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:8px}
+.tfield label{min-width:62px;font:600 15px/1 var(--cond);letter-spacing:.05em;color:var(--text-2);text-transform:uppercase}
+.tedit input{min-width:0;min-height:52px;padding:0 12px;border:2px solid #3d7fd0;border-radius:var(--r);background:var(--face);color:var(--text);font:600 22px/1 var(--cond)}
+.tedit input::placeholder{color:#8a9bad}
+.tfield.tmin{grid-template-columns:auto 64px minmax(0,1fr) 64px}
+.tmin input{text-align:center;font-size:28px;font-variant-numeric:tabular-nums}
+.tsug,.tkeys{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.tpre{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}
+.tedit .cmdbtn{min-height:46px;font-size:17px}
+.tedit .tmin .cmdbtn{min-height:52px}
+.tsug .cmdbtn[aria-pressed=true],.tpre .cmdbtn[aria-pressed=true]{background:#070c11;color:#fff;box-shadow:inset 0 0 0 2px #a9bfd4}
+.tleft{display:flex;justify-content:space-between;align-items:baseline;margin:0;font:600 15px/1 var(--cond);letter-spacing:.05em;color:var(--text-2);text-transform:uppercase}
+.tleft b{font:600 34px/1 var(--cond);color:var(--text);font-variant-numeric:tabular-nums}
+.tnote{margin:-2px 0 0;font:500 14px/1.3 var(--sans);color:var(--text-3)}
+.tact{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px}
+.tedit .tact .cmdbtn{min-height:52px}
+.tact .tgo{background:var(--select);border-color:var(--select);color:#fff}
+.tact .tgo small{color:#dbe8f6}
+.tact .tgo:not([aria-disabled=true]):hover{background:#3477c8}
+.keep.snd.blocked .box{border-color:var(--prompt);background:var(--prompt-bg);box-shadow:none}
+.keep.snd.blocked .box svg{visibility:hidden}
+.keep.snd.blocked .kl{color:var(--prompt)}
+.banner .act.sec{background:none;color:#fff1d2;box-shadow:inset 0 0 0 2px #c99a3c}
+.banner .act.sec:not([aria-disabled=true]):hover{background:rgb(255 178 30/.14)}
+/* the alarm: one slow pulse (1 s up, 1 s down, far under the 3 flashes a second WCAG 2.3.1 allows), shared by the row,
+   the title bar and a frame round the whole screen; steady with reduced motion. Nothing else on the screen pulses */
+.trow[data-state=done]::after,.banner[data-ring]::after,.app[data-ring]::after{content:"";pointer-events:none;animation:ring 1s ease-in-out infinite alternate}
+.trow[data-state=done]::after,.banner[data-ring]::after{position:absolute;inset:-2px;border:2px solid var(--prompt);border-radius:calc(var(--r) + 1px);box-shadow:0 0 18px rgb(255 178 30/.55)}
+.banner[data-ring]{position:relative}
+.app[data-ring]::after{position:fixed;inset:0;z-index:60;box-shadow:inset 0 0 0 4px var(--prompt),inset 0 0 64px rgb(255 178 30/.4)}
+@keyframes ring{from{opacity:.15}to{opacity:1}}
+/* the phone's step strip: the timers that count, are paused or have run out; a tap goes to their section */
+.tml{display:none}
 
 /* screen tabs */
 .tabs{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);min-height:var(--tabs-h);background:var(--bar);border-top:1px solid var(--line)}
@@ -337,7 +406,7 @@ html.bare .mock{display:none}
 @keyframes march{to{background-position:17px 0}}
 @keyframes flow{to{stroke-dashoffset:-24}}
 @keyframes blink{50%{opacity:.25}}
-@media (prefers-reduced-motion:reduce){.pd,.lamp::before,.link i,.keep .box{animation:none!important}}
+@media (prefers-reduced-motion:reduce){.pd,.lamp::before,.link i,.keep .box,.trow[data-state=done]::after,.banner[data-ring]::after,.app[data-ring]::after{animation:none!important}}
 
 /* desktop: one fixed screen */
 @media (min-width:1180px){.app{height:max(calc(100dvh - var(--mock-h)),860px)}}
@@ -350,6 +419,9 @@ html.bare .mock{display:none}
   .rig{min-height:0;aspect-ratio:1200/470}
   .steps{overflow:visible}
   .book ul{overflow:visible}
+  /* stacked, the proposed timers come before the steps (or the recipe book), so they are not seven steps down */
+  [data-timers=new] .recipe .steps,[data-timers=new] .recipe .book,[data-timers=new] .recipe .handlinks{order:2}
+  [data-timers=new] .recipe .tmrs{order:1}
   [data-layout=b] .recipe{order:2}
   [data-layout=b] .main{grid-template-columns:minmax(0,1fr)}
   [data-layout=b] .brewhouse{grid-template-rows:auto auto}
@@ -384,6 +456,9 @@ html.bare .mock{display:none}
   .now .left{grid-column:3;grid-row:1/3;font:700 24px/1 var(--cond);font-variant-numeric:tabular-nums}
   .now .bar{grid-column:1/-1;margin-top:6px}
   .now .nx{grid-column:1/-1;margin-top:2px;font:600 16px/1.2 var(--cond);letter-spacing:.03em;color:#dce9f7}
+  .now .tml{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline;min-height:44px;margin-top:6px;padding:8px 10px;border:1px solid #3c7fcc;border-radius:var(--r);background:#0b2440;color:#fff;font:600 16px/1.3 var(--cond);letter-spacing:.03em;text-align:left}
+  .now .tml .tl{font-size:13px;letter-spacing:.08em;color:#9fc3ea}
+  .now .tml .d{color:var(--prompt)}
   .plate{padding:10px;gap:8px}
   .dev{font-size:15px}
   .face .pv{font-size:clamp(48px,calc(18 * var(--pu)),76px)}

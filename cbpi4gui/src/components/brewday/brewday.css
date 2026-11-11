@@ -31,6 +31,9 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .alloff:hover{border-color:#ff8a80;background:#2b1315}
 :where(html.bd-page) .alloff[aria-disabled=true]{opacity:.5;cursor:not-allowed}
 :where(html.bd-page) .clock{font:600 clamp(26px,2.4vw,40px)/1 var(--cond);font-variant-numeric:tabular-nums;min-width:3.2ch;text-align:right}
+@media (min-width:1180px){
+:where(html.bd-page) .alloff,:where(html.bd-page) .clock{flex:none}
+}
 :where(html.bd-page) .status{display:grid;grid-template-columns:minmax(280px,34%) minmax(0,1fr);gap:var(--gap);padding:10px var(--pad) 0}
 :where(html.bd-page) .banner,:where(html.bd-page) .event{display:flex;align-items:center;gap:12px;min-height:58px;padding:8px 10px 8px 14px;border-radius:var(--r);background:var(--panel);border:1px solid var(--line)}
 :where(html.bd-page) .banner{font:600 18px/1.2 var(--cond);letter-spacing:.03em}

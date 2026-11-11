@@ -321,6 +321,48 @@ const SCENES = {
       ["09:58:02", "Hot liquor tank AUTO", "confirmed", "ok"]
     ]
   }),
+  /* the proposed timers (?timers=new). #timers: the #mash day, with Stir counting down (started 14:24:43) and Yeast set
+     up for later; SOUND on. Today's view of these moments shows the screen as built */
+  timers: () => Object.assign(mash(), {
+    tmrs: [{id: 1, name: "Stir", set: 15 * 60, left: 7 * 60 + 12, state: "running"}, {id: 2, name: "Yeast", set: 20 * 60, left: 20 * 60, state: "stopped"}],
+    snd: {on: true, ok: true},
+    events: [...(TIMERS === "new" ? [["14:24:43", "Stir started, 15:00 to go", "confirmed", "ok"]] : []), ...MASH_EVENTS.map(e => e.slice())]
+  }),
+  /* Stir started at 14:17:19 and ran out at 14:32:19, 12 s ago: its row, the title bar and the screen's edge pulse, and
+     it counts up */
+  "timer-done": () => {
+    const s = SCENES.timers(), t = s.tmrs[0];
+    if (TIMERS !== "new") {
+      /* today's screen: its one rest timer has finished */
+      s.banner = {tone: "prompt", title: "Rest timer", text: "The rest timer has finished.", act: "OK", cmd: "b:ok"};
+      s.events = [["14:32:19", "Rest timer finished", "waiting for you", "wait"], ...MASH_EVENTS.map(e => e.slice())];
+      return s;
+    }
+    Object.assign(t, {state: "done", left: 0, at: s.t - 12});
+    s.banner = tBanner(t, s.tmrs);
+    s.events = [["14:32:19", "Stir finished", "waiting for you", "wait"], ["14:17:19", "Stir started, 15:00 to go", "confirmed", "ok"], ...MASH_EVENTS.map(e => e.slice())];
+    return s;
+  },
+  /* + TIMER pressed: a third timer, named Vorlauf from the ideas, 10 minutes */
+  "timer-new": () => Object.assign(SCENES.timers(), {open: {tedit: {id: null, name: "Vorlauf", ph: "Timer 3", set: 10 * 60}}}),
+  /* brewing by hand, with three: PBW soak counting down, Yeast paused at 10:01:08, Timer 3 ready */
+  "timers-hand": () => Object.assign(SCENES.manual(), {
+    base: "manual",
+    tmrs: [{id: 1, name: "PBW soak", set: 30 * 60, left: 22 * 60 + 40, state: "running"}, {id: 2, name: "Yeast", set: 15 * 60, left: 6 * 60 + 12, state: "paused"},
+      {id: 3, name: "Timer 3", set: 10 * 60, left: 10 * 60, state: "stopped"}],
+    snd: {on: true, ok: true},
+    events: TIMERS !== "new" ? SCENES.manual().events : [
+      ["10:04:11", "Hot liquor tank target 168.0 °F", "confirmed", "ok"],
+      ["10:03:40", "HLT PUMP started", "confirmed", "ok"],
+      ["10:01:08", "Yeast paused, 6:12 to go", "confirmed", "ok"],
+      ["09:58:02", "Hot liquor tank AUTO", "confirmed", "ok"],
+      ["09:57:00", "PBW soak started, 30:00 to go", "confirmed", "ok"],
+      ["09:52:20", "Yeast started, 15:00 to go", "confirmed", "ok"]
+    ]
+  }),
+  /* the same, just after the page was opened again: SOUND is on for this screen, but the browser plays nothing until the
+     first tap on the page */
+  "sound-allow": () => Object.assign(SCENES["timers-hand"](), {snd: {on: true, ok: false}}),
   offline: () => {
     const s = mash();
     s.link = "lost"; s.age = 48; s.t = 14 * 3600 + 32 * 60 + 58;
@@ -603,7 +645,7 @@ function editorHTML(v) {
     <input id="tin" inputmode="numeric" value="${p}" aria-label="${st.edit.what === "boil" ? "New boil power in percent" : "New power by hand in percent"}">
     <button type="button" data-cmd="pstep:1" aria-label="Up 1 percent">+1</button><button type="button" data-cmd="pstep:5" aria-label="Up 5 percent">+5</button>
     <button type="button" class="ok" data-cmd="pset">SET <span id="tok">${p}</span> %</button><button type="button" class="no" data-cmd="tcancel">CANCEL</button>${BK === "power" ? `
-    <button type="button" class="bkat" data-cmd="bat">BOIL AT ${boilFromText()} °F<small>full power until then · change</small></button><p class="usual">USUAL ${st.v.bk.usual} %<small>starts each recipe · set in Hardware</small></p>` : ""}</div>`;
+    <button type="button" class="bkat" data-cmd="bat">BOIL AT ${boilFromText()} °F<small>full power until then · change</small></button><p class="usual">${st.v.bk.usual != null ? `USUAL ${st.v.bk.usual} %<small>starts each recipe · set in Hardware</small>` : "USUAL – –<small>none · set one in Hardware</small>"}</p>` : ""}</div>`;
   }
   if (v === "bk" && BK === "power" && st.edit.kind === "tgt") return bkTgtEditorHTML();
   /* the HLT's and the mash tun's target, or the boil point (the proposed design's BOIL AT; the words design's target) */
@@ -887,7 +929,7 @@ function note(where, text) {
 function explain(el) {
   const why = el.dataset.why, pl = el.closest(".plate");
   if (!why) return;
-  if (pl) note(pl.id.slice(3), why); else if (el.closest(".recipe")) note("r", why); else toast(why);
+  if (pl) note(pl.id.slice(3), why); else if (el.closest(".tmrs")) note("t", why); else if (el.closest(".recipe")) note("r", why); else toast(why);
 }
 /* cav: what "confirmed" can't promise, such as a pump that its own override switch can still run */
 function send(key, dir, label, apply, cav = "") {
@@ -943,12 +985,12 @@ function setMode(v, m) {
   ["hltEl", "wortPump", "bkEl"].forEach(id => { a[id].failed = null; });
 }
 function cmdMode(v, m) { send("m:" + v, m, `${VNAME[v]} ${m.toUpperCase()}`, () => setMode(v, m)); }
-/* the boil kettle's new boxes start with their number selected, so typing replaces it ("BOIL" included) */
+/* every target box, and the proposed boil kettle's other boxes, start with their number selected, so typing replaces it
+   ("BOIL" included): typing 150 into 168.0 used to give 150168.0 (Brett, 10 Nov) */
 const focusTin = sel => setTimeout(() => { const i = $("#tin"); if (!i) return; i.focus(); if (sel) i.select(); }, 0);
 function cmdTgtOpen(v) {
   const V = st.v[v], pw = v === "bk" && BK === "power";
   st.edit = {v, kind: "tgt", val: pw ? bkHoldT() ?? boilFrom() : bkNew(v) ? boilFrom() : V.sv ?? (v === "bk" ? 210.2 : v === "mt" ? 149.0 : V.own ?? 168.0)};
-  /* Brett, 10 Nov: every box selects its number on open, so typing replaces it (the HLT's and the mash tun's too) */
   renderAll(); focusTin(true);
 }
 /* the proposed boil kettle's BOIL AT, in the power box: the boil point, Boil_Threshold (set_boil_at) */
@@ -1155,7 +1197,7 @@ function cmdStart() {
     /* the proposed boil kettle: a recipe started from its first step puts the boil power back to the usual power (a new
        BoilPower setting, see BUILD-NOTES). A change made later that day, before or during the boil, is kept for the boil,
        and doesn't carry over to the next brew day */
-    if (BK === "power" && fresh && st.v.bk.bp !== st.v.bk.usual) {
+    if (BK === "power" && fresh && st.v.bk.usual != null && st.v.bk.bp !== st.v.bk.usual) {
       const was = st.v.bk.bp; st.v.bk.bp = st.v.bk.usual;
       timers.push(setTimeout(() => { logEvent(`Boil power back to your usual ${st.v.bk.usual} % (was ${was} %)`, "by recipe", ""); renderAll(); }, 300));
     }
@@ -1229,10 +1271,10 @@ function cmdTimer(x) {
    rest timer is), during a recipe as well as by hand. Modelled on a four-channel kitchen timer (ThermoWorks TimeStack):
    all four in view at once, a finished one pulses and counts up until it is answered, and OK puts it back to its own
    time, ready to start again. SOUND belongs to each screen: its timers and CraftBeerPi's alerts (Scott's choice). */
-const TMAX = 4, TSUG = ["Stir", "Vorlauf", "Yeast", "Hop stand", "Whirlpool", "Chill"], TPRE = [5, 10, 15, 20, 30, 60];
+const TMAX = 4, TSUG = ["Hop stand", "Yeast", "Vorlauf"], TPRE = [5, 10, 15, 20, 30, 60];
 const tfmt = s => s >= 3600 ? `${Math.floor(s / 3600)}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}` : mmss(s);
 const tById = id => st.tmrs.find(t => t.id === id);
-const tPct = t => t.set ? Math.round(100 * (1 - t.left / t.set)) : 0;
+const tPct = t => t.run ? Math.round(100 * (1 - t.left / t.run)) : 0;
 let lastBanner = null, actx = null;
 function tDefaultName() { let n = st.tmrs.length + 1; while (st.tmrs.some(t => t.name === `Timer ${n}`)) n++; return `Timer ${n}`; }
 /* CraftBeerPi's kept prompt for a timer that has run out: titled with its name, on every screen until answered */
@@ -1245,16 +1287,17 @@ function timersHTML() {
   const rows = T.map(t => trowHTML(t, off) + (e && e.id === t.id ? teditHTML(off) : "")).join("");
   const plus = e && e.id == null ? teditHTML(off)
     : b("cmdbtn tplus", "+ TIMER", full ? "four at most" : T.length ? `up to ${TMAX}` : "counts down on every screen", {cmd: "te:new", why: off || (full ? "Four timers at most. Remove one to add another." : "")});
-  return `<section class="tmrs" id="tmrs" aria-labelledby="tmrs-h"><div class="thead"><h3 id="tmrs-h">Timers</h3>${soundHTML()}</div>${rows}${plus}</section>`;
+  return `<section class="tmrs" id="tmrs" aria-labelledby="tmrs-h"${e ? " data-editing" : ""}><div class="thead"><h3 id="tmrs-h">Timers</h3>${soundHTML()}</div>${rows}${plus}<p class="note">${st.notes.t || ""}</p></section>`;
 }
 function trowHTML(t, off) {
   const p = st.pend["t:" + t.id], why = off || (p ? WAIT : ""), done = t.state === "done", run = t.state === "running", live = run || t.state === "paused";
   const time = done ? "+" + tfmt(st.t - t.at) : tfmt(t.left);
-  const sub = done ? "TIME'S UP" : run ? `of ${tfmt(t.set)}` : live ? `PAUSED · of ${tfmt(t.set)}` : "ready";
+  /* run: this countdown's length (its own time, or the 5 minutes more after it ran out), for "of" and the bar */
+  const sub = done ? "TIME'S UP" : run ? `of ${tfmt(t.run)}` : live ? `PAUSED · of ${tfmt(t.run)}` : "ready";
   const said = done ? `${t.name}: time's up, ${tfmt(st.t - t.at)} ago` : `${t.name}: ${tfmt(t.left)}${run ? " left" : live ? " left, paused" : ", ready"}`;
   const btn = done ? b("cmdbtn", p === "plus5" ? "ADDING…" : "+5 MIN", "", {cmd: `tm2:plus5:${t.id}`, why}) + b("cmdbtn tok", p === "ok" ? "SENDING…" : "OK", "stops the alarm", {cmd: `tm2:ok:${t.id}`, why})
     : b("cmdbtn", p ? (p === "start" ? "STARTING…" : "PAUSING…") : run ? "PAUSE" : "START", t.state === "paused" ? "carry on" : "", {cmd: `tm2:go:${t.id}`, why});
-  return `<div class="trow" data-state="${t.state}" id="tr-${t.id}"><button type="button" class="tsel" data-cmd="te:open:${t.id}" aria-expanded="${!!(st.tedit && st.tedit.id === t.id)}" aria-label="${esc(said)}. Change it"${off ? ` aria-disabled="true" data-why="${off}"` : ""}><span class="tn">${esc(t.name)}</span><span class="ts">${sub}</span><span class="tt" id="tt-${t.id}">${time}</span></button><div class="tbtn">${btn}</div>${live ? `<span class="bar"><i id="tb-${t.id}" style="width:${tPct(t)}%"></i></span>` : ""}</div>`;
+  return `<div class="trow${st.tedit && st.tedit.id === t.id ? " editing" : ""}" data-state="${t.state}" id="tr-${t.id}"><button type="button" class="tsel" data-cmd="te:open:${t.id}" aria-expanded="${!!(st.tedit && st.tedit.id === t.id)}" aria-label="${esc(said)}. Change it"${off ? ` aria-disabled="true" data-why="${off}"` : ""}><span class="tn">${esc(t.name)}</span><span class="ts">${sub}</span><span class="tt" id="tt-${t.id}">${time}</span></button><div class="tbtn">${btn}</div>${live ? `<span class="bar"><i id="tb-${t.id}" style="width:${tPct(t)}%"></i></span>` : ""}</div>`;
 }
 /* one editor at a time, in place: under its timer, or where + TIMER was for a new one. A running or paused timer's time
    changes by a minute or five at once, as the boil power's nudges do; a stopped one is set and then saved */
@@ -1314,28 +1357,28 @@ function cmdTe(x, y) {
     if (st.tmrs.length >= TMAX) return;
     const go = x === "start", set = e.set;
     return send("t:new", x, `${name} added${go ? " and started" : ""}, ${tfmt(set)}`, () => {
-      st.tmrs.push({id: Math.max(0, ...st.tmrs.map(z => z.id)) + 1, name, set, left: set, state: go ? "running" : "stopped"});
+      st.tmrs.push({id: Math.max(0, ...st.tmrs.map(z => z.id)) + 1, name, set, left: set, run: set, state: go ? "running" : "stopped"});
       st.tedit = null;
     });
   }
   const said = name !== t.name ? `${t.name} is now ${name}, ${tfmt(e.set)}` : `${t.name} set to ${tfmt(e.set)}`, set = e.set;
-  return send("t:" + t.id, "save", said, () => { t.name = name; t.set = t.left = set; st.tedit = null; });
+  return send("t:" + t.id, "save", said, () => { t.name = name; t.set = t.left = t.run = set; st.tedit = null; });
 }
 function cmdTm2(x, id, y) {
   const t = tById(+id), key = "t:" + id;
   if (!t) return;
   if (x === "go") {
     if (t.state === "running") return send(key, "pause", `${t.name} paused, ${tfmt(t.left)} to go`, () => { t.state = "paused"; });
-    return send(key, "start", `${t.name} started, ${tfmt(t.left)} to go`, () => { t.state = "running"; });
+    return send(key, "start", `${t.name} started, ${tfmt(t.left)} to go`, () => { if (t.state === "stopped") t.run = t.left; t.state = "running"; });
   }
   if (x === "add") {
     const s = parseInt(y, 10), want = Math.max(10, t.left + s);
-    return send(key, "add", `${t.name}: ${s > 0 ? "+" : "−"}${Math.abs(s) / 60} min, ${tfmt(want)} to go`, () => { t.left = Math.max(10, t.left + s); });
+    return send(key, "add", `${t.name}: ${s > 0 ? "+" : "−"}${Math.abs(s) / 60} min, ${tfmt(want)} to go`, () => { const was = t.left; t.left = Math.max(10, t.left + s); t.run = Math.max(t.left, t.run + t.left - was); });
   }
   /* answering: OK puts the timer back to its own time, stopped (a kitchen timer's recall); +5 MIN runs it five more */
   const answer = () => { delete t.at; if (st.banner && st.banner.timer === t.id) st.banner = null; };
-  if (x === "ok") return send(key, "ok", `${t.name}: alarm answered`, () => { answer(); t.state = "stopped"; t.left = t.set; });
-  if (x === "plus5") return send(key, "plus5", `${t.name}: 5 more minutes`, () => { answer(); t.state = "running"; t.left = 300; });
+  if (x === "ok") return send(key, "ok", `${t.name}: alarm answered`, () => { answer(); t.state = "stopped"; t.left = t.run = t.set; });
+  if (x === "plus5") return send(key, "plus5", `${t.name}: 5 more minutes`, () => { answer(); t.state = "running"; t.left = t.run = 300; });
 }
 /* the alarm sound: a piezo-style beep, as a panel controller's buzzer, softened (a sine at 1760 Hz, 120 ms each).
    One sound for now; choosing between presets modelled on real controllers is Scott's later todo */
@@ -1575,11 +1618,11 @@ function load(name) {
   Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, logOpen: false}, open);
   if (st.v.bk.bp == null) st.v.bk.bp = 45; // the boil kettle's Boil_Power setting, read from its props
   if (st.a.bkEl.lvl == null) st.a.bkEl.lvl = 100; // the boil element's own level (its power), used when it is on by hand
-  if (st.v.bk.usual == null) st.v.bk.usual = 45; // the proposed boil kettle's usual boil power (a new BoilPower setting)
+  if (st.v.bk.usual === undefined) st.v.bk.usual = 45; // the proposed boil kettle's usual boil power (Usual_Boil_Power); null: none set
   if (st.v.bk.keep == null) st.v.bk.keep = true; // its Keep_Boiling setting, "Yes" unless Scott unticks it
   if (st.v.bk.boilAt == null) st.v.bk.boilAt = BOIL_TH; // the proposed boil kettle's boil point, Boil_Threshold (BOIL AT)
   if (TIMERS === "new") {
-    st.tmrs = (st.tmrs || []).map(t => Object.assign({}, t));
+    st.tmrs = (st.tmrs || []).map(t => Object.assign({run: t.set}, t));
     if (!st.snd) st.snd = {on: false, ok: true};
     if (st.tedit === undefined) st.tedit = null;
     lastBanner = st.banner;
@@ -1620,8 +1663,10 @@ if (LAYOUT === "b") {
    without them; ?graphs=panel is option B, which he turned down, kept only for graphs.html. Layout A has none. */
 const GRAPHS = LAYOUT === "a" || QS.get("graphs") === "none" ? "" : QS.get("graphs") === "panel" ? "panel" : "face";
 if (GRAPHS) { document.documentElement.dataset.graphs = GRAPHS; graphSetup(QS); }
-/* the boil kettle's faceplate: today's (the default, as built), or a redesign for boil-kettle.html: ?bk=words or ?bk=power */
-const BK = ["words", "power"].includes(QS.get("bk")) ? QS.get("bk") : "today";
+/* the boil kettle's faceplate: the redesign Scott approved, built on the screen on 10 Nov (the default, ?bk=power); the
+   faceplate from before it, which the screen keeps for an older BoilPower without set_boil_at (?bk=today); or ?bk=words,
+   an option he didn't take. boil-kettle.html compares the first two. */
+const BK = ["words", "today"].includes(QS.get("bk")) ? QS.get("bk") : "power";
 document.documentElement.dataset.bk = BK;
 /* the timers: today's one rest timer (the default, as built), or ?timers=new, the proposal for several, named, with sound */
 const TIMERS = QS.get("timers") === "new" ? "new" : "today";
