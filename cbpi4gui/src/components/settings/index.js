@@ -64,6 +64,27 @@ const SelectBox = ({ options, value, onChange }) => {
         };
 };
 
+/* A text setting's box. Scott, 11 Nov, for BREWDAY_TIMER_NAMES: wider boxes, and a long value wraps onto more lines
+   instead of hiding its end. From 900 px wide, 360 px for every text setting (six timer names fit on one line); on a
+   phone it takes the room its column has, as the old box did, so the table still fits the screen. Still one line of
+   text: Enter adds no line break, as in the old box, and a pasted line break becomes a space (one at either end is
+   dropped, so a copied key keeps no stray space). */
+const TEXT_WIDTH = { xs: "100%", md: "360px" };
+const oneLine = (s) => String(s).replace(/^(\r\n|\r|\n)+|(\r\n|\r|\n)+$/g, "").replace(/(\r\n|\r|\n)+/g, " ");
+const TextBox = ({ value, onChange }) => (
+  <TextField
+    variant="standard"
+    multiline
+    maxRows={8}
+    value={value}
+    sx={{ width: TEXT_WIDTH }}
+    onKeyDown={(e) => {
+      if (e.key === "Enter" && !e.nativeEvent.isComposing) e.preventDefault();
+    }}
+    onChange={(e) => onChange({ target: { value: oneLine(e.target.value) } })}
+  />
+);
+
 const ConfigInput = ({ item, onChange, value, options }) => {
 
   switch (item.type) {
@@ -82,7 +103,7 @@ const ConfigInput = ({ item, onChange, value, options }) => {
     case "number":
       return <TextField variant="standard" onChange={onChange} value={value} />;
     default:
-      return <TextField variant="standard" onChange={onChange} value={value} />;
+      return <TextBox onChange={onChange} value={value} />;
   }
 
 
