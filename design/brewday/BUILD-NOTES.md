@@ -13,9 +13,10 @@ This folder is a proposal. Nothing in it changes CraftBeerPi, and nothing is com
   kettle has more moments: `#heatup`, `#pause`, `#pause-long`, `#boiling`, `#hold`, `#keepboil`, `#letfall`,
   `#bktarget` and `#handhold`. `#notarget` and `#notarget-hlt` show a vessel in AUTO with no target.
   `#sparge-heat`, `#sparge-ready`, `#sparge-run` and `#sparge-batch` show the new SpargeStep (core
-  4.7.7.post35); `#sparge` keeps the old MashStep sparge that recipes already in the book still have. Add
-  `&timers=new` for the timers Scott approved on 11 Nov (`#timers`, `#timer-done`, `#timer-new`, `#timer-names`,
-  `#timer-nonames`, `#timers-hand`, `#sound-allow`), not built yet.
+  4.7.7.post35); `#sparge` keeps the old MashStep sparge that recipes already in the book still have. The timers
+  Scott approved on 11 Nov, built that day, are shown by default (`#timers`, `#timer-done`, `#timer-new`,
+  `#timer-names`, `#timer-nonames`, `#timers-hand`, `#sound-allow`); add `?timers=today` for the one rest timer the
+  screen keeps for an older CraftBeerPi.
 - The pages run on demo data copied from the simulator's config (`C:\src\personal\cbpi-testbench\config`).
   They do not talk to CraftBeerPi. Buttons respond and timers run, but nothing is sent anywhere.
 
@@ -58,7 +59,7 @@ same. The section at the end has the detail.
 | ALL OFF in the title bar: recipe stopped, every kettle to MANUAL, both elements and both pumps off | React UI, or server optional | Scott kept it on 9 Nov and asked for it to stop the HLT pump too, so it was renamed from ALL HEAT OFF. The UI can send the separate commands and report any that fail: stop the recipe first (`/step2/stop`) so it can't switch a kettle back on, then each kettle's `/off`, then `/off` for all four switches. A single server endpoint would make it one command that either works or fails as a whole. The HLT pump's override switch can still run that pump; see the next row. |
 | The HLT pump's override switch: under the pump in the drawing, OFF gets a third line, "UNLESS OVERRIDE SWITCH IS ON"; when the screen switches the pump off, on its own or with ALL OFF, the last-event line adds "its override switch can still run it" | Setting and React UI | The HLT pump has a switch on the rig that runs it whatever CraftBeerPi says, and CraftBeerPi can't see that switch (rig record, 9 Oct). So "confirmed off" only means CraftBeerPi switched its output off, not that the pump has stopped. `BREWDAY_OVERRIDE_ACTOR` names the switch with an override; the screen adds both lines for it. The phone has no drawing, so there the last-event line and LOG carry it. |
 | Last event and LOG under the title bar | React UI | Covers commands from this screen. Showing commands from the phone on the monitor too needs a shared log: server, optional. |
-| Rest timer when brewing by hand: one timer, shared by every screen | Server and React UI | Scott chose this on 9 Nov. The server keeps the time left and whether it is running; START TIMER, PAUSE TIMER and ±5 MIN are commands to it, and every open screen shows the same countdown. At zero the server raises a CraftBeerPi notification, which shows on every screen and stays until answered, as hop alerts have since the S2 fix. |
+| Rest timer when brewing by hand: one timer, shared by every screen | Server and React UI | Scott chose this on 9 Nov. The server keeps the time left and whether it is running; START TIMER, PAUSE TIMER and ±5 MIN are commands to it, and every open screen shows the same countdown. At zero the server raises a CraftBeerPi notification, which shows on every screen and stays until answered, as hop alerts have since the S2 fix. Since 11 Nov the screen has up to four named timers instead (see "Timers" below), and keeps this one rest timer only for an older CraftBeerPi. |
 | Barlow and Barlow Condensed fonts | React UI | Bundle the font files with the UI build. The Pi may have no internet on brew day; the mockup loads them from Google Fonts. |
 | An HLT pump in the simulator | Simulator configuration | The rig already has one: `Recirc_PUMP` on GPIO 7, which is also the HLT kettle's agitator (Scott confirmed the pump mapping on 9 Oct). The simulator has `Mash Pump` and `Glycol Pump` but no HLT pump; Brett plans to add one when he builds this. |
 
@@ -836,7 +837,7 @@ phone does. I haven't designed that; it matters only if Scott uses those widths.
   number selected, and typing 150 gives 150. USUAL with none set reads as above and fits; a recipe started then
   keeps a boil power of 40, and with 45 set it goes back to 45.
 
-## Timers: approved by Scott on 11 Nov, ready to build
+## Timers: approved by Scott on 11 Nov, built the same day
 
 Scott, 10 Nov, after using the rest timer: "why is it named that? lots of things use a timer during a brew day. I
 want an optionally audible alarm and more attention grabbing but still elegant visual alerting when timer expires.
@@ -845,12 +846,17 @@ timers". Asked whether the sound should cover only his timers, he chose "my time
 
 Scott, 11 Nov: "add the timers that design agent discussed. Those default names are fine as long as they're easily
 changed on brew day. I'd like to have an easy config setting to choose the default timer names from the setup if
-that's easy enough too". Brett is building it, server first (`cbpi\controller\timers_controller.py`,
-`cbpi\http_endpoints\http_timers.py`). The names setting is the next section but one.
+that's easy enough too". The names setting is the next section but one.
 
-The mockup is `brew-day.html?timers=new`, moments `#timers`, `#timer-done`, `#timer-new`, `#timer-names`,
-`#timer-nonames`, `#timers-hand` and `#sound-allow`; without `&timers=new` the same moments show the screen as built.
-It is modelled on a
+> **Built, 11 Nov.** Brett built it the same day: the screen in dc789c6 (build 6f659e3, the web UI's brewday-graphs
+> branch), the server in 246e263, c9c83dc and e36433b (`cbpi\controller\timers_controller.py`,
+> `cbpi\http_endpoints\http_timers.py`). His identity test matched the mockup 375/375 with `&timers=new`, and the new
+> live test passed 56/56. 8012 runs it. The mockup then took four of the screen's choices and made the timers its
+> default: see "After the build" at the end of this section.
+
+The mockup shows the timers by default, moments `#timers`, `#timer-done`, `#timer-new`, `#timer-names`,
+`#timer-nonames`, `#timers-hand` and `#sound-allow`; `?timers=new` shows the same, and `?timers=today` shows those
+moments with the one rest timer, which the screen keeps for an older CraftBeerPi. It is modelled on a
 four-channel kitchen timer, ThermoWorks' TimeStack: four timers in view at once, digits that flash until the alarm is
 stopped and then count up, and a Set that recalls the last time. The alarm follows process-control practice
 (ISA-18.2 and ISA-101 displays): something blinks only while an alarm waits for an answer, and the alarm sits in a
@@ -866,7 +872,9 @@ more than 3 flashes a second: this is one slow pulse) are met.
   hand. On a phone, and anywhere the page stacks, the timers come before the steps or the recipe book, and the
   step strip at the top gets a line, "TIMERS Stir 7:12 · Yeast paused 6:12", that jumps to them.
 - **A timer's row.** Its name and state on the left ("of 15:00", "PAUSED · of 15:00", "ready", "TIME'S UP"), its
-  time large on the right, and one button: START, PAUSE, or START "carry on". A 4 px bar along the row's bottom
+  time large on the right, and one button: START, PAUSE, or START "carry on". While CraftBeerPi answers that button
+  it says STARTING… or PAUSING…; while the timer waits on anything else (a new time, a new name, minutes more) the
+  button keeps its label, greyed, with the usual "Waiting for CraftBeerPi to answer." A 4 px bar along the row's bottom
   edge shows how far this countdown has gone. The left part is a button that opens the timer's editor.
 - **+ TIMER** under the rows. Up to four timers; a fifth is refused with "Four timers at most. Remove one to add
   another." in the timers' own note line. While a timer's editor is open, + TIMER is not shown: there is one editor
@@ -880,9 +888,11 @@ more than 3 flashes a second: this is one slow pulse) are met.
   - For a stopped or new timer: MINUTES with −1, a box (1 to 300) and +1, and six presets: 5, 10, 15, 20, 30, 60.
     New: CANCEL, SAVE ("start it later") and START ("counts down now"). Stopped: REMOVE, CANCEL, SET.
   - For a running or paused timer: "Time left 7:08" with −1 MIN, +1 MIN and +5 MIN, which apply at once ("Changes
-    the time left at once, on every screen."), then REMOVE and DONE. Removing a timer that has time left asks once,
-    in place, as NEXT STEP does: "Remove Stir? It has 8:02 left." REMOVE IT / KEEP IT.
-  - Enter in a box presses the main button; Escape closes the editor.
+    the time left at once, on every screen."), then REMOVE and DONE. Removing a timer that has time left (running
+    or paused) asks once, in place, as NEXT STEP does: "Remove Stir? It has 8:02 left." REMOVE IT / KEEP IT. A
+    stopped timer, or one that has run out, goes at once, and a waiting alarm goes with it. SET on a timer that has
+    run out answers its alarm too, and stops it at its new time.
+  - Enter in a box presses the main button, or, while it is greyed, says why; Escape closes the editor.
   - **The column makes room for it (added 11 Nov).** On the one-screen layout (1180 px wide and up), while a
     timer's editor is open, the step list is hidden, and when brewing by hand so are the recipe book and its two
     buttons, RECIPE BOOK and BREW STEPS. They come back when the editor closes. For those few seconds the step's
@@ -912,7 +922,11 @@ more than 3 flashes a second: this is one slow pulse) are met.
   hears what it sounds like. It is kept in the browser (localStorage), not in CraftBeerPi, so the phone can be quiet
   while the monitor beeps.
 - **A browser plays sound only after a tap on the page.** After a reload with SOUND on, the switch says "SOUND · TAP
-  TO ALLOW" in amber, its box unlit amber, until the first tap anywhere, which unlocks it (`#sound-allow`).
+  TO ALLOW" in amber, its box unlit amber, until the first tap or key press anywhere, which unlocks it
+  (`#sound-allow`). Escape doesn't: a browser doesn't count it. A press on SOUND itself allows it too, leaves it on,
+  and plays the two beeps; it doesn't switch it off. A mouse press counts as it goes down, but a finger counts only as
+  it lifts (the HTML standard's activation-triggering events: `pointerdown` for a mouse, `pointerup` or `touchend`
+  for a finger or pen, `keydown` except Escape), so a touch tries again on `pointerup`.
 - **The sound** (one for now; choosing between presets modelled on real controllers is Scott's later todo): a
   softened piezo beep, a sine at 1760 Hz, 120 ms (12 ms rise, then falling away), three of them 200 ms apart (Web
   Audio).
@@ -1000,15 +1014,15 @@ timers. At 1440×900 three names fit and six scroll the page by 28 to 52 px. At 
 - A name left blank can be sent as the placeholder or not at all: the server's "Timer N" is the same name.
 - The title bar knows a prompt is a timer's from the timer's `prompt` field (its prompt's id), and only then draws
   +5 MIN as the lesser button.
-- The list of names comes as `names`, in `GET /timers` and in every "timers" message.
+- The names to pick come from the settings, which the server pushes to every screen whenever one changes (the
+  "configupdate" topic), so a list saved in Settings shows on open screens at once. The timers' own `names`, in
+  `GET /timers` and every "timers" message, is the fallback.
 
-### What the server still needs
+### What the server needed: done 11 Nov
 
-1. **A blank setting must give no names.** `config.get()` returns the default for a blank value
-   (`config_controller.py`, lines 46 to 55). So `TimersController.names()` gets `None` for a blank setting and
-   offers the three default names, and ConfigUpdate (`ConfigUpdate\__init__.py`, lines 82 and 1057) sees `None` and
-   adds the setting again with "Hop stand, Yeast, Vorlauf" at the next start: a restart undoes Scott's blank. Both
-   can look in the cache instead:
+1. **A blank setting gives no names** (e36433b, with the setting's description). `config.get()` returns the default
+   for a blank value (`config_controller.py`, lines 46 to 55), so a blank list offered the three default names, and
+   ConfigUpdate added "Hop stand, Yeast, Vorlauf" back at the next start. Both now look in the cache:
 
    ```python
    # TimersController.names()
@@ -1019,25 +1033,59 @@ timers. At 1440×900 three names fit and six scroll the page by 28 to 52 px. At 
    if "BREWDAY_TIMER_NAMES" not in self.cbpi.config.cache:
    ```
 
-2. **A saved list has to reach the screens already open.** The "timers" message goes out only when a timer
-   changes. Saving a setting sends "configupdate" with the whole configuration (`push_update()`); on that message
-   the screen can fetch `GET /timers` again. Or the server can send the timers message when this setting changes.
-   Your call.
-3. **Optional: one name per timer on the server too.** The screen refuses a name another timer has, but two screens
-   adding "Yeast" at the same moment, or a call to the API, could still make two. `_name()` could refuse it with the
-   screen's words, comparing with `casefold()`. If it does, `_default_name()` should compare the same way, as the
-   mockup's `tDefaultName()` does.
-4. **Optional: a wider box on the Settings page.** Text settings use MUI's default `TextField` (about 180 px wide),
-   so most of a six-name list is out of view while he types it. `fullWidth`, for this setting or all text
-   settings, would help.
+2. **A saved list reaches the screens already open**: the screen reads the names from the settings, as above.
+3. **One name per timer on the server too** (c9c83dc). `_name()` refuses a name another timer has, with the
+   screen's words, comparing with `casefold()`; `_default_name()` skips a "Timer N" the same way.
+4. **A wider box on the Settings page: not done.** Text settings use MUI's default `TextField` (about 180 px wide),
+   so most of a six-name list is out of view while he types it. `fullWidth` would change every text setting's box,
+   so Brett is offering it to Scott.
 
-### What the web UI needs
+### What the web UI needed
 
 - Everything above. The 4 px bar, the editor's legend title, the shrunken rows and the names' wrapping are new
   CSS; the rest reuses the screen's buttons, editor input, confirm box and KEEP BOILING's box.
 - **Identity tests:** run `#timer-done` with reduced motion, or the pulse differs from frame to frame. The new
   moments are `#timer-names` and `#timer-nonames`; `#timer-new` changed (YEAST greyed, no step list, no + TIMER
   while an existing timer is edited).
+
+### After the build: the screen's choices, taken into the mockup (11 Nov)
+
+The timers are the mockup's default now, as `?bk=power` became: `brew-day.html` with no `timers` setting shows them,
+and draws exactly what `?timers=new` draws (checked: 116 of 116 moments and views, pixel for pixel), so the identity
+test needs no change. `?timers=today` is the one rest timer, which the screen keeps for an older CraftBeerPi; the
+strip's switch reads "Timers: as built / older CraftBeerPi".
+
+Brett built four things differently on purpose, and the mockup now does the same:
+
+- **SOUND while it says TAP TO ALLOW.** The press that allows it leaves it on and plays the two beeps. (In the
+  mockup, the press's `pointerdown` allowed it and its click then switched it off.) A key press allows it too, except
+  Escape, which a browser doesn't count, so it works from the keyboard.
+- **The go button while the timer waits.** STARTING… and PAUSING… only for those two commands; for anything else it
+  keeps its label, greyed. (The mockup said PAUSING… for any command the timer waited on: a stopped timer being
+  saved, or a running one renamed or given more minutes.)
+- **REMOVE** asks only for a running or paused timer. A stopped one, or one that has run out, goes at once. (The
+  mockup asked "Remove Yeast? It has 0:00 left." for a finished one.)
+- **Enter in a timer's box while its main button is greyed** says why, as a press on the button does. (The mockup
+  ran the command anyway.)
+
+Three more, mine, for Brett to take or leave:
+
+- **A press on SOUND is left to SOUND's own click.** `unlockSound()` returns for a target inside `.snd`, and
+  `cmdSnd()` treats a press while TAP TO ALLOW as "allow, keep on, two beeps". This does what the screen's
+  `s.allowed` flag does, without the flag. With the flag, a press that starts on SOUND but never becomes a click (a
+  finger that slides off, or a phone's scroll that starts there) leaves `allowed` set. The next press on SOUND, meant
+  to switch it off, then only beeps.
+- **A finger tries again as it lifts.** The HTML standard counts `pointerdown` as the user's own press only for a
+  mouse; a finger or pen counts at `pointerup` or `touchend`. A phone may therefore refuse to start sound at the
+  finger's `pointerdown`, while the screen already shows SOUND as allowed, and the first alarm would be silent. The
+  mockup also listens to `pointerup` for anything but a mouse: if the sound is still asleep (`actx.state ===
+  "suspended"`), it wakes it then. With a mouse or a key nothing changes. Playwright counts every simulated press as
+  the user's, Escape included, so this could not be tested here. To try it on Scott's phone: reload with SOUND on,
+  tap once anywhere, then let a timer run out.
+- **A finished timer's alarm goes when the timer is removed or SET.** The mockup's simulation, which your demo
+  mode copies, left the prompt pulsing in the title bar with buttons that did nothing. A new `tAnswered(t)` takes
+  the prompt down (OK and +5 MIN use it too), and the next waiting alarm takes the title bar a second later. Live,
+  CraftBeerPi already withdraws the prompt, so only the demo was wrong.
 
 ### Changed, all in `proposal\`
 
@@ -1065,6 +1113,16 @@ timers. At 1440×900 three names fit and six scroll the page by 28 to 52 px. At 
   recipe book and its two buttons while a timer's editor is open.
 - `brew-day.html`: two moment links, "Timers: today / approved", and the header comment.
 
+11 Nov, after the build:
+
+- `brew-day.js`: `TIMERS` defaults to "new" (`?timers=today` for the rest timer) and the strip's `data-tm` links
+  follow; new `tAnswered()` and `unlockSound()` (with `pointerdown`, `pointerup` for anything but a mouse, and
+  `keydown` except Escape); changed `trowHTML` (the go button's waiting label), `cmdTe` (REMOVE asks only for a
+  running or paused timer; REMOVE and SET take a finished timer's alarm down), `cmdTm2` (uses `tAnswered`), `cmdSnd`
+  (a press while TAP TO ALLOW allows), the Enter handler (a greyed main button says why), and the timers scene's
+  comment.
+- `brew-day.html`: "Timers: as built / older CraftBeerPi", and the header comment.
+
 ### Checked
 
 - The five moments at 1920×950, 1366×768 and 390×844, with and without graphs: no page errors. Nothing scrolls more
@@ -1091,6 +1149,22 @@ timers. At 1440×900 three names fit and six scroll the page by 28 to 52 px. At 
 - Every moment in every view, plus the timers views with six names and with a blank list, at 1920×950 and 390×844,
   and the timers views at 1920×1080 and 1440×900: 1160 loads, no page errors. Nothing spills sideways except what
   did before on purpose: the phone's hidden "Connected", the shortened event line, and 2 px in `#timer-done`.
+
+11 Nov, after the build:
+
+- The default against `?timers=new`: every moment, with and without graphs, at 1920×950 and 390×844: 116 of 116
+  screenshots identical. `?timers=today` shows the rest timer, and the strip marks the view it shows.
+- Pressed through: SOUND while TAP TO ALLOW pressed with a mouse, a finger, Enter and Space (allowed, still on, two
+  beeps; the next press switches it off); a key elsewhere allows it, Escape doesn't; a press that slides off SOUND
+  allows nothing, and the next press on it allows it; a first press on Timer 3's START allows sound and starts the
+  timer, with a mouse and with a finger. The go button while Yeast is SET (START, greyed), while Stir gets +1 MIN or
+  a new name (PAUSE, greyed), and while each is paused or started (PAUSING…, STARTING…). Enter while START waits:
+  "Waiting for CraftBeerPi to answer.", sent once. REMOVE at once for finished Stir (its alarm goes) and stopped
+  Yeast; the question for paused Yeast and running PBW soak. Two finished, the first removed: the second takes the
+  title bar. SET on finished Stir: stopped at 5:00, its alarm gone.
+- Every moment in every view, the default and `?timers=today`, both layouts, at 1920×950 and 390×844, and the main
+  views at 1366×768: 1073 loads, no page errors, nothing new spilling sideways. Layout A shows the timers without
+  scrolling. `compare.html`, `graphs.html` and `boil-kettle.html` load, their frames showing the timers.
 
 ## Open questions about the drawing
 

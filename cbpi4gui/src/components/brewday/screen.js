@@ -27,7 +27,7 @@
 //   keeps its one rest timer). The names to pick for a timer are its BREWDAY_TIMER_NAMES setting, read from the settings so
 //   a new list shows at once. A timer's alarm is CraftBeerPi's
 //   kept prompt, which the title bar shows with +5 MIN as the lesser button. SOUND is this browser's own, kept on this
-//   device. Pressing SOUND while it says TAP TO ALLOW allows it: in the mockup that press turned it off.
+//   device. Pressing SOUND while it says TAP TO ALLOW allows it and leaves it on; on a phone a finger counts as it lifts.
 import { rigSVG, RIG_H } from "./rig";
 import * as DEMO from "./demo";
 import { api, why as failWhy } from "./api";
@@ -1337,6 +1337,9 @@ function liveTimer(x) {
    every screen shows the same ones, during a recipe as well as by hand. SOUND belongs to each screen: its timers and
    CraftBeerPi's alerts (Scott's choice). */
 const tById = id => st.tmrs.find(t => t.id === id);
+/* a timer's alarm is over (answered, or the timer set anew or removed): in the demo its prompt goes, and the next one
+   waiting takes the title bar at the next second. Live, CraftBeerPi withdraws the prompt */
+function tAnswered(t) { delete t.at; if (st.banner && st.banner.timer === t.id) st.banner = null; }
 const tPct = t => t.run ? Math.round(100 * (1 - t.left / t.run)) : 0;
 // how long ago a timer ran out: on the demo's clock, or CraftBeerPi's brewing clock
 const tUp = t => Math.max(0, DEMO_MODE ? st.t - t.at : t.up);
@@ -1451,9 +1454,10 @@ function cmdTe(x, y) {
   if (e.id != null && !t) { st.tedit = null; return renderAll(); } // removed on another screen meanwhile
   if ((x === "rm" || x === "done") && !t) return;
   if (x === "rm") {
-    // a timer with time left on it is asked about once, in place, as NEXT STEP is
+    /* a timer with time left on it (running or paused) is asked about once, in place, as NEXT STEP is; a stopped one, or
+       one that has run out, goes at once, and its alarm with it */
     if ((t.state === "running" || t.state === "paused") && !e.confirm) { e.confirm = true; return renderAll(); }
-    return tSend("t:" + t.id, "rm", `${t.name} removed`, () => { st.tmrs = st.tmrs.filter(z => z !== t); st.tedit = null; }, () => api.timersRemove(t.id), shut);
+    return tSend("t:" + t.id, "rm", `${t.name} removed`, () => { tAnswered(t); st.tmrs = st.tmrs.filter(z => z !== t); st.tedit = null; }, () => api.timersRemove(t.id), shut);
   }
   /* a typed name another timer has is refused as its greyed button is, before anything is sent */
   const twin = (!t || name !== t.name) && tTwin(name, t);
@@ -1471,7 +1475,8 @@ function cmdTe(x, y) {
     }, () => api.timersAdd(name, set, go), shut);
   }
   const said = name !== t.name ? `${t.name} is now ${name}, ${tfmt(e.set)}` : `${t.name} set to ${tfmt(e.set)}`, set = e.set;
-  return tSend("t:" + t.id, "save", said, () => { t.name = name; t.set = t.left = t.run = set; st.tedit = null; },
+  /* SET on one that has run out answers its alarm too, and stops it at its new time, as CraftBeerPi does */
+  return tSend("t:" + t.id, "save", said, () => { if (t.state === "done") { tAnswered(t); t.state = "stopped"; } t.name = name; t.set = t.left = t.run = set; st.tedit = null; },
     () => api.timersChange(t.id, name !== t.name ? {name, seconds: set} : {seconds: set}), shut);
 }
 function cmdTm2(x, id, y) {
@@ -1488,7 +1493,7 @@ function cmdTm2(x, id, y) {
   }
   /* answering: OK puts the timer back to its own time, stopped (a kitchen timer's recall); +5 MIN runs it five more. Live, the
      answer takes CraftBeerPi's prompt down on every screen; this one doesn't log it as answered elsewhere */
-  const answer = () => { delete t.at; if (st.banner && st.banner.timer === t.id) st.banner = null; };
+  const answer = () => tAnswered(t);
   const heard = !DEMO_MODE && t.prompt, o = heard ? {ok: () => { if (opts.removeAlert) opts.removeAlert(heard); }, fail: () => answered.delete(heard)} : {};
   if (x !== "ok" && x !== "plus5") return;
   if (heard) answered.add(heard);
@@ -1524,19 +1529,23 @@ function soundInit() {
 }
 function cmdSnd() {
   const s = st.snd;
-  // the press that allowed it (TAP TO ALLOW) leaves it on and lets it be heard
-  if (s.allowed) { delete s.allowed; ring(2); return renderAll(); }
+  /* pressed while it says TAP TO ALLOW: the press allows it and leaves it on, and the two beeps say it can be heard */
+  if (s.on && !s.ok) { s.ok = audioOK(); ring(2); return renderAll(); }
   s.on = !s.on;
   if (!DEMO_MODE) { try { window.localStorage.setItem(SOUND_KEY, s.on ? "on" : "off"); } catch (e) { /* private mode: for this page */ } }
   if (s.on) { s.ok = audioOK(); ring(2); } // the tap itself lets the page play sound, and two beeps say what it sounds like
   renderAll();
 }
-/* the first tap (or key) on the page lets it play sound */
+/* the first tap or key on the page lets it play sound; not Escape, which a browser doesn't count. A browser counts a mouse
+   button as it goes down, but a finger only as it lifts (the HTML standard's activation-triggering events), so a touch
+   tries again on pointerup. A press on SOUND is left to SOUND's own click (cmdSnd), so one that slides off it allows
+   nothing */
 function unlockSound(target) {
   const s = st && st.snd;
-  if (!s || !s.on || s.ok || !audioOK()) return;
+  if (!M.TIMERS || !s || !s.on || (target && target.closest && target.closest(".snd"))) return;
+  if (s.ok) { if (actx && actx.state === "suspended") actx.resume(); return; }
+  if (!audioOK()) return;
   s.ok = true;
-  if (target && target.closest && target.closest(".snd")) s.allowed = true;
   renderAll();
 }
 /* the demo's every brewing second, as the mockup's: the running timers count down and the finished ones up; a finished one's
@@ -1975,7 +1984,7 @@ const handlers = {
     try { el.setPointerCapture(e.pointerId); } catch (_) {}
     holdStart(el, true);
   },
-  pointerup: () => holdEnd(true),
+  pointerup: e => { if (e.pointerType !== "mouse") unlockSound(e.target); holdEnd(true); },
   pointercancel: () => holdEnd(false),
   contextmenu: e => { if (e.target.closest && e.target.closest("[data-hold]")) e.preventDefault(); },
   keydown: e => {

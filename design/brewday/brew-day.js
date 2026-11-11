@@ -321,8 +321,9 @@ const SCENES = {
       ["09:58:02", "Hot liquor tank AUTO", "confirmed", "ok"]
     ]
   }),
-  /* the timers (?timers=new, approved by Scott 11 Nov 2026, not built yet). #timers: the #mash day, with Stir counting
-     down (started 14:24:43) and Yeast set up for later; SOUND on. Today's view of these moments shows the screen as built */
+  /* the timers (approved by Scott and built on 11 Nov 2026; the default). #timers: the #mash day, with Stir counting
+     down (started 14:24:43) and Yeast set up for later; SOUND on. ?timers=today shows these moments with the one rest
+     timer, as the screen keeps it for an older CraftBeerPi */
   timers: () => Object.assign(mash(), {
     tmrs: [{id: 1, name: "Stir", set: 15 * 60, left: 7 * 60 + 12, state: "running"}, {id: 2, name: "Yeast", set: 20 * 60, left: 20 * 60, state: "stopped"}],
     snd: {on: true, ok: true},
@@ -1311,6 +1312,9 @@ function tBanner(t, list = st.tmrs) {
   return {tone: "prompt", title: t.name, text: `The ${tfmt(t.set)} timer has run out.`, timer: t.id, more: list.filter(x => x.state === "done").length - 1,
     acts: [{label: "+5 MIN", cmd: `tm2:plus5:${t.id}`, dir: "plus5", sec: true}, {label: "OK", cmd: `tm2:ok:${t.id}`, dir: "ok"}]};
 }
+/* its alarm is over (answered, or the timer set anew or removed): the prompt goes, and the next one waiting takes the
+   title bar at the next second */
+function tAnswered(t) { delete t.at; if (st.banner && st.banner.timer === t.id) st.banner = null; }
 function timersHTML() {
   const off = st.link === "lost" ? PAUSED : "", T = st.tmrs, e = st.tedit, full = T.length >= TMAX;
   const rows = T.map(t => trowHTML(t, off) + (e && e.id === t.id ? teditHTML(off) : "")).join("");
@@ -1326,8 +1330,10 @@ function trowHTML(t, off) {
   /* run: this countdown's length (its own time, or the 5 minutes more after it ran out), for "of" and the bar */
   const sub = done ? "TIME'S UP" : run ? `of ${tfmt(t.run)}` : live ? `PAUSED · of ${tfmt(t.run)}` : "ready";
   const said = done ? `${t.name}: time's up, ${tfmt(st.t - t.at)} ago` : `${t.name}: ${tfmt(t.left)}${run ? " left" : live ? " left, paused" : ", ready"}`;
+  /* the go button says STARTING… or PAUSING… only for those two; for anything else the timer waits on (a new time, a
+     new name, minutes more) it keeps its label, greyed, with the usual wait */
   const btn = done ? b("cmdbtn", p === "plus5" ? "ADDING…" : "+5 MIN", "", {cmd: `tm2:plus5:${t.id}`, why}) + b("cmdbtn tok", p === "ok" ? "SENDING…" : "OK", "stops the alarm", {cmd: `tm2:ok:${t.id}`, why})
-    : b("cmdbtn", p ? (p === "start" ? "STARTING…" : "PAUSING…") : run ? "PAUSE" : "START", t.state === "paused" ? "carry on" : "", {cmd: `tm2:go:${t.id}`, why});
+    : b("cmdbtn", p === "start" ? "STARTING…" : p === "pause" ? "PAUSING…" : run ? "PAUSE" : "START", t.state === "paused" ? "carry on" : "", {cmd: `tm2:go:${t.id}`, why});
   return `<div class="trow${st.tedit && st.tedit.id === t.id ? " editing" : ""}" data-state="${t.state}" id="tr-${t.id}"><button type="button" class="tsel" data-cmd="te:open:${t.id}" aria-expanded="${!!(st.tedit && st.tedit.id === t.id)}" aria-label="${esc(said)}. Change it"${off ? ` aria-disabled="true" data-why="${off}"` : ""}><span class="tn">${esc(t.name)}</span><span class="ts">${sub}</span><span class="tt" id="tt-${t.id}">${time}</span></button><div class="tbtn">${btn}</div>${live ? `<span class="bar"><i id="tb-${t.id}" style="width:${tPct(t)}%"></i></span>` : ""}</div>`;
 }
 /* one editor at a time, in place: under its timer, or where + TIMER was for a new one. A running or paused timer's time
@@ -1392,8 +1398,10 @@ function cmdTe(x, y) {
   /* spaces as the server keeps them: trimmed, and one between words */
   const t = e.id != null ? tById(e.id) : null, name = (e.name || "").split(/\s+/).filter(Boolean).join(" ") || e.ph;
   if (x === "rm") {
-    if (t.state !== "stopped" && !e.confirm) { e.confirm = true; return renderAll(); }
-    return send("t:" + t.id, "rm", `${t.name} removed`, () => { st.tmrs = st.tmrs.filter(z => z !== t); st.tedit = null; });
+    /* a timer with time left on it (running or paused) is asked about once, in place, as NEXT STEP is; a stopped one, or
+       one that has run out, goes at once, and its alarm with it */
+    if ((t.state === "running" || t.state === "paused") && !e.confirm) { e.confirm = true; return renderAll(); }
+    return send("t:" + t.id, "rm", `${t.name} removed`, () => { tAnswered(t); st.tmrs = st.tmrs.filter(z => z !== t); st.tedit = null; });
   }
   /* a typed name another timer has is refused as its greyed button is, before anything is sent */
   const twin = (!t || name !== t.name) && tTwin(name, t);
@@ -1411,7 +1419,8 @@ function cmdTe(x, y) {
     });
   }
   const said = name !== t.name ? `${t.name} is now ${name}, ${tfmt(e.set)}` : `${t.name} set to ${tfmt(e.set)}`, set = e.set;
-  return send("t:" + t.id, "save", said, () => { t.name = name; t.set = t.left = t.run = set; st.tedit = null; });
+  /* SET on one that has run out answers its alarm too, and stops it at its new time, as CraftBeerPi does */
+  return send("t:" + t.id, "save", said, () => { if (t.state === "done") { tAnswered(t); t.state = "stopped"; } t.name = name; t.set = t.left = t.run = set; st.tedit = null; });
 }
 function cmdTm2(x, id, y) {
   const t = tById(+id), key = "t:" + id;
@@ -1425,7 +1434,7 @@ function cmdTm2(x, id, y) {
     return send(key, "add", `${t.name}: ${s > 0 ? "+" : "−"}${Math.abs(s) / 60} min, ${tfmt(want)} to go`, () => { const was = t.left; t.left = Math.max(10, t.left + s); t.run = Math.max(t.left, t.run + t.left - was); });
   }
   /* answering: OK puts the timer back to its own time, stopped (a kitchen timer's recall); +5 MIN runs it five more */
-  const answer = () => { delete t.at; if (st.banner && st.banner.timer === t.id) st.banner = null; };
+  const answer = () => tAnswered(t);
   if (x === "ok") return send(key, "ok", `${t.name}: alarm answered`, () => { answer(); t.state = "stopped"; t.left = t.run = t.set; });
   if (x === "plus5") return send(key, "plus5", `${t.name}: 5 more minutes`, () => { answer(); t.state = "running"; t.left = t.run = 300; });
 }
@@ -1450,11 +1459,27 @@ function ring(n) {
 }
 function cmdSnd() {
   const s = st.snd;
+  /* pressed while it says TAP TO ALLOW: the press allows it and leaves it on, and the two beeps say it can be heard */
+  if (s.on && !s.ok) { s.ok = audioOK(); ring(2); return renderAll(); }
   s.on = !s.on;
   if (s.on) { s.ok = audioOK(); ring(2); } // the tap itself lets the page play sound, and two beeps say what it sounds like
   renderAll();
 }
-document.addEventListener("pointerdown", () => { if (TIMERS === "new" && st && st.snd && st.snd.on && !st.snd.ok && audioOK()) { st.snd.ok = true; renderAll(); } }, true);
+/* the first tap or key on the page lets it play sound; not Escape, which a browser doesn't count. A browser counts a mouse
+   button as it goes down, but a finger only as it lifts (the HTML standard's activation-triggering events), so a touch
+   tries again on pointerup. A press on SOUND is left to SOUND's own click (cmdSnd), so one that slides off it allows
+   nothing. Elsewhere only the switch is redrawn, so the pressed button is still there for its click */
+function unlockSound(target) {
+  const s = st && st.snd;
+  if (TIMERS !== "new" || !s || !s.on || (target && target.closest && target.closest(".snd"))) return;
+  if (s.ok) { if (actx && actx.state === "suspended") actx.resume(); return; }
+  if (!audioOK()) return;
+  s.ok = true;
+  const el = $(".snd");
+  if (el) el.outerHTML = soundHTML();
+}
+document.addEventListener("pointerdown", e => unlockSound(e.target), true);
+document.addEventListener("pointerup", e => { if (e.pointerType !== "mouse") unlockSound(e.target); }, true);
 /* every brewing second: count the running timers down and the finished ones up; raise a finished one's alarm when the
    title bar is free (behind another prompt it waits its turn); beep every 3 s while any alarm waits */
 function tmTick() {
@@ -1543,6 +1568,7 @@ document.addEventListener("pointerup", () => holdEnd(true));
 document.addEventListener("pointercancel", () => holdEnd(false));
 document.addEventListener("contextmenu", e => { if (e.target.closest("[data-hold]")) e.preventDefault(); });
 document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") unlockSound(e.target);
   const el = e.target.closest ? e.target.closest("[data-hold]") : null;
   if (el && (e.key === " " || e.key === "Enter")) { e.preventDefault(); if (!e.repeat) holdStart(el); return; }
   if (e.target.id === "tin" && e.key === "Enter") { e.preventDefault(); if (st.edit && st.edit.kind === "pwr") cmdPwrSet(); else cmdTgtSet(); return; }
@@ -1550,7 +1576,8 @@ document.addEventListener("keydown", e => {
   if ((e.target.id === "tnm" || e.target.id === "tmin") && e.key === "Enter" && st.tedit) {
     e.preventDefault();
     const go = $(".tedit .tgo"), id = e.target.id;
-    if (go) run(go.dataset.cmd);
+    /* a greyed main button says why, as a press on it does */
+    if (go) { if (go.getAttribute("aria-disabled") === "true") explain(go); else run(go.dataset.cmd); }
     /* still open (a name refused, or waiting for CraftBeerPi): the box that was redrawn keeps the caret, at its end */
     const box = $("#" + id);
     if (box && document.activeElement !== box) { box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
@@ -1701,7 +1728,7 @@ function load(name) {
   });
   document.querySelectorAll(".mock a[data-tm]").forEach(a => {
     const q = new URLSearchParams(location.search);
-    if (a.dataset.tm === "new") q.set("timers", "new"); else q.delete("timers");
+    if (a.dataset.tm === "today") q.set("timers", "today"); else q.delete("timers");
     a.href = `?${q}#${key}`;
     a.setAttribute("aria-current", a.dataset.tm === TIMERS ? "true" : "false");
   });
@@ -1727,8 +1754,10 @@ if (GRAPHS) { document.documentElement.dataset.graphs = GRAPHS; graphSetup(QS); 
    an option he didn't take. boil-kettle.html compares the first two. */
 const BK = ["words", "today"].includes(QS.get("bk")) ? QS.get("bk") : "power";
 document.documentElement.dataset.bk = BK;
-/* the timers: today's one rest timer (the default, as built), or ?timers=new, the proposal for several, named, with sound */
-const TIMERS = QS.get("timers") === "new" ? "new" : "today";
+/* the timers: several, named, with sound, as Scott approved and Brett built on 11 Nov (the default; ?timers=new is the
+   same, as the identity test asks for it), or ?timers=today, the one rest timer, which the screen keeps for an older
+   CraftBeerPi without the timers */
+const TIMERS = QS.get("timers") === "today" ? "today" : "new";
 document.documentElement.dataset.timers = TIMERS;
 /* ?focus=bk (boil-kettle.html): keep that vessel's faceplate in view and tell the page around this one where it is,
    so the page can show just that faceplate */
