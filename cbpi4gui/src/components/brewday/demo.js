@@ -1,8 +1,9 @@
 // The approved mockup's demo data (design/brewday/brew-day.js, and graphs.js for the graphs' history), unchanged: the
 // moments of a brew day it shows, with its proposed boil kettle (?bk=power), which the screen builds. The screen's demo
 // mode (?demo=mash, sparge, sparge-heat, sparge-ready, sparge-run, sparge-batch, hop, boilpower, heatup, pause,
-// pause-long, boiling, hold, keepboil, letfall, bktarget, handhold, fail, manual, offline, notarget or notarget-hlt) runs on
-// this, so it can be compared with the mockup pixel for pixel.
+// pause-long, boiling, hold, keepboil, letfall, bktarget, handhold, fail, manual, offline, notarget, notarget-hlt, timers,
+// timer-done, timer-new, timer-names, timer-nonames, timers-hand or sound-allow) runs on this, so it can be compared with
+// the mockup pixel for pixel.
 
 const RECIPE = {
   name: "Craftbeerpi Test Recipe v5",
@@ -307,6 +308,51 @@ const SCENES = {
       ["09:58:02", "Hot liquor tank AUTO", "confirmed", "ok"]
     ]
   }),
+  /* the timers (Scott, 11 Nov: "add the timers that design agent discussed"). #timers: the #mash day, with Stir counting
+     down (started 14:24:43) and Yeast set up for later; SOUND on */
+  timers: () => Object.assign(mash(), {
+    tmrs: [{id: 1, name: "Stir", set: 15 * 60, left: 7 * 60 + 12, state: "running"}, {id: 2, name: "Yeast", set: 20 * 60, left: 20 * 60, state: "stopped"}],
+    snd: {on: true, ok: true},
+    events: [["14:24:43", "Stir started, 15:00 to go", "confirmed", "ok"], ...MASH_EVENTS.map(e => e.slice())]
+  }),
+  /* Stir started at 14:17:19 and ran out at 14:32:19, 12 s ago: its row, the title bar and the screen's edge pulse, and
+     it counts up */
+  "timer-done": () => {
+    const s = SCENES.timers(), t = s.tmrs[0];
+    Object.assign(t, {state: "done", left: 0, at: s.t - 12});
+    s.banner = tBanner(t, s.tmrs);
+    s.events = [["14:32:19", "Stir finished", "waiting for you", "wait"], ["14:17:19", "Stir started, 15:00 to go", "confirmed", "ok"], ...MASH_EVENTS.map(e => e.slice())];
+    return s;
+  },
+  /* + TIMER pressed: a third timer, named Vorlauf from the names to pick (BREWDAY_TIMER_NAMES as it comes); YEAST is
+     greyed, as the second timer is called Yeast */
+  "timer-new": () => Object.assign(SCENES.timers(), {open: {tedit: {id: null, name: "Vorlauf", ph: "Timer 3", set: 10 * 60}}}),
+  /* the same with a list of eight in Settings: the first six, the longest a name can be (24 characters) wrapped, and Hop
+     stand picked; Star San and Chill can be typed */
+  "timer-names": () => Object.assign(SCENES["timer-new"](), {
+    names: ["Hop stand", "Yeast", "Vorlauf", "Mash stir", "Whirlpool rest and chill", "PBW soak", "Star San", "Chill"],
+    open: {tedit: {id: null, name: "Hop stand", ph: "Timer 3", set: 20 * 60}}
+  }),
+  /* BREWDAY_TIMER_NAMES left blank: no names to pick, and a line saying why; the name box still takes any */
+  "timer-nonames": () => Object.assign(SCENES["timer-new"](), {names: [], open: {tedit: {id: null, name: "", ph: "Timer 3", set: 10 * 60}}}),
+  /* brewing by hand, with three: PBW soak counting down, Yeast paused at 10:01:08, Timer 3 ready */
+  "timers-hand": () => Object.assign(SCENES.manual(), {
+    base: "manual",
+    tmrs: [{id: 1, name: "PBW soak", set: 30 * 60, left: 22 * 60 + 40, state: "running"}, {id: 2, name: "Yeast", set: 15 * 60, left: 6 * 60 + 12, state: "paused"},
+      {id: 3, name: "Timer 3", set: 10 * 60, left: 10 * 60, state: "stopped"}],
+    snd: {on: true, ok: true},
+    events: [
+      ["10:04:11", "Hot liquor tank target 168.0 °F", "confirmed", "ok"],
+      ["10:03:40", "HLT PUMP started", "confirmed", "ok"],
+      ["10:01:08", "Yeast paused, 6:12 to go", "confirmed", "ok"],
+      ["09:58:02", "Hot liquor tank AUTO", "confirmed", "ok"],
+      ["09:57:00", "PBW soak started, 30:00 to go", "confirmed", "ok"],
+      ["09:52:20", "Yeast started, 15:00 to go", "confirmed", "ok"]
+    ]
+  }),
+  /* the same, just after the page was opened again: SOUND is on for this screen, but the browser plays nothing until the
+     first tap on the page */
+  "sound-allow": () => Object.assign(SCENES["timers-hand"](), {snd: {on: true, ok: false}}),
   offline: () => {
     const s = mash();
     s.link = "lost"; s.age = 48; s.t = 14 * 3600 + 32 * 60 + 58;
@@ -364,6 +410,15 @@ function spargeBanner(temp) {
 function pauseBanner() {
   return {tone: "prompt", title: `${KNAME.bk} heat still paused`, pausegt: true, act: "OK", cmd: "b:ok",
     text: `The heat has been paused for 2 minutes. To heat again, press and hold PAUSED on the ${KNAME.bk}.`};
+}
+/* a timer's time, as its row and CraftBeerPi's prompt write it: 15:00, or 1:30:00 from an hour */
+const tpad = n => String(n).padStart(2, "0");
+const tfmt = s => s >= 3600 ? `${Math.floor(s / 3600)}:${tpad(Math.floor(s / 60) % 60)}:${tpad(s % 60)}` : `${Math.floor(s / 60)}:${tpad(s % 60)}`;
+/* CraftBeerPi's kept prompt for a timer that has run out: titled with its name, on every screen until answered. Its
+   +5 MIN is the lesser button (sec); a second one run out waits behind it ("1 more waiting") */
+function tBanner(t, list) {
+  return {tone: "prompt", title: t.name, text: `The ${tfmt(t.set)} timer has run out.`, timer: t.id, more: list.filter(x => x.state === "done").length - 1,
+    acts: [{label: "+5 MIN", cmd: `tm2:plus5:${t.id}`, dir: "plus5", sec: true}, {label: "OK", cmd: `tm2:ok:${t.id}`, dir: "ok"}]};
 }
 
 /* ---------- the temperature graphs' demo history (the mockup's graphs.js, gDemo and gHistory) ----------
@@ -545,7 +600,7 @@ function history(scene, now) {
   return h;
 }
 
-export { RECIPE, SPARGE_STEP, VNAME, KNAME, VACT, ACT, HERMS_DELTA, BOIL_TH, BOOK, SCENES, history, noTargetBanner, pauseBanner, spargeBanner };
+export { RECIPE, SPARGE_STEP, VNAME, KNAME, VACT, ACT, HERMS_DELTA, BOIL_TH, BOOK, SCENES, history, noTargetBanner, pauseBanner, spargeBanner, tfmt, tBanner };
 
 // Not the mockup's: two moments of the screen's own, for checking how the title bar holds what CraftBeerPi
 // really asks (the dashboard agent's review, 9 Nov). Not compared with the mockup, which has neither.

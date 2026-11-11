@@ -321,8 +321,8 @@ const SCENES = {
       ["09:58:02", "Hot liquor tank AUTO", "confirmed", "ok"]
     ]
   }),
-  /* the proposed timers (?timers=new). #timers: the #mash day, with Stir counting down (started 14:24:43) and Yeast set
-     up for later; SOUND on. Today's view of these moments shows the screen as built */
+  /* the timers (?timers=new, approved by Scott 11 Nov 2026, not built yet). #timers: the #mash day, with Stir counting
+     down (started 14:24:43) and Yeast set up for later; SOUND on. Today's view of these moments shows the screen as built */
   timers: () => Object.assign(mash(), {
     tmrs: [{id: 1, name: "Stir", set: 15 * 60, left: 7 * 60 + 12, state: "running"}, {id: 2, name: "Yeast", set: 20 * 60, left: 20 * 60, state: "stopped"}],
     snd: {on: true, ok: true},
@@ -343,8 +343,17 @@ const SCENES = {
     s.events = [["14:32:19", "Stir finished", "waiting for you", "wait"], ["14:17:19", "Stir started, 15:00 to go", "confirmed", "ok"], ...MASH_EVENTS.map(e => e.slice())];
     return s;
   },
-  /* + TIMER pressed: a third timer, named Vorlauf from the ideas, 10 minutes */
+  /* + TIMER pressed: a third timer, named Vorlauf from the names to pick (BREWDAY_TIMER_NAMES as it comes); YEAST is
+     greyed, as the second timer is called Yeast */
   "timer-new": () => Object.assign(SCENES.timers(), {open: {tedit: {id: null, name: "Vorlauf", ph: "Timer 3", set: 10 * 60}}}),
+  /* the same with a list of eight in Settings: the first six, the longest a name can be (24 characters) wrapped, and Hop
+     stand picked; Star San and Chill can be typed */
+  "timer-names": () => Object.assign(SCENES["timer-new"](), {
+    names: ["Hop stand", "Yeast", "Vorlauf", "Mash stir", "Whirlpool rest and chill", "PBW soak", "Star San", "Chill"],
+    open: {tedit: {id: null, name: "Hop stand", ph: "Timer 3", set: 20 * 60}}
+  }),
+  /* BREWDAY_TIMER_NAMES left blank: no names to pick, and a line saying why; the name box still takes any */
+  "timer-nonames": () => Object.assign(SCENES["timer-new"](), {names: [], open: {tedit: {id: null, name: "", ph: "Timer 3", set: 10 * 60}}}),
   /* brewing by hand, with three: PBW soak counting down, Yeast paused at 10:01:08, Timer 3 ready */
   "timers-hand": () => Object.assign(SCENES.manual(), {
     base: "manual",
@@ -903,6 +912,8 @@ function renderAll() {
   $("#event").innerHTML = eventHTML();
   $("#plates").innerHTML = ["hlt", "mt", "bk"].map(plateHTML).join("");
   $("#recipe").innerHTML = recipeHTML();
+  /* while a timer's editor is open, the one-screen layout gives it the step list's room (by hand, the recipe book's) */
+  $("#recipe").toggleAttribute("data-tedit", TIMERS === "new" && !!st.tedit);
   $("#now").innerHTML = nowHTML();
   if (TIMERS === "new") {
     /* a timer that has run out and not been answered: its row, the title bar and a frame round the whole screen pulse
@@ -1271,12 +1282,30 @@ function cmdTimer(x) {
    rest timer is), during a recipe as well as by hand. Modelled on a four-channel kitchen timer (ThermoWorks TimeStack):
    all four in view at once, a finished one pulses and counts up until it is answered, and OK puts it back to its own
    time, ready to start again. SOUND belongs to each screen: its timers and CraftBeerPi's alerts (Scott's choice). */
-const TMAX = 4, TSUG = ["Hop stand", "Yeast", "Vorlauf"], TPRE = [5, 10, 15, 20, 30, 60];
+const TMAX = 4, TPRE = [5, 10, 15, 20, 30, 60];
+/* the names to pick come from CraftBeerPi's BREWDAY_TIMER_NAMES setting, sent with the timers as `names` (Scott, 11 Nov
+   2026: "an easy config setting to choose the default timer names from the setup", then "multiple choice boxes from
+   preconfigured list", "or freeform in addition to mult choice"). TNAMES is its default; TNLEN a name's length;
+   TNMAX how many buttons the editor has room for: two rows of three */
+const TNAMES = ["Hop stand", "Yeast", "Vorlauf"], TNLEN = 24, TNMAX = 6;
+/* the setting as the server reads it: separated by commas, each trimmed and kept to 24 characters, repeats dropped
+   (whatever their capitals); blank gives none. The mockup's ?names=… goes through it, to try a list */
+function tNames(raw) {
+  const out = [];
+  for (const part of String(raw).split(",")) {
+    const n = part.split(/\s+/).filter(Boolean).join(" ").slice(0, TNLEN).trim();
+    if (n && !out.some(o => o.toLowerCase() === n.toLowerCase())) out.push(n);
+  }
+  return out;
+}
 const tfmt = s => s >= 3600 ? `${Math.floor(s / 3600)}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}` : mmss(s);
 const tById = id => st.tmrs.find(t => t.id === id);
 const tPct = t => t.run ? Math.round(100 * (1 - t.left / t.run)) : 0;
 let lastBanner = null, actx = null;
-function tDefaultName() { let n = st.tmrs.length + 1; while (st.tmrs.some(t => t.name === `Timer ${n}`)) n++; return `Timer ${n}`; }
+/* two timers never share a name (whatever its capitals): their alarms, titled with it, would be hard to tell apart */
+const tTwin = (name, t) => st.tmrs.find(z => z !== t && z.name.toLowerCase() === name.toLowerCase());
+const tTwinWhy = n => `Another timer is already called ${n}. Give this one another name, so you can tell their alarms apart.`;
+function tDefaultName() { let n = st.tmrs.length + 1; while (tTwin(`Timer ${n}`)) n++; return `Timer ${n}`; }
 /* CraftBeerPi's kept prompt for a timer that has run out: titled with its name, on every screen until answered */
 function tBanner(t, list = st.tmrs) {
   return {tone: "prompt", title: t.name, text: `The ${tfmt(t.set)} timer has run out.`, timer: t.id, more: list.filter(x => x.state === "done").length - 1,
@@ -1285,7 +1314,9 @@ function tBanner(t, list = st.tmrs) {
 function timersHTML() {
   const off = st.link === "lost" ? PAUSED : "", T = st.tmrs, e = st.tedit, full = T.length >= TMAX;
   const rows = T.map(t => trowHTML(t, off) + (e && e.id === t.id ? teditHTML(off) : "")).join("");
-  const plus = e && e.id == null ? teditHTML(off)
+  /* + TIMER: where a new timer's editor opens; while another timer's editor is open it steps out of the way (one editor
+     at a time, and a press would drop that editor's changes) */
+  const plus = e && e.id == null ? teditHTML(off) : e ? ""
     : b("cmdbtn tplus", "+ TIMER", full ? "four at most" : T.length ? `up to ${TMAX}` : "counts down on every screen", {cmd: "te:new", why: off || (full ? "Four timers at most. Remove one to add another." : "")});
   return `<section class="tmrs" id="tmrs" aria-labelledby="tmrs-h"${e ? " data-editing" : ""}><div class="thead"><h3 id="tmrs-h">Timers</h3>${soundHTML()}</div>${rows}${plus}<p class="note">${st.notes.t || ""}</p></section>`;
 }
@@ -1301,12 +1332,26 @@ function trowHTML(t, off) {
 }
 /* one editor at a time, in place: under its timer, or where + TIMER was for a new one. A running or paused timer's time
    changes by a minute or five at once, as the boil power's nudges do; a stopped one is set and then saved */
+/* the names to pick, under NAME: the names in BREWDAY_TIMER_NAMES as buttons, in Scott's order, three to a row, the first
+   six (two rows: the editor then still fits a 1920×950 screen; the setting's description says so). A tap names the
+   timer, a second tap clears it; typing any other name still works. A name another timer has is greyed, and a tap says
+   why. Nothing is filled in for him: a timer nobody names is "Timer 3", as on the server. The buttons carry their place
+   in the list, not the name, so a name with a colon or quote can't break the command */
+function namesHTML(e, t) {
+  const all = st.names;
+  if (!all.length) return `<p class="tnote">No names to pick: BREWDAY_TIMER_NAMES in Settings is blank.</p>`;
+  const btns = all.slice(0, TNMAX).map((n, i) => {
+    const twin = tTwin(n, t);
+    return b("cmdbtn", esc(n.toUpperCase()), "", {cmd: `te:pick:${i}`, pressed: !twin && e.name === n, label: n, why: twin ? tTwinWhy(twin.name) : ""});
+  }).join("");
+  return `<div class="tsug" role="group" aria-label="Names to pick">${btns}</div>`;
+}
 function teditHTML(off) {
   const e = st.tedit, t = e.id != null ? tById(e.id) : null, live = !!t && (t.state === "running" || t.state === "paused");
   const pT = st.pend["t:" + (t ? t.id : "new")], why = off || (pT ? WAIT : "");
   if (e.confirm) return `<div class="confirm tconf" role="group" aria-labelledby="tc-t"><p id="tc-t">Remove <b>${esc(t.name)}</b>? It has ${tfmt(t.left)} left.</p><div>${b("yes", pT ? "REMOVING…" : "REMOVE IT", "", {cmd: "te:rm", why})}${b("", "KEEP IT", "", {cmd: "te:keep"})}</div></div>`;
-  const nm = `<div class="tfield"><label for="tnm">Name</label><input id="tnm" type="text" maxlength="24" autocomplete="off" spellcheck="false" value="${esc(e.name)}" placeholder="${esc(e.ph)}"></div>
-    <div class="tsug" role="group" aria-label="Name ideas">${TSUG.map(n => b("cmdbtn", n.toUpperCase(), "", {cmd: `te:name:${n}`, pressed: e.name === n})).join("")}</div>`;
+  const nm = `<div class="tfield"><label for="tnm">Name</label><input id="tnm" type="text" maxlength="${TNLEN}" autocomplete="off" spellcheck="false" value="${esc(e.name)}" placeholder="${esc(e.ph)}"></div>
+    ${namesHTML(e, t)}`;
   const time = live
     ? `<p class="tleft">Time left <b id="te-left">${tfmt(t.left)}</b></p><div class="tkeys">${[[-60, "−1 MIN"], [60, "+1 MIN"], [300, "+5 MIN"]].map(([s, l]) => b("cmdbtn", l, "", {cmd: `tm2:add:${t.id}:${s}`, why})).join("")}</div><p class="tnote">Changes the time left at once, on every screen.</p>`
     : `<div class="tfield tmin"><label for="tmin">Minutes</label>${b("cmdbtn", "−1", "", {cmd: "te:step:-1", label: "One minute less"})}<input id="tmin" type="text" inputmode="numeric" maxlength="3" autocomplete="off" value="${e.set / 60}">${b("cmdbtn", "+1", "", {cmd: "te:step:1", label: "One minute more"})}</div>
@@ -1340,15 +1385,19 @@ function cmdTe(x, y) {
   if (x === "open") { const t = tById(+y); st.tedit = e && e.id === t.id ? null : {id: t.id, name: t.name, ph: t.name, set: t.set}; return renderAll(); }
   if (!e) return;
   if (x === "x") { st.tedit = null; return renderAll(); }
-  if (x === "name") { e.name = e.name === y ? "" : y; return renderAll(); }
+  if (x === "pick") { const n = st.names[+y]; if (n != null) e.name = e.name === n ? "" : n; return renderAll(); }
   if (x === "step") { e.set = Math.min(300, Math.max(1, e.set / 60 + parseInt(y, 10))) * 60; return renderAll(); }
   if (x === "min") { e.set = parseInt(y, 10) * 60; return renderAll(); }
   if (x === "keep") { e.confirm = false; return renderAll(); }
-  const t = e.id != null ? tById(e.id) : null, name = (e.name || "").trim() || e.ph;
+  /* spaces as the server keeps them: trimmed, and one between words */
+  const t = e.id != null ? tById(e.id) : null, name = (e.name || "").split(/\s+/).filter(Boolean).join(" ") || e.ph;
   if (x === "rm") {
     if (t.state !== "stopped" && !e.confirm) { e.confirm = true; return renderAll(); }
     return send("t:" + t.id, "rm", `${t.name} removed`, () => { st.tmrs = st.tmrs.filter(z => z !== t); st.tedit = null; });
   }
+  /* a typed name another timer has is refused as its greyed button is, before anything is sent */
+  const twin = (!t || name !== t.name) && tTwin(name, t);
+  if (twin) return note("t", tTwinWhy(twin.name));
   if (x === "done") {
     if (name === t.name) { st.tedit = null; return renderAll(); }
     return send("t:" + t.id, "name", `${t.name} is now ${name}`, () => { t.name = name; st.tedit = null; });
@@ -1498,7 +1547,15 @@ document.addEventListener("keydown", e => {
   if (el && (e.key === " " || e.key === "Enter")) { e.preventDefault(); if (!e.repeat) holdStart(el); return; }
   if (e.target.id === "tin" && e.key === "Enter") { e.preventDefault(); if (st.edit && st.edit.kind === "pwr") cmdPwrSet(); else cmdTgtSet(); return; }
   /* Enter in a timer box presses the editor's main button: START for a new timer, SET for a stopped one, DONE otherwise */
-  if ((e.target.id === "tnm" || e.target.id === "tmin") && e.key === "Enter" && st.tedit) { e.preventDefault(); const go = $(".tedit .tgo"); if (go) run(go.dataset.cmd); return; }
+  if ((e.target.id === "tnm" || e.target.id === "tmin") && e.key === "Enter" && st.tedit) {
+    e.preventDefault();
+    const go = $(".tedit .tgo"), id = e.target.id;
+    if (go) run(go.dataset.cmd);
+    /* still open (a name refused, or waiting for CraftBeerPi): the box that was redrawn keeps the caret, at its end */
+    const box = $("#" + id);
+    if (box && document.activeElement !== box) { box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
+    return;
+  }
   if (e.key === "Escape" && st.tedit) { st.tedit = null; renderAll(); return; }
   if (e.key === "Escape" && (st.edit || st.logOpen || st.confirmNext)) { st.edit = null; st.logOpen = false; st.confirmNext = false; renderAll(); }
 });
@@ -1508,7 +1565,7 @@ document.addEventListener("input", e => {
   if ((e.target.id === "tnm" || e.target.id === "tmin") && st.tedit) {
     if (e.target.id === "tnm") {
       st.tedit.name = e.target.value;
-      document.querySelectorAll(".tsug button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.cmd === `te:name:${e.target.value}`)));
+      document.querySelectorAll(".tsug button").forEach((x, i) => x.setAttribute("aria-pressed", String(x.getAttribute("aria-disabled") !== "true" && st.names[i] === e.target.value)));
     } else {
       const m = parseInt(e.target.value, 10);
       if (m >= 1 && m <= 300) st.tedit.set = m * 60;
@@ -1625,6 +1682,8 @@ function load(name) {
     st.tmrs = (st.tmrs || []).map(t => Object.assign({run: t.set}, t));
     if (!st.snd) st.snd = {on: false, ok: true};
     if (st.tedit === undefined) st.tedit = null;
+    /* BREWDAY_TIMER_NAMES: its default, or a moment's own list; ?names=… (blank for none) tries another */
+    st.names = QS.has("names") ? tNames(QS.get("names")) : st.names || TNAMES.slice();
     lastBanner = st.banner;
   }
   if (GRAPHS) st.hist = gHistory(base);

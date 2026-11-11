@@ -22,10 +22,16 @@
 //   TEMP_UNIT.
 // - Heat still needs a held press when a failed "on" is tried again, and a held press is not sent if the
 //   button changed under the finger.
+// - The timers (M69; Scott, 11 Nov: "add the timers that design agent discussed") are CraftBeerPi's, up to four, kept on
+//   its brewing clock so every screen shows the same ones (M.TIMERS: it has them; with an older CraftBeerPi the screen
+//   keeps its one rest timer). The names to pick for a timer are its BREWDAY_TIMER_NAMES setting, read from the settings so
+//   a new list shows at once. A timer's alarm is CraftBeerPi's
+//   kept prompt, which the title bar shows with +5 MIN as the lesser button. SOUND is this browser's own, kept on this
+//   device. Pressing SOUND while it says TAP TO ALLOW allows it: in the mockup that press turned it off.
 import { rigSVG, RIG_H } from "./rig";
 import * as DEMO from "./demo";
 import { api, why as failWhy } from "./api";
-import { model, num, parseLeft, bookLine, isHerms, unitText, ROLES } from "./live";
+import { model, num, parseLeft, bookLine, isHerms, unitText, ROLES, cfg, timerNames } from "./live";
 import { GSPANS, GSAY, graphHTML, graphSVG, graphETA } from "./graphs";
 import { createHistory } from "./history";
 // As text, exactly as written (config-overrides.js): the CSS pipeline would rewrite the mockup's colours.
@@ -62,6 +68,17 @@ const CONNECTING_MS = 5000;
 // CraftBeerPi's routine step notices: the event line already says these in its own words.
 const ROUTINE = /^(?:timer started|step finished|boiling completed)$/i;
 const WAITING_FOR_YOU = "WAITING FOR YOU";
+/* the timers (M69): four at most, as the server keeps them. TPRE: the editor's minutes. The names to pick are CraftBeerPi's
+   BREWDAY_TIMER_NAMES, sent with the timers as `names` (Scott, 11 Nov: "an easy config setting to choose the default timer
+   names from the setup", then "multiple choice boxes from preconfigured list"). TNAMES is its default, which the demo
+   offers; TNLEN a name's length; TNMAX how many buttons the editor has room for: two rows of three */
+const TMAX = 4, TPRE = [5, 10, 15, 20, 30, 60];
+const TNAMES = ["Hop stand", "Yeast", "Vorlauf"], TNLEN = 24, TNMAX = 6;
+const tfmt = DEMO.tfmt;
+// SOUND, for the timers and CraftBeerPi's alerts, on this device only: the phone can stay quiet while the monitor beeps
+const SOUND_KEY = "cbpi.brewday.sound";
+// how CraftBeerPi words a timer's alarm (TimersController._finish), to know it before the timers' own message names it
+const TIMER_RAN_OUT = /^The \d+(?::\d\d){1,2} timer has run out\.$/;
 
 /* ---------- the screen's markup: the mockup's page, after layout B's moves ---------- */
 const MORE = [["#/dashboard", "Dashboard"], ["#/fermenterprofile", "Fermenter profile"], ["#/plugins", "Plugins"], ["#/system", "System"], ["#/about", "About"]];
@@ -142,6 +159,9 @@ const setText = (el, s) => { if (el && el.textContent !== s) el.textContent = s;
 let root = null, DEMO_MODE = false, opts = {}, gen = 0;
 let st, M, timers = [], noteTimers = {}, hold = null, toastT = 0, raf = 0, rigW = 0, rigRs = 1, teardown = () => {};
 let last = null, everConnected = false, book = [], bookBusy = false, bookShown = false;
+/* the timers: tAns, a command's answer, newer than the websocket's last word until that catches up; tMsg, the word the
+   screen counts from; lastBannerKey, the title bar's last alert, so a new one beeps once; actx, the page's sound */
+let tAns = null, tMsg = null, lastBannerKey = null, actx = null;
 /* the temperature graphs in the faceplates (Scott, 10 Nov: option A, "graphs always showing"); ?graphs=none leaves
    them out, as the screen was first built. gSpan: the span the three show, kept on each device. H: the live history. */
 let GRAPHS = "face", gSpan = "30", H = null;
@@ -457,7 +477,7 @@ function recipeHTML() {
     <div class="rctl">${start}${stop}${next}</div>
     ${st.confirmNext ? confirmHTML() : ""}
     <p class="note">${esc(st.notes.r || "")}</p>
-    <ol class="steps" aria-label="Recipe steps">${S.map(stepHTML).join("")}</ol>`;
+    <ol class="steps" aria-label="Recipe steps">${S.map(stepHTML).join("")}</ol>${M.TIMERS ? timersHTML() : ""}`;
 }
 function confirmHTML() {
   const r = st.recipe, cur = M.RECIPE.steps[r.cur], nx = M.RECIPE.steps[r.cur + 1];
@@ -490,31 +510,32 @@ function handHTML() {
   const t = st.timer, pt = st.pend.tm, off = st.link === "lost" ? PAUSED : "", ld = st.pend["r:load"] ? WAIT : "";
   return `<h2>No recipe running</h2>
     <p class="rmeta">Brewing by hand. Kettles and pumps work as usual.</p>
-    <section class="timer" aria-labelledby="tm-h"><h3 id="tm-h">Rest timer</h3>
+    ${M.TIMERS ? timersHTML() : `<section class="timer" aria-labelledby="tm-h"><h3 id="tm-h">Rest timer</h3>
       <output id="tm-out">${mmss(t.left)}</output>
       <div>${b("cmdbtn", "−5 MIN", "", {cmd: "tm:-300", why: off})}${b("cmdbtn", "+5 MIN", "", {cmd: "tm:300", why: off})}${b("cmdbtn go", pt ? (pt === "start" ? "STARTING…" : "PAUSING…") : t.running ? "PAUSE TIMER" : "START TIMER", t.running ? "counting down on every screen" : "alarm at zero, on every screen", {cmd: "tm:go", why: off || (pt ? WAIT : "")})}</div>
-    </section>
+    </section>`}
     <section class="book" aria-labelledby="bk-h"><h3 id="bk-h">Recipe book</h3><ul>${M.BOOK.map((x, i) => `<li><span class="bn">${esc(x.n)}</span><span class="bd">${esc(x.d)}</span>${b("cmdbtn", "LOAD", "", {cmd: "load:" + i, why: off || ld})}</li>`).join("")}</ul></section>
     <div class="handlinks">${b("cmdbtn", "RECIPE BOOK", "all recipes", {cmd: "tab:Recipe Book"})}${b("cmdbtn", "BREW STEPS", "build or edit steps", {cmd: "tab:Brew Steps"})}</div>
     <p class="note">${esc(st.notes.r || "")}</p>`;
 }
 function nowHTML() {
   const r = st.recipe;
-  if (!r) return `<span class="n">–</span><b>No recipe running</b><span class="p">Brewing by hand · rest timer below</span>`;
+  if (!r) return `<span class="n">–</span><b>No recipe running</b><span class="p">Brewing by hand · ${M.TIMERS ? "timers" : "rest timer"} below</span>${tmlHTML()}`;
   const S = M.RECIPE.steps, s = S[r.cur], pct = s.min ? pctOf(r.left, s.min) : 0;
   const p = [s.temp != null ? `${stepTemp(s)} ${M.U}` : "", s.min ? `${s.min} min` : "", `step ${r.cur + 1} of ${S.length}`].filter(Boolean).join(" · ");
   const nx = S[r.cur + 1];
   const nxt = nx ? `<span class="nx">Next: ${esc(nx.n)}${nx.temp != null ? ` · ${stepTemp(nx)} ${M.U}` : ""}${nx.min ? ` · ${nx.min} min` : ""}</span>` : `<span class="nx">Last step</span>`;
-  return `<span class="n">${r.cur + 1}</span><b>${esc(s.n)}</b><span class="p">${p}</span><span class="left">${r.state === "running" ? (r.wait ? waitHTML(r.wait).toLowerCase() : s.min ? `<span id="now-left">${mmss(r.left)}</span> left` : runWord(s).toLowerCase()) : r.state === "ready" ? (r.wait ? waitHTML(r.wait).toLowerCase() : "ready") : "stopped"}</span>${s.min ? `<span class="bar"><i id="now-bar" style="width:${pct}%"></i></span>` : ""}${nxt}`;
+  return `<span class="n">${r.cur + 1}</span><b>${esc(s.n)}</b><span class="p">${p}</span><span class="left">${r.state === "running" ? (r.wait ? waitHTML(r.wait).toLowerCase() : s.min ? `<span id="now-left">${mmss(r.left)}</span> left` : runWord(s).toLowerCase()) : r.state === "ready" ? (r.wait ? waitHTML(r.wait).toLowerCase() : "ready") : "stopped"}</span>${s.min ? `<span class="bar"><i id="now-bar" style="width:${pct}%"></i></span>` : ""}${nxt}${tmlHTML()}`;
 }
 
 /* ---------- alarms, last event, rig ---------- */
-/* a prompt from CraftBeerPi can have several buttons (x.acts); x.more counts what waits behind it */
+/* a prompt from CraftBeerPi can have several buttons (x.acts); x.more counts what waits behind it. A timer's alarm has two:
+   +5 MIN, drawn as the lesser one (sec), and OK. What it waits for is its timer's command, not the title bar's */
 function bannerHTML() {
   const x = st.banner;
   if (!x) return `${ICON.ok}<span class="msg">No alarms</span>`;
-  const acts = x.acts || (x.act ? [{label: x.act, cmd: x.cmd}] : []);
-  const act = acts.map(y => b("act", st.pend.b && (acts.length === 1 || st.pend.b === y.cmd) ? "SENDING…" : esc(y.label), "", {cmd: y.cmd, why: st.pend.b ? WAIT : ""})).join("");
+  const acts = x.acts || (x.act ? [{label: x.act, cmd: x.cmd}] : []), busy = x.timer != null ? st.pend["t:" + x.timer] : st.pend.b;
+  const act = acts.map(y => b(y.sec ? "act sec" : "act", busy && (acts.length === 1 || busy === y.dir || busy === y.cmd) ? "SENDING…" : esc(y.label), "", {cmd: y.cmd, why: busy ? WAIT : ""})).join("");
   return `${x.tone === "prompt" ? ICON.bell : x.tone === "connecting" ? ICON.wait : ICON.warn}<span class="msg"><b>${esc(x.title)}${x.more ? ` · ${x.more} more waiting` : ""}</b>${esc(x.text).replace("{age}", `<span id="ban-age">${st.age}</span>`)}</span>${act}`;
 }
 /* an event with no result word (the connection coming and going) has no " · " after it */
@@ -619,9 +640,12 @@ function drawRig() {
 function renderAll() {
   if (!root || !st) return;
   if (!DEMO_MODE) liveBanner();
+  else if (st.banner && st.banner.timer != null) st.banner.more = st.tmrs.filter(t => t.state === "done").length - 1;
   const lost = st.link === "lost", hello = lost && connecting();
   // the new boil kettle's rules (brewday.css [data-bk=power]) apply while its BoilPower is the new one
   if (M.BKNEW) document.documentElement.dataset.bk = "power"; else delete document.documentElement.dataset.bk;
+  // and the timers' ([data-timers=new]: on a phone they come before the steps) while CraftBeerPi has them
+  if (M.TIMERS) document.documentElement.dataset.timers = "new"; else delete document.documentElement.dataset.timers;
   $("#app").dataset.link = st.link;
   $("#app").toggleAttribute("data-editing", !!st.edit);
   $("#link").dataset.link = hello ? "connecting" : st.link;
@@ -635,11 +659,24 @@ function renderAll() {
   morph(bn, bannerHTML());
   morph($("#event"), eventHTML());
   morph($("#plates"), ["hlt", "mt", "bk"].map(plateHTML).join(""));
+  // a timer's editor open: on the one-screen layout the step list (by hand, the recipe book) makes room for it
+  $("#recipe").toggleAttribute("data-tedit", !!M.TIMERS && !!st.tedit);
   morph($("#recipe"), recipeHTML());
   morph($("#now"), nowHTML());
+  /* a timer that has run out and not been answered: its row, the title bar and a frame round the whole screen pulse
+     together, on every screen. Any other alert beeps twice as it arrives, with SOUND on */
+  $("#app").toggleAttribute("data-ring", !!M.TIMERS && st.tmrs.some(t => t.state === "done"));
+  bn.toggleAttribute("data-ring", !!(M.TIMERS && st.banner && st.banner.timer != null));
+  const key = bannerKey(st.banner);
+  if (key !== lastBannerKey) {
+    if (key && st.banner.timer == null && st.banner.tone !== "connecting") ring(2);
+    lastBannerKey = key;
+  }
+  if (M.TIMERS) keepStepInView();
   renderRig();
   if (GRAPHS) drawGraphs();
 }
+const bannerKey = x => x ? [x.tone, x.title, x.text, x.cmd || "", (x.acts || []).map(a => a.cmd).join(",")].join("|") : "";
 
 /* ---------- the temperature graphs (graphs.js) ---------- */
 // What the graphs draw. Their clock: the demo's, or CraftBeerPi's brewing clock, which a simulation runs faster. Its
@@ -709,7 +746,7 @@ function note(where, text) {
 }
 function noteAt(el, text) {
   const pl = el.closest(".plate");
-  if (pl) note(pl.id.slice(3), text); else if (el.closest(".recipe")) note("r", text); else toast(text);
+  if (pl) note(pl.id.slice(3), text); else if (el.closest(".tmrs")) note("t", text); else if (el.closest(".recipe")) note("r", text); else toast(text);
 }
 function explain(el) {
   const why = el.dataset.why;
@@ -1290,6 +1327,282 @@ function liveTimer(x) {
   const s = parseInt(x, 10);
   exec(s > 0 ? "tm:up" : "tm:down", "add", `Rest timer ${s > 0 ? "plus" : "minus"} ${Math.abs(s) / 60} min`, () => api.timerAdd(s), {quiet: true, fail});
 }
+
+/* ---------- the timers (M69) ----------
+   Scott, 10 Nov 2026, after using the rest timer: "why is it named that? lots of things use a timer during a brew day", an
+   optionally audible alarm, a more attention-grabbing but still elegant alert when one runs out, several at once with a
+   "+", and names; 11 Nov: "add the timers that design agent discussed". The mockup's (?timers=new), modelled on a
+   four-channel kitchen timer (ThermoWorks TimeStack): all four in view, a finished one pulses and counts up until it is
+   answered, and OK puts it back to its own time, ready to start again. CraftBeerPi keeps them on its brewing clock, so
+   every screen shows the same ones, during a recipe as well as by hand. SOUND belongs to each screen: its timers and
+   CraftBeerPi's alerts (Scott's choice). */
+const tById = id => st.tmrs.find(t => t.id === id);
+const tPct = t => t.run ? Math.round(100 * (1 - t.left / t.run)) : 0;
+// how long ago a timer ran out: on the demo's clock, or CraftBeerPi's brewing clock
+const tUp = t => Math.max(0, DEMO_MODE ? st.t - t.at : t.up);
+/* two timers never share a name (whatever its capitals): their alarms, titled with it, would be hard to tell apart */
+const tTwin = (name, t) => st.tmrs.find(z => z !== t && z.name.toLowerCase() === name.toLowerCase());
+const tTwinWhy = n => `Another timer is already called ${n}. Give this one another name, so you can tell their alarms apart.`;
+function tDefaultName() { let n = st.tmrs.length + 1; while (tTwin(`Timer ${n}`)) n++; return `Timer ${n}`; }
+function timersHTML() {
+  const off = st.link === "lost" ? PAUSED : "", T = st.tmrs, e = st.tedit, full = T.length >= TMAX;
+  const rows = T.map(t => trowHTML(t, off) + (e && e.id === t.id ? teditHTML(off) : "")).join("");
+  /* + TIMER: where a new timer's editor opens; while another timer's editor is open it steps out of the way (one editor
+     at a time, and a press would drop that editor's changes) */
+  const plus = e && e.id == null ? teditHTML(off) : e ? ""
+    : b("cmdbtn tplus", "+ TIMER", full ? "four at most" : T.length ? `up to ${TMAX}` : "counts down on every screen", {cmd: "te:new", why: off || (full ? "Four timers at most. Remove one to add another." : "")});
+  return `<section class="tmrs" id="tmrs" aria-labelledby="tmrs-h"${e ? " data-editing" : ""}><div class="thead"><h3 id="tmrs-h">Timers</h3>${soundHTML()}</div>${rows}${plus}<p class="note">${esc(st.notes.t || "")}</p></section>`;
+}
+/* a timer's row: its name and state, its time large, and one button. Its left part opens its editor. run: this countdown's
+   length (its own time, or the 5 minutes more after it ran out), for "of" and the bar */
+function trowHTML(t, off) {
+  const p = st.pend["t:" + t.id], why = off || (p ? WAIT : ""), done = t.state === "done", run = t.state === "running", live = run || t.state === "paused";
+  const up = done ? tfmt(tUp(t)) : "", time = done ? "+" + up : tfmt(t.left);
+  const sub = done ? "TIME'S UP" : run ? `of ${tfmt(t.run)}` : live ? `PAUSED · of ${tfmt(t.run)}` : "ready";
+  const said = done ? `${t.name}: time's up, ${up} ago` : `${t.name}: ${tfmt(t.left)}${run ? " left" : live ? " left, paused" : ", ready"}`;
+  // while its time or name is being changed, START or PAUSE waits without saying it is starting or pausing
+  const btn = done ? b("cmdbtn", p === "plus5" ? "ADDING…" : "+5 MIN", "", {cmd: `tm2:plus5:${t.id}`, why}) + b("cmdbtn tok", p === "ok" ? "SENDING…" : "OK", "stops the alarm", {cmd: `tm2:ok:${t.id}`, why})
+    : b("cmdbtn", p === "start" ? "STARTING…" : p === "pause" ? "PAUSING…" : run ? "PAUSE" : "START", t.state === "paused" ? "carry on" : "", {cmd: `tm2:go:${t.id}`, why});
+  const open = !!(st.tedit && st.tedit.id === t.id);
+  return `<div class="trow${open ? " editing" : ""}" data-state="${t.state}" id="tr-${t.id}"><button type="button" class="tsel" data-cmd="te:open:${t.id}" aria-expanded="${open}" aria-label="${esc(said)}. Change it"${off ? ` aria-disabled="true" data-why="${off}"` : ""}><span class="tn">${esc(t.name)}</span><span class="ts">${sub}</span><span class="tt" id="tt-${t.id}">${time}</span></button><div class="tbtn">${btn}</div>${live ? `<span class="bar"><i id="tb-${t.id}" style="width:${tPct(t)}%"></i></span>` : ""}</div>`;
+}
+/* the names to pick, under NAME: the names in BREWDAY_TIMER_NAMES as buttons, in Scott's order, three to a row, the first
+   six (two rows: the editor then still fits a 1920×950 screen). A tap names the timer, a second tap clears it; typing any
+   other name still works. A name another timer has is greyed, and a tap says why. Nothing is filled in for him: a timer
+   nobody names is "Timer 3", as on the server. The buttons carry their place in the list, not the name, so a name with a
+   colon or quote can't break the command */
+function namesHTML(e, t) {
+  const all = st.names;
+  if (!all.length) return `<p class="tnote">No names to pick: BREWDAY_TIMER_NAMES in Settings is blank.</p>`;
+  const btns = all.slice(0, TNMAX).map((n, i) => {
+    const twin = tTwin(n, t);
+    return b("cmdbtn", esc(n.toUpperCase()), "", {cmd: `te:pick:${i}`, pressed: !twin && e.name === n, label: n, why: twin ? tTwinWhy(twin.name) : ""});
+  }).join("");
+  return `<div class="tsug" role="group" aria-label="Names to pick">${btns}</div>`;
+}
+/* one editor at a time, in place: under its timer, or where + TIMER was for a new one. A running or paused timer's time
+   changes by a minute or five at once, as the boil power's nudges do; a stopped one is set and then saved */
+function teditHTML(off) {
+  const e = st.tedit, t = e.id != null ? tById(e.id) : null, live = !!t && (t.state === "running" || t.state === "paused");
+  const pT = st.pend["t:" + (t ? t.id : "new")], why = off || (pT ? WAIT : "");
+  if (e.confirm && t) return `<div class="confirm tconf" role="group" aria-labelledby="tc-t"><p id="tc-t">Remove <b>${esc(t.name)}</b>? It has ${tfmt(t.left)} left.</p><div>${b("yes", pT ? "REMOVING…" : "REMOVE IT", "", {cmd: "te:rm", why})}${b("", "KEEP IT", "", {cmd: "te:keep"})}</div></div>`;
+  const nm = `<div class="tfield"><label for="tnm">Name</label><input id="tnm" type="text" maxlength="${TNLEN}" autocomplete="off" spellcheck="false" value="${esc(e.name)}" placeholder="${esc(e.ph)}"></div>
+    ${namesHTML(e, t)}`;
+  const time = live
+    ? `<p class="tleft">Time left <b id="te-left">${tfmt(t.left)}</b></p><div class="tkeys">${[[-60, "−1 MIN"], [60, "+1 MIN"], [300, "+5 MIN"]].map(([s, l]) => b("cmdbtn", l, "", {cmd: `tm2:add:${t.id}:${s}`, why})).join("")}</div><p class="tnote">Changes the time left at once, on every screen.</p>`
+    : `<div class="tfield tmin"><label for="tmin">Minutes</label>${b("cmdbtn", "−1", "", {cmd: "te:step:-1", label: "One minute less"})}<input id="tmin" type="text" inputmode="numeric" maxlength="3" autocomplete="off" value="${e.set / 60}">${b("cmdbtn", "+1", "", {cmd: "te:step:1", label: "One minute more"})}</div>
+      <div class="tpre" role="group" aria-label="Minutes">${TPRE.map(m => b("cmdbtn", String(m), "", {cmd: `te:min:${m}`, pressed: e.set === m * 60, label: `${m} minutes`})).join("")}</div>`;
+  const acts = !t ? [b("cmdbtn", "CANCEL", "", {cmd: "te:x"}), b("cmdbtn", pT === "save" ? "SAVING…" : "SAVE", "start it later", {cmd: "te:save", why}), b("cmdbtn tgo", pT === "start" ? "STARTING…" : "START", "counts down now", {cmd: "te:start", why})]
+    : live ? [b("cmdbtn", "REMOVE", "", {cmd: "te:rm", why}), b("cmdbtn tgo", pT === "name" ? "SAVING…" : "DONE", "", {cmd: "te:done", why})]
+    : [b("cmdbtn", "REMOVE", "", {cmd: "te:rm", why}), b("cmdbtn", "CANCEL", "", {cmd: "te:x"}), b("cmdbtn tgo", pT === "save" ? "SAVING…" : "SET", "", {cmd: "te:save", why})];
+  return `<div class="tedit" role="group" aria-labelledby="te-t"><p class="tet" id="te-t">${t ? `Change ${esc(t.name)}` : "New timer"}</p>${nm}${time}<div class="tact">${acts.join("")}</div></div>`;
+}
+/* SOUND: this screen's own setting, for its timers and CraftBeerPi's alerts. A browser plays sound only after a tap on the
+   page, so after a reload it says so until the first tap anywhere */
+function soundHTML() {
+  const s = st.snd, blocked = s.on && !s.ok;
+  return `<button type="button" class="keep snd${blocked ? " blocked" : ""}" role="switch" aria-checked="${s.on}" data-cmd="snd"><span class="box" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.2 8.4l3 3 6.6-7"/></svg></span><span class="kl">${blocked ? "SOUND · TAP TO ALLOW" : "SOUND"}</span><span class="sr"> for timers and alerts, on this screen${blocked ? ". The browser allows it after the first tap on this page" : ""}</span></button>`;
+}
+/* the phone's step strip: the timers that are counting, paused or have run out, one tap from their section */
+function tmlHTML() {
+  if (!M.TIMERS || !st.tmrs.some(t => t.state !== "stopped")) return "";
+  return `<button type="button" class="tml" data-cmd="tjump"><span class="tl">TIMERS</span><span id="tml-t">${tmlText()}</span></button>`;
+}
+const tmlText = () => st.tmrs.filter(t => t.state !== "stopped").map(t => t.state === "done" ? `<span class="d">${esc(t.name)} TIME'S UP</span>` : `${esc(t.name)} ${t.state === "paused" ? "paused " : ""}${tfmt(t.left)}`).join(" · ");
+/* with the timers below them, the steps get less room: the current one is kept in view */
+function keepStepInView() {
+  const l = $("#recipe .steps"), c = l && l.querySelector('[aria-current="step"]');
+  if (!c || l.scrollHeight <= l.clientHeight + 1) return;
+  const d = c.getBoundingClientRect().top - l.getBoundingClientRect().top;
+  if (d < 0 || d + c.offsetHeight > l.clientHeight) l.scrollTop += d - 6;
+}
+/* a timer's command: the demo answers it itself, as the mockup does; live it goes to CraftBeerPi, whose answer carries every
+   timer, shown at once rather than when the websocket's word follows. A refusal says why under the timers */
+function tSend(key, dir, label, apply, request, o = {}) {
+  if (DEMO_MODE) return send(key, dir, label, apply);
+  return exec(key, dir, label, request, {
+    ok: res => {
+      if (res.data && Array.isArray(res.data.timers)) tAns = {...res.data, received: Date.now()};
+      if (o.ok) o.ok(res);
+    },
+    fail: (res, w) => {
+      note("t", res.data && res.data.error ? String(res.data.error) : `That didn't go through: ${w}.`);
+      if (o.fail) o.fail(res, w);
+    }
+  });
+}
+function cmdTe(x, y) {
+  const e = st.tedit;
+  if (x === "new") { st.tedit = {id: null, name: "", ph: tDefaultName(), set: 10 * 60}; return renderAll(); }
+  if (x === "open") {
+    const t = tById(+y);
+    if (!t) return;
+    st.tedit = e && e.id === t.id ? null : {id: t.id, name: t.name, ph: t.name, set: t.set};
+    return renderAll();
+  }
+  if (!e) return;
+  if (x === "x") { st.tedit = null; return renderAll(); }
+  if (x === "pick") { const n = st.names[+y]; if (n != null) e.name = e.name === n ? "" : n; return renderAll(); }
+  if (x === "step") { e.set = Math.min(300, Math.max(1, e.set / 60 + parseInt(y, 10))) * 60; return renderAll(); }
+  if (x === "min") { e.set = parseInt(y, 10) * 60; return renderAll(); }
+  if (x === "keep") { e.confirm = false; return renderAll(); }
+  /* spaces as the server keeps them: trimmed, and one between words */
+  const t = e.id != null ? tById(e.id) : null, name = (e.name || "").split(/\s+/).filter(Boolean).join(" ") || e.ph, shut = {ok: () => { st.tedit = null; }};
+  if (e.id != null && !t) { st.tedit = null; return renderAll(); } // removed on another screen meanwhile
+  if ((x === "rm" || x === "done") && !t) return;
+  if (x === "rm") {
+    // a timer with time left on it is asked about once, in place, as NEXT STEP is
+    if ((t.state === "running" || t.state === "paused") && !e.confirm) { e.confirm = true; return renderAll(); }
+    return tSend("t:" + t.id, "rm", `${t.name} removed`, () => { st.tmrs = st.tmrs.filter(z => z !== t); st.tedit = null; }, () => api.timersRemove(t.id), shut);
+  }
+  /* a typed name another timer has is refused as its greyed button is, before anything is sent */
+  const twin = (!t || name !== t.name) && tTwin(name, t);
+  if (twin) return note("t", tTwinWhy(twin.name));
+  if (x === "done") {
+    if (name === t.name) { st.tedit = null; return renderAll(); }
+    return tSend("t:" + t.id, "name", `${t.name} is now ${name}`, () => { t.name = name; st.tedit = null; }, () => api.timersChange(t.id, {name}), shut);
+  }
+  if (!t) {
+    if (st.tmrs.length >= TMAX) return note("t", "Four timers at most. Remove one to add another.");
+    const go = x === "start", set = e.set;
+    return tSend("t:new", x, `${name} added${go ? " and started" : ""}, ${tfmt(set)}`, () => {
+      st.tmrs.push({id: Math.max(0, ...st.tmrs.map(z => z.id)) + 1, name, set, left: set, run: set, state: go ? "running" : "stopped"});
+      st.tedit = null;
+    }, () => api.timersAdd(name, set, go), shut);
+  }
+  const said = name !== t.name ? `${t.name} is now ${name}, ${tfmt(e.set)}` : `${t.name} set to ${tfmt(e.set)}`, set = e.set;
+  return tSend("t:" + t.id, "save", said, () => { t.name = name; t.set = t.left = t.run = set; st.tedit = null; },
+    () => api.timersChange(t.id, name !== t.name ? {name, seconds: set} : {seconds: set}), shut);
+}
+function cmdTm2(x, id, y) {
+  const t = tById(+id), key = "t:" + id;
+  if (!t || st.pend[key]) return;
+  if (x === "go") {
+    if (t.state === "running") return tSend(key, "pause", `${t.name} paused, ${tfmt(t.left)} to go`, () => { t.state = "paused"; }, () => api.timersPause(t.id));
+    return tSend(key, "start", `${t.name} started, ${tfmt(t.left)} to go`, () => { if (t.state === "stopped") t.run = t.left; t.state = "running"; }, () => api.timersStart(t.id));
+  }
+  if (x === "add") {
+    const s = parseInt(y, 10), want = Math.max(10, t.left + s);
+    return tSend(key, "add", `${t.name}: ${s > 0 ? "+" : "−"}${Math.abs(s) / 60} min, ${tfmt(want)} to go`,
+      () => { const was = t.left; t.left = Math.max(10, t.left + s); t.run = Math.max(t.left, t.run + t.left - was); }, () => api.timersAddTime(t.id, s));
+  }
+  /* answering: OK puts the timer back to its own time, stopped (a kitchen timer's recall); +5 MIN runs it five more. Live, the
+     answer takes CraftBeerPi's prompt down on every screen; this one doesn't log it as answered elsewhere */
+  const answer = () => { delete t.at; if (st.banner && st.banner.timer === t.id) st.banner = null; };
+  const heard = !DEMO_MODE && t.prompt, o = heard ? {ok: () => { if (opts.removeAlert) opts.removeAlert(heard); }, fail: () => answered.delete(heard)} : {};
+  if (x !== "ok" && x !== "plus5") return;
+  if (heard) answered.add(heard);
+  if (x === "ok") return tSend(key, "ok", `${t.name}: alarm answered`, () => { answer(); t.state = "stopped"; t.left = t.run = t.set; }, () => api.timersOk(t.id), o);
+  return tSend(key, "plus5", `${t.name}: 5 more minutes`, () => { answer(); t.state = "running"; t.left = t.run = 300; }, () => api.timersPlus5(t.id), o);
+}
+/* the alarm sound: a piezo-style beep, as a panel controller's buzzer, softened (a sine at 1760 Hz, 120 ms each). One sound
+   for now; choosing between presets modelled on real controllers is Scott's later todo */
+function audioOK() {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === "suspended") actx.resume();
+    return true;
+  } catch (_) { return false; }
+}
+function ring(n) {
+  if (!M.TIMERS || !st.snd || !st.snd.on || !st.snd.ok || !actx) return;
+  const t0 = actx.currentTime + 0.02;
+  for (let i = 0; i < n; i++) {
+    const o = actx.createOscillator(), g = actx.createGain(), s = t0 + i * 0.2;
+    o.type = "sine"; o.frequency.value = 1760;
+    g.gain.setValueAtTime(0.0001, s); g.gain.exponentialRampToValueAtTime(0.3, s + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, s + 0.12);
+    o.connect(g).connect(actx.destination); o.start(s); o.stop(s + 0.13);
+  }
+}
+/* SOUND as this device left it. A browser set to play sound without a tap (a kiosk's --autoplay-policy) is allowed at once */
+function soundInit() {
+  let on = false;
+  try { on = window.localStorage.getItem(SOUND_KEY) === "on"; } catch (e) { /* private mode: off */ }
+  if (!on) return {on, ok: true};
+  try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return {on, ok: false}; }
+  return {on, ok: actx.state === "running"};
+}
+function cmdSnd() {
+  const s = st.snd;
+  // the press that allowed it (TAP TO ALLOW) leaves it on and lets it be heard
+  if (s.allowed) { delete s.allowed; ring(2); return renderAll(); }
+  s.on = !s.on;
+  if (!DEMO_MODE) { try { window.localStorage.setItem(SOUND_KEY, s.on ? "on" : "off"); } catch (e) { /* private mode: for this page */ } }
+  if (s.on) { s.ok = audioOK(); ring(2); } // the tap itself lets the page play sound, and two beeps say what it sounds like
+  renderAll();
+}
+/* the first tap (or key) on the page lets it play sound */
+function unlockSound(target) {
+  const s = st && st.snd;
+  if (!s || !s.on || s.ok || !audioOK()) return;
+  s.ok = true;
+  if (target && target.closest && target.closest(".snd")) s.allowed = true;
+  renderAll();
+}
+/* the demo's every brewing second, as the mockup's: the running timers count down and the finished ones up; a finished one's
+   alarm takes the title bar when it is free (behind another prompt it waits its turn); three beeps every 3 s while any
+   alarm waits */
+function tmTick() {
+  let changed = false;
+  for (const t of st.tmrs) {
+    if (t.state === "running") {
+      t.left = Math.max(0, t.left - 1);
+      if (t.left === 0) {
+        t.state = "done"; t.at = st.t; changed = true;
+        if (st.tedit && st.tedit.id === t.id) st.tedit = null;
+        logEvent(`${t.name} finished`, "waiting for you", "wait"); say(`${t.name}: time's up.`, true);
+        continue;
+      }
+      tmShow(t);
+    } else if (t.state === "done") setText($("#tt-" + t.id), "+" + tfmt(tUp(t)));
+  }
+  if (!st.banner) { const d = st.tmrs.find(t => t.state === "done"); if (d) { st.banner = DEMO.tBanner(d, st.tmrs); changed = true; } }
+  if (changed) renderAll();
+  else { const m = $("#tml-t"); if (m) m.innerHTML = tmlText(); }
+  if (st.tmrs.some(t => t.state === "done") && st.t % 3 === 0) ring(3);
+}
+function tmShow(t) {
+  setText($("#tt-" + t.id), tfmt(t.left));
+  const bar = $("#tb-" + t.id); if (bar) bar.style.width = tPct(t) + "%";
+  if (st.tedit && st.tedit.id === t.id) setText($("#te-left"), tfmt(t.left));
+}
+/* live: the timers as CraftBeerPi last told them, counted on between its messages, a running one down and a finished one
+   up, on its brewing clock (its scale: a simulator runs it faster) */
+function liveTmrs(x) {
+  if (!x || !Array.isArray(x.timers)) return [];
+  const gone = Math.max(0, Date.now() - (x.received || Date.now())) / 1000 * (num(x.scale) || 1), now = num(x.now);
+  return x.timers.filter(t => t && t.id != null).map(t => {
+    const set = Math.round(num(t.set) ?? 0), left0 = Math.max(0, num(t.left) ?? 0), at = num(t.at);
+    const left = t.state === "running" ? Math.max(0, left0 - gone) : left0;
+    return {id: t.id, name: String(t.name ?? ""), set, run: Math.round(num(t.run) ?? set), left: Math.ceil(left - 1e-6), state: String(t.state || "stopped"),
+      up: t.state === "done" && at != null && now != null ? Math.floor(now + gone - at + 1e-6) : 0, prompt: t.prompt == null ? null : String(t.prompt)};
+  });
+}
+/* the newest word on the timers: a command's own answer until the websocket's catches up with it */
+function timersMsg(snap) {
+  const w = snap && snap.timers;
+  if (tAns && !(w && num(w.now) >= num(tAns.now))) return tAns;
+  tAns = null;
+  return w;
+}
+/* the timer a prompt of CraftBeerPi's belongs to: the one that names it, or, until the timers' own message does (the prompt
+   comes first), a timer of its title that has no prompt yet, in the server's words */
+function promptTimer(p) {
+  if (!M.TIMERS || !p) return null;
+  const id = String(p.id), title = String(p.title || "");
+  return st.tmrs.find(t => t.prompt === id)
+    || (TIMER_RAN_OUT.test(String(p.message || "").trim()) ? st.tmrs.find(t => !t.prompt && t.state !== "stopped" && t.name === title) : null) || null;
+}
+function liveTmTick() {
+  if (!tMsg) return;
+  st.tmrs = liveTmrs(tMsg);
+  for (const t of st.tmrs) {
+    if (t.state === "running") tmShow(t);
+    else if (t.state === "done") setText($("#tt-" + t.id), "+" + tfmt(tUp(t)));
+  }
+  const m = $("#tml-t"); if (m) m.innerHTML = tmlText();
+  if (st.tmrs.some(t => t.state === "done") && st.t % 3 === 0) ring(3);
+}
 const TAB_PATH = {"Recipe Book": "/recipes", "Brew Steps": "/mashprofile"};
 function go(path) { if (opts.navigate) opts.navigate(path); else window.location.hash = "#" + path; }
 
@@ -1325,6 +1638,10 @@ function run(cmd) {
     case "alloff": return DEMO_MODE ? cmdAllOff() : liveAllOff();
     case "log": st.logOpen = !st.logOpen; return renderAll();
     case "tm": return DEMO_MODE ? cmdTimer(x) : liveTimer(x);
+    case "te": return cmdTe(x, y);
+    case "tm2": { const p = cmd.split(":"); return cmdTm2(p[1], p[2], p[3]); }
+    case "snd": return cmdSnd();
+    case "tjump": return $("#tmrs")?.scrollIntoView({block: "start"});
     case "tab": return DEMO_MODE ? toast(`Mockup: this opens the existing ${x} page.`) : go(TAB_PATH[x] || "/");
     case "load": return DEMO_MODE ? cmdLoad(+x) : liveLoad(+x);
     case "gspan": return graphCmd(x);
@@ -1338,6 +1655,7 @@ function blankMoment() {
   ROLES.forEach(x => { v[x] = {pv: null, sv: null, own: null, mode: "manual"}; });
   ACTS.forEach(x => { a[x] = {on: false, pct: 0}; });
   return {t: daySeconds(), link: "lost", age: null, banner: null, v, a, recipe: null, timer: {left: 3600, running: false},
+    tmrs: [], names: [], tedit: null, snd: soundInit(),
     events: loadEvents(), pend: {}, notes: {}, edit: null, confirmNext: false, logOpen: false,
     fail: {}, expect: {}, alarm: null, errors: [], warnings: [], prompts: [], lostAt: null, openedAt: Date.now()};
 }
@@ -1401,6 +1719,20 @@ function applyLive(snap) {
   st.recipe = liveRecipe(snap);
   if (st.confirmNext && (!st.recipe || st.recipe.cur !== st.confirmFor || st.recipe.state !== "running")) st.confirmNext = false;
   st.timer = timerNow(snap.timer);
+  /* the timers, while CraftBeerPi has them: a CraftBeerPi that tells of its rest timer and not of them has none, and keeps
+     the rest timer. An editor shuts when its timer goes (removed on another screen) or runs out */
+  tMsg = timersMsg(snap);
+  M.TIMERS = !!(tMsg && Array.isArray(tMsg.timers)) || !snap.timer;
+  const was = st.tedit && st.tedit.id != null ? tById(st.tedit.id) : null;
+  st.tmrs = liveTmrs(tMsg);
+  // the names to pick: BREWDAY_TIMER_NAMES as the settings have it now, or as CraftBeerPi last sent it with the timers
+  const raw = cfg(snap.config, "BREWDAY_TIMER_NAMES");
+  st.names = raw != null ? timerNames(raw) : tMsg && Array.isArray(tMsg.names) ? tMsg.names.map(String) : [];
+  if (st.tedit && st.tedit.id != null) {
+    const t = tById(st.tedit.id);
+    if (!t || (t.state === "done" && was && was.state !== "done")) st.tedit = null;
+  }
+  if (!M.TIMERS) st.tedit = null;
   if (!st.recipe && !bookShown) { bookShown = true; loadBook(); }
   if (st.recipe) bookShown = false;
   powerModeChanged(st.v.bk.mode);
@@ -1465,7 +1797,12 @@ function liveBanner() {
   if (st.alarm) queue.push(st.alarm);
   st.errors.forEach(e => queue.push({tone: "alarm", title: ut(e.title || "Error"), text: ut(e.message || ""), act: "OK", cmd: `e:${e.id}`}));
   st.warnings.forEach(w => queue.push({tone: "warning", title: ut(w.title || "Warning"), text: ut(w.message || ""), act: "OK", cmd: `w:${w.id}`}));
-  st.prompts.forEach(p => queue.push({tone: "prompt", title: ut(p.title || "CraftBeerPi"), text: ut(p.message || ""), acts: p.action.map(a => ({label: String(a.label || "OK").toUpperCase(), cmd: `p:${p.id}:${a.id}`}))}));
+  st.prompts.forEach(p => {
+    const t = promptTimer(p);
+    queue.push(t ? {tone: "prompt", title: ut(p.title || t.name), text: ut(p.message || ""), timer: t.id,
+      acts: [{label: "+5 MIN", cmd: `tm2:plus5:${t.id}`, dir: "plus5", sec: true}, {label: "OK", cmd: `tm2:ok:${t.id}`, dir: "ok"}]}
+      : {tone: "prompt", title: ut(p.title || "CraftBeerPi"), text: ut(p.message || ""), acts: p.action.map(a => ({label: String(a.label || "OK").toUpperCase(), cmd: `p:${p.id}:${a.id}`}))});
+  });
   st.banner = queue.length ? {...queue[0], more: queue.length - 1} : null;
 }
 /* a warning stays in the title bar until OK; the same one again is not shown twice */
@@ -1499,7 +1836,9 @@ function observe(prev, snap) {
   for (const a of snap.alerts || []) {
     const id = String(a.id), type = String(a.type || "").toLowerCase(), title = ut(a.title), msg = ut(a.message), line = `${title}: ${msg}`;
     if (before.has(id) || OWN_ALERTS.has(id)) continue;
-    if (Array.isArray(a.action) && a.action.length) { logEvent(line, "waiting for you", "wait"); say(`${title}. ${msg}`, true); }
+    const tm = Array.isArray(a.action) && a.action.length ? promptTimer(a) : null;
+    if (tm) { logEvent(`${tm.name} finished`, "waiting for you", "wait"); say(`${tm.name}: time's up.`, true); }
+    else if (Array.isArray(a.action) && a.action.length) { logEvent(line, "waiting for you", "wait"); say(`${title}. ${msg}`, true); }
     else if (type === "error") { st.errors.push({id, title: a.title, message: a.message}); logEvent(line, "from CraftBeerPi", "bad"); say(`${title}. ${msg}`, true); }
     else if (type === "warning") { addWarning(id, a.title, a.message); logEvent(line, "from CraftBeerPi", "wait"); say(`${title}. ${msg}`); }
     else if (!ROUTINE.test(String(a.message || "").trim())) logEvent(line, "from CraftBeerPi", "");
@@ -1628,6 +1967,7 @@ function toggleMore(tab) {
 const handlers = {
   pointerdown: e => {
     afterHold = null;
+    unlockSound(e.target);
     const el = e.target.closest && e.target.closest("[data-hold]");
     if (!el || !root.contains(el) || e.button !== 0) return;
     // not focused, as in the mockup, where the button was drawn anew: a pointer hold leaves no focus ring
@@ -1640,14 +1980,39 @@ const handlers = {
   contextmenu: e => { if (e.target.closest && e.target.closest("[data-hold]")) e.preventDefault(); },
   keydown: e => {
     afterHold = null;
+    // a key lets the page play sound too, except Escape, which a browser doesn't count
+    if (e.key !== "Escape") unlockSound(e.target);
     const el = e.target.closest ? e.target.closest("[data-hold]") : null;
     if (el && root.contains(el) && (e.key === " " || e.key === "Enter")) { e.preventDefault(); if (!e.repeat) holdStart(el, false); return; }
     if (e.target.id === "tin" && e.key === "Enter") { e.preventDefault(); if (st.edit && st.edit.kind === "pwr") cmdPwrSet(); else cmdTgtSet(); return; }
+    /* Enter in a timer box presses the editor's main button: START for a new timer, SET for a stopped one, DONE otherwise */
+    if ((e.target.id === "tnm" || e.target.id === "tmin") && e.key === "Enter" && st.tedit) {
+      e.preventDefault();
+      const go = $(".tedit .tgo"), id = e.target.id;
+      if (go) { if (go.getAttribute("aria-disabled") === "true") explain(go); else run(go.dataset.cmd); }
+      /* still open (a name refused, or waiting for CraftBeerPi): the box keeps the caret, at its end */
+      const box = $("#" + id);
+      if (box && document.activeElement !== box) { box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
+      return;
+    }
     if (e.key === "Escape" && moreOpen()) { closeMore(); const t = $('.tabs a[data-tab="More"]'); if (t) t.focus(); return; }
+    if (e.key === "Escape" && st.tedit) { st.tedit = null; renderAll(); return; }
     if (e.key === "Escape" && (st.edit || st.logOpen || st.confirmNext)) { st.edit = null; st.logOpen = false; st.confirmNext = false; renderAll(); }
   },
   keyup: e => { if (hold && (e.key === " " || e.key === "Enter")) { e.preventDefault(); holdEnd(true); } },
   input: e => {
+    /* the timer editor's boxes: kept as typed, without redrawing, so the caret stays put */
+    if ((e.target.id === "tnm" || e.target.id === "tmin") && st.tedit) {
+      if (e.target.id === "tnm") {
+        st.tedit.name = e.target.value;
+        root.querySelectorAll(".tsug button").forEach((x, i) => x.setAttribute("aria-pressed", String(x.getAttribute("aria-disabled") !== "true" && st.names[i] === e.target.value)));
+      } else {
+        const m = parseInt(e.target.value, 10);
+        if (m >= 1 && m <= 300) st.tedit.set = m * 60;
+        root.querySelectorAll(".tpre button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.cmd === `te:min:${st.tedit.set / 60}`)));
+      }
+      return;
+    }
     if (e.target.id !== "tin" || !st.edit) return;
     const x = parseFloat(e.target.value), pwr = st.edit.kind === "pwr", ok = $("#tok");
     if (!Number.isFinite(x)) return;
@@ -1755,6 +2120,7 @@ function demoTick() {
       logEvent("Rest timer finished", "waiting for you", "wait"); say("Rest timer finished.", true); renderAll();
     }
   }
+  if (M.TIMERS) tmTick();
 }
 function liveTick() {
   st.t = daySeconds();
@@ -1773,6 +2139,7 @@ function liveTick() {
   }
   if (last && Object.values(st.expect).some(x => Date.now() > x.until)) { applyLive(last); schedule(); }
   if (last && last.timer && last.timer.running) { st.timer = timerNow(last.timer); const o = $("#tm-out"); if (o) setText(o, mmss(st.timer.left)); }
+  if (M.TIMERS) liveTmTick();
   // a pause counts on the brewing clock, from when BoilPower stamped it
   if (st.a.bkEl.paused) {
     syncBrewClock();
@@ -1792,6 +2159,7 @@ export function createBrewDay(el, o = {}) {
   const myGen = ++gen;
   root = el; opts = o; DEMO_MODE = !!o.demo;
   timers = []; noteTimers = {}; hold = null; afterHold = null; rigW = 0; last = null; everConnected = false; book = []; bookBusy = false; bookShown = false;
+  tAns = null; tMsg = null; lastBannerKey = null;
   answered.clear(); Object.keys(own).forEach(k => delete own[k]);
   const html = document.documentElement;
   // The stylesheets go in once and stay: every rule is scoped to html.bd-page, so they rest while it is off.
@@ -1815,7 +2183,7 @@ export function createBrewDay(el, o = {}) {
   if (DEMO_MODE) {
     const key = DEMO.SCENES[o.demo] || DEMO.EXTRA[o.demo] ? o.demo : "mash";
     M = {RECIPE: DEMO.RECIPE, VNAME: DEMO.VNAME, VACT: DEMO.VACT, ACT: DEMO.ACT, HERMS_DELTA: DEMO.HERMS_DELTA, BOOK: DEMO.BOOK, U: "°F", LIMITS: [32, 230],
-      BOILPOWER: true, BKNEW: true, BOIL_TH: DEMO.BOIL_TH};
+      BOILPOWER: true, BKNEW: true, BOIL_TH: DEMO.BOIL_TH, TIMERS: true};
     st = (DEMO.SCENES[key] || DEMO.EXTRA[key])();
     // the sparge-… moments run a recipe whose step 4 is a SpargeStep; every other moment keeps the MashStep
     if (st.sparge4) M.RECIPE = {...DEMO.RECIPE, steps: DEMO.RECIPE.steps.map((s, i) => i === 3 ? {...DEMO.SPARGE_STEP, ...st.sparge4} : s)};
@@ -1828,11 +2196,21 @@ export function createBrewDay(el, o = {}) {
     if (st.v.bk.usual === undefined) st.v.bk.usual = 45; // its Usual_Boil_Power setting; null: none set
     if (st.v.bk.keep == null) st.v.bk.keep = true; // its Keep_Boiling setting, "Yes" unless Scott unticks it
     if (st.v.bk.boilAt == null) st.v.bk.boilAt = DEMO.BOIL_TH; // its boil point, Boil_Threshold (BOIL AT)
+    // the timers: the moment's own, or none; SOUND off unless the moment has it on; no editor unless the moment opens one
+    st.tmrs = (st.tmrs || []).map(t => ({run: t.set, ...t}));
+    if (!st.snd) st.snd = {on: false, ok: true};
+    if (st.tedit === undefined) st.tedit = null;
+    // BREWDAY_TIMER_NAMES: its default, or the moment's own list
+    st.names = st.names || TNAMES.slice();
+    // the moment's own alert was there as it opened: it doesn't beep
+    lastBannerKey = bannerKey(st.banner);
     if (GRAPHS) st.hist = DEMO.history(base, st.t);
     applyLocks();
   } else {
     st = blankMoment();
     M = model({book});
+    // the timers until CraftBeerPi says it has none (applyLive)
+    M.TIMERS = true;
     if (GRAPHS) { H = createHistory(); st.hist = H.hist; }
     // shown until the first connection, and never kept: e[5] is 0
     if (!st.events.length) st.events.unshift([hhmmss(st.t), "Connecting to CraftBeerPi", "", "", "", 0]);
@@ -1869,6 +2247,9 @@ export function createBrewDay(el, o = {}) {
     delete html.dataset.layout;
     delete html.dataset.graphs;
     delete html.dataset.bk;
+    delete html.dataset.timers;
+    if (actx) { try { actx.close().catch(() => {}); } catch (e) { /* already closed */ } }
+    actx = null;
     H = null; bclk = null; bclkAt = 0;
     if (root) root.innerHTML = "";
     root = null; st = null; gen++;

@@ -20,20 +20,15 @@
 // - .keep .box (KEEP BOILING's box) gets box-shadow:none: App.css gives every
 //   .box on every page a dark shadow, which the mockup's unticked box doesn't
 //   have. The ticked box's glow is a heavier rule, so it still wins.
-// - [data-layout=b], [data-graphs=face] and [data-bk=power] matched <html> in
-//   the mockup; the screen sets them there too ([data-bk=power] while the boil
-//   kettle runs the new BoilPower, M.BKNEW).
+// - [data-layout=b], [data-graphs=face], [data-bk=power] and [data-timers=new] matched <html> in the mockup; the
+//   screen sets them there too ([data-bk=power] while the boil kettle runs the new BoilPower, M.BKNEW;
+//   [data-timers=new] while CraftBeerPi has the timers, M.TIMERS).
 // - The mockup's own strip (.mock, html.bare) is left out, and --mock-h is 0.
 //   So is graphs option B (.gpanel, .ghead, .gcol, .gwin, .gview and
 //   [data-graphs=panel]), kept in the mockup only as the record of what Scott
 //   chose from.
-// - So is the timers proposal (?timers=new, 10 Nov), until Scott approves it
-//   and it is built: the timers' rules (.tmrs, .trow, .tsel, .tedit and the
-//   rest), SOUND's switch (.keep.snd), the title bar's lesser button
-//   (.banner .act.sec), the alarm's pulse ([data-ring] and its ring
-//   animation) and the stacked order ([data-timers=new]).
-// - Its animations are renamed bd-blink, bd-march and bd-flow: names are
-//   global, and another stylesheet's @keyframes of the same name would win.
+// - Its animations are renamed bd-blink, bd-march, bd-flow and bd-ring: names
+//   are global, and another stylesheet's @keyframes of the same name would win.
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -42,19 +37,16 @@ const here = dirname(fileURLToPath(import.meta.url));
 const SRC = join(here, "brew-day.css");
 const OUT = join(here, "..", "..", "cbpi4gui", "src", "components", "brewday", "brewday.css");
 const SCOPE = ":where(html.bd-page)";
-// The timers proposal, mockup only for now (see above). None of these names is used by anything built.
-const TIMERS = /^(\.(tmrs|trow|tsel|tedit|tfield|tmin|tsug|tkeys|tpre|tleft|tnote|tact|tplus|tml)(?![\w-])|\[data-timers=|\.keep\.snd(?![\w-])|\.banner \.act\.sec(?![\w-])|\.now \.tml(?![\w-]))|\[data-ring\]/;
 
 function scopeSelector(sel) {
   const s = sel.trim();
   if (s.startsWith(".mock") || s.startsWith("html.bare")) return null;
   // Graphs option B, the DRAWING / GRAPHS switch Scott turned down (10 Nov), stays in the mockup only.
   if (/^\.(gpanel|ghead|gcol|gwin|gview)\b/.test(s) || s.startsWith("[data-graphs=panel]")) return null;
-  if (TIMERS.test(s)) return null;
   if (s === ":root") return SCOPE;
   if (s === "html") return "html.bd-page";
   if (s === "body") return "html.bd-page body";
-  if (s.startsWith("[data-layout=") || s.startsWith("[data-graphs=") || s.startsWith("[data-bk=")) return SCOPE + s;
+  if (s.startsWith("[data-layout=") || s.startsWith("[data-graphs=") || s.startsWith("[data-bk=") || s.startsWith("[data-timers=")) return SCOPE + s;
   return `${SCOPE} ${s}`;
 }
 
@@ -90,18 +82,14 @@ function rule(head, body) {
   return `${sels.join(",")}{${decl}}`;
 }
 
-const KEYFRAMES = ["blink", "march", "flow"];
-const MOCKUP_ONLY_KEYFRAMES = ["ring"]; // the timers proposal's alarm pulse
+const KEYFRAMES = ["blink", "march", "flow", "ring"];
 const ANIMATION = new RegExp(`(animation(?:-name)?:\\s*)(${KEYFRAMES.join("|")})\\b`, "g");
 
 function convert(text) {
-  const named = [...text.matchAll(/@keyframes\s+([\w-]+)/g)].map(m => m[1]).filter(k => !MOCKUP_ONLY_KEYFRAMES.includes(k)).sort();
+  const named = [...text.matchAll(/@keyframes\s+([\w-]+)/g)].map(m => m[1]).sort();
   if (named.join() !== [...KEYFRAMES].sort().join()) throw new Error(`@keyframes changed: ${named.join(", ")}`);
   return blocks(text).map(({ head, body }) => {
-    if (head.startsWith("@keyframes")) {
-      if (MOCKUP_ONLY_KEYFRAMES.includes(head.replace(/@keyframes\s+/, "").trim())) return "";
-      return `${head.replace(/@keyframes\s+/, "@keyframes bd-")}{${body.trim()}}`;
-    }
+    if (head.startsWith("@keyframes")) return `${head.replace(/@keyframes\s+/, "@keyframes bd-")}{${body.trim()}}`;
     if (head.startsWith("@media")) {
       const inner = blocks(body).map(b => rule(b.head, b.body)).filter(Boolean);
       return inner.length ? `${head}{\n${inner.join("\n")}\n}` : "";

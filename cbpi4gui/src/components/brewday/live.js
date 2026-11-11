@@ -43,6 +43,18 @@ export const cfg = (config, key) => {
   return c && typeof c === "object" && "value" in c ? c.value : c;
 };
 
+// BREWDAY_TIMER_NAMES as CraftBeerPi reads it (TimersController.names): separated by commas, each with one space between
+// words and kept to 24 characters, repeats dropped whatever their capitals; blank gives none. Read from the settings, a
+// change shows at once on every screen: the timers' own message carries the names only when a timer changes.
+export function timerNames(raw) {
+  const out = [];
+  for (const part of String(raw).split(",")) {
+    const n = part.split(/\s+/).filter(Boolean).join(" ").slice(0, 24).trim();
+    if (n && !out.some((o) => o.toLowerCase() === n.toLowerCase())) out.push(n);
+  }
+  return out;
+}
+
 export function kettleRoles(kettles, config, herms) {
   const ks = (kettles || []).filter(Boolean);
   const byId = (id) => (id ? ks.find((k) => k.id === id) : undefined);

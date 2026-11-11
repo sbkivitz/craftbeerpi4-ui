@@ -31,6 +31,9 @@ Boil kettle: the redesign Scott said yes to on 10 Nov, built on the screen that 
 one-tap −5/+5 %, a pause for boil-overs, a usual boil power, TARGET (BOIL or a hold) and KEEP BOILING.
 ?bk=today is the faceplate from before it, which the screen keeps for an older BoilPower (one without set_boil_at);
 boil-kettle.html compares the two. ?bk=words is an earlier option he didn't take. ?focus=bk is for that page.
+Timers: ?timers=new is the design Scott approved on 11 Nov, not built yet (#timers, #timer-done, #timer-new,
+#timer-names, #timer-nonames, #timers-hand, #sound-allow); without it those moments show the screen as built.
+?names=Hop stand,Yeast tries a BREWDAY_TIMER_NAMES list (blank: none), read as CraftBeerPi reads the setting.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -65,9 +68,11 @@ boil-kettle.html compares the two. ?bk=words is an earlier option he didn't take
   <a href="#timers">Timers in a recipe</a>
   <a href="#timer-done">A timer runs out</a>
   <a href="#timer-new">Adding a timer</a>
+  <a href="#timer-names">Eight names in Settings</a>
+  <a href="#timer-nonames">No names in Settings</a>
   <a href="#timers-hand">Timers by hand</a>
   <a href="#sound-allow">Sound waiting for a tap</a>
-  <span class="lay">Timers: <a data-tm="today" href="?">today</a> <a data-tm="new" href="?timers=new">proposed</a></span>
+  <span class="lay">Timers: <a data-tm="today" href="?">today</a> <a data-tm="new" href="?timers=new">approved</a></span>
   <span class="lay">Boil kettle: <a data-bk="power" href="?bk=power">as built</a> <a data-bk="today" href="?bk=today">older BoilPower</a></span>
   <span class="lay">Layout: <a data-layout="a" href="?layout=a">A · recipe right</a> <a data-layout="b" href="?layout=b">B · recipe left</a></span>
 </nav>

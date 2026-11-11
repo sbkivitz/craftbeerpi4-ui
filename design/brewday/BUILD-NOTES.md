@@ -14,7 +14,8 @@ This folder is a proposal. Nothing in it changes CraftBeerPi, and nothing is com
   `#bktarget` and `#handhold`. `#notarget` and `#notarget-hlt` show a vessel in AUTO with no target.
   `#sparge-heat`, `#sparge-ready`, `#sparge-run` and `#sparge-batch` show the new SpargeStep (core
   4.7.7.post35); `#sparge` keeps the old MashStep sparge that recipes already in the book still have. Add
-  `&timers=new` for the timers proposal (`#timers`, `#timer-done`, `#timer-new`, `#timers-hand`, `#sound-allow`).
+  `&timers=new` for the timers Scott approved on 11 Nov (`#timers`, `#timer-done`, `#timer-new`, `#timer-names`,
+  `#timer-nonames`, `#timers-hand`, `#sound-allow`), not built yet.
 - The pages run on demo data copied from the simulator's config (`C:\src\personal\cbpi-testbench\config`).
   They do not talk to CraftBeerPi. Buttons respond and timers run, but nothing is sent anywhere.
 
@@ -751,6 +752,11 @@ All four use the `#mash` day and recipe with step 4 replaced by a SpargeStep (`S
 
 ## After your port: five small changes (10 Nov, late)
 
+> Built the same evening: you ported 3, 4 and the USUAL wording in 5 (UI c864354, build 66d6de1, on 8012).
+> Your design copy matches this folder file for file, and identity is 281/281 again. The released screen on main
+> was whole in all 28 of its moments, so nothing needed back-porting. The timers proposal stays out of the screen
+> (scope-css.mjs) until Scott approves it.
+
 You built the boil kettle's target model, KEEP BOILING, the forgotten pause and the SpargeStep, and your identity
 test compared all 22 moments at five sizes, with and without graphs, plus 15 presses: 281/281. Since then, in
 `proposal\`:
@@ -830,15 +836,21 @@ phone does. I haven't designed that; it matters only if Scott uses those widths.
   number selected, and typing 150 gives 150. USUAL with none set reads as above and fits; a recipe started then
   keeps a boil power of 40, and with 45 set it goes back to 45.
 
-## Timers: a proposal for Scott to review (10 Nov, evening). Not approved yet
+## Timers: approved by Scott on 11 Nov, ready to build
 
 Scott, 10 Nov, after using the rest timer: "why is it named that? lots of things use a timer during a brew day. I
 want an optionally audible alarm and more attention grabbing but still elegant visual alerting when timer expires.
 Also want to have multiple timers in parallel if I click a + or something like that. Nice to have= ability to name
 timers". Asked whether the sound should cover only his timers, he chose "my timers and CraftBeerPi's alerts".
 
-The mockup is `brew-day.html?bk=power&timers=new`, moments `#timers`, `#timer-done`, `#timer-new`, `#timers-hand`
-and `#sound-allow`; without `&timers=new` the same moments show the screen as built. It is modelled on a
+Scott, 11 Nov: "add the timers that design agent discussed. Those default names are fine as long as they're easily
+changed on brew day. I'd like to have an easy config setting to choose the default timer names from the setup if
+that's easy enough too". Brett is building it, server first (`cbpi\controller\timers_controller.py`,
+`cbpi\http_endpoints\http_timers.py`). The names setting is the next section but one.
+
+The mockup is `brew-day.html?timers=new`, moments `#timers`, `#timer-done`, `#timer-new`, `#timer-names`,
+`#timer-nonames`, `#timers-hand` and `#sound-allow`; without `&timers=new` the same moments show the screen as built.
+It is modelled on a
 four-channel kitchen timer, ThermoWorks' TimeStack: four timers in view at once, digits that flash until the alarm is
 stopped and then count up, and a Set that recalls the last time. The alarm follows process-control practice
 (ISA-18.2 and ISA-101 displays): something blinks only while an alarm waits for an answer, and the alarm sits in a
@@ -857,18 +869,30 @@ more than 3 flashes a second: this is one slow pulse) are met.
   time large on the right, and one button: START, PAUSE, or START "carry on". A 4 px bar along the row's bottom
   edge shows how far this countdown has gone. The left part is a button that opens the timer's editor.
 - **+ TIMER** under the rows. Up to four timers; a fifth is refused with "Four timers at most. Remove one to add
-  another." in the timers' own note line.
+  another." in the timers' own note line. While a timer's editor is open, + TIMER is not shown: there is one editor
+  at a time, and a press would have dropped that editor's changes. It is back when the editor closes.
 - **The editor**, one at a time, in place under its timer (or where + TIMER was). Its title sits in its blue
   border: NEW TIMER or CHANGE STIR. While it is open, the other timers shrink to one 44 px line with their name and
   time.
-  - NAME, a text box (placeholder: the default name), and three ideas: HOP STAND, YEAST, VORLAUF. A tap fills the
-    name; a second tap clears it.
+  - NAME, a text box (placeholder: the default name), and under it the names to pick from Settings (see "Names from
+    Settings" below; HOP STAND, YEAST and VORLAUF unless Scott changes them). A tap fills the name; a second tap
+    clears it.
   - For a stopped or new timer: MINUTES with −1, a box (1 to 300) and +1, and six presets: 5, 10, 15, 20, 30, 60.
     New: CANCEL, SAVE ("start it later") and START ("counts down now"). Stopped: REMOVE, CANCEL, SET.
   - For a running or paused timer: "Time left 7:08" with −1 MIN, +1 MIN and +5 MIN, which apply at once ("Changes
     the time left at once, on every screen."), then REMOVE and DONE. Removing a timer that has time left asks once,
     in place, as NEXT STEP does: "Remove Stir? It has 8:02 left." REMOVE IT / KEEP IT.
   - Enter in a box presses the main button; Escape closes the editor.
+  - **The column makes room for it (added 11 Nov).** On the one-screen layout (1180 px wide and up), while a
+    timer's editor is open, the step list is hidden, and when brewing by hand so are the recipe book and its two
+    buttons, RECIPE BOOK and BREW STEPS. They come back when the editor closes. For those few seconds the step's
+    name and countdown are out of view on a monitor (only the phone has the step strip at the top); the
+    recipe's header still says "Running · step 3 of 7", and a hop addition or a step's question still comes up in
+    the title bar. Before this, the list shrank to whatever room was left: at 1920×950 a 41 px strip that cut
+    "23:41 LEFT" in half, and by hand the editor pushed the recipe book off the screen, so the page scrolled 70 px.
+    The mockup sets `data-tedit` on `#recipe` while `st.tedit` is set; the rule is
+    `@media (min-width:1180px){.recipe[data-tedit] :is(.steps,.book,.handlinks){display:none}}`. Where the page
+    stacks (under 1180 px, phones included) nothing is hidden: the timers already come first and the page scrolls.
 - **When a timer runs out**, on every screen, until somebody answers it on any one:
   - its row turns Prompt Amber: "TIME'S UP", the time counting up from zero ("+0:12"), and two buttons, +5 MIN and
     a white OK ("stops the alarm");
@@ -893,27 +917,127 @@ more than 3 flashes a second: this is one slow pulse) are met.
   softened piezo beep, a sine at 1760 Hz, 120 ms (12 ms rise, then falling away), three of them 200 ms apart (Web
   Audio).
 
-### What it needs
+### Names from Settings: BREWDAY_TIMER_NAMES (11 Nov)
 
-- **CraftBeerPi (server):** the rest timer becomes a list of up to four timers, kept as the rest timer is (in memory,
-  on the brewing clock, pushed to every screen on a websocket topic). Each has an id, a name, its own time (`set`),
-  this countdown's length (`run`), the time left, and whether it is stopped, running, paused or finished (with when
-  it finished). Commands: add (name, seconds, start or not), change (name, seconds), start, pause, add or take
-  seconds (never below 10 s left), remove, and the two answers. At zero it raises a kept prompt titled with the
-  timer's name, "The 15:00 timer has run out.", with two actions, "+5 MIN" and "OK", that every screen shows until
-  one is pressed. Removing a finished timer takes its prompt down.
-- **The web UI:** everything above. The 4 px bar, the editor's legend title and the shrunken rows are new CSS; the
-  rest reuses the screen's buttons, editor input, confirm box and KEEP BOILING's box. The banner's lesser button
-  needs to know the prompt belongs to a timer (from the timers list), so other prompts with two actions don't
-  change.
-- **Identity tests:** run `#timer-done` with reduced motion, or the pulse differs from frame to frame.
+What "default timer names" means here. I asked Scott what a new timer should be called if he doesn't pick a name.
+He answered "multiple choice boxes from preconfigured list", then "or freeform in addition to mult choice". So:
 
-### Questions for Scott
+- the names in the setting are buttons in the editor, picked with one tap;
+- he can still type any name;
+- nothing is filled in for him. A timer nobody names is "Timer 3" (the next free number), as the server's
+  `_default_name()` already does. NN/g's advice on defaults is to pre-fill only what nearly everyone would choose;
+  "Hop stand" put into every new timer would be wrong most of the time, and easy to save by mistake.
 
-1. Hop additions also come due at a moment. Should they pulse and repeat the sound like a timer that has run out?
-   (I think yes: it's the same kind of moment. They don't in the mockup yet.)
-2. Are HOP STAND, YEAST and VORLAUF the right name ideas, or should the ideas be the last three names he used?
-3. Is four timers enough?
+**The setting.** Key `BREWDAY_TIMER_NAMES` (Brett's, beside `BREWDAY_OVERRIDE_ACTOR`), type string, source
+craftbeerpi, default "Hop stand, Yeast, Vorlauf". The Settings page shows the key as the setting's title with the
+description under it, so the description does the explaining. Its words:
+
+> Brew-day screen: names to pick with one tap when you add or change a timer, separated by commas, up to 24
+> characters each. The first six show, in this order. You can still type any name on brew day. Blank shows none.
+> (default: Hop stand, Yeast, Vorlauf)
+
+What changed from Brett's first wording: "to pick with one tap" says what the names are for; "up to 24 characters
+each" warns that a longer name is cut, which the server does without saying; "the first six show, in this order"
+gives the limit where he writes the list, because the editor doesn't repeat it (below).
+
+**The editor** (`namesHTML()` and `cmdTe()` in the mockup):
+
+- The names are buttons under NAME, in the setting's order, three to a row, the first six (two rows). Six is what
+  fits a 1920×950 screen with no scrolling (measured below).
+- Labels in capitals, as on every other button; the spoken label (`aria-label`) is the name as written. A long name
+  wraps rather than being cut, up to three lines (`-webkit-line-clamp:3`): a 24-character name takes two lines at
+  1920 px and three at 1440 px and on a phone.
+- A tap puts the name in the box and shows the button pressed; a second tap clears it. A name typed exactly as a
+  button's shows that button pressed.
+- A name another timer already has, whatever its capitals, is greyed (`aria-disabled`), and a tap puts this in the
+  timers' note line: "Another timer is already called Yeast. Give this one another name, so you can tell their
+  alarms apart." In `#timer-new` YEAST is greyed, because the second timer is called Yeast. A timer's own name is
+  not greyed in its own editor: CHANGE YEAST shows YEAST pressed.
+- A typed name that another timer has is refused the same way, with the same words, when START, SAVE, SET or DONE
+  is pressed. Nothing is sent, the editor stays open, and after Enter the caret stays in the box. DONE with the
+  name unchanged just closes. The reason: a timer's alarm is titled with its name, so two alarms called Yeast in
+  the title bar couldn't be told apart.
+- Spaces are kept as the server keeps them: trimmed, with one space between words.
+- The default name skips any "Timer N" another timer has, whatever its capitals (a timer called "timer 3" makes the
+  next one "Timer 4").
+- **Blank setting:** no buttons, and one muted line in their place: "No names to pick: BREWDAY_TIMER_NAMES in
+  Settings is blank." It takes less room than the buttons, and says where they went.
+- **More than six:** the first six, and nothing more. The description tells him when he writes the list. A line in
+  the editor would repeat it every time he adds a timer, and would push the editor past a 1920×950 screen (by 32
+  px).
+- The buttons carry their place in the list (`te:pick:3`), not the name, so a name with a colon, a quote or a `<`
+  can't break the command or the page.
+- In the mockup, `?names=Hop stand,Yeast` tries a list, read as the server reads the setting (`?names=` alone:
+  blank). `#timer-names` has eight names: the first six show, with the longest a name can be, Hop stand picked and
+  Yeast greyed. `#timer-nonames` has a blank list.
+
+**Fit, measured** (with the column making room, above): the new-timer and change-timer editors fit 1920×1080 and
+1920×950 with no scrolling, with and without graphs, with three names or six, in a recipe and by hand with three
+timers. At 1440×900 three names fit and six scroll the page by 28 to 52 px. At 1366×768 the page already scrolls
+92 px with no editor open, and an editor adds 4 to 92 px more, as the other editors there do.
+
+### Scott's answers (11 Nov)
+
+- Approved: "add the timers that design agent discussed".
+- The names: a setting, as above. "Those default names are fine as long as they're easily changed on brew day":
+  they are buttons, and the box takes any name.
+- Not answered, so the mockup stands: hop additions don't pulse or repeat the sound as a timer that has run out
+  does, and four timers is the most. Either can change later without touching the rest.
+
+### Built against Brett's server
+
+| On the screen | Request |
+|---|---|
+| NEW TIMER: START | `POST /timers` `{name, seconds, start: true}` |
+| NEW TIMER: SAVE | `POST /timers` `{name, seconds, start: false}` |
+| SET, for a stopped timer or one whose alarm waits | `PUT /timers/{id}` `{name, seconds}` (an alarm that waits is answered and the timer stopped at its new time) |
+| DONE, for a running or paused timer, with a new name | `PUT /timers/{id}` `{name}` (name only: the server refuses a new time while a timer counts) |
+| −1 MIN, +1 MIN, +5 MIN in a running or paused timer's editor | `POST /timers/{id}/add` `{seconds: -60}`, `60` or `300` |
+| START, PAUSE, START "carry on" | `POST /timers/{id}/start`, `/pause` |
+| REMOVE, or REMOVE IT | `DELETE /timers/{id}` |
+| OK and +5 MIN, in the row or the title bar | `POST /timers/{id}/ok`, `/plus5` (the prompt's own two actions call the same) |
+
+- A name left blank can be sent as the placeholder or not at all: the server's "Timer N" is the same name.
+- The title bar knows a prompt is a timer's from the timer's `prompt` field (its prompt's id), and only then draws
+  +5 MIN as the lesser button.
+- The list of names comes as `names`, in `GET /timers` and in every "timers" message.
+
+### What the server still needs
+
+1. **A blank setting must give no names.** `config.get()` returns the default for a blank value
+   (`config_controller.py`, lines 46 to 55). So `TimersController.names()` gets `None` for a blank setting and
+   offers the three default names, and ConfigUpdate (`ConfigUpdate\__init__.py`, lines 82 and 1057) sees `None` and
+   adds the setting again with "Hop stand, Yeast, Vorlauf" at the next start: a restart undoes Scott's blank. Both
+   can look in the cache instead:
+
+   ```python
+   # TimersController.names()
+   entry = self.cbpi.config.cache.get(self.NAMES_SETTING)
+   raw = self.NAMES_DEFAULT if entry is None or entry.value is None else entry.value
+
+   # ConfigUpdate
+   if "BREWDAY_TIMER_NAMES" not in self.cbpi.config.cache:
+   ```
+
+2. **A saved list has to reach the screens already open.** The "timers" message goes out only when a timer
+   changes. Saving a setting sends "configupdate" with the whole configuration (`push_update()`); on that message
+   the screen can fetch `GET /timers` again. Or the server can send the timers message when this setting changes.
+   Your call.
+3. **Optional: one name per timer on the server too.** The screen refuses a name another timer has, but two screens
+   adding "Yeast" at the same moment, or a call to the API, could still make two. `_name()` could refuse it with the
+   screen's words, comparing with `casefold()`. If it does, `_default_name()` should compare the same way, as the
+   mockup's `tDefaultName()` does.
+4. **Optional: a wider box on the Settings page.** Text settings use MUI's default `TextField` (about 180 px wide),
+   so most of a six-name list is out of view while he types it. `fullWidth`, for this setting or all text
+   settings, would help.
+
+### What the web UI needs
+
+- Everything above. The 4 px bar, the editor's legend title, the shrunken rows and the names' wrapping are new
+  CSS; the rest reuses the screen's buttons, editor input, confirm box and KEEP BOILING's box.
+- **Identity tests:** run `#timer-done` with reduced motion, or the pulse differs from frame to frame. The new
+  moments are `#timer-names` and `#timer-nonames`; `#timer-new` changed (YEAST greyed, no step list, no + TIMER
+  while an existing timer is edited).
 
 ### Changed, all in `proposal\`
 
@@ -928,6 +1052,19 @@ more than 3 flashes a second: this is one slow pulse) are met.
   order.
 - `brew-day.html`: moment links and the "Timers: today / proposed" switch.
 
+11 Nov, the names setting and the column making room:
+
+- `brew-day.js`: `TSUG` replaced by `TNAMES` (the setting's default), `TNLEN` (24), `TNMAX` (6) and `tNames()` (reads
+  a list as the server does); new `tTwin`, `tTwinWhy`, `namesHTML`; changed `tDefaultName` (skips a "Timer N" in
+  any capitals), `teditHTML`, `timersHTML` (no + TIMER while a timer's editor is open), `cmdTe` (`te:pick:i`
+  replaces `te:name:…`; spaces kept as the server keeps them; a name another timer has is refused), `renderAll`
+  (`data-tedit` on `#recipe`), `load()` (`st.names` from the moment or `?names=`), the input handler (pressed by
+  place in the list) and the Enter handler (the caret stays in the box); scenes `timer-names` and `timer-nonames`;
+  `timer-new`'s comment.
+- `brew-day.css`: `.tsug .cmdbtn .lb` (wraps, up to three lines), and the one-screen rule hiding the step list, the
+  recipe book and its two buttons while a timer's editor is open.
+- `brew-day.html`: two moment links, "Timers: today / approved", and the header comment.
+
 ### Checked
 
 - The five moments at 1920×950, 1366×768 and 390×844, with and without graphs: no page errors. Nothing scrolls more
@@ -940,6 +1077,20 @@ more than 3 flashes a second: this is one slow pulse) are met.
   Escape; the phone's strip jumping to the timers.
 - Every moment of the page in every view: 567 loads, no errors. Today's view of the timer moments shows the screen
   as built ("Rest timer · The rest timer has finished." in `#timer-done`).
+
+11 Nov:
+
+- Pressed through at 1920×950: greyed YEAST and its note; tapping a pressed name clears it; typing a name presses
+  its button; "yeast" typed and refused, from Enter (caret kept) and from START; "  Mash   stir  " saved as "Mash
+  stir"; CHANGE YEAST with YEAST pressed and + TIMER gone; renaming Yeast to STIR refused; DONE unchanged closes;
+  a blank list, then START unnamed ("Timer 3"); a list with repeats, a 33-character name (cut to 24) and
+  `a:b "c" <i>` (kept as one name, shown and picked whole); a timer called "timer 3" makes the next "Timer 4";
+  Escape. On a phone the step list stays while the editor is open. Today's view of `#timer-names` and
+  `#timer-nonames` shows the screen as built.
+- Fit: the numbers under "Names from Settings". With the editor closed, nothing changed.
+- Every moment in every view, plus the timers views with six names and with a blank list, at 1920×950 and 390×844,
+  and the timers views at 1920×1080 and 1440×900: 1160 loads, no page errors. Nothing spills sideways except what
+  did before on purpose: the phone's hidden "Connected", the shortened event line, and 2 px in `#timer-done`.
 
 ## Open questions about the drawing
 

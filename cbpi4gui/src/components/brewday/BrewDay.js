@@ -58,6 +58,7 @@ const BrewDay = () => {
       steps: state.mashProfile,
       basic: state.mashBasic,
       timer: state.resttimer,
+      timers: state.timers,
       alerts: alert.alerts,
       retired: alert.retiredReason,
     });

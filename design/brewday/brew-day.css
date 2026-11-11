@@ -232,8 +232,9 @@ html.bare .mock{display:none}
 .timer output{font:600 clamp(52px,calc(22 * var(--pu)),88px)/1 var(--cond);font-variant-numeric:tabular-nums}
 .timer div,.handlinks{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .timer .go{grid-column:1/-1}
-/* the proposed timers (?timers=new): up to four rows, each a name, a big time and its one button; the row's left part
-   opens its editor in place. A finished one is Prompt Amber, counts up, and offers +5 MIN and OK */
+/* the timers (?timers=new, approved by Scott 11 Nov 2026): up to four rows, each a name, a big time and its one
+   button; the row's left part opens its editor in place. A finished one is Prompt Amber, counts up, and offers +5 MIN
+   and OK */
 .tmrs{flex:none;display:grid;gap:8px}
 .tmrs .thead{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px}
 .tmrs h3{margin:0;font:700 20px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase}
@@ -276,6 +277,8 @@ html.bare .mock{display:none}
 .tedit .cmdbtn{min-height:46px;font-size:17px}
 .tedit .tmin .cmdbtn{min-height:52px}
 .tsug .cmdbtn[aria-pressed=true],.tpre .cmdbtn[aria-pressed=true]{background:#070c11;color:#fff;box-shadow:inset 0 0 0 2px #a9bfd4}
+/* the names to pick (BREWDAY_TIMER_NAMES): a long one wraps, up to three lines, rather than being cut short */
+.tsug .cmdbtn .lb{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;overflow-wrap:anywhere;line-height:1.1}
 .tleft{display:flex;justify-content:space-between;align-items:baseline;margin:0;font:600 15px/1 var(--cond);letter-spacing:.05em;color:var(--text-2);text-transform:uppercase}
 .tleft b{font:600 34px/1 var(--cond);color:var(--text);font-variant-numeric:tabular-nums}
 .tnote{margin:-2px 0 0;font:500 14px/1.3 var(--sans);color:var(--text-3)}
@@ -410,6 +413,10 @@ html.bare .mock{display:none}
 
 /* desktop: one fixed screen */
 @media (min-width:1180px){.app{height:max(calc(100dvh - var(--mock-h)),860px)}}
+/* while a timer's editor is open, the step list (by hand, the recipe book and its two links) makes way for it, rather
+   than shrinking to a sliced row. The header still says which step runs, and alerts still come in the title bar. All
+   back when it closes */
+@media (min-width:1180px){.recipe[data-tedit] :is(.steps,.book,.handlinks){display:none}}
 /* while a value editor is open the drawing may shrink further, so a note under the editor can't push the page past the screen */
 @media (min-width:1180px){.app[data-editing] .rig{min-height:160px}}
 /* tablet: stack, page scrolls */
@@ -419,7 +426,7 @@ html.bare .mock{display:none}
   .rig{min-height:0;aspect-ratio:1200/470}
   .steps{overflow:visible}
   .book ul{overflow:visible}
-  /* stacked, the proposed timers come before the steps (or the recipe book), so they are not seven steps down */
+  /* stacked, the timers come before the steps (or the recipe book), so they are not seven steps down */
   [data-timers=new] .recipe .steps,[data-timers=new] .recipe .book,[data-timers=new] .recipe .handlinks{order:2}
   [data-timers=new] .recipe .tmrs{order:1}
   [data-layout=b] .recipe{order:2}
