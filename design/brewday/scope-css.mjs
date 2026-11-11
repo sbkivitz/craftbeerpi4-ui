@@ -17,8 +17,12 @@
 //   phone from scrolling the page at all.
 //   body also gets -moz-osx-font-smoothing:auto, the mockup's default, back
 //   from index.css's grayscale (Firefox on a Mac).
-// - [data-layout=b] and [data-graphs=face] matched <html> in the mockup; the
-//   screen sets them there too.
+// - .keep .box (KEEP BOILING's box) gets box-shadow:none: App.css gives every
+//   .box on every page a dark shadow, which the mockup's unticked box doesn't
+//   have. The ticked box's glow is a heavier rule, so it still wins.
+// - [data-layout=b], [data-graphs=face] and [data-bk=power] matched <html> in
+//   the mockup; the screen sets them there too ([data-bk=power] while the boil
+//   kettle runs the new BoilPower, M.BKNEW).
 // - The mockup's own strip (.mock, html.bare) is left out, and --mock-h is 0.
 //   So is graphs option B (.gpanel, .ghead, .gcol, .gwin, .gview and
 //   [data-graphs=panel]), kept in the mockup only as the record of what Scott
@@ -42,7 +46,7 @@ function scopeSelector(sel) {
   if (s === ":root") return SCOPE;
   if (s === "html") return "html.bd-page";
   if (s === "body") return "html.bd-page body";
-  if (s.startsWith("[data-layout=") || s.startsWith("[data-graphs=")) return SCOPE + s;
+  if (s.startsWith("[data-layout=") || s.startsWith("[data-graphs=") || s.startsWith("[data-bk=")) return SCOPE + s;
   return `${SCOPE} ${s}`;
 }
 
@@ -73,6 +77,7 @@ function rule(head, body) {
   let decl = body.trim().replace(ANIMATION, (m, prop, name) => `${prop}bd-${name}`);
   if (head.trim() === "html" || head.trim() === "body") decl += ";touch-action:auto";
   if (head.trim() === "body") decl += ";-moz-osx-font-smoothing:auto";
+  if (head.trim() === ".keep .box") decl += ";box-shadow:none";
   if (head.trim() === ":root") decl = decl.replace(/--mock-h:[^;]+/, "--mock-h:0px");
   return `${sels.join(",")}{${decl}}`;
 }

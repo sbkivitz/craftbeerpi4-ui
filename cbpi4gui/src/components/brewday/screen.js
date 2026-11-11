@@ -3,14 +3,17 @@
 // Scott, 9 Nov 2026: "It is imperitive that the actual dashboard look identical to your proposal here. I
 // don't want a crude representation of what I currently see". So this is the approved mockup's own code
 // (design/brewday/brew-day.js, layout B): the same functions write the same markup, styled by the mockup's
-// own stylesheet (brewday.css, generated from it) and drawn by its own rig drawing (rig.js).
-// design/brewday/check_identity.py compares the two pictures, moment by moment and screen size by size.
+// own stylesheet (brewday.css, generated from it) and drawn by its own rig drawing (rig.js). The bench's
+// test_ui_brewday_identity.py compares the two pictures, moment by moment and screen size by size.
 //
 // What is different from the mockup:
 // - The drawing code reads M (what stays put through a brew day: the recipe, which switch is which) and st
-//   (this moment) where the mockup read its globals. With ?demo=mash, sparge, hop, boilpower, fail, manual or offline both
-//   come from the mockup's demo data (demo.js) and commands are simulated exactly as in the mockup. Otherwise
-//   they come from CraftBeerPi (live.js), and commands go to it (api.js).
+//   (this moment) where the mockup read its globals. With ?demo=<moment> (demo.js lists them) both come from the
+//   mockup's demo data (demo.js) and commands are simulated exactly as in the mockup. Otherwise they come from
+//   CraftBeerPi (live.js), and commands go to it (api.js).
+// - The boil kettle is the mockup's proposed one (?bk=power) while it runs the new BoilPower (M.BKNEW: it declares
+//   set_boil_at, from 0.0.3.post7), and the mockup's today's one (?bk=today) with an older BoilPower, whose target
+//   is where its boil starts. The demo always shows the proposed one.
 // - A command says at its own button whether it worked. One that fails, or gets no answer in 5 s, turns its
 //   button red and raises an alarm in the title bar; it is never silently dropped (DEFECTS U1).
 // - The regions are patched in place, not rewritten (morph), so readings that change every second do not
@@ -166,7 +169,7 @@ function lockWhy(id) {
 }
 function b(cls, label, small, o = {}) {
   const dis = !!o.why, h = o.hold && !dis;
-  return `<button type="button" class="${cls}"${o.pressed != null ? ` aria-pressed="${o.pressed}"` : ""}${o.expanded != null ? ` aria-expanded="${o.expanded}"` : ""}${o.cmd ? ` data-cmd="${esc(o.cmd)}"` : ""}${h ? " data-hold" : ""}${dis ? ` aria-disabled="true" data-why="${esc(o.why)}"` : ""}>${h ? '<span class="fill"></span>' : ""}<span class="lb">${label}</span>${small ? `<small>${small}</small>` : ""}</button>`;
+  return `<button type="button" class="${cls}"${o.label ? ` aria-label="${esc(o.label)}"` : ""}${o.pressed != null ? ` aria-pressed="${o.pressed}"` : ""}${o.expanded != null ? ` aria-expanded="${o.expanded}"` : ""}${o.cmd ? ` data-cmd="${esc(o.cmd)}"` : ""}${h ? " data-hold" : ""}${dis ? ` aria-disabled="true" data-why="${esc(o.why)}"` : ""}>${h ? '<span class="fill"></span>' : ""}<span class="lb">${label}</span>${small ? `<small>${small}</small>` : ""}</button>`;
 }
 
 /* ---------- faceplates ---------- */
@@ -177,7 +180,7 @@ function lampHTML(id) {
   if (pend) { s = "pending"; t = pend === "on" ? "SWITCHING ON…" : "SWITCHING OFF…"; n = A.name + " · waiting for CraftBeerPi"; }
   /* trying a failed "on" again is still a held press for heat */
   else if (a.failed) { h = a.failed === "on" && A.kind === "heat"; s = "failed"; t = a.on ? "DID NOT STOP" : "DID NOT START"; n = `${A.name} · still ${a.on ? (A.kind === "pump" ? "running" : "heating") : "off"} · ${h ? "hold" : "tap"} to try again`; }
-  else if (a.on) { s = A.kind === "heat" ? "heating" : "running"; t = A.kind === "heat" ? `HEATING ${a.pct} %` : "RUNNING"; n = A.name + (locked ? ` · run by ${a.by === "mt" ? "mash tun" : "AUTO"}` : A.kind === "heat" ? " · tap to turn off" : " · tap to stop"); }
+  else if (a.on) { s = A.kind === "heat" ? "heating" : "running"; t = A.kind === "heat" ? (id === "bkEl" && M.BKNEW ? "HEATING" : `HEATING ${a.pct} %`) : "RUNNING"; n = A.name + (locked ? ` · run by ${a.by === "mt" ? "mash tun" : "AUTO"}` : A.kind === "heat" ? " · tap to turn off" : " · tap to stop"); }
   else { s = "off"; t = "OFF"; if (A.kind === "heat" && !locked) { h = true; n = A.name + " · hold to turn on"; } else n = A.name + (locked ? ` · run by ${a.by === "mt" ? "mash tun" : "AUTO"}` : " · tap to start"); }
   const why = lost ? PAUSED : pend ? WAIT : locked ? lockWhy(id) : "";
   const hh = h && !why;
@@ -195,21 +198,102 @@ function modeHTML(v) {
     : b("", "MANUAL", "", {pressed: true, cmd: "noop", why: off});
   return `<div class="seg" role="group" aria-label="${M.VNAME[v]} mode">${aBtn}${mBtn}</div>`;
 }
-/* the HERMS sets the HLT's target anywhere up to the mash target plus DeltaTemp (PIDHerms), not always to it */
+/* the HERMS sets the HLT's target anywhere up to the mash target plus DeltaTemp (PIDHerms), not always to it. AUTO with no
+   target (unset, 0 or below) runs but holds nothing, so TARGET's hint says "set SV" in Prompt Amber, as the line does */
 function tgtHTML(v) {
-  const by = v === "hlt" && hermsOn(), pend = st.pend["t:" + v];
+  const by = v === "hlt" && hermsOn(), pend = st.pend["t:" + v], none = !by && !bkNew(v) && noTarget(v);
   const why = st.link === "lost" ? PAUSED : by ? `The mash tun sets this target while it runs the HERMS: up to its own target plus ${M.HERMS_DELTA} ${M.U}.` : pend ? WAIT : st.v[v].missing ? noVessel(v) : "";
-  return b("tgtbtn", "TARGET", by ? "set by mash tun" : pend ? "sending…" : "change SV", {cmd: `tgt:${v}`, why});
+  return b(none ? "tgtbtn notgt" : "tgtbtn", "TARGET", by ? "set by mash tun" : pend ? "sending…" : none ? "set SV" : bkNew(v) ? "change" : "change SV", {cmd: `tgt:${v}`, why});
 }
+const noTarget = v => st.v[v].mode === "auto" && st.v[v].sv == null;
 /* The boil power button (Scott, 10 Nov: "I need to be able to adjust boil element power even while running a recipe").
    Only for a boil kettle whose logic declares set_boil_power (live.js BOILPOWER; on Scott's rig, the boil kettle). It
    sits beside the element it governs and works at any time: no step locks it. In AUTO it sets the logic's Boil_Power,
    used from the boil threshold up; in MANUAL it sets the element's own level, used when it is on by hand (M61).
    Changing it is a tap on SET, like a target: it changes a level, it never switches heat on. */
-// Where BoilPower starts using the boil power (BoilPower._threshold): the kettle's target when it has one, else its
-// Boil_Threshold (M.BOIL_TH; live.js boilThreshold). The mockup's boilFrom.
-const boilFrom = () => st.v.bk.sv > 0 ? st.v.bk.sv : M.BOIL_TH;
+// Where BoilPower starts using the boil power. The new BoilPower (0.0.3.post7 on; M.BKNEW, as it declares set_boil_at) keeps
+// it apart, in its Boil_Threshold setting (BOIL AT; st.v.bk.boilAt), and the kettle's target is an ordinary target, BOIL or
+// a temperature to hold. An older one counts from the kettle's target when it has one, else from Boil_Threshold
+// (M.BOIL_TH; live.js boilThreshold). The mockup's boilFrom, with BK === "power" for M.BKNEW.
+const boilFrom = () => M.BKNEW ? st.v.bk.boilAt ?? M.BOIL_TH : st.v.bk.sv > 0 ? st.v.bk.sv : M.BOIL_TH;
 const boilTh = () => +boilFrom().toFixed(1);
+/* ---------- the boil kettle with the new BoilPower (the mockup's ?bk=power, which Scott approved on 10 Nov: "Yes, hand it
+   to Brett"; then BUILD-NOTES' "The boil kettle's target, KEEP BOILING and a forgotten pause", the same evening). It works
+   like the HLT, plus BOIL: TARGET beside AUTO/MANUAL, and its box has a BOIL key. While the target is BOIL the green number
+   is the boil power, and the number is its button; a target below the boil is a temperature to hold, and reads like the
+   HLT's. In AUTO the element button pauses the heat for a boil-over, −5 % and +5 % sit either side of it, and KEEP
+   BOILING says whether full power comes back if the wort falls below a boil. ---------- */
+const bkNew = v => v === "bk" && !!M.BKNEW;
+/* BoilPower lets go of a boil 2 °C / 3.6 °F below the boil point (BOIL_EXIT_DROP_C), with Keep_Boiling "Yes"; the same
+   margin is where its targets stop being BOIL (bkHoldT). The mockup's BOIL_MARGIN, in the unit's degrees. */
+const margin = () => M.U === "°C" ? 2 : 3.6;
+const bkLetGo = () => +(boilFrom() - margin()).toFixed(1);
+/* the temperature the boil kettle holds, or null while its target is BOIL: its own target when that is set and below BOIL */
+const bkHoldT = () => { const V = st.v.bk; return M.BKNEW && V.sv > 0 && V.sv < bkLetGo() ? V.sv : null; };
+const bkHolding = () => st.v.bk.mode === "auto" && bkHoldT() != null;
+/* BoilPower's boil latch: set when the wort reaches the boil point; from then on the element runs at the boil power. The
+   screen can't read it: live, it tells from the element running below full power while the wort is below the boil point
+   (applyLive), as BUILD-NOTES says */
+const bkLatched = () => { const V = st.v.bk; return V.mode === "auto" && bkHoldT() == null && (V.latched ?? V.pv >= boilFrom()); };
+/* CraftBeerPi's brewing clock, in its own seconds (the wall clock on the rig, SIM_TIME_SCALE times as fast in a simulation),
+   which BoilPower stamps a pause with (Paused_At), so every screen counts the same pause. While the heat is paused, a log
+   window that reads no logs says where it is, once a minute; until the first answer, the graphs' history's clock. */
+let bclk = null, bclkAt = 0;
+function brewNow() {
+  if (bclk) return bclk.srv + (Date.now() - bclk.at) / 1000 * bclk.scale;
+  return H ? H.now() + H.day() : null;
+}
+async function syncBrewClock() {
+  if (DEMO_MODE || Date.now() - bclkAt < 60000) return;
+  bclkAt = Date.now();
+  const g = gen;
+  let res = null;
+  try { res = await api.logWindow([], null, null); } catch (e) { res = null; }
+  const d = res && res.ok && res.data;
+  if (g !== gen || !d || typeof d !== "object" || !(num(d.now) > 0)) return;
+  bclk = {srv: num(d.now), at: Date.now(), scale: num(d.scale) > 0 ? num(d.scale) : 1};
+  schedule();
+}
+function pausedFor() {
+  const el = st.a.bkEl, now = DEMO_MODE ? st.t : brewNow();
+  return now == null || el.pausedAt == null ? 0 : Math.max(0, Math.floor(now - el.pausedAt));
+}
+/* the line under the boil kettle's window */
+function bkLine() {
+  const V = st.v.bk, el = st.a.bkEl, ho = bkHoldT(), U = M.U;
+  if (V.mode !== "auto") return "MANUAL · element by hand";
+  /* a forgotten pause would quietly stop the boil, so the line counts it, in Prompt Amber like the button */
+  if (el.paused) return `<span class="warn">Heat paused for <span id="pz">${mmss(pausedFor())}</span></span>`;
+  /* a hold is a target like the HLT's, so its line reads like the HLT's. Inside the margin below it BoilPower rests rather
+     than heat, so then the line says where it heats again, and an element that's off isn't taken for a fault */
+  if (ho != null) {
+    const d = ho - V.pv;
+    if (Math.abs(d) < 0.3) return "At target";
+    if (d > 0 && !el.on) return `${d.toFixed(1)} ${U} below target · heats again at ${+(ho - margin()).toFixed(1)} ${U}`;
+    const eta = GRAPHS ? graphETA(G(), "bk") : "";
+    return (d > 0 ? `${d.toFixed(1)} ${U} below target` : `${(-d).toFixed(1)} ${U} above target`) + (eta ? ` · ${eta}` : "");
+  }
+  if (V.pv >= boilFrom()) return "Boiling";
+  /* still at the boil power below the boil point: say what happens next, or that it won't */
+  if (bkLatched()) return V.keep !== false ? `Below a boil · back to full power at ${bkLetGo()} ${U}`
+    : `Not boiling · ${(boilFrom() - V.pv).toFixed(1)} ${U} below ${boilTh()} ${U}`;
+  const eta = GRAPHS ? graphETA(G(), "bk").replace(" at this rate", "") : "";
+  return "Full power until it boils" + (eta ? ` · ${eta}` : "");
+}
+/* BoilPower's output in a hold (_hold_climb_power): full power from 7.2 °F below, easing to Hold_Power (30 %) at the hold,
+   off at or above it; inside 3.6 °F it only carries on heating, so a fresh start there rests. For the demo, in °F. */
+function holdOut(T, pv, heating) {
+  const below = T - pv;
+  if (below >= 7.2) return 100;
+  if (below <= 0 || (below <= 3.6 && !heating)) return 0;
+  return Math.trunc(30 + 70 * below / 7.2);
+}
+/* ending a pause (carrying on, MANUAL, ALL OFF) also takes CraftBeerPi's forgotten-pause warning down (demo) */
+function endPause() {
+  const el = st.a.bkEl;
+  el.paused = false; el.pauseWarned = false;
+  if (st.banner && st.banner.pausegt) st.banner = null;
+}
 function powerHTML() {
   const V = st.v.bk, el = st.a.bkEl, auto = V.mode === "auto", pend = st.pend["p:bk"];
   const why = st.link === "lost" ? PAUSED : pend ? WAIT : !auto && el.missing ? "CraftBeerPi has no boil element set up." : "";
@@ -217,6 +301,63 @@ function powerHTML() {
     pend ? "sending…" : auto ? `used from ${boilTh()} ${M.U} · change` : "used by hand · change",
     {cmd: "pwr:bk", why, expanded: !!st.edit && st.edit.kind === "pwr"});
 }
+/* the new boil kettle's boil power, in its window while the target is BOIL: the green number is the setting, so it is the
+   button that opens the power box (TARGET took its place beside AUTO/MANUAL). Framed like the graph's chosen span, with a
+   small "change" like every other button's, so it reads as a control. Its tap area is at least 44 px tall. */
+function boilReadHTML() {
+  const V = st.v.bk, pend = st.pend["p:bk"], why = st.link === "lost" ? PAUSED : pend ? WAIT : "";
+  return `<button type="button" class="svbtn" data-cmd="pwr:bk" aria-expanded="${!!st.edit && st.edit.kind === "pwr"}" aria-label="Boil power ${V.bp} percent: change"${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}><span class="svv">${V.bp}<span class="u">%</span></span><small>${pend === "set" ? "sending…" : "change"}</small></button>`;
+}
+/* the new boil kettle's TARGET box: the HLT's, plus BOIL (Scott: "Set the boil kettle's target to 170 °F, like the HLT, and
+   it holds there"). Anything from the boil point less the margin up is BOIL, so the steps run …205.6, 206.5, BOIL, and a
+   typed 212 is BOIL too; BOIL is the top, so + is refused there. SET BOIL sends the boil point as the target. The third
+   row: BOIL, pressed while the box says BOIL, and BOIL POWER, the second way to the power box. */
+function bkTgtEditorHTML() {
+  const val = st.edit.val, boil = val >= bkLetGo(), x = boil ? "BOIL" : val.toFixed(1);
+  const top = boil ? "BOIL is the top. BOIL AT, under BOIL POWER, sets where the boil starts." : "";
+  const key = (d, l) => `<button type="button" data-cmd="tstep:${d}" aria-label="${l}"${d > 0 && top ? ` aria-disabled="true" data-why="${esc(top)}"` : ""}>${d < 0 ? "−" : "+"}${Math.abs(d) === 1 ? "1" : ".1"}</button>`;
+  return `<div class="editor bktgt" role="group" aria-label="New target for the boil kettle">
+    ${key(-1, "Down 1 degree")}${key(-0.1, "Down 0.1 degree")}
+    <input id="tin" inputmode="decimal" value="${x}" aria-label="New target in ${M.U}, or BOIL">
+    ${key(0.1, "Up 0.1 degree")}${key(1, "Up 1 degree")}
+    <button type="button" class="ok" data-cmd="tset">SET <span id="tok">${boil ? "BOIL" : `${x} ${M.U}`}</span></button><button type="button" class="no" data-cmd="tcancel">CANCEL</button>
+    <button type="button" class="tboil" data-cmd="tboil" aria-pressed="${boil}">BOIL<small>full power to ${boilTh()} ${M.U}</small></button><button type="button" class="tpwr" data-cmd="pwr:bk">BOIL POWER<small>change</small></button></div>`;
+}
+/* −5 % and +5 % either side of the element button while AUTO boils (Scott chose them on 10 Nov, with the pause and the usual
+   power: "All three"). One tap sends set_boil_power; a step that would pass 0 or 100 % stops there, and only at the end
+   itself is the button refused. */
+function nudgeHTML(d) {
+  const V = st.v.bk, pend = st.pend["p:bk"];
+  const why = st.link === "lost" ? PAUSED : pend ? WAIT : d < 0 && V.bp <= 0 ? "The boil power is already 0 %." : d > 0 && V.bp >= 100 ? "The boil power is already 100 %." : "";
+  return b("cmdbtn nudge", `${d < 0 ? "−" : "+"}${Math.abs(d)} %`, pend === (d < 0 ? "down" : "up") ? "sending…" : d < 0 ? "turn down" : "turn up",
+    {cmd: `pnudge:${d}`, why, label: `Boil power ${d < 0 ? "down" : "up"} ${Math.abs(d)} percent`});
+}
+/* the element button in AUTO: not locked, a tap pauses the heat (set_paused) and keeps AUTO, the recipe and the boil power;
+   PAUSED, in Prompt Amber, heats again with a held press, like any heat. MANUAL is today's button. */
+function bkLampHTML() {
+  const a = st.a.bkEl, V = st.v.bk, pend = st.pend["a:bkEl"], name = M.ACT.bkEl.name;
+  if (V.mode !== "auto" || (a.failed && !pend)) return lampHTML("bkEl");
+  let s, t, n, cmd, h = false;
+  if (pend) { s = "pending"; t = pend === "pause" ? "PAUSING…" : pend === "resume" ? "CARRYING ON…" : pend === "on" ? "SWITCHING ON…" : "SWITCHING OFF…"; n = `${name} · waiting for CraftBeerPi`; cmd = "noop"; }
+  else if (a.paused) { s = "paused"; t = "PAUSED"; n = `${name} · hold to heat`; cmd = "pause:off"; h = true; }
+  else { s = a.on ? "heating" : "off"; t = a.on ? "HEATING" : "OFF"; n = `${name} · tap to pause`; cmd = "pause:on"; }
+  const why = st.link === "lost" ? PAUSED : pend ? WAIT : "", hh = h && !why;
+  return `<button type="button" class="lamp" data-state="${s}" data-cmd="${cmd}"${hh ? " data-hold" : ""}${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}>${hh ? '<span class="fill"></span>' : ""}<span class="st">${t}</span><span class="nm">${n}</span></button>`;
+}
+/* the steps show only while AUTO can use the boil power: not in MANUAL, where they would seem to set the element's own
+   level, nor in a hold, nor while the boil kettle's box is open, which has steps of its own */
+const bkNudges = () => !!M.BKNEW && st.v.bk.mode === "auto" && !bkHolding() && !(st.edit && st.edit.v === "bk");
+/* KEEP BOILING (Scott, 10 Nov: "add a small checkbox with LED to choose keep at boil temp or let the boil power fully drive
+   the temp"): at the end of the nameplate row, the box is the LED, lit Setpoint Green with a tick while ticked. One tap
+   sets Keep_Boiling (set_keep_boiling), in any mode. Shown only while the target is BOIL: a hold never uses it. */
+function keepHTML() {
+  const V = st.v.bk, on = V.keep !== false, pend = st.pend["k:bk"], lost = st.link === "lost";
+  const why = lost ? PAUSED : pend ? WAIT : "";
+  return `<button type="button" class="keep${lost ? " stale" : ""}" role="checkbox" aria-checked="${on}" data-cmd="keep:bk"${pend ? ' data-state="pending"' : ""}${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}><span class="box" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.2 8.4l3 3 6.6-7"/></svg></span><span class="kl">KEEP BOILING</span><span class="sr">: full power again if the wort falls ${margin()} ${M.U} below a boil</span></button>`;
+}
+/* the usual boil power (Usual_Boil_Power), a reading in the power box: blank in Hardware, each recipe keeps the last */
+const usualHTML = () => st.v.bk.usual == null ? `USUAL – –<small>none set · set in Hardware</small>`
+  : `USUAL ${st.v.bk.usual} %<small>starts each recipe · set in Hardware</small>`;
 function editorHTML(v) {
   if (st.edit.kind === "pwr") {
     const p = st.edit.val;
@@ -224,12 +365,15 @@ function editorHTML(v) {
     <button type="button" data-cmd="pstep:-5" aria-label="Down 5 percent">−5</button><button type="button" data-cmd="pstep:-1" aria-label="Down 1 percent">−1</button>
     <input id="tin" inputmode="numeric" value="${p}" aria-label="${st.edit.what === "boil" ? "New boil power in percent" : "New power by hand in percent"}">
     <button type="button" data-cmd="pstep:1" aria-label="Up 1 percent">+1</button><button type="button" data-cmd="pstep:5" aria-label="Up 5 percent">+5</button>
-    <button type="button" class="ok" data-cmd="pset">SET <span id="tok">${p}</span> %</button><button type="button" class="no" data-cmd="tcancel">CANCEL</button></div>`;
+    <button type="button" class="ok" data-cmd="pset">SET <span id="tok">${p}</span> %</button><button type="button" class="no" data-cmd="tcancel">CANCEL</button>${M.BKNEW ? `
+    <button type="button" class="bkat" data-cmd="bat">BOIL AT ${boilTh()} ${M.U}<small>full power until then · change</small></button><p class="usual">${usualHTML()}</p>` : ""}</div>`;
   }
-  const x = st.edit.val.toFixed(1);
-  return `<div class="editor" role="group" aria-label="New target for the ${M.VNAME[v].toLowerCase()}">
+  if (bkNew(v) && st.edit.kind === "tgt") return bkTgtEditorHTML();
+  /* the HLT's and the mash tun's target, the boil kettle's with an older BoilPower, or the new one's boil point (BOIL AT) */
+  const x = st.edit.val.toFixed(1), at = st.edit.kind === "bat";
+  return `<div class="editor" role="group" aria-label="${at ? "New boil temperature for the boil kettle" : `New target for the ${M.VNAME[v].toLowerCase()}`}">
     <button type="button" data-cmd="tstep:-1" aria-label="Down 1 degree">−1</button><button type="button" data-cmd="tstep:-0.1" aria-label="Down 0.1 degree">−.1</button>
-    <input id="tin" inputmode="decimal" value="${x}" aria-label="New target in ${M.U}">
+    <input id="tin" inputmode="decimal" value="${x}" aria-label="${at ? `New boil temperature in ${M.U}` : `New target in ${M.U}`}">
     <button type="button" data-cmd="tstep:0.1" aria-label="Up 0.1 degree">+.1</button><button type="button" data-cmd="tstep:1" aria-label="Up 1 degree">+1</button>
     <button type="button" class="ok" data-cmd="tset">SET <span id="tok">${x}</span> ${M.U}</button><button type="button" class="no" data-cmd="tcancel">CANCEL</button></div>`;
 }
@@ -239,7 +383,12 @@ function devHTML(v) {
   const V = st.v[v];
   if (V.missing) return stale("Not set up");
   if (V.pv == null) return stale("No reading yet");
-  const driven = V.mode === "auto" || (v === "hlt" && hermsOn());
+  if (bkNew(v)) return bkLine();
+  const herms = v === "hlt" && hermsOn(), driven = V.mode === "auto" || herms;
+  /* AUTO with no target (unset, 0 or below) runs but holds nothing, so nothing heats. The line says so at once, in Prompt
+     Amber, and never calls it MANUAL; CraftBeerPi's own warning follows in the title bar after 5 s (Scott, 10 Nov) */
+  if (herms && st.v.mt.sv == null) return `<span class="warn">Not heating: the mash tun has no target</span>`;
+  if (noTarget(v)) return `<span class="warn">${v === "mt" && M.HERMS !== false ? "No target, so the HLT won't heat" : "No target, so it won't heat"}</span>`;
   if (!driven || V.sv == null) return v === "mt" ? "MANUAL · wort pump by hand" : "MANUAL · element by hand";
   if (v === "bk" && V.pv >= V.sv - 0.5) return "Boiling";
   const d = V.sv - V.pv;
@@ -251,6 +400,10 @@ function devHTML(v) {
 function auxHTML(v) {
   const e = v === "hlt" ? st.a.hltEl : v === "bk" ? st.a.bkEl : null, el = e && !e.missing ? e : null;
   const mode = v === "hlt" && hermsOn() ? "HERMS" : st.v[v].mode === "auto" ? "AUTO" : "MAN";
+  /* the new boil kettle: while its target is BOIL the boil power is its green number, so its window doesn't repeat the
+     element's power as OUT (Scott, 10 Nov: "I don't need the heating element power echoed so many places"). In a hold the
+     green number is the target, so OUT comes back, as on the HLT */
+  if (bkNew(v) && bkHoldT() == null) return `<dl class="aux"><dt>MODE</dt><dd>${mode}</dd></dl>`;
   const pct = el && el.on ? el.pct : 0;
   return `<dl class="aux"><dt>OUT</dt><dd>${el ? pct + " %" : "– –"}<span class="outbar"${el ? "" : ' style="visibility:hidden"'} aria-hidden="true"><i style="width:${pct}%"></i></span></dd><dt>MODE</dt><dd>${mode}</dd></dl>`;
 }
@@ -258,18 +411,30 @@ function hermsRowHTML() {
   const why = st.link === "lost" ? PAUSED : `The mash tun's AUTO runs this vessel for the HERMS: it switches the HLT element and sets this target up to the mash tun's target plus ${M.HERMS_DELTA} ${M.U}. Switch the mash tun to MANUAL to take the HLT over.`;
   return `<div class="moderow"><button type="button" class="tgtbtn herms" data-cmd="noop" aria-disabled="true" data-why="${esc(why)}"><span class="lb">HERMS</span><small>run by the mash tun · switch it to MANUAL to take over</small></button></div>`;
 }
+/* the faceplate's second readout: the SV; the new boil kettle's is its hold, read like the HLT's target, or while its target
+   is BOIL, the boil power, and its button */
+function svCell(v) {
+  const V = st.v[v], u = `<span class="u">${M.U}</span>`;
+  if (!bkNew(v)) return ["SV", V.sv == null ? "– –" : f1(V.sv) + u];
+  const ho = bkHoldT();
+  return ho != null ? ["SV", f1(ho) + u] : ["BOIL", boilReadHTML()];
+}
 function plateHTML(v) {
-  const V = st.v[v], by = v === "hlt" && hermsOn();
+  const V = st.v[v], by = v === "hlt" && hermsOn() && st.v.mt.sv != null, [svT, svV] = svCell(v);
+  /* the new boil kettle has TARGET beside AUTO/MANUAL, as the HLT does, and its element button between −5 % and +5 % */
+  const pw = bkNew(v) && M.VACT.bk.includes("bkEl"), nudge = pw && bkNudges();
+  const lamps = pw ? (nudge ? nudgeHTML(-5) + bkLampHTML() + nudgeHTML(5) : bkLampHTML())
+    : M.VACT[v].map(lampHTML).join("") + (v === "bk" && M.BOILPOWER && !M.BKNEW ? powerHTML() : "");
   return `<section class="plate" id="pl-${v}" aria-labelledby="h-${v}">
-    <h2 id="h-${v}">${M.VNAME[v]}</h2>
+    ${bkNew(v) ? `<div class="phead"><h2 id="h-${v}">${M.VNAME[v]}</h2>${bkHoldT() == null ? keepHTML() : ""}</div>` : `<h2 id="h-${v}">${M.VNAME[v]}</h2>`}
     <div class="face${st.link === "lost" ? " stale" : ""}">
       <dl class="pvsv"><dt>PV</dt><dd class="pv">${f1(V.pv)}<span class="u">${M.U}</span></dd>
-      <dt>SV</dt><dd class="sv">${V.sv == null ? "– –" : f1(V.sv) + `<span class="u">${M.U}</span>`}</dd></dl>
+      <dt>${svT}</dt><dd class="sv">${svV}</dd></dl>
       ${LAYOUT === "b" ? auxHTML(v) : ""}
       ${GRAPHS ? graphHTML(G(), v, "f") : ""}
     </div>
     <p class="dev">${devHTML(v)}${by ? " · SV set by the mash tun" : ""}</p>
-    <div class="ctrls">${M.VACT[v].map(lampHTML).join("")}${v === "bk" && M.BOILPOWER ? powerHTML() : ""}</div>
+    <div class="ctrls${nudge ? " bkpow" : ""}">${lamps}</div>
     ${st.edit && st.edit.v === v ? editorHTML(v) : v === "hlt" && hermsOn() ? hermsRowHTML() : `<div class="moderow">${modeHTML(v)}${tgtHTML(v)}</div>`}
     <p class="note">${esc(st.notes[v] || "")}</p>
   </section>`;
@@ -299,12 +464,15 @@ function confirmHTML() {
   return `<div class="confirm" role="group" aria-labelledby="cf-t"><p id="cf-t">Skip the rest of <b>${esc(cur.n)}</b>${cur.min ? ` (${mmss(r.left)} left)` : ""} and start <b>${esc(nx.n)}</b>${nx.temp ? ` at ${nx.temp} ${M.U}` : ""}?</p><div><button type="button" class="yes" data-cmd="r:next-yes">SKIP TO ${esc(nx.n.toUpperCase())}</button><button type="button" data-cmd="r:next-no">KEEP GOING</button></div></div>`;
 }
 /* r.wait: a running step whose timer has not started yet says what it is waiting for (HEATING, COOLING, WAITING,
-   WAITING FOR YOU, or a BrewStart's STARTS 05:30); a step held for the brewer says WAITING FOR YOU */
+   WAITING FOR YOU, or a BrewStart's STARTS 05:30); a step held for the brewer says WAITING FOR YOU. A SpargeStep's
+   temperature is the HLT's water, not the mash, so it says so; once started with no timer it is SPARGING rather than NOW */
 const waitHTML = w => w === WAITING_FOR_YOU ? `<span class="wfy">${w}</span>` : w;
+const stepTemp = s => (s.type === "SpargeStep" ? "water " : "") + s.temp;
+const runWord = s => s.type === "SpargeStep" ? "SPARGING" : "NOW";
 function stepHTML(s, i) {
   const r = st.recipe, state = i < r.cur ? "done" : i === r.cur ? "cur" : "";
-  const p = [s.temp != null ? `${s.temp} ${M.U}` : "", s.min ? `${s.min} min` : ""].filter(Boolean).join(" · ");
-  const right = state === "done" ? "✓ DONE" : state === "cur" ? (r.state === "running" ? (r.wait ? waitHTML(r.wait) : (s.min ? `<span id="r-left">${mmss(r.left)}</span> LEFT` : "NOW")) : r.state === "ready" ? (r.wait ? waitHTML(r.wait) : "READY") : "STOPPED") : '<i class="todo" aria-hidden="true"></i><span class="sr">to come</span>';
+  const p = [s.temp != null ? `${stepTemp(s)} ${M.U}` : "", s.min ? `${s.min} min` : ""].filter(Boolean).join(" · ");
+  const right = state === "done" ? "✓ DONE" : state === "cur" ? (r.state === "running" ? (r.wait ? waitHTML(r.wait) : (s.min ? `<span id="r-left">${mmss(r.left)}</span> LEFT` : runWord(s))) : r.state === "ready" ? (r.wait ? waitHTML(r.wait) : "READY") : "STOPPED") : '<i class="todo" aria-hidden="true"></i><span class="sr">to come</span>';
   const pct = s.min ? pctOf(r.left, s.min) : 0;
   const bar = state === "cur" && s.min ? `<span class="bar"><i id="r-bar" style="width:${pct}%"></i></span>` : "";
   const adds = s.adds ? `<span class="adds">${s.adds.map((a, j) => addHTML(a, j, state, s)).join("")}</span>` : "";
@@ -334,10 +502,10 @@ function nowHTML() {
   const r = st.recipe;
   if (!r) return `<span class="n">–</span><b>No recipe running</b><span class="p">Brewing by hand · rest timer below</span>`;
   const S = M.RECIPE.steps, s = S[r.cur], pct = s.min ? pctOf(r.left, s.min) : 0;
-  const p = [s.temp != null ? `${s.temp} ${M.U}` : "", s.min ? `${s.min} min` : "", `step ${r.cur + 1} of ${S.length}`].filter(Boolean).join(" · ");
+  const p = [s.temp != null ? `${stepTemp(s)} ${M.U}` : "", s.min ? `${s.min} min` : "", `step ${r.cur + 1} of ${S.length}`].filter(Boolean).join(" · ");
   const nx = S[r.cur + 1];
-  const nxt = nx ? `<span class="nx">Next: ${esc(nx.n)}${nx.temp != null ? ` · ${nx.temp} ${M.U}` : ""}${nx.min ? ` · ${nx.min} min` : ""}</span>` : `<span class="nx">Last step</span>`;
-  return `<span class="n">${r.cur + 1}</span><b>${esc(s.n)}</b><span class="p">${p}</span><span class="left">${r.state === "running" ? (r.wait ? waitHTML(r.wait).toLowerCase() : s.min ? `<span id="now-left">${mmss(r.left)}</span> left` : "now") : r.state === "ready" ? (r.wait ? waitHTML(r.wait).toLowerCase() : "ready") : "stopped"}</span>${s.min ? `<span class="bar"><i id="now-bar" style="width:${pct}%"></i></span>` : ""}${nxt}`;
+  const nxt = nx ? `<span class="nx">Next: ${esc(nx.n)}${nx.temp != null ? ` · ${stepTemp(nx)} ${M.U}` : ""}${nx.min ? ` · ${nx.min} min` : ""}</span>` : `<span class="nx">Last step</span>`;
+  return `<span class="n">${r.cur + 1}</span><b>${esc(s.n)}</b><span class="p">${p}</span><span class="left">${r.state === "running" ? (r.wait ? waitHTML(r.wait).toLowerCase() : s.min ? `<span id="now-left">${mmss(r.left)}</span> left` : runWord(s).toLowerCase()) : r.state === "ready" ? (r.wait ? waitHTML(r.wait).toLowerCase() : "ready") : "stopped"}</span>${s.min ? `<span class="bar"><i id="now-bar" style="width:${pct}%"></i></span>` : ""}${nxt}`;
 }
 
 /* ---------- alarms, last event, rig ---------- */
@@ -364,6 +532,8 @@ const RUNOFF_NAME = /^(?:step \d+ )?(?:(?:start|begin) )?(?:(?:fly|batch|continu
 const NOT_RUNOFF = /\b(?:water|heat|heating|prepare|preparation|salts|treatment)\b/;
 function collectsWort(s) {
   if (s.type === "HeatStep") return false;
+  /* a SpargeStep is the runoff whatever it is called, as in the core (StepController._collects_wort) */
+  if (s.type === "SpargeStep") return true;
   const name = s.n.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   return RUNOFF_NAME.test(name) && !NOT_RUNOFF.test(name);
 }
@@ -381,19 +551,30 @@ function runoffStep() {
   const ro = S.findIndex(s => collectsWort(s)), bo = S.findIndex((s, i) => i > ro && s.boil);
   return ro >= 0 && stepStatus(ro) !== "I" && (bo < 0 || stepStatus(bo) === "I") ? ro : -1;
 }
-function rigDesc(ro) {
+function rigDesc(ro, held, setNow) {
   const spLine = !!$("#ln-sparge"), head = "Hot liquor tank, mash tun and boil kettle. ";
-  if (ro < 0) return head + "The HLT pump circulates hot water around the hot liquor tank. The wort pump moves wort from the mash tun, through the coil inside the hot liquor tank, and back into the mash tun. The valves are set by hand and CraftBeerPi can't see them: they are shown for recirculating, with the lines to the boil kettle"
-    + (spLine ? " and to the top of the mash tun" : "") + " closed.";
+  if (ro < 0 || held) return head + "The HLT pump circulates hot water around the hot liquor tank. The wort pump moves wort from the mash tun, through the coil inside the hot liquor tank, and back into the mash tun. The valves are set by hand and CraftBeerPi can't see them: they are shown for recirculating, with the lines to the boil kettle"
+    + (spLine ? " and to the top of the mash tun" : "") + " closed."
+    + (setNow ? ` Step ${ro + 1}, ${M.RECIPE.steps[ro].n}, is waiting for you to set them for the sparge: close the coil line${spLine ? " and the HLT return" : ""}, and open the line to the boil kettle${spLine ? " and the sparge line to the top of the mash tun" : ""}.` : "");
   return head + (spLine ? "The HLT pump sends hot water over to the top of the mash tun for the sparge. " : "The HLT pump circulates hot water around the hot liquor tank. ")
     + `The wort pump moves wort from the mash tun down and across to the boil kettle, past the HERMS coil. The valves are set by hand and CraftBeerPi can't see them: they are shown as step ${ro + 1}, ${M.RECIPE.steps[ro].n}, needs them.`;
 }
-function setValve(id, open, flowing) {
+/* change: the valve is drawn where it is now and marked, in Prompt Amber, with where it has to go (a SpargeStep's prompt).
+   The HLT return's run is too short for SET CLOSED, so that tag moves left of the riser, level with its valve (rig.js's
+   data-alt), and back under it afterwards */
+function setValve(id, open, flowing, change) {
   const g = $("#vl-" + id), t = $("#vt-" + id);
   if (!g) return;
   g.classList.toggle("shut", !open);
   g.classList.toggle("live", open && flowing);
-  setText(t, open ? "OPEN" : "CLOSED");
+  g.classList.toggle("set", !!change);
+  t.classList.toggle("set", !!change);
+  setText(t, change ? (open ? "SET CLOSED" : "SET OPEN") : open ? "OPEN" : "CLOSED");
+  if (t.dataset.alt) {
+    if (!t.dataset.home) t.dataset.home = [t.getAttribute("x"), t.getAttribute("y"), t.getAttribute("text-anchor")].join(" ");
+    const [x, y, an] = (change ? t.dataset.alt : t.dataset.home).split(" ");
+    t.setAttribute("x", x); t.setAttribute("y", y); t.setAttribute("text-anchor", an);
+  }
 }
 function renderRig() {
   if (!st || !$("#rigsvg")) return;
@@ -405,14 +586,21 @@ function renderRig() {
     setText($(`#pump-${id} .p-st`), (live ? "" : "LAST: ") + (p.on ? "RUNNING" : "OFF"));
     setText($(`#pump-${id} .p-ovr`), M.ACT[k].override && !p.on ? "UNLESS OVERRIDE SWITCH IS ON" : "");
   });
-  /* layout A's drawing has no sparge line: its HLT pump always goes back round the hot liquor tank */
-  const ro = runoffStep(), out = ro >= 0, sp = out && !!$("#ln-sparge");
+  /* layout A's drawing has no sparge line: its HLT pump always goes back round the hot liquor tank. A SpargeStep keeps
+     the valves on recirculating until "Sparge started" (r.started, its _sparge_started; not the countdown, which a
+     Timer of 0 never has): the HLT is still heating the water, and the wort pump is off. While its "Sparge started"
+     question waits, the valves to change are marked */
+  const ro = runoffStep(), r = st.recipe, held = ro >= 0 && M.RECIPE.steps[ro].type === "SpargeStep" && r.cur === ro && !r.started;
+  const setNow = held && r.wait === WAITING_FOR_YOU && live, hasSp = !!$("#ln-sparge");
+  const out = ro >= 0 && !held, sp = out && hasSp;
   const wp = live && a.wortPump.on, hp = live && a.hltPump.on;
   on("#ln-wort-in", wp); on("#ln-wort-out", wp); on("#ln-wort-coil", wp && !out); on("#ln-xfer", wp && out); on("#coil", wp && !out);
   on("#ln-hlt-in", hp); on("#ln-hlt-up", hp); on("#ln-hlt-ret", hp && !sp); on("#ln-sparge", hp && sp);
-  setValve("coil", !out, wp); setValve("bk", out, wp); setValve("ret", !sp, hp); setValve("sp", sp, hp);
-  setText($("#vnote-2"), out ? `SHOWN FOR STEP ${ro + 1} (${M.RECIPE.steps[ro].n.toUpperCase()})` : "SHOWN FOR RECIRCULATING");
-  setText($("#rig-d"), rigDesc(ro));
+  setValve("coil", !out, wp, setNow); setValve("bk", out, wp, setNow); setValve("ret", !sp, hp, setNow && hasSp); setValve("sp", sp, hp, setNow);
+  const vn = $("#vnote-2");
+  setText(vn, setNow ? `SET THEM FOR STEP ${ro + 1} (${M.RECIPE.steps[ro].n.toUpperCase()})` : out ? `SHOWN FOR STEP ${ro + 1} (${M.RECIPE.steps[ro].n.toUpperCase()})` : "SHOWN FOR RECIRCULATING");
+  vn.classList.toggle("set", setNow);
+  setText($("#rig-d"), rigDesc(ro, held, setNow));
   on("#el-hlt", live && a.hltEl.on); on("#el-bk", live && a.bkEl.on);
   ["hlt", "mt", "bk"].forEach(v => { const n = $("#needle-" + v); if (n && st.v[v].pv != null) n.setAttribute("transform", `rotate(${needleAngle(st.v[v].pv).toFixed(1)})`); });
 }
@@ -432,6 +620,8 @@ function renderAll() {
   if (!root || !st) return;
   if (!DEMO_MODE) liveBanner();
   const lost = st.link === "lost", hello = lost && connecting();
+  // the new boil kettle's rules (brewday.css [data-bk=power]) apply while its BoilPower is the new one
+  if (M.BKNEW) document.documentElement.dataset.bk = "power"; else delete document.documentElement.dataset.bk;
   $("#app").dataset.link = st.link;
   $("#app").toggleAttribute("data-editing", !!st.edit);
   $("#link").dataset.link = hello ? "connecting" : st.link;
@@ -459,7 +649,9 @@ const graphNow = () => H ? H.now() : daySeconds();
 // is labelled right; the mockup's demo counts from its midnight
 const ghhmm = t => H && !DEMO_MODE ? hhmm(daySeconds(new Date((H.day() + t) * 1000)))
   : hhmm(((Math.floor(t) % 86400) + 86400) % 86400);
-const G = () => ({hist: st.hist, t: DEMO_MODE ? st.t : graphNow(), span: gSpan, lost: st.link === "lost", V: st.v, VNAME: M.VNAME, U: M.U, hhmm: ghhmm, scale: H && !DEMO_MODE ? H.scale() : 1});
+// BK: the new boil kettle's boil point, where its targets stop being BOIL, and its hold, for its graph and its line
+const G = () => ({hist: st.hist, t: DEMO_MODE ? st.t : graphNow(), span: gSpan, lost: st.link === "lost", V: st.v, VNAME: M.VNAME, U: M.U, hhmm: ghhmm, scale: H && !DEMO_MODE ? H.scale() : 1,
+  BK: M.BKNEW ? {from: boilFrom(), edge: bkLetGo(), hold: bkHoldT()} : null});
 // the logs the live history reads: each vessel's temperature, its kettle's target and AUTO, its element's level (M63)
 function graphNames() {
   const n = {};
@@ -538,7 +730,7 @@ function send(key, dir, label, apply, cav = "") {
   }, 700 + Math.random() * 400));
 }
 const actLabel = (id, on) => `${M.ACT[id].name} ${M.ACT[id].kind === "pump" ? (on ? "started" : "stopped") : (on ? "on" : "off")}`;
-function setActor(id, on) { const a = st.a[id]; a.on = on; a.failed = null; if (M.ACT[id].kind === "heat") a.pct = on ? (a.lvl ?? 100) : 0; }
+function setActor(id, on) { const a = st.a[id]; a.on = on; a.failed = null; a.paused = false; if (id === "bkEl") endPause(); if (M.ACT[id].kind === "heat") a.pct = on ? (a.lvl ?? 100) : 0; }
 function cmdAct(id) {
   const a = st.a[id], want = a.failed ? a.failed === "on" : !a.on;
   send("a:" + id, want ? "on" : "off", actLabel(id, want), () => {
@@ -546,56 +738,136 @@ function cmdAct(id) {
     if (st.banner && st.banner.cmd === "act:" + id) st.banner = null;
   }, !want && M.ACT[id].override ? "its override switch can still run it" : "");
 }
-/* switching a kettle's logic off also switches its actors off (PID_HERMS on_stop: heater and pump) */
+/* switching a kettle's logic off also switches its actors off (PID_HERMS on_stop: heater and pump). AUTO with no target
+   (unset, 0 or below) runs but holds nothing: PID_HERMS still runs its pump, but asks the HLT for nothing, and PIDBoil
+   leaves the element off. The demo doesn't invent a target for it; CraftBeerPi warns after 5 s (demoTick). */
 function setMode(v, m) {
   const V = st.v[v], a = st.a;
   V.mode = m;
+  V.noTgt = 0; V.warned = false;
+  if (m === "manual" && st.banner && st.banner.notgt === v) st.banner = null;
   if (v === "mt") {
-    if (m === "auto") { if (V.sv == null) V.sv = 149.0; st.v.hlt.mode = "manual"; st.v.hlt.sv = +(V.sv + M.HERMS_DELTA).toFixed(1); a.hltEl.on = true; a.hltEl.pct = 62; a.wortPump.on = true; }
+    if (m === "auto" && V.sv == null) { st.v.hlt.mode = "manual"; st.v.hlt.sv = null; a.hltEl.on = false; a.hltEl.pct = 0; a.wortPump.on = true; }
+    else if (m === "auto") { st.v.hlt.mode = "manual"; st.v.hlt.sv = +(V.sv + M.HERMS_DELTA).toFixed(1); a.hltEl.on = true; a.hltEl.pct = 62; a.wortPump.on = true; }
     else { a.hltEl.on = false; a.hltEl.pct = 0; a.wortPump.on = false; st.v.hlt.sv = st.v.hlt.own; }
   } else if (v === "hlt") {
     if (m === "auto" && V.sv == null) V.sv = V.own;
-    a.hltEl.on = m === "auto"; a.hltEl.pct = m === "auto" ? (V.sv - V.pv > 2 ? 100 : 40) : 0;
+    a.hltEl.on = m === "auto" && V.sv != null; a.hltEl.pct = a.hltEl.on ? (V.sv - V.pv > 2 ? 100 : 40) : 0;
   } else {
-    if (m === "auto" && V.sv == null) V.sv = 210.2;
-    a.bkEl.on = m === "auto"; a.bkEl.pct = m === "auto" ? (V.pv >= boilFrom() ? V.bp : 100) : 0;
+    if (m === "auto" && V.sv == null) V.sv = M.BKNEW ? boilFrom() : 210.2;
+    endPause();
+    /* BoilPower latches the boil as it starts if the wort is already at the boil point, and lets go when AUTO stops */
+    const ho = bkHoldT();
+    V.latched = m === "auto" && ho == null && V.pv >= boilFrom();
+    if (m === "auto" && ho != null) { const p = holdOut(ho, V.pv, false); a.bkEl.on = p > 0; a.bkEl.pct = p; }
+    else { a.bkEl.on = m === "auto"; a.bkEl.pct = m === "auto" ? (V.latched ? V.bp : 100) : 0; }
     powerModeChanged(m);
   }
   ["hltEl", "wortPump", "bkEl"].forEach(id => { a[id].failed = null; });
 }
 /* the power editor edits the setting its button named when it opened; if a step or ALL OFF changes the mode, that
-   setting is no longer the one in use, so the editor closes without sending anything */
+   setting is no longer the one in use, so the editor closes without sending anything. The new boil kettle's button always
+   sets the boil power, so a mode change leaves its box open. */
 function powerModeChanged(m) {
+  if (M.BKNEW) return;
   if (st.edit && st.edit.kind === "pwr" && st.edit.what !== (m === "auto" ? "boil" : "hand")) {
     st.edit = null;
     note("bk", `The boil kettle switched to ${m.toUpperCase()}, so the button now sets ${m === "auto" ? "the boil power" : "the element's power by hand"}. Nothing was changed.`);
   }
 }
 function cmdMode(v, m) { send("m:" + v, m, `${M.VNAME[v]} ${m.toUpperCase()}`, () => setMode(v, m)); }
+/* every box opens with its number selected, so typing replaces it: typing 150 into "168.0" gave "150168.0" (the dashboard
+   agent, 10 Nov; the new boil kettle's boxes did it first, "BOIL" included) */
+const focusTin = () => setTimeout(() => { if (!root) return; const i = $("#tin"); if (!i) return; i.focus(); i.select(); }, 0);
 function cmdTgtOpen(v) {
-  const V = st.v[v];
-  st.edit = {v, kind: "tgt", val: V.sv ?? (DEMO_MODE ? (v === "bk" ? 210.2 : v === "mt" ? 149.0 : V.own) : M.START[v])};
-  renderAll(); setTimeout(() => $("#tin")?.focus(), 0);
+  const V = st.v[v], pw = bkNew(v);
+  st.edit = {v, kind: "tgt", val: pw ? bkHoldT() ?? boilFrom() : V.sv ?? (DEMO_MODE ? (v === "bk" ? 210.2 : v === "mt" ? 149.0 : V.own ?? 168.0) : M.START[v])};
+  renderAll(); focusTin();
 }
-function cmdTgtStep(d) { st.edit.val = Math.round((st.edit.val + d) * 10) / 10; renderAll(); }
+/* the new boil kettle's BOIL AT, in the power box: the boil point, Boil_Threshold (set_boil_at) */
+function cmdBatOpen() { st.edit = {v: "bk", kind: "bat", val: boilFrom()}; renderAll(); focusTin(); }
+function cmdTgtStep(d) {
+  const e = st.edit;
+  /* the new boil kettle's target: BOIL sits just above the highest hold, so − from BOIL gives 206.5 or 205.6 */
+  if (bkNew(e.v) && e.kind === "tgt") {
+    const edge = bkLetGo();
+    if (e.val >= edge) { if (d > 0) return; e.val = edge; }
+    e.val = Math.round((e.val + d) * 10) / 10;
+    if (e.val >= edge) e.val = boilFrom();
+  } else e.val = Math.round((e.val + d) * 10) / 10;
+  renderAll();
+}
+function cmdTgtBoil() { st.edit.val = boilFrom(); renderAll(); }
 function cmdTgtSet() {
-  const v = st.edit.v, val = st.edit.val, [lo, hi] = M.LIMITS;
+  const {v, val, kind} = st.edit;
+  if (kind === "bat") return cmdBatSet(val);
+  if (bkNew(v)) return cmdBkTgtSet(val);
+  const [lo, hi] = M.LIMITS;
   if (!(val >= lo && val <= hi)) { note(v, `Enter a target between ${lo} and ${hi} ${M.U}.`); return; }
   st.edit = null; st.notes[v] = "";
   if (!DEMO_MODE) return liveTarget(v, val);
   send("t:" + v, "set", `${M.VNAME[v]} target ${val.toFixed(1)} ${M.U}`, () => {
+    const had = !noTarget(v);
     st.v[v].sv = val;
     if (v === "hlt") st.v.hlt.own = val;
     if (v === "mt" && st.v.mt.mode === "auto") st.v.hlt.sv = +(val + M.HERMS_DELTA).toFixed(1);
+    /* a target for an AUTO that had none: it starts heating if it is below it, and CraftBeerPi takes its warning down */
+    if (!had) {
+      const hv = st.v.hlt, he = st.a.hltEl;
+      if (v === "mt") { he.on = hv.sv > hv.pv; he.pct = he.on ? (hv.sv - hv.pv > 5 ? 100 : 62) : 0; }
+      if (v === "hlt") { he.on = val > hv.pv; he.pct = he.on ? (val - hv.pv > 2 ? 100 : 40) : 0; }
+    }
+    st.v[v].noTgt = 0; st.v[v].warned = false;
+    if (st.banner && st.banner.notgt === v) st.banner = null;
   });
 }
+/* the new boil kettle's TARGET: SET BOIL sends the boil point as the target, and anything from the boil point less the
+   margin up counts as BOIL; a lower temperature is held, as on the HLT. A hold set during the Boil step is honoured and the
+   step's timer carries on, so the event says so. Pause wins: a paused element stays off. */
+function cmdBkTgtSet(val) {
+  const V = st.v.bk, el = st.a.bkEl, B = boilFrom(), boil = val >= bkLetGo(), lo = M.LIMITS[0];
+  if (!boil && !(val >= lo)) { note("bk", `Enter a target from ${lo} to ${+(bkLetGo() - 0.1).toFixed(1)} ${M.U}, or press BOIL.`); return; }
+  const T = boil ? B : val, r = st.recipe, auto = V.mode === "auto";
+  st.edit = null; st.notes.bk = "";
+  if (V.sv === T) { renderAll(); return; }
+  const inBoil = r && r.state === "running" && M.RECIPE.steps[r.cur].boil;
+  const cav = [!boil && auto && inBoil ? "it holds instead of boiling; the Boil step's timer carries on" : "", auto && el.paused ? "the heat stays paused" : ""].filter(Boolean).join("; ");
+  const label = `${M.VNAME.bk} target ${boil ? "BOIL" : `${T.toFixed(1)} ${M.U}`}`;
+  if (!DEMO_MODE) return liveTarget("bk", T, label, cav);
+  send("t:bk", "set", label, () => { V.sv = T; bkRetarget(); }, cav);
+}
+/* BOIL AT: where full power gives way to the boil power (190-212 °F, 88-100 °C, as BoilPower takes it; above the boiling
+   point the wort may never get there). A target at BOIL moves with it, so raising the boil point never turns BOIL into a
+   hold (BoilPower does the same). */
+function cmdBatSet(val) {
+  const [lo, hi] = M.U === "°C" ? [88, 100] : [190, 212];
+  if (!(val >= lo && val <= hi)) {
+    note("bk", val > hi ? `Above ${hi} ${M.U} the wort may never count as boiling, and the element would stay at full power. Enter ${hi} ${M.U} or less.` : `Enter a boil temperature from ${lo} to ${hi} ${M.U}.`);
+    return;
+  }
+  const V = st.v.bk, el = st.a.bkEl, was = boilFrom(), ho = bkHoldT();
+  st.edit = null; st.notes.bk = "";
+  if (val === was) { renderAll(); return; }
+  const label = `${M.VNAME.bk} boils at ${val.toFixed(1)} ${M.U} (was ${was.toFixed(1)} ${M.U})`;
+  const cav = ho != null ? `not used while it holds ${+ho.toFixed(1)} ${M.U}` : "";
+  if (!DEMO_MODE) return liveBoilAt(val, was, label, cav);
+  send("t:bk", "set", label, () => {
+    V.boilAt = val;
+    if (ho != null) return;
+    V.sv = val;
+    if (V.mode !== "auto") return;
+    V.latched = V.pv >= val || (!!V.latched && (V.keep === false || V.pv >= val - margin()));
+    if (!el.paused) { el.on = true; el.pct = V.latched ? V.bp : 100; }
+  }, cav);
+}
 /* set_boil_power: kept in the kettle's Boil_Power setting, so it can be set at any time, also during a recipe; AUTO uses it
-   at its next control decision (every 2 s) once the kettle is at or above the boil threshold. In MANUAL the button sets
-   the element's own level instead (set_power), which it runs at when it is on by hand. */
+   at its next control decision (every 2 s) once the kettle is at or above the boil threshold. With an older BoilPower, in
+   MANUAL the button sets the element's own level instead (set_power), which it runs at when it is on by hand; the new boil
+   kettle's always sets the boil power. */
 function cmdPwrOpen() {
-  const boil = st.v.bk.mode === "auto";
+  const boil = !!M.BKNEW || st.v.bk.mode === "auto";
   st.edit = {v: "bk", kind: "pwr", what: boil ? "boil" : "hand", val: boil ? st.v.bk.bp : st.a.bkEl.lvl};
-  renderAll(); setTimeout(() => $("#tin")?.focus(), 0);
+  renderAll(); focusTin();
 }
 function cmdPwrStep(d) { st.edit.val = Math.min(100, Math.max(0, st.edit.val + d)); renderAll(); }
 function cmdPwrSet() {
@@ -604,32 +876,130 @@ function cmdPwrSet() {
   st.edit = null; st.notes.bk = "";
   if (val === was) { renderAll(); return; }
   /* when the new level isn't in use yet, the event says when it will be, so an OUT that doesn't move isn't taken for a failure */
-  const cav = boil ? (V.mode === "auto" && V.pv >= boilFrom() ? "" : `used from ${boilTh()} ${M.U}, full power until then`)
+  const ho = bkHoldT();
+  const cav = M.BKNEW ? (V.mode !== "auto" ? "kept for the boil in AUTO" : bkHolding() ? `not used while it holds ${+ho.toFixed(1)} ${M.U}`
+      : el.paused ? "used when the heat carries on" : bkLatched() ? "" : `used once it boils at ${boilTh()} ${M.U}, full power until then`)
+    : boil ? (V.mode === "auto" && V.pv >= boilFrom() ? "" : `used from ${boilTh()} ${M.U}, full power until then`)
     : (el.on ? "" : "used when you switch the element on");
   const label = boil ? `Boil power ${val} % (was ${was} %)` : `Boil element by hand ${val} % (was ${was} %)`;
   if (!DEMO_MODE) return livePower(boil, val, was, label, cav);
   send("p:bk", "set", label, () => {
-    if (boil) { V.bp = val; if (V.mode === "auto" && el.on && V.pv >= boilFrom()) el.pct = val; }
+    if (boil) { V.bp = val; if (V.mode === "auto" && el.on && bkHoldT() == null && (M.BKNEW ? bkLatched() : V.pv >= boilFrom())) el.pct = val; }
     else { el.lvl = val; if (V.mode !== "auto" && el.on) el.pct = val; }
   }, cav);
 }
+/* −5 % and +5 %: sent at once, no SET. The same set_boil_power as the box; a tap that would go past 0 or 100 % stops there
+   (2 % − 5 → 0 %), and only at 0 or 100 % itself is the button refused */
+function cmdNudge(d) {
+  const V = st.v.bk, el = st.a.bkEl, was = V.bp, val = Math.min(100, Math.max(0, was + d));
+  if (val === was) return;
+  const cav = el.paused ? "used when the heat carries on" : bkLatched() ? "" : `used once it boils at ${boilTh()} ${M.U}, full power until then`;
+  const label = `Boil power ${val} % (was ${was} %)`;
+  if (!DEMO_MODE) return livePower(true, val, was, label, cav, d < 0 ? "down" : "up");
+  send("p:bk", d < 0 ? "down" : "up", label, () => {
+    V.bp = val;
+    if (V.mode === "auto" && el.on && bkLatched()) el.pct = val;
+  }, cav);
+}
+/* KEEP BOILING: set_keep_boiling, kept in the kettle's Keep_Boiling setting, so it can be set in any mode and stays as set.
+   Ticking it while BoilPower holds the boil power more than the margin below the boil point lets go of the boil at once:
+   full power until it boils again. A hold doesn't use it. */
+function cmdKeep() {
+  const V = st.v.bk, el = st.a.bkEl, want = V.keep === false, far = bkLatched() && V.pv < boilFrom() - margin(), ho = bkHoldT();
+  const cav = V.mode !== "auto" ? "kept for the boil in AUTO" : bkHolding() ? `not used while it holds ${+ho.toFixed(1)} ${M.U}`
+    : el.paused ? "used when the heat carries on"
+    : want ? (far ? "full power until it boils" : bkLatched() ? `back to full power if it falls to ${bkLetGo()} ${M.U}` : "")
+    : bkLatched() ? "the boil power only, even below a boil" : "full power until it boils, then the boil power only";
+  const label = `Keep boiling ${want ? "on" : "off"}`;
+  if (!DEMO_MODE) return liveKeep(want, label, cav);
+  send("k:bk", want ? "on" : "off", label, () => {
+    V.keep = want;
+    if (want && far) { V.latched = false; if (el.on) el.pct = 100; }
+  }, cav);
+}
+/* the pause, for a boil-over: the element goes off and AUTO, the recipe and the boil power carry on. BoilPower does it with
+   set_paused(Paused="Yes"), and "No" carries on; it refuses unless AUTO runs. Carrying on picks up where AUTO is: the boil
+   power while boiling, full power below the boil, a hold's own power. */
+function cmdPause(on) {
+  const el = st.a.bkEl, V = st.v.bk, label = `${M.ACT.bkEl.name} ${on ? "paused" : "heating again"}`;
+  if (!DEMO_MODE) return livePause(on, label);
+  send("a:bkEl", on ? "pause" : "resume", label, () => {
+    el.failed = null;
+    if (on) { el.paused = true; el.pausedAt = st.t; el.on = false; el.pct = 0; return; }
+    endPause();
+    const ho = bkHoldT(), p = ho != null ? holdOut(ho, V.pv, false) : bkLatched() ? V.bp : 100;
+    el.on = p > 0; el.pct = p;
+  });
+}
+/* the new boil kettle, after its target changes while AUTO runs: BOIL heats at full power until the boil point, then at the
+   boil power; a hold eases in, or rests while the wort is above it. A paused element stays off. (Demo.) */
+function bkRetarget() {
+  const V = st.v.bk, el = st.a.bkEl, ho = bkHoldT();
+  if (V.mode !== "auto") return;
+  V.latched = ho == null && V.pv >= boilFrom();
+  if (el.paused) return;
+  const p = ho == null ? (V.latched ? V.bp : 100) : holdOut(ho, V.pv, el.on);
+  el.on = p > 0; el.pct = p;
+}
+/* a recipe step sets its kettle's target. With the new BoilPower the Boil step sets the boil kettle's target to BOIL (the
+   boil point), so a hold left from the day before can't stop a boil. (Demo.) */
+function stepTarget(s) {
+  const pw = bkNew(s.k);
+  st.v[s.k].sv = pw && s.boil ? boilFrom() : s.temp;
+  if (st.v[s.k].mode !== "auto") setMode(s.k, "auto");
+  else if (s.k === "mt") st.v.hlt.sv = +(s.temp + M.HERMS_DELTA).toFixed(1);
+  else if (pw) bkRetarget();
+}
 function stepStart(i) {
-  const r = st.recipe, s = M.RECIPE.steps[i];
-  r.cur = i; r.left = (s.min || 0) * 60; r.adds = [];
+  const r = st.recipe, s = M.RECIPE.steps[i], was = M.RECIPE.steps[r.cur];
+  /* a SpargeStep ending: the HLT's AUTO off, the pumps left as they are. Only its timer running out also puts the HLT's
+     target to 0 (SpargeStep.on_timer_done); NEXT STEP leaves it */
+  if (was && was.type === "SpargeStep" && i !== r.cur) {
+    if (st.v.hlt.mode === "auto") setMode("hlt", "manual");
+    if (was.min && r.left === 0) st.v.hlt.sv = null;
+    r.started = false;
+    if (st.banner && st.banner.sparge) st.banner = null;
+  }
+  r.cur = i; r.left = (s.min || 0) * 60; r.adds = []; r.wait = null;
   if (st.hist) st.hist.steps.push([st.t, i + 1]);
   if (s.k === "bk") { st.fill.bk = true; st.fill.mtLiq = false; if (st.v.mt.mode === "auto") setMode("mt", "manual"); }
-  if (s.temp != null) {
-    st.v[s.k].sv = s.temp;
-    if (st.v[s.k].mode !== "auto") setMode(s.k, "auto");
-    else if (s.k === "mt") st.v.hlt.sv = +(s.temp + M.HERMS_DELTA).toFixed(1);
-  } else if (s.note) st.banner = {tone: "prompt", title: s.n, text: s.note, act: "DONE", cmd: "b:done"};
+  if (s.type === "SpargeStep") { r.started = false; spargeBegin(s); return; }
+  if (s.temp != null) stepTarget(s);
+  else if (s.note) st.banner = {tone: "prompt", title: s.n, text: s.note, act: "DONE", cmd: "b:done"};
+}
+/* a SpargeStep starting, or starting again after a Stop (SpargeStep.on_start): the mash tun's AUTO off, so its HERMS and
+   the wort pump stop. Until "Sparge started" has been pressed, the HLT goes on its own AUTO at the step's temperature,
+   HEATING until the water is there, when the step asks; after it, a Start carries on and doesn't heat again */
+function spargeBegin(s) {
+  const r = st.recipe, i = r.cur;
+  if (st.v.mt.mode === "auto") setMode("mt", "manual");
+  if (r.started) { r.wait = null; return; }
+  st.v.hlt.sv = st.v.hlt.own = s.temp;
+  if (st.v.hlt.mode !== "auto") setMode("hlt", "auto");
+  r.wait = "HEATING";
+  if (st.v.hlt.pv < s.temp) return;
+  /* the water is already there: the step's next look (within a brewing second) finds it and asks */
+  timers.push(setTimeout(() => {
+    if (st.recipe !== r || r.cur !== i || r.state !== "running" || r.started) return;
+    r.wait = WAITING_FOR_YOU; st.banner = DEMO.spargeBanner(s.temp);
+    logEvent(`${s.n}: the sparge water is ready at ${s.temp} ${M.U}`, "waiting for you", "wait");
+    renderAll();
+  }, 600));
 }
 function cmdStart() {
   send("r:start", "start", "Recipe started", () => {
-    const r = st.recipe, s = M.RECIPE.steps[r.cur];
-    if (r.state === "ready" && st.hist) st.hist.steps.push([st.t, r.cur + 1]);
+    const r = st.recipe, s = M.RECIPE.steps[r.cur], fresh = r.state === "ready";
+    if (fresh && st.hist) st.hist.steps.push([st.t, r.cur + 1]);
     r.state = "running";
-    if (s.temp != null && st.v[s.k].mode !== "auto") setMode(s.k, "auto");
+    if (s.type === "SpargeStep") spargeBegin(s);
+    else if (s.temp != null) stepTarget(s);
+    /* a recipe started from its first step puts the boil power back to the usual power (Usual_Boil_Power). A change made
+       later that day, before or during the boil, is kept for the boil, and doesn't carry over to the next brew day */
+    const V = st.v.bk;
+    if (M.BKNEW && fresh && V.usual != null && V.bp !== V.usual) {
+      const was = V.bp; V.bp = V.usual;
+      timers.push(setTimeout(() => { logEvent(`Boil power back to your usual ${V.usual} % (was ${was} %)`, "by recipe", ""); renderAll(); }, 300));
+    }
   });
 }
 function cmdStop() {
@@ -638,6 +1008,8 @@ function cmdStop() {
     const k = M.RECIPE.steps[st.recipe.cur].k;
     st.recipe.state = "stopped";
     if (st.v[k].mode === "auto") setMode(k, "manual");
+    /* a SpargeStep's "Sparge started" question is taken down when the step stops, and asked again when it starts */
+    if (st.banner && st.banner.sparge) { st.banner = null; st.recipe.wait = null; }
   });
 }
 function cmdNextYes() {
@@ -648,8 +1020,22 @@ function cmdNextYes() {
 function cmdBanner(x) {
   if (x === "added") send("b", "x", "Hop alert answered: 3.00 oz Centennial added", () => { st.banner = null; if (st.recipe) st.recipe.adds[0] = "done"; });
   else if (x === "done") send("b", "x", `${M.RECIPE.steps[st.recipe.cur].n} done`, () => { st.banner = null; stepStart(st.recipe.cur + 1); });
+  /* the SpargeStep's "Sparge started": its timer starts (or it runs until NEXT STEP), the HLT's AUTO goes off, and the
+     drawing goes over to the runoff */
+  else if (x === "sparge") {
+    const s = M.RECIPE.steps[st.recipe.cur];
+    send("b", "x", spargeStartedLine(s), () => {
+      const r = st.recipe;
+      st.banner = null; r.wait = null; r.started = true;
+      if (st.v.hlt.mode === "auto") {
+        setMode("hlt", "manual");
+        timers.push(setTimeout(() => { logEvent("HLT AUTO off, so its element won't run as the HLT empties", "by recipe", ""); renderAll(); }, 300));
+      }
+    });
+  }
   else { st.banner = null; renderAll(); }
 }
+const spargeStartedLine = s => `${s.n}: sparge started, ${s.min ? `${s.min} min timer started` : "until NEXT STEP"}`;
 function cmdLoad(i) {
   if (i !== 0) return toast(`Mockup: only Test Recipe v5 is filled in here. On the real screen, LOAD sends ${M.BOOK[i].n} to Brew Steps, as the Recipe Book does today.`);
   send("r:load", "load", `${M.BOOK[0].n} loaded`, () => { st.recipe = {state: "ready", cur: 0, left: 0, adds: []}; });
@@ -746,18 +1132,21 @@ function liveMode(v, m) {
       : alarm(`The ${M.VNAME[v].toLowerCase()} did not switch to MANUAL. Its AUTO may still be running.`, "TRY AGAIN", `mode:${v}:manual`)
   });
 }
-function liveTarget(v, val) {
+function liveTarget(v, val, label, cav = "") {
   const k = M.K[v];
   if (!k) return renderAll();
-  exec("t:" + v, "set", `${M.VNAME[v]} target ${val.toFixed(1)} ${M.U}`, () => api.target(k.id, val), {
+  // what it was, in the words the faceplate used: the new boil kettle's target is BOIL or a hold
+  const was = st.v[v].sv, wasText = bkNew(v) && !(was > 0 && was < bkLetGo()) ? "BOIL" : `${f1(was)} ${M.U}`;
+  exec("t:" + v, "set", label || `${M.VNAME[v]} target ${val.toFixed(1)} ${M.U}`, () => api.target(k.id, val), {
+    cav,
     ok: () => expect("t:" + v, val),
-    fail: () => alarm(`The ${M.VNAME[v].toLowerCase()} target did not change. It is still ${f1(st.v[v].sv)} ${M.U}.`, "OK", "b:ok")
+    fail: () => alarm(`The ${M.VNAME[v].toLowerCase()} target did not change. It is still ${wasText}.`, "OK", "b:ok")
   });
 }
 // The boil power button's command. CraftBeerPi answers both with "done" whatever happened: BoilPower refuses a level it
 // can't use with a warning and keeps its own, and set_power only logs a failure. So what counts is the level CraftBeerPi
-// holds afterwards, which every page is sent as soon as it changes.
-function livePower(boil, val, was, label, cav) {
+// holds afterwards, which every page is sent as soon as it changes. dir: which button waits, the box's SET or −5 %/+5 %.
+function livePower(boil, val, was, label, cav, dir = "set") {
   const k = M.K.bk, id = M.ACT.bkEl.id;
   if (boil ? !k : !id) return renderAll();
   const holds = () => {
@@ -769,7 +1158,7 @@ function livePower(boil, val, was, label, cav) {
     const a = (s.actors || []).find(q => q && q.id === id);
     return !!a && Math.round(num(a.manual_power ?? a.power) ?? NaN) === val;
   };
-  exec("p:bk", "set", label, async () => {
+  exec("p:bk", dir, label, async () => {
     const res = await (boil ? api.kettleAction(k.id, "set_boil_power", {Boil_Power: val}) : api.power(id, val));
     if (!res.ok) return res;
     for (let i = 0; i < 30 && !holds(); i++) await new Promise(r => setTimeout(r, 100));
@@ -777,6 +1166,41 @@ function livePower(boil, val, was, label, cav) {
   }, {
     cav,
     fail: () => alarm(`The ${boil ? "boil power" : "boil element's power"} did not change. It is still ${was} %.`, "OK", "b:ok")
+  });
+}
+/* The new BoilPower's other settings, sent as kettle actions as the boil power is, and for the same reason confirmed only
+   once CraftBeerPi holds the new setting (BoilPower refuses a value it can't use with a warning and keeps its own). */
+const bkProps = () => {
+  const x = ((last || {}).kettles || []).find(q => q && M.K.bk && q.id === M.K.bk.id);
+  return (x && x.props) || {};
+};
+const yes = (x, dflt) => { const s = String(x ?? "").trim().toLowerCase(); return s ? s === "yes" : dflt; };
+function liveSetting(key, dir, label, action, param, holds, o) {
+  const k = M.K.bk;
+  if (!k) return renderAll();
+  exec(key, dir, label, async () => {
+    const res = await api.kettleAction(k.id, action, param);
+    if (!res.ok) return res;
+    for (let i = 0; i < 30 && !holds(bkProps()); i++) await new Promise(r => setTimeout(r, 100));
+    return holds(bkProps()) ? res : {ok: false, status: res.status, data: null, error: "kept"};
+  }, o);
+}
+function liveBoilAt(val, was, label, cav) {
+  liveSetting("t:bk", "set", label, "set_boil_at", {Boil_Threshold: val}, p => Math.abs((num(p.Boil_Threshold) ?? NaN) - val) < 0.05, {
+    cav, fail: () => alarm(`The boil kettle's boil temperature did not change. It still boils at ${was.toFixed(1)} ${M.U}.`, "OK", "b:ok")
+  });
+}
+function liveKeep(want, label, cav) {
+  liveSetting("k:bk", want ? "on" : "off", label, "set_keep_boiling", {Keep_Boiling: want ? "Yes" : "No"}, p => yes(p.Keep_Boiling, true) === want, {
+    cav, ok: () => expect("k:bk", want),
+    fail: () => alarm(`Keep boiling did not change. It is still ${want ? "off" : "on"}.`, "OK", "b:ok")
+  });
+}
+function livePause(on, label) {
+  const name = M.ACT.bkEl.name;
+  liveSetting("a:bkEl", on ? "pause" : "resume", label, "set_paused", {Paused: on ? "Yes" : "No"}, p => yes(p.Paused, false) === on, {
+    ok: () => expect("z:bk", on),
+    fail: () => alarm(on ? `${name} did not pause. It is still heating.` : `${name} did not carry on. The heat is still paused: hold PAUSED to try again.`, "OK", "b:ok")
   });
 }
 function liveStart() {
@@ -801,7 +1225,11 @@ function livePrompt(nid, aid) {
   if (!p) return renderAll();
   const a = (p.action || []).find(q => String(q.id) === aid);
   const done = () => { answered.add(nid); if (opts.removeAlert) opts.removeAlert(p.id); };
-  exec("b", `p:${nid}:${aid}`, `${p.title} answered: ${a ? a.label : "OK"}`, () => api.answer(nid, aid), {
+  // a SpargeStep's Sparge started says what it starts, and its flag turning true isn't logged a second time (observe)
+  const r = st.recipe, s = r && M.RECIPE.steps[r.cur];
+  const sparge = !!(s && s.type === "SpargeStep" && String(p.title || "") === s.n && a && /^sparge started$/i.test(String(a.label || "").trim()));
+  if (sparge) own.sparge = {at: Date.now(), id: s.id};
+  exec("b", `p:${nid}:${aid}`, sparge ? spargeStartedLine(s) : `${p.title} answered: ${a ? a.label : "OK"}`, () => api.answer(nid, aid), {
     ok: done,
     // 400: CraftBeerPi no longer waits for it (answered elsewhere, or withdrawn)
     fail: res => res.status === 400 ? done() : alarm(`${p.title}: your answer did not reach CraftBeerPi.`, "TRY AGAIN", `p:${nid}:${aid}`)
@@ -872,11 +1300,16 @@ function run(cmd) {
     case "mode": return DEMO_MODE ? cmdMode(x, y) : liveMode(x, y);
     case "tgt": return cmdTgtOpen(x);
     case "tstep": return cmdTgtStep(parseFloat(x));
+    case "tboil": return cmdTgtBoil();
+    case "bat": return cmdBatOpen();
     case "tset": return cmdTgtSet();
     case "tcancel": st.edit = null; return renderAll();
     case "pwr": if (st.edit && st.edit.kind === "pwr") { st.edit = null; return renderAll(); } return cmdPwrOpen();
     case "pstep": return cmdPwrStep(parseInt(x, 10));
     case "pset": return cmdPwrSet();
+    case "pnudge": return cmdNudge(parseInt(x, 10));
+    case "pause": return cmdPause(x === "on");
+    case "keep": return cmdKeep();
     case "r":
       if (x === "start") return DEMO_MODE ? cmdStart() : liveStart();
       if (x === "stop") return DEMO_MODE ? cmdStop() : liveStop();
@@ -951,6 +1384,18 @@ function applyLive(snap) {
   const bkp = M.K.bk && M.K.bk.props, be = M.A.bkEl;
   st.v.bk.bp = Math.round(num(bkp && bkp.Boil_Power) ?? 85);
   st.a.bkEl.lvl = Math.round(num(be && (be.manual_power ?? be.power)) ?? 100);
+  // The new BoilPower's settings: the boil point (BOIL AT), KEEP BOILING, the usual boil power and a pause, which it keeps
+  // in the kettle's settings so every page shows them. Its boil latch it doesn't publish: below the boil point in AUTO, an
+  // element on below full power (Max_Output) is running at the boil power (BUILD-NOTES).
+  if (M.BKNEW) {
+    const V = st.v.bk, el = st.a.bkEl, p = bkp || {}, usual = num(p.Usual_Boil_Power), full = num(p.Max_Output) ?? 100;
+    V.boilAt = M.BOIL_TH;
+    V.keep = expected("k:bk", yes(p.Keep_Boiling, true));
+    V.usual = usual == null ? null : Math.round(usual);
+    el.paused = V.mode === "auto" && expected("z:bk", yes(p.Paused, false));
+    el.pausedAt = num(p.Paused_At);
+    V.latched = V.mode === "auto" && !el.paused && V.pv != null && V.pv < boilFrom() ? !(el.on && el.pct >= full) : undefined;
+  }
   liveLocks();
   st.prompts = (snap.alerts || []).filter(x => x && Array.isArray(x.action) && x.action.length);
   st.recipe = liveRecipe(snap);
@@ -1002,7 +1447,8 @@ function liveRecipe(snap) {
     const due = st.prompts.some(q => n === "fw" ? /first wort/i.test(q.message || "") : /hop alert/i.test(q.title || "") && (String(q.message || "").trim().endsWith(`(${n})`) || String(q.message || "").trim() === `Please add Hop ${n}`));
     return due ? "due" : (n === "fw" ? props._first_wort_done : done.has(n)) ? "done" : "";
   });
-  return {state, cur, left: left ?? (s.min ? s.min * 60 : 0), wait, adds};
+  // a SpargeStep holds the drawing on recirculating until Sparge started: its _sparge_started, kept with the step
+  return {state, cur, left: left ?? (s.min ? s.min * 60 : 0), wait, adds, started: s.type === "SpargeStep" && !!props._sparge_started};
 }
 // The title bar: no connection first, then a command that failed, then CraftBeerPi's errors, its warnings, then
 // its prompts. For its first few seconds a page that has not connected yet says so calmly.
@@ -1027,6 +1473,17 @@ function addWarning(id, title, message) {
   if (st.warnings.some(w => w.title === title && w.message === message)) return;
   st.warnings.push({id, title, message});
   if (st.warnings.length > 10) st.warnings.shift();
+}
+/* a step starting, or resuming after a Stop, for the event line. A SpargeStep says what it does as it starts (the design,
+   10 Nov): it heats the sparge water with the mash tun MANUAL, or with no water to heat leaves the pumps to the brewer.
+   Resumed after Sparge started, it doesn't heat again, so it names no target */
+function stepStartLine(m, resumed, s) {
+  const p = (s && s.props) || {};
+  if (s && s.type === "SpargeStep") {
+    if (resumed && p._sparge_started) return `${m.n} resumed`;
+    if (!resumed) return p.Kettle && m.temp > 0 ? `${m.n}: heating the sparge water to ${m.temp} ${M.U}, mash tun MANUAL` : `${m.n}: mash tun MANUAL, the pumps are yours`;
+  }
+  return `${m.n} ${resumed ? "resumed" : "started"}${m.temp != null ? `, ${M.VNAME[m.k].toLowerCase()} target ${m.temp.toFixed(1)} ${M.U}` : ""}`;
 }
 // What happened since the last update, for the event line: the connection, everything CraftBeerPi says, and the
 // recipe's steps starting, finishing and starting their timers. Commands from this screen log themselves.
@@ -1061,14 +1518,18 @@ function observe(prev, snap) {
   const mine = id => ["start", "next"].some(k => own[k] && Date.now() - own[k].at < 10000 && own[k].ids.includes(id));
   for (const s of steps) {
     const o = old.get(s.id);
-    if (!o || (o.status === s.status && parseLeft(o.state_text) != null)) continue;
-    const m = M.RECIPE.steps.find(x => x.id === s.id) || {n: s.name};
+    if (!o) continue;
+    const m = M.RECIPE.steps.find(x => x.id === s.id) || {n: s.name}, sparge = s.type === "SpargeStep";
+    // a SpargeStep's Sparge started pressed elsewhere: its timer starts at the press, not at a temperature
+    if (sparge && !(o.props || {})._sparge_started && (s.props || {})._sparge_started
+      && !(own.sparge && own.sparge.id === s.id && Date.now() - own.sparge.at < 10000)) logEvent(spargeStartedLine(m), "from another screen", "");
+    if (o.status === s.status && parseLeft(o.state_text) != null) continue;
     if (o.status !== "A" && s.status === "A") {
-      if (!mine(s.id)) logEvent(`${m.n} ${o.status === "S" ? "resumed" : "started"}${m.temp != null ? `, ${M.VNAME[m.k].toLowerCase()} target ${m.temp.toFixed(1)} ${M.U}` : ""}`, "by recipe", "");
+      if (!mine(s.id)) logEvent(stepStartLine(m, o.status === "S", s), "by recipe", "");
     } else if (o.status === "A" && s.status === "D") { if (!mine(s.id)) logEvent(`${m.n} finished`, "by recipe", ""); }
     else if (o.status === "A" && s.status === "S" && !(Date.now() - (own.stop || 0) < 10000)) logEvent(`${m.n} stopped`, "from another screen", "");
     else if (s.status === "E" && o.status !== "E") logEvent(`${m.n}: error`, "by recipe", "bad");
-    else if (o.status === "A" && s.status === "A" && parseLeft(o.state_text) == null && parseLeft(s.state_text) != null && m.min) {
+    else if (o.status === "A" && s.status === "A" && parseLeft(o.state_text) == null && parseLeft(s.state_text) != null && m.min && !sparge) {
       logEvent(`${m.n}: ${m.temp != null ? `${m.temp} ${M.U} reached, ` : ""}${m.min} min timer started`, "by recipe", "");
     }
   }
@@ -1188,8 +1649,17 @@ const handlers = {
   keyup: e => { if (hold && (e.key === " " || e.key === "Enter")) { e.preventDefault(); holdEnd(true); } },
   input: e => {
     if (e.target.id !== "tin" || !st.edit) return;
-    const x = parseFloat(e.target.value), pwr = st.edit.kind === "pwr";
-    if (Number.isFinite(x)) { st.edit.val = pwr ? Math.round(x) : Math.round(x * 10) / 10; const ok = $("#tok"); if (ok) ok.textContent = pwr ? String(st.edit.val) : st.edit.val.toFixed(1); }
+    const x = parseFloat(e.target.value), pwr = st.edit.kind === "pwr", ok = $("#tok");
+    if (!Number.isFinite(x)) return;
+    st.edit.val = pwr ? Math.round(x) : Math.round(x * 10) / 10;
+    if (!ok) return;
+    /* the new boil kettle's TARGET: a typed number from the boil point less the margin up is BOIL, and SET says so before
+       it is pressed; the box keeps what was typed */
+    if (bkNew(st.edit.v) && st.edit.kind === "tgt") {
+      const boil = st.edit.val >= bkLetGo();
+      ok.textContent = boil ? "BOIL" : `${st.edit.val.toFixed(1)} ${M.U}`;
+      root.querySelector(".editor .tboil")?.setAttribute("aria-pressed", String(boil));
+    } else ok.textContent = pwr ? String(st.edit.val) : st.edit.val.toFixed(1);
   },
   click: e => {
     if (!root.contains(e.target)) return;
@@ -1243,7 +1713,33 @@ function demoTick() {
     return;
   }
   const r = st.recipe;
-  if (r && r.state === "running" && r.left > 0) {
+  const pz = root.querySelector("#pz");
+  if (pz && st.a.bkEl.paused) pz.textContent = mmss(pausedFor());
+  /* CraftBeerPi's warning, 5 s after a kettle's AUTO started with no target (M64). The boil kettle never gets one:
+     BoilPower puts its boil point in as the target as it starts. Under the HERMS the HLT isn't in AUTO itself; the mash
+     tun's warning covers it. Raised once, from 5 s on; the demo shows one prompt at a time, so behind a hop alert it waits
+     its turn. */
+  ["mt", "hlt"].forEach(v => {
+    const V = st.v[v];
+    if (!noTarget(v)) { V.noTgt = 0; V.warned = false; return; }
+    V.noTgt = (V.noTgt || 0) + 1;
+    if (V.noTgt < 5 || V.warned || st.banner) return;
+    V.warned = true;
+    st.banner = DEMO.noTargetBanner(v);
+    logEvent(`No target for the ${DEMO.KNAME[v]}`, "waiting for you", "wait");
+    say(`No target for the ${DEMO.KNAME[v]}. ${st.banner.text}`, true);
+    renderAll();
+  });
+  /* BoilPower's warning after 2 brewing minutes paused, once per pause (Scott, 10 Nov), waiting its turn as that one does */
+  const pe = st.a.bkEl;
+  if (M.BKNEW && pe.paused && !pe.pauseWarned && st.t - pe.pausedAt >= 120 && !st.banner) {
+    pe.pauseWarned = true;
+    st.banner = DEMO.pauseBanner();
+    logEvent(st.banner.title, "waiting for you", "wait");
+    say(`${st.banner.title}. ${st.banner.text}`, true);
+    renderAll();
+  }
+  if (r && r.state === "running" && r.left > 0 && !r.wait) {
     r.left--;
     const s = M.RECIPE.steps[r.cur], pct = s.min ? Math.round(100 * (1 - r.left / (s.min * 60))) + "%" : "0%";
     ["r-left", "now-left"].forEach(id => { const n = root.querySelector("#" + id); if (n) n.textContent = mmss(r.left); });
@@ -1277,6 +1773,11 @@ function liveTick() {
   }
   if (last && Object.values(st.expect).some(x => Date.now() > x.until)) { applyLive(last); schedule(); }
   if (last && last.timer && last.timer.running) { st.timer = timerNow(last.timer); const o = $("#tm-out"); if (o) setText(o, mmss(st.timer.left)); }
+  // a pause counts on the brewing clock, from when BoilPower stamped it
+  if (st.a.bkEl.paused) {
+    syncBrewClock();
+    const pz = $("#pz"); if (pz) setText(pz, mmss(pausedFor()));
+  }
   if (H) {
     if (H.tick(gRow, true)) drawGraphs();
     loadHistory();
@@ -1314,14 +1815,19 @@ export function createBrewDay(el, o = {}) {
   if (DEMO_MODE) {
     const key = DEMO.SCENES[o.demo] || DEMO.EXTRA[o.demo] ? o.demo : "mash";
     M = {RECIPE: DEMO.RECIPE, VNAME: DEMO.VNAME, VACT: DEMO.VACT, ACT: DEMO.ACT, HERMS_DELTA: DEMO.HERMS_DELTA, BOOK: DEMO.BOOK, U: "°F", LIMITS: [32, 230],
-      BOILPOWER: true, BOIL_TH: DEMO.BOIL_TH};
+      BOILPOWER: true, BKNEW: true, BOIL_TH: DEMO.BOIL_TH};
     st = (DEMO.SCENES[key] || DEMO.EXTRA[key])();
+    // the sparge-… moments run a recipe whose step 4 is a SpargeStep; every other moment keeps the MashStep
+    if (st.sparge4) M.RECIPE = {...DEMO.RECIPE, steps: DEMO.RECIPE.steps.map((s, i) => i === 3 ? {...DEMO.SPARGE_STEP, ...st.sparge4} : s)};
     // a moment can open an editor (open) and borrow another moment's graph history (base)
     const open = st.open, base = st.base || key;
     delete st.open; delete st.base;
     Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, logOpen: false}, open);
     if (st.v.bk.bp == null) st.v.bk.bp = 45; // the boil kettle's Boil_Power setting, read from its props
     if (st.a.bkEl.lvl == null) st.a.bkEl.lvl = 100; // the boil element's own level (its power), used when it is on by hand
+    if (st.v.bk.usual == null) st.v.bk.usual = 45; // its Usual_Boil_Power setting
+    if (st.v.bk.keep == null) st.v.bk.keep = true; // its Keep_Boiling setting, "Yes" unless Scott unticks it
+    if (st.v.bk.boilAt == null) st.v.bk.boilAt = DEMO.BOIL_TH; // its boil point, Boil_Threshold (BOIL AT)
     if (GRAPHS) st.hist = DEMO.history(base, st.t);
     applyLocks();
   } else {
@@ -1362,7 +1868,8 @@ export function createBrewDay(el, o = {}) {
     html.classList.remove("bd-page");
     delete html.dataset.layout;
     delete html.dataset.graphs;
-    H = null;
+    delete html.dataset.bk;
+    H = null; bclk = null; bclkAt = 0;
     if (root) root.innerHTML = "";
     root = null; st = null; gen++;
     teardown = () => {};

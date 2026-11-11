@@ -23,5 +23,3 @@
 :where(html.bd-page) .dev .stale{color:#6b7785}
 /* A finished boil's addition it never asked for: dimmer than those it did, and no tick. */
 :where(html.bd-page) .adds .missed{opacity:.55}
-/* The step held up by a question for the brewer. */
-:where(html.bd-page) .wfy{color:#ffd27a}

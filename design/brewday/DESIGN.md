@@ -189,6 +189,9 @@ components:
   lamp-strip-failed:
     backgroundColor: "{colors.alarm}"
     height: "8px"
+  lamp-strip-paused:
+    backgroundColor: "{colors.prompt}"
+    height: "8px"
   command-button:
     backgroundColor: "{colors.panel-2}"
     textColor: "{colors.text}"
@@ -219,7 +222,23 @@ components:
     textColor: "{colors.sv}"
     rounded: "{rounded.panel}"
     height: "54px"
-  power-button:
+  boil-power-readout:
+    textColor: "{colors.sv}"
+    rounded: "3px"
+    padding: "0 .28em"
+  boil-power-readout-frame:
+    backgroundColor: "#3b4d5e"
+    height: "1px"
+  keep-boiling-box-on:
+    backgroundColor: "{colors.sv}"
+    rounded: "3px"
+    height: "20px"
+  keep-boiling-box-off:
+    backgroundColor: "{colors.face}"
+    textColor: "#7f91a3"
+    rounded: "3px"
+    height: "20px"
+  boil-step-button:
     backgroundColor: "{colors.panel-2}"
     textColor: "{colors.text}"
     typography: "{typography.button}"
@@ -228,7 +247,7 @@ components:
     height: "72px"
   power-input:
     backgroundColor: "{colors.face}"
-    textColor: "{colors.text}"
+    textColor: "{colors.sv}"
     rounded: "{rounded.panel}"
     height: "54px"
   heat-off-button:
@@ -288,7 +307,7 @@ components:
 
 **Creative North Star: "The Brewhouse Touch Panel"**
 
-This is the screen on the front of a brewhouse control cabinet, made for one rig: Scott's electric three-vessel HERMS. Each vessel gets a faceplate like a hardware PID controller: a big red measured temperature (PV) over a smaller green target (SV) in a black window, plus element power (OUT) and MODE, with the vessel's temperature graph under them in the same window. The vessels appear once more as a clean line drawing, plumbed the way the rig is plumbed, each one under its own faceplate. The recipe runs down the left. The screen refuses the generic dashboard made of a card grid of numbers and toggle switches.
+This is the screen on the front of a brewhouse control cabinet, made for one rig: Scott's electric three-vessel HERMS. Each vessel gets a faceplate like a hardware PID controller: a big red measured temperature (PV) over a smaller green target (SV) in a black window, plus element power (OUT) and MODE, with the vessel's temperature graph under them in the same window. The boil kettle's faceplate works like the HLT's plus BOIL: while its target is BOIL its green number is the boil power, shown once and framed because it is also the boil power's button; while it holds a temperature it reads like the HLT's. The vessels appear once more as a clean line drawing, plumbed the way the rig is plumbed, each one under its own faceplate. The recipe runs down the left. The screen refuses the generic dashboard made of a card grid of numbers and toggle switches.
 
 Everything is read from across a garage, through steam, often with wet hands. So the panel holds a few large things rather than many small ones: condensed capitals, numbers that fill their windows, buttons 62-72px tall, and a hint on each button saying what a press will do. Colour works like indicator lamps on real equipment: each hue has one job, and every state shown by a colour is also written in words. The dark slate panel is Scott's stated preference over a light theme, even though the garage is lit.
 
@@ -309,7 +328,7 @@ A dark slate panel lit by indicator colours, where each hue means exactly one th
 ### Primary
 The readout and lamp colours: the language of the faceplates.
 - **Process Red** (pv, #ff4b3e): the PV digits, with a soft red glow. The only red that is not a fault.
-- **Setpoint Green** (sv, #3ddc6f): the SV digits, and the value being typed in the target editor.
+- **Setpoint Green** (sv, #3ddc6f): the SV digits (on the boil kettle while its target is BOIL, the boil power in their place), the value being typed in the target and power editors, the usual boil power in the power editor, and the lit KEEP BOILING box.
 - **Running Green** (run, #3ddc6f): the lamp strip of a running pump or recipe, the connection lamp, "✓ DONE" on finished steps, "confirmed" on the last-event line, and RUNNING under a pump in the drawing. Same value as Setpoint Green, kept as its own token because it does a different job.
 - **Element Orange** (heat, #ff7b1c): the lamp strip of a heating element, the OUT power bar, a heating element in the drawing, and the hold-to-turn-on fill (at 32% opacity).
 - **Dark Lamp Grey** (lamp-off, #3a4856): the unlit lamp strip. Off is grey, never red.
@@ -326,13 +345,13 @@ The plumbing colours of the line drawing.
 
 ### Tertiary
 Attention and selection: prompts waiting for the brewer, faults, and "where you are".
-- **Prompt Amber** (prompt, #ffb21e) on **Dark Amber Wash** (prompt-bg, #3a2a06) with **Prompt Cream** text (prompt-ink, #fff1d2): anything waiting for the brewer: hop and mash-in prompts, the Next-step confirmation, an addition that is due, "waiting for you" on the last-event line.
+- **Prompt Amber** (prompt, #ffb21e) on **Dark Amber Wash** (prompt-bg, #3a2a06) with **Prompt Cream** text (prompt-ink, #fff1d2): anything waiting for the brewer: hop and mash-in prompts, the Next-step confirmation, an addition that is due, "waiting for you" on the last-event line, a paused boil element and the line that counts its pause, and the line and TARGET hint of a vessel whose AUTO has no target.
 - **Note Amber** (note, #ffd9a0): the note line where a faceplate or the recipe column explains why a control can't be used, or says "keep holding".
 - **Alarm Red** (alarm, #ff4a4a) on **Alarm Oxblood** (alarm-bg, #6e1414): the alarm banner, the outline and strip of a failed command, the blinking connection lamp when the link is lost.
 - **Fault Wash** (fault-bg, #2b1315): the fill of a failed command's button, and ALL OFF under the pointer.
 - **Alarm Pink** (alarm-ink, #ffc9c4): "No connection" and "Last reading 48 s ago".
 - **All-Clear Wash** (ok-bg, #11331f) with **All-Clear Mint** text (ok-ink, #c9f2d6): the banner in the title bar when there are no alarms.
-- **Selection Blue** (select, #2a6fc0): the current screen tab, the SET button of the target and power editors, and the outline of the power button while its editor is open.
+- **Selection Blue** (select, #2a6fc0): the current screen tab, and the SET button of the target and power editors.
 - **Current Step Blue** (active, #1c5796) with **Current Step Edge** (active-edge, #3c7fcc) and **Current Step Ink** (active-ink, #dce9f7): the recipe step running now, and the "now" strip on a phone.
 - **Progress Blue** (progress, #9bcbff) on **Progress Track Navy** (progress-track, #0d2b48): the current step's 8px progress bar.
 - **Focus Ring Blue** (focus, #8cc2ff): the 3px keyboard focus outline.
@@ -347,7 +366,7 @@ Attention and selection: prompts waiting for the brewer, faults, and "where you 
 - **Hairline Slate** (line, #2a3b4b): 1px borders on panels and rows, and the dividers between tabs.
 - **Control Edge** (edge, #33475a): 1px borders on buttons.
 - **PID Window Black** (face, #030609): the readout window and the target input.
-- **Panel White** (text, #e8eef3): values, names and button labels, and the value being typed in the power editor (a level, not a target, so not green).
+- **Panel White** (text, #e8eef3): values, names and button labels.
 - **Soft Steel** (text-2, #b6c3cf): secondary lines: lamp button names, deviation lines, step details, tabs.
 - **Dim Steel** (text-3, #8b9cad): PV/SV/OUT/MODE tags, times, button hints and unavailable labels.
 - **On-Fill White** (on-fill, #ffffff): text on Selection Blue, on Alarm Oxblood, on the pressed mode button, and the current step's countdown.
@@ -448,9 +467,11 @@ Every control is chunky, labelled like a push-button on a cabinet, and says what
 
 ### Buttons
 - **Shape:** gently squared (6px), with a 1px Control Edge border.
-- **Lamp button** (anything that switches equipment, and the recipe's START): Raised Slate, 72px tall, padding 17px 8px 8px, with an 8px lamp strip across the top. The state word is large; under it, in Soft Steel, the device and what a press does ("HLT ELEMENT · tap to turn off", "BOIL ELEMENT · hold to turn on"). Two sit side by side on a faceplate; a single one spans the row, except on the boil kettle, where the power button takes the other half.
+- **Lamp button** (anything that switches equipment, and the recipe's START): Raised Slate, 72px tall, padding 17px 8px 8px, with an 8px lamp strip across the top. The state word is large; under it, in Soft Steel, the device and what a press does ("HLT ELEMENT · tap to turn off", "BOIL ELEMENT · hold to turn on"). Two sit side by side on a faceplate, and a single one spans the row. On the boil kettle, while AUTO runs, the −5 % and +5 % step buttons sit either side of BOIL ELEMENT, a quarter of the row each.
 - **Command button** (TARGET, STOP, NEXT STEP, timer buttons, LOAD): Raised Slate, 62px tall (66px in the recipe controls, 48px in recipe book rows), with a hint line under the label ("change SV", "tap to stop", "to Sparge").
-- **Power button** (only on a kettle whose logic can set a boil power: on Scott's rig, the boil kettle): a command button in the lamp row, beside BOIL ELEMENT, matching the lamp's height, so the faceplate gets no taller. Its label is the level it sets and its hint says when that level is used. In AUTO it reads "BOIL POWER 45 %" over "used from 210.2 °F · change": BoilPower's boil power, which AUTO uses once the wort reaches the kettle's target (210.2 °F in the Boil step; BoilPower's Boil_Threshold when there is no target), and until it falls 3.6 °F below again. Below that, AUTO heats at full power. In MANUAL it reads "POWER 100 %" over "used by hand · change": the element's own level, which it runs at when switched on by hand. The kettle's mode decides, not the recipe, so during the "Ready to boil?" hold, with the kettle in MANUAL, it is POWER. It works at any time, and a running recipe step never locks it, even though AUTO locks the element's own lamp. While its editor is open it has a 1px Selection Blue outline, and a second tap closes the editor. Scott asked for it back on 10 Nov 2026: "I seem to have lost the critical ability to set the boil power percentage", then "I need to be able to adjust boil element power even while running a recipe".
+- **Boil power button** (only on a kettle whose logic can set a boil power: on Scott's rig, the boil kettle): while the kettle's target is BOIL, the green boil power in its window ("45 %") is the button, with a small "change" beside it in Dim Steel, inside a 1px #3b4d5e frame that takes no room (hover #7f91a3; 2px Select Blue while its editor is open). Its tap area is at least 44px tall. It opens the power editor, as BOIL POWER in TARGET's editor does. It always sets the boil power (BoilPower's Boil_Power), in AUTO or MANUAL, and a running recipe step never locks it. TARGET sits beside AUTO/MANUAL, as on the other vessels, because a third button there doesn't fit at 1366 or 1440 wide. In MANUAL the element runs at its own level, as the HLT's does, and the screen doesn't set that level. Scott asked for the boil power back on 10 Nov 2026 ("I seem to have lost the critical ability to set the boil power percentage", then "I need to be able to adjust boil element power even while running a recipe"), and then for it to show once ("I don't need the heating element power echoed so many places").
+- **KEEP BOILING** (the boil kettle only, while its target is BOIL): a small checkbox at the right end of the nameplate row, label in 600 condensed Soft Steel. The box is the LED: lit Setpoint Green with a dark tick and a soft green glow while ticked, dark with a #7f91a3 edge while unticked, marching stripes while waiting, Stale Grey offline. It is no taller than the name; its tap area reaches 44px into the padding around it. One tap sets Keep_Boiling, in any mode. Ticked, BoilPower goes back to full power if the wort falls 3.6 °F below the boil point; unticked, it holds the boil power and lets the wort fall. Scott, 10 Nov 2026: "add a small checkbox with LED to choose keep at boil temp or let the boil power fully drive the temp".
+- **Step buttons** (−5 % and +5 %, on the boil kettle only): command buttons either side of BOIL ELEMENT while AUTO runs, as tall as the lamp, with "turn down" and "turn up" under them. One tap sends the new boil power at once; a tap that would pass 0 or 100 % stops there (2 % and −5 % gives 0 %), and only at 0 or 100 % itself is the button refused with a note. They are hidden in MANUAL (where they would seem to set the element's own level), while the kettle holds a temperature (which doesn't use the boil power) and while the boil kettle's editor is open (it has steps of its own). Taken from the Grainfather's arrow keys; Scott chose them on 10 Nov 2026.
 - **Mode switch** (AUTO | MANUAL): two halves joined by a 1px divider, taking two thirds of the row, with TARGET in the last third. The active half is near-black (#070c11) with white text and a 2px inset ring. The hint under the other half says what pressing it does ("hold to start", "tap to stop AUTO").
 - **Answer button** (ADDED, DONE, TRY AGAIN or OK in banners; SKIP TO … in the Next-step confirmation): Answer White with Answer Ink, 700 18px condensed, 48px tall in banners and 54px in the confirmation. The safe choice beside it (KEEP GOING) is an ordinary Raised Slate button.
 - **ALL OFF:** always in the title bar. Raised Slate with a 2px #7d8fa2 border, 700 17px, 48px tall, one tap. Under the pointer the border turns #ff8a80 over Fault Wash. It stops a running recipe, puts every vessel in MANUAL, and switches off both elements and both pumps. (It was ALL HEAT OFF until Scott asked for it to stop the pumps too, on 9 Nov 2026.)
@@ -468,9 +489,10 @@ Every control is chunky, labelled like a push-button on a cabinet, and says what
 
 ### Inputs / Fields
 - **Target editor:** TARGET swaps the faceplate's mode row for the editor in place, with no pop-up: −1, −.1, the value, +.1, +1, then a wide SET 149.0 °F button (Selection Blue, white text) and CANCEL. Keys are 54px tall.
-- **Power editor:** the power button swaps the boil kettle's mode row for an editor of the same shape: −5, −1, the value, +1, +5, then SET 40 % and CANCEL. Whole numbers from 0 to 100; the keys stop at the ends. If the kettle's mode changes while it is open (a recipe step starting AUTO, for example), it closes without sending anything and the note line says so: "The boil kettle switched to AUTO, so the button now sets the boil power. Nothing was changed." When a confirmed level isn't in use yet, the last-event line says when it will be: "used from 210.2 °F, full power until then" or "used when you switch the element on".
-- **Style:** the value field is a small PID window: PID Window Black, a 2px #3d7fd0 border, 6px corners, 600 28px condensed tabular digits: Setpoint Green for a target, Panel White for a power level.
-- **Behaviour:** Enter sets, Escape cancels. A target outside 32-230 °F, or a power outside 0-100 %, is refused with a note. While either editor is open, the other faceplates' button rows keep their height, and the drawing may shrink further (to 160px, or 110px with the graphs) so that a note under the editor never makes the page scroll.
+- **Boil kettle's target editor:** TARGET opens the HLT's editor with a third row: BOIL over "full power to 210.2 °F", shown pressed (like an active AUTO) whenever the editor says BOIL, and BOIL POWER over "change", which swaps in the power editor. The value is BOIL or a temperature to hold: anything from the boil point less 3.6 °F up is BOIL (206.6 °F with the boil point at 210.2), so the steps run …205.6, 206.5, BOIL, and + is refused at BOIL. A typed 212 makes SET read SET BOIL before it is pressed. SET BOIL sends the boil point as the target. Scott, 10 Nov 2026: "Set the boil kettle's target to 170 °F, like the HLT, and it holds there".
+- **Power editor:** the boil power button (or BOIL POWER in TARGET's editor) swaps the boil kettle's mode row for an editor like the target editor: −5, −1, the value, +1, +5, then SET 40 % and CANCEL. Whole numbers from 0 to 100; the keys stop at the ends. A third row holds BOIL AT 210.2 °F over "full power until then · change", which opens an editor of its own for the boil point (BoilPower's Boil_Threshold, 190-212 °F; above 212 °F it refuses, because the wort may never get there and the element would stay at full power), and USUAL 45 % in Setpoint Green over "starts each recipe · set in Hardware", a reading, not a button. A target at BOIL keeps aiming at the boil when the boil point changes. A recipe started from its first step puts the boil power back to the usual power, so a change made during one brew day doesn't carry over to the next. The editor stays open if the kettle's mode changes, because it always sets the boil power. When a confirmed level isn't in use yet, the last-event line says when it will be: "used once it boils at 210.2 °F, full power until then", "kept for the boil in AUTO", "not used while it holds 170 °F" or "used when the heat carries on".
+- **Style:** the value field is a small PID window: PID Window Black, a 2px #3d7fd0 border, 6px corners, 600 28px condensed tabular digits in Setpoint Green.
+- **Behaviour:** Enter sets, Escape cancels. A target outside 32-230 °F, or a power outside 0-100 %, is refused with a note. The boil kettle's editors open with their number selected, so typing replaces it. While either editor is open, the other faceplates' button rows keep their height, and the drawing may shrink further (to 136px, or 64px with the graphs, because the boil kettle's editors have a third row) so that a two-line note under an editor never makes the page scroll on a screen 900px tall or more.
 
 ### Navigation
 - **Title bar:** Cabinet Black with a 1px hairline below. The brand on the left, the alarm banner in the middle, then the connection lamp (a 12px Running Green dot and "Connected"), ALL OFF, and the clock (600, clamp(26px, 2.4vw, 40px), tabular). When the link is lost, the dot becomes a hollow Alarm Red ring that blinks (a change of shape, not only colour) and the label reads "No connection" in Alarm Pink.
@@ -479,9 +501,9 @@ Every control is chunky, labelled like a push-button on a cabinet, and says what
 ### PID Faceplate
 The signature component: one per vessel, like the controller on a cabinet door. From the top:
 - the vessel name in Title capitals;
-- the black window: PV and SV on the left with small Dim Steel tags, then a 1px divider (#2a3846), then OUT (element power, over a 5px Element Orange bar) and MODE (AUTO, MAN or HERMS). A missing value reads "– –". Under them, in the same window, the vessel's temperature graph (see Temperature Graph);
-- the deviation line in Soft Steel ("0.4 °F below target", "At target", "Boiling", "MANUAL · element by hand"), with the time to target added while the vessel heads for it ("6.7 °F below target · about 2 min at this rate");
-- the lamp buttons for that vessel's element and pump; on the boil kettle, the BOIL ELEMENT lamp and the power button;
+- the black window: PV and SV on the left with small Dim Steel tags, then a 1px divider (#2a3846), then OUT (element power, over a 5px Element Orange bar) and MODE (AUTO, MAN or HERMS). A missing value reads "– –". Under them, in the same window, the vessel's temperature graph (see Temperature Graph). The boil kettle's window works like the HLT's plus BOIL: while its target is BOIL, its green readout is BOIL and the boil power ("BOIL 45 %", framed, because it is the boil power's button) and it has MODE but no OUT, so the power shows once; while it holds a temperature, it reads SV and that temperature, with OUT and MODE, as on the HLT;
+- the deviation line in Soft Steel ("0.4 °F below target", "At target", "Boiling", "MANUAL · element by hand"), with the time to target added while the vessel heads for it ("6.7 °F below target · about 2 min at this rate"). While AUTO runs with no target, it says so in 600-weight Prompt Amber instead, and TARGET's hint turns Prompt Amber and says "set SV" (see The Mode Tells The Truth Rule). The boil kettle's line in AUTO says what BoilPower is doing: "Full power until it boils · about 20 min", "Boiling", "Below a boil · back to full power at 206.6 °F" (KEEP BOILING ticked) or "Not boiling · 10.9 °F below 210.2 °F" (unticked), "Heat paused for 0:26" in Prompt Amber; holding a temperature it uses the HLT's lines, and says "1.2 °F below target · heats again at 166.4 °F" while BoilPower rests;
+- the lamp buttons for that vessel's element and pump; on the boil kettle, BOIL ELEMENT, with −5 % and +5 % either side while AUTO runs;
 - the mode row (AUTO | MANUAL and TARGET), or the target or power editor, or, while the mash tun's AUTO runs the HERMS, a dashed full-width HERMS button on the hot liquor tank that says who is in charge;
 - the note line in Note Amber, hidden when empty.
 
@@ -489,7 +511,7 @@ The signature component: one per vessel, like the controller on a cabinet door. 
 Each vessel's graph sits in its own PID window, under the PV and SV it explains. Scott chose this on 10 Nov 2026 over a DRAWING / GRAPHS switch that would have swapped the drawing for the graphs.
 - **Place and size:** a 1px #1a2530 line divides it from the readings above. The plot runs under PV and SV; the span labels sit under OUT and MODE, behind the window's divider. It is clamp(58px, calc(28dvh − 200px), 110px) tall on a monitor and 108px on a phone.
 - **Scale:** each vessel has its own, fitted to its readings and target, and never less than 4 °F tall over 10 minutes, 8 °F over 30 minutes or 20 °F over the day. Gridlines are 1px Graph Grid (#16202a), labelled at the left in 600 12px condensed Dim Steel, outlined in PID Window Black so a line can pass behind a label. Clock times run along the bottom when the graph is at least 90px tall; the three graphs share the same clock marks.
-- **Lines:** PV is a 2.2px Process Red line with a soft red glow, ending in a 3px dot at now. SV is a 1.6px Setpoint Green step line, drawn only while something sets the target (AUTO, the HERMS or the recipe). OUT is an Element Orange band at 60% along the bottom, labelled OUT, or "OUT – –" when there is no power reading to show. Where a step started, a 1px dashed line and a small tag with the step's number mark it.
+- **Lines:** PV is a 2.2px Process Red line with a soft red glow, ending in a 3px dot at now. SV is a 1.6px Setpoint Green step line, drawn only while something sets the target (AUTO, the HERMS or the recipe). OUT is an Element Orange band at 60% along the bottom, labelled OUT, or "OUT – –" when there is no power reading to show. Where a step started, a 1px dashed line and a small tag with the step's number mark it. On the boil kettle, while its target is BOIL, the boil point is a 1.4px dashed Dim Steel line instead of the green one, because BoilPower doesn't hold it; a temperature it holds is the Setpoint Green line, as on the HLT.
 - **Spans:** 10 MIN, 30 MIN and DAY, stacked beside the plot in 600 13px condensed capitals; the current one has a 1px #7f91a3 border over #0e171f, with white text. Tapping a graph moves all three graphs to the next span; tapping a label goes straight to it. 30 MIN to start with, remembered on each device. DAY runs from the start of the brew day.
 - **Readings stopped:** the time with no readings is dark (Graph Gap, #0b1117). When the connection is lost, the lines turn Stale Grey without their glow, like the digits.
 - **For screen readers:** each graph is a button named for what it shows and what a press does ("Hot liquor tank temperature graph, the last 30 minutes. Press for the brew day so far."), described by a sentence ("Hot liquor tank, the last 30 minutes: rose from 128.3 to 154.2 °F; target 154.4 °F; element 62 %.").
@@ -501,6 +523,7 @@ Each vessel's graph sits in its own PID window, under the PV and SV it explains.
 - **Waiting for an answer:** grey diagonal stripes march along the strip (a 0.6s loop), "SWITCHING ON…" or "SWITCHING OFF…", with "waiting for CraftBeerPi" underneath.
 - **Failed:** 2px Alarm Red outline, Fault Wash fill, a red strip, "DID NOT STOP" or "DID NOT START", and underneath "still running · tap to try again".
 - **Run by someone else:** dashed outline, see-through, with "run by mash tun" or "run by AUTO" under the state.
+- **The boil element in AUTO:** not locked, unlike the other elements in AUTO. While heating it reads "HEATING" (the power is the green readout while boiling, and OUT while holding) over "BOIL ELEMENT · tap to pause". A tap pauses the heat for a boil-over: a Prompt Amber strip, glow and outline, "PAUSED" in Prompt Amber, and "BOIL ELEMENT · hold to heat" under it. AUTO, the recipe, its timer and the boil power carry on. After 2 brewing minutes paused, CraftBeerPi raises a kept prompt on every page, once per pause: "Boil Kettle heat still paused · The heat has been paused for 2 minutes. To heat again, press and hold PAUSED on the Boil Kettle." Carrying on, MANUAL or ALL OFF take it down. Taken from the Ss Brewtech eController's heater button; Scott chose it on 10 Nov 2026.
 - **Being held:** Element Orange at 32% sweeps across the button from left to right over one second.
 
 ### Alarm Banner and Last Event
@@ -510,7 +533,7 @@ Each vessel's graph sits in its own PID window, under the PV and SV it explains.
 ### Recipe Column
 - The recipe name, a status line ("Running · step 3 of 7"), then START (a lamp button, held for one second), STOP and NEXT STEP in three equal columns, then the step list, which is the only part of the monitor screen that scrolls (when brewing by hand, the recipe book's list takes that role).
 - **Step row:** the number in the darker band, the title in Row type, temperature and minutes in Detail type, and the status at the right: "✓ DONE" in Running Green, or an empty ring for steps to come.
-- **Current step:** Current Step Blue with its edge and ink, a large white countdown ("23:41 LEFT"), and the 8px progress bar. During the boil, additions are listed by minute, name and amount; the one that is due is bold amber with "· add now", and added ones are dimmed with a tick.
+- **Current step:** Current Step Blue with its edge and ink, a large white countdown ("23:41 LEFT"), and the 8px progress bar. Before its countdown, the step says what it waits for in the same place: HEATING, COOLING, WAITING, or WAITING FOR YOU in a brighter amber (#ffd27a) while CraftBeerPi's question under the step's name waits for the brewer. A step with no timer says NOW, and a SpargeStep after "Sparge started" says SPARGING. A SpargeStep's temperature is the sparge water's, so it reads "water 168 °F". During the boil, additions are listed by minute, name and amount; the one that is due is bold amber with "· add now", and added ones are dimmed with a tick.
 - **Brewing by hand:** the same column shows "No recipe running", a rest timer (600, up to 88px, tabular) with −5 MIN, +5 MIN and START TIMER, and the recipe book with a LOAD button for each recipe. There is one rest timer, kept by CraftBeerPi, so every screen shows the same countdown; START TIMER's hint says so ("alarm at zero, on every screen").
 
 ### Rig Line Drawing
@@ -518,7 +541,7 @@ Each vessel's graph sits in its own PID window, under the PV and SV it explains.
 - Idle coils and elements are Idle Element Steel. The coil turns Wort Gold while the wort pump runs and the wort is drawn going through it; an element turns Element Orange, with its glow, while it heats.
 - Pipes are 5px and Still Pipe Slate when idle. While their pump is confirmed running they take their liquid's colour, white dashes (5px on, 19px off) flow along them once every 0.9s, and arrow-heads in the same colour show the direction.
 - Each pump's line branches, as on the rig. The wort pump's line splits at a tee just past the pump: round the HERMS coil and back into the mash tun, or down and across to the boil kettle. The HLT pump's line splits at the top corner: back round the hot liquor tank, or along the sparge line over to the top of the mash tun.
-- **Hand valves:** one on each branch, four in all: the coil line, the boil kettle line, the HLT return and the sparge line. Open is a hollow bowtie whose outline takes the liquid's colour while that pipe flows; closed is a solid Drawing Line Steel bowtie. Each valve says OPEN or CLOSED in the tag style. Under the boil kettle, two lines in the tag style say where the positions come from: "VALVES ARE SET BY HAND", then "SHOWN FOR RECIRCULATING" or "SHOWN FOR STEP 4 (SPARGE)".
+- **Hand valves:** one on each branch, four in all: the coil line, the boil kettle line, the HLT return and the sparge line. Open is a hollow bowtie whose outline takes the liquid's colour while that pipe flows; closed is a solid Drawing Line Steel bowtie. Each valve says OPEN or CLOSED in the tag style. Under the boil kettle, two lines in the tag style say where the positions come from: "VALVES ARE SET BY HAND", then "SHOWN FOR RECIRCULATING" or "SHOWN FOR STEP 4 (SPARGE)". While a SpargeStep waits for "Sparge started", each valve that has to change keeps its drawn position, takes a Prompt Amber outline, and its tag says where it must go, in Prompt Amber: "SET OPEN" or "SET CLOSED"; the second line reads "SET THEM FOR STEP 4 (SPARGE)" in Prompt Amber. The HLT return's run is too short for "SET CLOSED", so that tag sits left of the riser, level with its valve, while it is marked.
 - Each pump is labelled underneath, with RUNNING in Running Green or OFF in Dim Steel. While a pump with its own override switch is off, a third line in the tag style reads "UNLESS OVERRIDE SWITCH IS ON".
 - Because the graphs make the drawing shorter, its labels are set larger as it shrinks: up to 1.3 times for pump names, states and tags, and up to 1.15 times for vessel names. In a browser window they come out about as big as they were before the graphs.
 
@@ -527,17 +550,19 @@ Each vessel's graph sits in its own PID window, under the PV and SV it explains.
 - **Reduced motion:** the flowing pipe dashes, the marching stripes and the blinking connection lamp stop. The one-second hold fill still runs, because it shows how long to keep pressing.
 
 ### Named Rules
-**The Held Heat Rule.** Switching heat on by hand (an element, a vessel's AUTO, the recipe's START) needs a press held for one second, by pointer or with Space or Enter. Letting go early starts nothing and says "Keep holding for one second." Starting a pump, and anything that switches off or stops, is one tap. Once started, a recipe changes targets and modes as its steps require, and skipping ahead to the next step asks first. Changing a level is not switching heat on: a new target, boil power or element power is set with a tap on SET after adjusting it, whether or not the element is heating, because turning a boil down to stop a boil-over has to be quick.
+**The Held Heat Rule.** Switching heat on by hand (an element, a vessel's AUTO, the recipe's START) needs a press held for one second, by pointer or with Space or Enter. Letting go early starts nothing and says "Keep holding for one second." Starting a pump, and anything that switches off or stops, is one tap. Once started, a recipe changes targets and modes as its steps require, and skipping ahead to the next step asks first. Changing a level is not switching heat on: a new target, boil power or element power is set with a tap on SET after adjusting it, and −5 % and +5 % are one tap each, whether or not the element is heating, because turning a boil down to stop a boil-over has to be quick. KEEP BOILING is a setting of the AUTO that is already running, so it is one tap too, even though ticking it can bring back full power. For the same reason a tap on the boil element in AUTO pauses its heat at once; carrying on is heat, so it takes a held press.
 
 **The Answer At The Button Rule.** Every command shows what happened on the button that sent it: waiting (marching stripes, "SWITCHING ON…", "SENDING…"), done (the new state, and "confirmed" on the last-event line), or failed (a red outline and "DID NOT STOP · tap to try again", plus an alarm banner).
 
 **The Say Why Rule.** A control that can't be used right now stays on screen. When tapped, it explains why in its faceplate's note line (cleared after six seconds), in the recipe column's note line, or in a toast.
 
+**The Mode Tells The Truth Rule.** The line under the window never contradicts MODE. AUTO with no target (unset, 0 or below, which SV shows as "– –") runs but holds nothing, so nothing heats for it. The line says so at once, in Prompt Amber, and names what won't heat: "No target, so the HLT won't heat" on the mash tun, "Not heating: the mash tun has no target" on the hot liquor tank under the HERMS, and "No target, so it won't heat" on a kettle with its own AUTO. It never says MANUAL while MODE says AUTO. CraftBeerPi's own warning follows in the title bar after 5 s, and both go once the kettle has a target or leaves AUTO. Scott, 10 Nov: "I think a "SV" was not set - but it should pop up a warning in that case".
+
 **The Trend In The Window Rule.** A vessel's temperature history belongs in its own PID window, under the PV and SV it explains, on its own scale, with real gridline values and clock times. Never a separate chart panel, never one plot shared by the three vessels, never a bare sparkline. The three graphs always show the same span.
 
 **The Pumped-Only Flow Rule.** A pipe shows its liquid's colour and moves only while CraftBeerPi reports its pump running, and only along the branches its hand valves are drawn open for (The Hand Valve Rule). Before a start is confirmed, and whenever the connection is lost, the pipe stays still and slate. CraftBeerPi can't see a pump's own override switch, so a pump that has one says so under its label instead of the drawing guessing.
 
-**The Hand Valve Rule.** CraftBeerPi can't see the hand valves, so the drawing never claims to know them: it draws them as the recipe needs them and says so under the boil kettle. From the start of the step named for the runoff (a name starting Sparge, Fly Sparge, Batch Sparge, Continuous Sparge, Lauter or Runoff, the same test as the core's first-wort reminder) until the boil starts, including the hold at "Ready to boil?", the wort goes to the boil kettle and the HLT pump's water goes to the top of the mash tun: Scott fly sparges (9 Nov). That holds even while the mash tun's AUTO still runs the wort pump for the HERMS. At any other time, and with no recipe, the drawing shows recirculating.
+**The Hand Valve Rule.** CraftBeerPi can't see the hand valves, so the drawing never claims to know them: it draws them as the recipe needs them and says so under the boil kettle. From the start of the runoff step until the boil starts, including the hold at "Ready to boil?", the wort goes to the boil kettle and the HLT pump's water goes to the top of the mash tun: Scott fly sparges (9 Nov). The runoff step is a SpargeStep, whatever its name, or a step named for the runoff (a name starting Sparge, Fly Sparge, Batch Sparge, Continuous Sparge, Lauter or Runoff), the same test as the core's first-wort reminder. That holds even while the mash tun's AUTO still runs the wort pump for the HERMS. A SpargeStep is the exception at its start: while it heats the sparge water and waits for "Sparge started", the brewer hasn't switched anything yet, so the drawing stays on recirculating and, once it waits for the brewer, marks the valves to change in Prompt Amber; it shows the runoff from the press on. One set of valves serves a fly and a batch sparge, because only the running pump's line lights. At any other time, and with no recipe, the drawing shows recirculating.
 
 ## Do's and Don'ts
 
@@ -546,9 +571,13 @@ Each vessel's graph sits in its own PID window, under the PV and SV it explains.
 - **Do** put each vessel's temperature graph in its PID window under its PV and SV: PV red, SV green, OUT as an orange band, its own scale, and 10 MIN, 30 MIN and DAY beside it; tapping any graph steps all three to the next span.
 - **Do** top every equipment control with an 8px lamp strip and write the state on the same button: HEATING 62 %, RUNNING, OFF, DID NOT STOP.
 - **Do** require a one-second held press (pointer, Space or Enter) to switch on an element, a vessel's AUTO or the recipe, and make switching off and stopping a single tap.
-- **Do** keep the boil power beside the boil element, settable at any time, also while a recipe runs, with its level on the button and when that level is used under it (from the kettle's target in AUTO, by hand in MANUAL).
+- **Do** show the boil power once, as the boil kettle's green readout while its target is BOIL (BOIL 45 %), settable at any time, also while a recipe runs: −5 % and +5 % beside the element in AUTO, and the framed readout itself (or BOIL POWER in TARGET's editor) for an exact number.
+- **Do** give the boil kettle the HLT's TARGET, with BOIL as one more value, and let a temperature below BOIL read exactly like the HLT's: SV, OUT and the HLT's lines.
+- **Do** show KEEP BOILING only while the target is BOIL; a hold never uses it.
+- **Do** let a tap on the boil element in AUTO pause the heat for a boil-over, show PAUSED in Prompt Amber and count the pause on the line under the window.
 - **Do** show each command's outcome on its own button: marching stripes while waiting, the new state once confirmed, a 2px red outline and "tap to try again" when it fails.
 - **Do** keep unavailable controls visible and explain why when they are tapped, in the note line (#ffd9a0) or a toast.
+- **Do** say on the line under the window, in Prompt Amber, when a vessel's AUTO runs with no target, and what won't heat because of it.
 - **Do** keep the recipe on the brew-day screen: down the left on a monitor, below the faceplates on narrower screens.
 - **Do** colour and animate a pipe only while its pump is confirmed running: cyan (#46b8ea) for hot liquor, gold (#e9b33b) for wort.
 - **Do** draw the hand valves as the recipe needs them and say so under the boil kettle ("VALVES ARE SET BY HAND"); CraftBeerPi can't see them.
@@ -565,8 +594,12 @@ Each vessel's graph sits in its own PID window, under the PV and SV it explains.
 - **Don't** fall back to a grid of cards with numbers and toggle switches, or anything else that looks like a generic web app.
 - **Don't** use red for off or stop. Red is the PV and faults; off is a dark grey lamp strip (#3a4856).
 - **Don't** let colour be the only sign of a state.
+- **Don't** call a vessel MANUAL anywhere while its MODE says AUTO; AUTO with no target is still AUTO.
 - **Don't** let a single tap or click switch on an element, a vessel's AUTO or the recipe.
 - **Don't** put the boil power behind the element's button or lock it while a recipe step runs; Scott turns the boil down mid-recipe.
+- **Don't** echo the boil element's power on the boil kettle while it boils: no OUT in its window and no % on its element button. Scott: "I don't need the heating element power echoed so many places".
+- **Don't** show the boil point as the boil kettle's SV while its target is BOIL: BoilPower doesn't hold that temperature, it only stops full power there. Show the boil power.
+- **Don't** make the HLT's or the mash tun's readings into buttons; only the boil power, which has no room beside AUTO/MANUAL, is one.
 - **Don't** switch to a light theme; the dark panel is Scott's stated preference.
 - **Don't** remove controls on a phone; the phone drops only the drawing.
 - **Don't** use blue for equipment state; blue is for where you are and what you are choosing.

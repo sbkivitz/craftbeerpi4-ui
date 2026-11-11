@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boil kettle: today and proposed · CraftBeerPi brew-day screen (proposal)</title>
+<!--
+Scott, 10 Nov 2026: "the design of the boil kettle's power vs temperature setting buttons / functions is not intuitive
+and needs analysis/redesign", then "generate a mockup". A first comparison of three faceplates confused him ("I don't
+understand what you are showing me"). Then: "It would be good to make the BoilPower plugin look a little different in
+its controls - but leave the HLT/MT alone. I don't need the heating element power echoed so many places". So this page
+shows the boil kettle's faceplate as built (today) beside one proposal (brew-day.html?bk=power), at five moments of the
+brew day, cut out of the live mockup (&focus=bk). "Whole screen" shows the pages uncut.
+Later that evening Brett's new BoilPower gave the boil kettle an ordinary target, BOIL or a temperature to hold (Scott:
+"Set the boil kettle's target to 170 °F, like the HLT, and it holds there"), so the proposal gained TARGET and three
+moments: a hop stand set and held by hand, and a pause forgotten for 2 minutes.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;display:grid;grid-template-rows:auto auto minmax(0,1fr);background:#080c10;color:#e8eef3;font:500 15px/1.35 "Barlow","Segoe UI",system-ui,sans-serif}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 22px;padding:10px 16px;background:#f2efe6;color:#1d232a;border-bottom:2px dashed #1d232a}
+.bar h1{margin:0 6px 0 0;font:700 19px/1 "Barlow",sans-serif}
+.grp{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.grp>span{font-weight:600;margin-right:2px}
+.grp button{min-height:36px;padding:0 12px;border:1px solid #1d232a;border-radius:6px;background:#fff;color:#1d232a;font:600 14px/1 "Barlow",sans-serif;cursor:pointer}
+.grp button:hover{background:#e6e1d4}
+.grp button[aria-pressed=true]{background:#1d232a;color:#f2efe6}
+:focus-visible{outline:3px solid #2a6fc0;outline-offset:2px}
+.hint{margin:0;padding:10px 16px;background:#11181f;color:#c9d6e2;border-bottom:1px solid #2a3b4b;font-size:16px}
+.hint b{color:#fff}
+.stage{display:grid;grid-template-columns:repeat(2,auto);justify-content:center;align-items:start;gap:28px;padding:18px 22px;min-height:0;overflow:auto}
+.frame{margin:0;display:grid;gap:10px;justify-items:start;align-content:start}
+.frame h2{margin:0;font:700 22px/1 "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#fff}
+.frame h2 small{margin-left:10px;font:600 15px/1 "Barlow",sans-serif;letter-spacing:0;text-transform:none;color:#8b9cad}
+.cut{position:relative;overflow:hidden;border-radius:8px;background:#0f161d;box-shadow:0 0 0 1px #2a3b4b,0 24px 60px rgb(0 0 0/.55)}
+.phone .cut.whole{border-radius:36px;border:10px solid #000;box-shadow:0 0 0 2px #3a4652,0 24px 60px rgb(0 0 0/.55)}
+.cut iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0;background:#0f161d}
+figcaption{font:500 15px/1.4 "Barlow",sans-serif;color:#c9d6e2}
+figcaption a{color:#9fd0ff}
+</style>
+</head>
+<body>
+<header class="bar">
+  <h1>Boil kettle: today and proposed</h1>
+  <div class="grp" role="group" aria-label="Moment in the brew day">
+    <span>Moment:</span>
+    <button type="button" data-scene="heatup">Heating to the boil</button><button type="button" data-scene="pause">Boil-over</button><button type="button" data-scene="pause-long">Pause forgotten</button><button type="button" data-scene="boiling">Boiling</button><button type="button" data-scene="boilpower">Typing a power</button><button type="button" data-scene="sparge">Before the boil (MANUAL)</button><button type="button" data-scene="hold">Whirlpool hold</button><button type="button" data-scene="bktarget">Setting a hop stand</button><button type="button" data-scene="handhold">Hop stand by hand</button><button type="button" data-scene="keepboil">At 2 %, keep boiling</button><button type="button" data-scene="letfall">At 2 %, let it fall</button>
+  </div>
+  <div class="grp" role="group" aria-label="Screen">
+    <span>Screen:</span>
+    <button type="button" data-size="window">Monitor, browser window 1920×950</button><button type="button" data-size="phone">Phone</button>
+  </div>
+  <div class="grp" role="group" aria-label="How much to show">
+    <span>Show:</span>
+    <button type="button" data-cut="plate">Boil kettle only</button><button type="button" data-cut="whole">Whole screen</button>
+  </div>
+</header>
+<p class="hint" id="hint"></p>
+<main class="stage" id="stage">
+  <figure class="frame" data-k="today"><h2>Today<small>as it is now</small></h2><div class="cut"><iframe title="Boil kettle as it is now"></iframe></div>
+    <figcaption>While it boils, 45 % shows three times: OUT, the element button and the BOIL POWER button. The green 210.2 is only where full power gives way to the boil power. <a target="_blank" rel="noopener">Open full size</a></figcaption></figure>
+  <figure class="frame" data-k="power"><h2>Proposed<small>boil kettle only</small></h2><div class="cut"><iframe title="Boil kettle, proposed"></iframe></div>
+    <figcaption>Boiling, the green number is the boil power, shown once, framed because it is also its button. While AUTO runs, −5 % and +5 % change it with one tap, and a tap on the element button pauses the heat. TARGET is BOIL or a temperature to hold, like the HLT's; holding, the faceplate reads like the HLT's. KEEP BOILING, beside the name, decides whether it goes back to full power when the wort falls below a boil. <a target="_blank" rel="noopener">Open full size</a></figcaption></figure>
+</main>
+<script>
+"use strict";
+const SIZES = {window: [1920, 950], phone: [390, 844]};
+const HINT = {
+  heatup: "<b>15:12, the boil has just started.</b> The element runs at full power until the wort reaches 210.2 °F, then drops to the boil power, 45 %. Proposed: −5 % and +5 % already work, ready for the boil.",
+  pause: "<b>15:31, a boil-over:</b> the hot break foams up a minute into the boil. Proposed: one tap on the element button paused the heat 25 s ago. AUTO and the recipe carry on, and holding the button carries on heating. Today the element button is locked while AUTO runs.",
+  "pause-long": "<b>15:33, the pause forgotten.</b> Proposed: after 2 minutes paused, CraftBeerPi puts up a warning on every page, once, and takes it down when the heat carries on or AUTO stops. The boil's timer has kept counting. Today there is no pause: it is still boiling at 45 %.",
+  boiling: "<b>15:52, a full boil at 212 °F,</b> with the element at the boil power, 45 %. Proposed: one tap on −5 % or +5 % changes it; a tap on the framed 45 % opens a box for an exact number, BOIL AT and your usual power.",
+  boilpower: "<b>16:04, typing an exact power, 40 %.</b> Proposed: the box opened from the framed 45 %. It also holds BOIL AT, where full power gives way to the boil power, and shows your usual power, which every recipe starts at.",
+  sparge: "<b>15:12, the sparge.</b> The boil kettle is filling, in MANUAL, with its element off. Proposed: no −5 % and +5 % in MANUAL, because the element runs at its own level by hand. The framed 45 % still sets the boil power for later.",
+  hold: "<b>17:18, the whirlpool.</b> The wort cooled, you answered \"Heat and hold?\", and the kettle is holding 170 °F. Proposed: its target is 170 °F, so it reads like the HLT: SV 170.0, OUT 35 %, \"0.6 °F below target\". Today's faceplate says SV 210.2 and \"40.8 °F below target\".",
+  bktarget: "<b>12:41, no recipe: you boiled by hand and want a hop stand at 170 °F.</b> Proposed: TARGET opens the HLT's box with one more key, BOIL. Type 170 and SET; BOIL and SET boils again. Anything from 206.6 °F up counts as BOIL. Today the same box moves where the boil starts, so 170 would carry on at 45 % instead of cooling.",
+  handhold: "<b>12:58, the hop stand by hand,</b> 17 minutes after setting 170 °F with AUTO on. Proposed: the element went off and the wort is cooling to 170, where it will hold; the faceplate says so, like the HLT's. Today it takes the old dashboard's \"Hold a temperature\", and the faceplate still says SV 210.2.",
+  keepboil: "<b>16:31, the boil power at 2 %,</b> too low to hold a boil, as you saw on 8012. The wort falls to 206.6 °F, then the element goes back to full power until it boils again, over and over. Today the line only says how far it is below the target. Proposed: KEEP BOILING is ticked, and the line says when full power comes back.",
+  letfall: "<b>16:31, the boil power at 2 %, KEEP BOILING unticked at 16:10.</b> Proposed: the element stays at 2 % and the wort falls below a boil, as you wanted; the line says how far. Today there is no such choice, so it would still be going back to full power, as on the left."
+};
+const S = {};
+function readHash() {
+  const q = new URLSearchParams(location.hash.slice(1));
+  S.scene = HINT[q.get("scene")] ? q.get("scene") : "boiling";
+  S.size = SIZES[q.get("size")] ? q.get("size") : "window";
+  S.cut = q.get("cut") === "whole" ? "whole" : "plate";
+}
+readHash();
+const stage = document.getElementById("stage"), frames = [...document.querySelectorAll(".frame")];
+const rect = new Map();
+const src = (k, full) => `brew-day.html?${full ? "" : "bare&focus=bk&"}bk=${k}#${S.scene}`;
+/* each page tells this one where its boil kettle is (brew-day.js reportFocus); all three are shown at one scale */
+addEventListener("message", e => {
+  const f = frames.find(f => f.querySelector("iframe").contentWindow === e.source);
+  if (!f || !e.data || e.data.type !== "plate") return;
+  rect.set(f.dataset.k, e.data);
+  fit();
+});
+function fit() {
+  const [w, h] = SIZES[S.size], whole = S.cut === "whole", m = 6, r = stage.getBoundingClientRect();
+  const aw = (r.width - 44 - 28) / 2, ah = r.height - 36 - 110;
+  const rs = frames.map(f => rect.get(f.dataset.k) || {x: 0, y: 0, w, h});
+  const bez = whole && S.size === "phone" ? 20 : 0;
+  const s = whole ? Math.min(1, (aw - bez) / w, (ah - bez) / h) : Math.min(1, ...rs.map(x => (aw) / (x.w + 2 * m)), ...rs.map(x => ah / (x.h + 2 * m)));
+  frames.forEach((f, i) => {
+    const cut = f.querySelector(".cut"), fr = f.querySelector("iframe"), x = rs[i];
+    f.classList.toggle("phone", S.size === "phone");
+    cut.classList.toggle("whole", whole);
+    fr.style.width = w + "px"; fr.style.height = h + "px";
+    if (whole) {
+      cut.style.width = (w * s + bez) + "px"; cut.style.height = (h * s + bez) + "px";
+      fr.style.transform = `scale(${s})`;
+    } else {
+      cut.style.width = ((x.w + 2 * m) * s) + "px"; cut.style.height = ((x.h + 2 * m) * s) + "px";
+      fr.style.transform = `translate(${(-x.x + m) * s}px, ${(-x.y + m) * s}px) scale(${s})`;
+    }
+    f.querySelector("figcaption").style.maxWidth = Math.max(260, parseFloat(cut.style.width)) + "px";
+  });
+}
+function apply() {
+  document.querySelectorAll("[data-scene]").forEach(b => b.setAttribute("aria-pressed", b.dataset.scene === S.scene));
+  document.querySelectorAll("[data-size]").forEach(b => b.setAttribute("aria-pressed", b.dataset.size === S.size));
+  document.querySelectorAll("[data-cut]").forEach(b => b.setAttribute("aria-pressed", b.dataset.cut === S.cut));
+  document.getElementById("hint").innerHTML = HINT[S.scene];
+  frames.forEach(f => {
+    const fr = f.querySelector("iframe"), want = src(f.dataset.k);
+    if (fr.getAttribute("src") !== want) fr.setAttribute("src", want);
+    f.querySelector("figcaption a").href = src(f.dataset.k, true);
+  });
+  history.replaceState(null, "", `#scene=${S.scene}&size=${S.size}&cut=${S.cut}`);
+  fit();
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  if (b.dataset.scene) S.scene = b.dataset.scene;
+  if (b.dataset.size) { S.size = b.dataset.size; rect.clear(); }
+  if (b.dataset.cut) S.cut = b.dataset.cut;
+  apply();
+});
+addEventListener("resize", fit);
+addEventListener("hashchange", () => { const was = S.size; readHash(); if (S.size !== was) rect.clear(); apply(); });
+apply();
+</script>
+</body>
+</html>

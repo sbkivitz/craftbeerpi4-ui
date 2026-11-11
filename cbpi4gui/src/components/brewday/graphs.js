@@ -1,8 +1,10 @@
 // The temperature graphs, one in each faceplate's window (Scott chose option A on 10 Nov 2026: "graphs always
 // showing, with a smaller rig drawing"). The approved mockup's graphs.js (design/brewday/graphs.js), made into
 // functions of what they draw, so they produce the same pictures:
-//   G = {hist, t, span, lost, V, VNAME, U, hhmm}: the history, now, the span shown, whether the connection is
-//   lost, the vessels as the faceplates show them, their names, the unit's sign and the clock's format.
+//   G = {hist, t, span, lost, V, VNAME, U, hhmm, scale, BK}: the history, now, the span shown, whether the connection is
+//   lost, the vessels as the faceplates show them, their names, the unit's sign, the clock's format, how fast the
+//   brewing clock runs, and for the new BoilPower's boil kettle {from: its boil point, edge: where its targets stop
+//   being BOIL, hold: the temperature it holds or null} (else null).
 //   hist = {start, steps: [[t, n]], v: {hlt, mt, bk: [[t, PV, SV or null, OUT % or null]]}}, a row every 10 s.
 //   t is seconds since local midnight: the demo's clock, or CraftBeerPi's brewing clock (history.js).
 // Not here: option B's DRAWING / GRAPHS panel, which Scott turned down, and the mockup's demo history, which is
@@ -22,13 +24,18 @@ export function graphSummary(G, v) {
   let lo = Infinity, hi = -Infinity;
   rows.forEach(p => { lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]); });
   const how = Math.abs(b - a) < 1 * per(G) ? `held between ${lo.toFixed(1)} and ${hi.toFixed(1)} ${G.U}` : `${b > a ? "rose" : "fell"} from ${a.toFixed(1)} to ${b.toFixed(1)} ${G.U}`;
-  return `${G.VNAME[v]}, ${GSAY[G.span]}: ${how}${last[2] != null ? `; target ${last[2].toFixed(1)} ${G.U}` : ""}${last[3] != null ? `; element ${last[3]} %` : ""}.`;
+  /* the new boil kettle (G.BK): a target below BOIL is held, like the HLT's; at BOIL the boil counts from the boil point */
+  const B = v === "bk" && G.BK;
+  const tgt = B ? (last[2] == null ? "" : last[2] < B.edge ? `; target ${last[2].toFixed(1)} ${G.U}` : `; the boil counts from ${B.from.toFixed(1)} ${G.U}`)
+    : last[2] != null ? `; target ${last[2].toFixed(1)} ${G.U}` : "";
+  return `${G.VNAME[v]}, ${GSAY[G.span]}: ${how}${tgt}${last[3] != null ? `; element ${last[3]} %` : ""}.`;
 }
-/* from the last three minutes of readings; only while heading for the target, and only up to two hours away */
+/* from the last three minutes of readings; only while heading for the target, and only up to two hours away. The new boil
+   kettle heads for its hold, or for the boil point while its target is BOIL */
 export function graphETA(G, v) {
-  const V = G.V[v];
-  if (!G.hist || V.sv == null || V.pv == null) return "";
-  const d = V.sv - V.pv;
+  const V = G.V[v], T = v === "bk" && G.BK ? G.BK.hold ?? G.BK.from : V.sv;
+  if (!G.hist || T == null || V.pv == null) return "";
+  const d = T - V.pv;
   if (Math.abs(d) < 1 * per(G)) return "";
   const rows = G.hist.v[v].filter(p => p[0] >= G.t - 180 && p[1] != null);
   if (rows.length < 2 || rows[rows.length - 1][0] - rows[0][0] < 90) return "";
@@ -57,11 +64,16 @@ export function graphSVG(G, v, w, h, id, tw = w) {
   let pts = all.slice(Math.max(0, i0 - 1));
   const stride = Math.max(1, Math.floor(pts.length / w)), gapAfter = 10 * stride + 25;
   if (stride > 1) pts = pts.filter((p, i) => i % stride === 0 || i === pts.length - 1);
+  /* the new boil kettle (G.BK): a target at BOIL is drawn at the boil point, a grey dashed reference, since BoilPower never
+     holds it; a target below BOIL is held, so it is the green line, as on the HLT */
+  const pw = v === "bk" && !!G.BK, edge = pw ? G.BK.edge : 0;
+  const svOf = p => pw ? (p[2] != null && p[2] >= edge ? G.BK.from : null) : p[2];
+  const hoOf = p => pw && p[2] != null && p[2] > 0 && p[2] < edge ? p[2] : null;
   /* each vessel gets its own scale, never less than 4, 8 or 20 °F tall */
   let lo = Infinity, hi = -Infinity;
   for (const p of pts) {
     if (p[0] < t0) continue;
-    for (const x of [p[1], p[2]]) if (x != null) { lo = Math.min(lo, x); hi = Math.max(hi, x); }
+    for (const x of [p[1], svOf(p), hoOf(p)]) if (x != null) { lo = Math.min(lo, x); hi = Math.max(hi, x); }
   }
   if (lo === Infinity) lo = hi = G.V[v].pv ?? (G.U === "°C" ? 20 : 68);
   const pad = Math.max(0.5, (hi - lo) * 0.08), least = (G.span === "10" ? 4 : G.span === "30" ? 8 : 20) * per(G);
@@ -89,14 +101,16 @@ export function graphSVG(G, v, w, h, id, tw = w) {
     marks += `M${f(x)} ${yT + 15}V${yB}`;
     nums += `<g transform="translate(${f(x)} ${yT})"><rect x="-8" y="0" width="16" height="15" rx="2"/><text y="11.5">${n}</text></g>`;
   }
-  /* PV and SV lines, broken where readings stopped; OUT as a stepped band */
-  let pv = "", sv = "", out = "", pen = false, svOn = false, outOn = false, prev = -1e9, lastPv = null;
+  /* PV and SV lines (and the new boil kettle's hold), broken where readings stopped; OUT as a stepped band */
+  let pv = "", sv = "", ho = "", out = "", pen = false, svOn = false, hoOn = false, outOn = false, prev = -1e9, lastPv = null;
   for (const p of pts) {
-    const x = f(X(p[0])), gap = p[0] - prev > gapAfter;
+    const x = f(X(p[0])), gap = p[0] - prev > gapAfter, s2 = svOf(p), h2 = hoOf(p);
     if (gap || p[1] == null) pen = false;
     if (p[1] != null) { pv += `${pen ? "L" : "M"}${x} ${f(Y(p[1]))}`; pen = true; lastPv = p; }
-    if (gap || p[2] == null) svOn = false;
-    if (p[2] != null) { const y = f(Y(p[2])); sv += svOn ? `H${x}V${y}` : `M${x} ${y}`; svOn = true; }
+    if (gap || s2 == null) svOn = false;
+    if (s2 != null) { const y = f(Y(s2)); sv += svOn ? `H${x}V${y}` : `M${x} ${y}`; svOn = true; }
+    if (gap || h2 == null) hoOn = false;
+    if (h2 != null) { const y = f(Y(h2)); ho += hoOn ? `H${x}V${y}` : `M${x} ${y}`; hoOn = true; }
     if ((gap || p[3] == null) && outOn) { out += `V${yO}Z`; outOn = false; }
     if (p[3] != null) { const y = f(yO - p[3] / 100 * band); out += outOn ? `H${x}V${y}` : `M${x} ${yO}V${y}`; outOn = true; }
     prev = p[0];
@@ -113,6 +127,6 @@ export function graphSVG(G, v, w, h, id, tw = w) {
     + `<defs><clipPath id="${id}-c"><rect x="0" y="${yT - 3}" width="${w}" height="${yB - yT + 6}"/></clipPath></defs>`
     + `<path class="g-grid" d="${grid}"/>${gapRect}<path class="g-mark" d="${marks}"/>`
     + `<path class="g-base" d="M0 ${yO}H${w}"/>${out ? `<path class="g-out" d="${out}"/>` : ""}<text class="g-bl" x="3" y="${yO - 2}">${outLabel}</text>`
-    + `<g clip-path="url(#${id}-c)"><path class="g-sv" d="${sv}"/><path class="g-pv" d="${pv}"/></g>${dot}`
+    + `<g clip-path="url(#${id}-c)">${pw ? `<path class="g-ref" d="${sv}"/><path class="g-sv" d="${ho}"/>` : `<path class="g-sv" d="${sv}"/>`}<path class="g-pv" d="${pv}"/></g>${dot}`
     + `<g class="g-gl">${gl}</g><g class="g-tl">${tl}</g><g class="g-mn">${nums}</g></svg>`;
 }

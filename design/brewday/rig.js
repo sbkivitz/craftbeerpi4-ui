@@ -96,9 +96,11 @@ function rigLine(id, med, paths, chev) {
   const ch = chev.map(([x, y, a]) => `<path class="ch" d="M-4.5 -5.5 L3.5 0 L-4.5 5.5" transform="translate(${r1(x)} ${r1(y)}) rotate(${a})"/>`).join("");
   return `<g class="ln ${med}" id="${id}">${layer("pf")}${layer("pd")}${ch}</g>`;
 }
-/* a hand valve: CraftBeerPi can't see it, so its position is drawn from the recipe step (renderRig) */
-function rigValve(id, x, y, med, tx, ty, anchor) {
-  return `<g class="valve ${med}" id="vl-${id}" transform="translate(${r1(x)} ${y})"><path d="M-13 -9 L13 9 V-9 L-13 9 Z"/></g><text class="tag vtag" id="vt-${id}" x="${r1(tx)}" y="${ty}"${anchor ? ` text-anchor="${anchor}"` : ""}></text>`;
+/* a hand valve: CraftBeerPi can't see it, so its position is drawn from the recipe step (renderRig). alt: where its tag
+   goes instead while it reads SET OPEN or SET CLOSED, for a valve whose run is too short for those words */
+function rigValve(id, x, y, med, tx, ty, anchor, alt) {
+  const at = alt ? ` data-alt="${r1(alt[0])} ${alt[1]} ${alt[2]}"` : "";
+  return `<g class="valve ${med}" id="vl-${id}" transform="translate(${r1(x)} ${y})"><path d="M-13 -9 L13 9 V-9 L-13 9 Z"/></g><text class="tag vtag" id="vt-${id}" x="${r1(tx)}" y="${ty}"${anchor ? ` text-anchor="${anchor}"` : ""}${at}></text>`;
 }
 
 function rigSVG(style, W, rs = 1) {
@@ -152,7 +154,7 @@ ${rigLine("ln-wort-coil", "wrt", coil, chCoil)}
 ${rigLine("ln-wort-in", "wrt", wortIn, chWin)}
 ${rigLine("ln-wort-out", "wrt", wortOut, [])}
 ${A ? "" : rigValve("sp", g.vSp, ySp, "liq", g.vSp, ySp + 26, "middle")}
-${rigValve("ret", g.vRet, yTop, "liq", g.vRet, yTop + 32, "middle")}
+${rigValve("ret", g.vRet, yTop, "liq", g.vRet, yTop + 32, "middle", A ? null : [g.hltRiser - 14, yTop + 8, "end"])}
 ${rigValve("coil", g.vCoil, yPump, "wrt", g.vCoil, yPump + 36, "middle")}
 ${rigValve("bk", g.vBk, yLow, "wrt", g.vBk + 22, yLow - 13, "")}
 ${fits}

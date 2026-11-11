@@ -7,7 +7,12 @@ This folder is a proposal. Nothing in it changes CraftBeerPi, and nothing is com
 - `brew-day.html` is layout B on its own: Scott chose it on 9 Nov 2026. Add `?layout=a` to see layout A. It has
   a sixth moment, `#sparge`, for the runoff to the boil kettle, and a seventh, `#boilpower`, for the boil
   power control Scott asked to have back on 10 Nov. It shows a temperature graph in each
-  faceplate, which Scott chose on 10 Nov; add `?graphs=none` to see the screen as first built.
+  faceplate, which Scott chose on 10 Nov; add `?graphs=none` to see the screen as first built. Add
+  `?bk=power` for the boil kettle Scott approved on 10 Nov (`boil-kettle.html` shows it beside today's), with
+  more moments for it: `#heatup`, `#pause`, `#pause-long`, `#boiling`, `#hold`, `#keepboil`, `#letfall`,
+  `#bktarget` and `#handhold`. `#notarget` and `#notarget-hlt` show a vessel in AUTO with no target.
+  `#sparge-heat`, `#sparge-ready`, `#sparge-run` and `#sparge-batch` show the new SpargeStep (core
+  4.7.7.post35); `#sparge` keeps the old MashStep sparge that recipes already in the book still have.
 - The pages run on demo data copied from the simulator's config (`C:\src\personal\cbpi-testbench\config`).
   They do not talk to CraftBeerPi. Buttons respond and timers run, but nothing is sent anywhere.
 
@@ -44,7 +49,7 @@ same. The section at the end has the detail.
 | Next step asks once, in place: "Skip the rest of Saccharification (23:41 left) and start Sparge?" | React UI | |
 | Hop and lid alerts in the title bar with their own button (ADDED, DONE) | React UI | Existing notifications with actions. Since the S2 fix they stay until answered. |
 | Line drawing of the rig: liquor and wort pipes that move only while their pump runs; elements glow while heating | React UI | A new drawing component driven by actor state. The 3-vessel HERMS plumbing is built in; the mapping above says which switch is which pump. |
-| The drawing's hand valves and which way the liquid goes: through the HERMS coil and round the HLT while mashing; to the boil kettle, with sparge water from the HLT pump to the top of the mash tun, during the runoff | React UI | Scott's request and answers (9 Nov): see the end of this file. CraftBeerPi can't see the valves, so the screen works the positions out from the recipe and says so under the boil kettle ("VALVES ARE SET BY HAND · SHOWN FOR STEP 4 (SPARGE)"). The runoff runs from the moment the step named for it has started (status A, S or D) until the boil step leaves I, so it includes the hold at "Ready to boil?". The step is found the way the core finds it for the first-wort reminder, `StepController._collects_wort`: not a HeatStep; the name, split at camel case, lower-cased and with anything but letters and digits turned to spaces, matches `^(?:step \d+ )?(?:(?:start\|begin) )?(?:(?:fly\|batch\|continuous) )?(?:sparge\|sparging\|lauter\|lautering\|run ?off)(?: \|$)` and contains none of the words water, heat, heating, prepare, preparation, salts or treatment. The boil step is the first BoilStep after it. At any other time, and with no recipe, the drawing shows recirculating. In Test Recipe v5 the Sparge step keeps the mash tun in AUTO, so CraftBeerPi reports the wort pump running "for the HERMS"; during the runoff the drawing still sends it to the boil kettle and leaves the coil dark. The mockup's `runoffStep()` and `renderRig()` are the reference, and `#sparge` is the demo moment. |
+| The drawing's hand valves and which way the liquid goes: through the HERMS coil and round the HLT while mashing; to the boil kettle, with sparge water from the HLT pump to the top of the mash tun, during the runoff | React UI | Scott's request and answers (9 Nov): see the end of this file. CraftBeerPi can't see the valves, so the screen works the positions out from the recipe and says so under the boil kettle ("VALVES ARE SET BY HAND · SHOWN FOR STEP 4 (SPARGE)"). The runoff runs from the moment the step named for it has started (status A, S or D) until the boil step leaves I, so it includes the hold at "Ready to boil?". The step is found the way the core finds it for the first-wort reminder, `StepController._collects_wort`: not a HeatStep; the name, split at camel case, lower-cased and with anything but letters and digits turned to spaces, matches `^(?:step \d+ )?(?:(?:start\|begin) )?(?:(?:fly\|batch\|continuous) )?(?:sparge\|sparging\|lauter\|lautering\|run ?off)(?: \|$)` and contains none of the words water, heat, heating, prepare, preparation, salts or treatment. The boil step is the first BoilStep after it. At any other time, and with no recipe, the drawing shows recirculating. In Test Recipe v5 the Sparge step keeps the mash tun in AUTO, so CraftBeerPi reports the wort pump running "for the HERMS"; during the runoff the drawing still sends it to the boil kettle and leaves the coil dark. The mockup's `runoffStep()` and `renderRig()` are the reference, and `#sparge` is the demo moment. A SpargeStep is the runoff by its type, and holds the valves on recirculating until Sparge started: see "The SpargeStep" below. |
 | Phone layout: current step on top, faceplates stacked, recipe below, tabs along the bottom | React UI | Fixes U4 (the dashboard does not adapt to small screens). The phone keeps every control the monitor has. |
 | Connection lost: readings turn grey and show their age, controls pause, an alert says what is happening | React UI | Uses the websocket's connection state. Reconnecting cleanly is the separate open defect HC-UI-02. |
 | ALL OFF in the title bar: recipe stopped, every kettle to MANUAL, both elements and both pumps off | React UI, or server optional | Scott kept it on 9 Nov and asked for it to stop the HLT pump too, so it was renamed from ALL HEAT OFF. The UI can send the separate commands and report any that fail: stop the recipe first (`/step2/stop`) so it can't switch a kettle back on, then each kettle's `/off`, then `/off` for all four switches. A single server endpoint would make it one command that either works or fails as a whole. The HLT pump's override switch can still run that pump; see the next row. |
@@ -212,7 +217,7 @@ Checked in the mockup (Edge), both with `?graphs=none` and with the graphs:
   (the hint follows: "used from 170 °F"). No script errors.
 - With no editor open, the six existing moments change only in the boil kettle's lamp row.
 
-### Found while checking: the whirlpool hold (not designed yet)
+### Found while checking: the whirlpool hold (designed in the boil kettle redesign below)
 
 When the wort in a whirlpool stand cools more than 3.6 °F below the stand's temperature, CraftBeerPi asks
 whether to heat it back and hold it there until the stand ends (the core's `WhirlpoolStep`). On "Heat and
@@ -233,6 +238,509 @@ hold; the power button says the boil power isn't used during a hold. The screen 
 the kettle's `Hold_Target` setting: a number above 0 and more than 3.6 °F below the boil point
 (`BoilPower._hold_target`). Whether Scott also wants to set a hold from this screen is the question Brett is
 keeping for him.
+
+Update, same day: the redesign below designs it. The demo moment is `#hold` (17:18:40, holding 170 °F at
+35 %). Today's faceplate shows it as described above. The redesign shows HOLD 170.0 in the SV place. MODE
+stays AUTO, because AUTO is what Scott switched on; the hold is said in the line under the window instead.
+
+## AUTO with no target: ready to build (10 Nov)
+
+Scott on 8012 at 13:47: "What went wrong? I have Mash Tun "Auto" on but HLT is off. I think a "SV" was not
+set - but it should pop up a warning in that case". The mash tun's target was 0, left from the last recipe.
+PID_HERMS took 0 as a real target, so the HLT never heated, and the faceplate said MANUAL while MODE said
+AUTO. Brett's server change raises CraftBeerPi's warning after 5 s. The screen's part is to tell the truth at
+once, on the faceplate (The Mode Tells The Truth Rule in DESIGN.md).
+
+"No target" is what the screen already shows as SV "– –": unset, 0 or below. The new lines show only while
+the kettle's logic runs: its own AUTO or, for the HLT, the mash tun's HERMS.
+
+| Where | Today, as built | Proposed |
+|---|---|---|
+| Mash tun in AUTO, no target | "MANUAL · wort pump by hand" | "No target, so the HLT won't heat" |
+| HLT under the HERMS, mash tun with no target | "MANUAL · element by hand" | "Not heating: the mash tun has no target" |
+| A kettle in its own AUTO (the HLT's PIDBoil), no target | "MANUAL · element by hand" | "No target, so it won't heat" |
+| TARGET's hint, on a kettle in AUTO with no target | "change SV" | "set SV" |
+
+The new lines and the "set SV" hint are in Prompt Amber, the colour for "waiting for you", and the line is
+600 weight. Nothing else on the faceplate changes: MODE AUTO, SV "– –", OUT ("– –" on the mash tun, 0 % on
+the HLT), and the wort pump RUNNING, because PID_HERMS still runs its pump. The HLT under the HERMS keeps its
+dashed HERMS button, so it has no TARGET hint to change. The boil kettle would show "No target, so it won't
+heat" too if its logic ever ran without a target; BoilPower never does, because it puts its boil threshold in
+as the target as it starts.
+
+The code, in the mockup's names (screen.js's `hermsOn()` is the mockup's `st.v.mt.mode === "auto"`):
+
+    const noTarget = v => st.v[v].mode === "auto" && st.v[v].sv == null;
+
+    // devHTML: after the link-lost line, before the MANUAL line. The MANUAL line's test
+    // (not driven, or V.sv == null in any mode) is what hid it, so these come first.
+    if (herms && st.v.mt.sv == null) return `<span class="warn">Not heating: the mash tun has no target</span>`;
+    if (noTarget(v)) return `<span class="warn">${v === "mt" ? "No target, so the HLT won't heat" : "No target, so it won't heat"}</span>`;
+
+    // tgtHTML
+    const by = v === "hlt" && st.v.mt.mode === "auto", pend = st.pend["t:" + v], none = !by && noTarget(v);
+    return b(none ? "tgtbtn notgt" : "tgtbtn", "TARGET", by ? "set by mash tun" : pend ? "sending…" : none ? "set SV" : "change SV", {cmd: `tgt:${v}`, why});
+
+    /* brew-day.css */
+    .dev .warn{color:var(--prompt);font-weight:600}
+    .tgtbtn.notgt small{color:var(--prompt)}
+
+The warning in the title bar is CraftBeerPi's, so the screen shows it like any other prompt. My only
+suggestion is its wording. Keep the title ("No target for the Mash Tun") and the OK button, and say: "AUTO is
+on with no target temperature, so the HLT won't heat. Set a target, or switch to MANUAL." For a kettle without
+a HERMS: "…so it won't heat." It says what's wrong first, and drops "but" and "for it". The mockup uses these
+words.
+
+What the mockup now does that the real screen gets from CraftBeerPi (demo only, nothing to port):
+- AUTO no longer makes up a target when there is none (it used to give the mash tun 149.0 °F and the HLT its
+  own). So START on a recipe step now sets the step's target first, as CraftBeerPi's steps do.
+- The 1 s tick plays CraftBeerPi's part: from 5 s of AUTO with no target, it raises the warning once, with
+  "No target for the Mash Tun · waiting for you" on the last-event line. The mockup shows one prompt at a
+  time, so behind a hop alert the warning waits its turn. OK takes it down; the faceplate's line stays until
+  there's a target or MANUAL. Setting a target, or MANUAL, takes the warning down at once.
+
+Demo moments, both also with `?graphs=none`:
+- `#notarget` (13:47:10), Scott's case: the mash tun in AUTO since 13:26 with no target, the HLT in MANUAL at
+  68.0 °F, the warning up.
+- `#notarget-hlt` (09:12:40): the HLT's own AUTO with no target, at 66.2 °F.
+
+Checked at 1920×1080, 1920×950, 1440×900, 1366×768, 768×1024 and 390×844, with graphs and with
+`?graphs=none`: nothing overflows, and no size scrolls more than it does in `#mash`. Walked through: in
+`#manual`, a held AUTO on the mash tun turns its line amber at once, and the warning comes at 5 s; TARGET 152
+starts the HLT through the HERMS and takes the warning down; in `#hop` the warning waits behind the hop
+alert; MANUAL brings back "MANUAL · wort pump by hand".
+
+Files: `brew-day.js` (`noTarget`, `noTargetBanner`, `devHTML`, `tgtHTML`; for the demo, `setMode`,
+`cmdTgtSet`, `cmdStart`, the 1 s tick and the two moments), `brew-day.css` (the two rules above), `graphs.js`
+(flat, cold history for the two moments) and `brew-day.html` (two links on the mockup strip). Those files
+also hold the boil kettle redesign below, behind `?bk=`. It is off unless asked for, and isn't ready to build.
+
+## The boil kettle's power and temperature: ready to build (Scott, 10 Nov)
+
+> Later that evening Brett's new BoilPower changed parts of this section; the next section wins where they
+> differ. The button beside AUTO/MANUAL is now TARGET (BOIL or a temperature to hold), and the boil power's
+> button is the framed 45 % in the window. BOIL AT is a setting of its own with its own box. A hold is the
+> kettle's own target and reads SV, like the HLT's, with OUT. The pause is `set_paused(Paused)`.
+
+Scott called the boil kettle's power and temperature controls "not intuitive". A first, three-way comparison
+confused him ("I don't understand what you are showing me"). Then he asked: "make the BoilPower plugin look a
+little different in its controls - but leave the HLT/MT alone. I don't need the heating element power echoed
+so many places". Shown the result beside today's boil kettle, he answered "I think, YES", and asked for more
+ideas from commercial boil controllers. Of three ideas taken from them, he chose "All three": one-tap −5 % and
++5 %, pausing the heat for a boil-over, and a usual power that each brew day starts at. Shown the result, he
+answered "Yes, hand it to Brett".
+
+It is the mockup's `?bk=power`, compared with today in `boil-kettle.html`. The mockup's default stays
+`?bk=today`, exactly as built, until you tell me this is built; then I'll make power the default. Until then,
+compare your screen with `brew-day.html?bk=power#<moment>` (with `&graphs=none` while the graphs aren't
+released). Every moment's boil kettle changes, so test them all. The HLT and the mash tun don't change.
+
+| Part | Today | Proposed (`?bk=power`) |
+|---|---|---|
+| Green readout | SV 210.2 °F (the boil threshold) | BOIL 45 % (Boil_Power); HOLD 170.0 °F during a whirlpool hold (`Hold_Target`) |
+| OUT | OUT 45 % with its bar | None on the boil kettle; MODE stays |
+| Element button | HEATING 45 % · run by AUTO (locked) | Not locked in AUTO: HEATING · tap to pause. A tap pauses the heat: PAUSED in Prompt Amber, "hold to heat"; a held press heats again |
+| Line under the window | "Boiling", or "39.4 °F below target · about 20 min at this rate" | "Boiling", "Full power until it boils · about 20 min", "Heat paused for 0:26" (Prompt Amber), "Holding 170 °F for the whirlpool · 0.6 °F below" or "MANUAL · element by hand" |
+| Beside AUTO/MANUAL | TARGET · change SV | BOIL POWER · change: opens the power editor, with green digits |
+| Beside the element | BOIL POWER 45 % / POWER 100 % in MANUAL | −5 % · turn down and +5 % · turn up, while AUTO runs: one tap sends `set_boil_power` at once. Not in MANUAL, during a hold, or while the editor is open |
+| In the power editor | −5 −1 [45] +1 +5, SET, CANCEL | The same, plus BOIL AT 210.2 °F · full power until then · change (the kettle's target, 190-212 °F; above 212 °F it refuses with a note), and USUAL 45 % · starts each recipe · set in Hardware |
+| In MANUAL | The power button sets the element's level by hand | The power button still sets Boil_Power ("kept for the boil in AUTO"); no level by hand |
+| Graph | The threshold as a solid green line | The threshold dashed grey; a hold solid green; OUT drops to 0 while paused |
+
+How it behaves:
+- −5 % and +5 %: "sending…" under the button while waiting. A tap that would pass 0 or 100 % stops there
+  (at 2 %, −5 % gives 0 %); only at 0 or 100 % itself is the button refused, with a note ("The boil power is
+  already 100 %."). Corrected 10 Nov evening: until then the mockup refused −5 % at 2 %, saying it was
+  already 0 %. The event says "Boil power 40 % (was 45 %) · confirmed", plus "used
+  once it boils at 210.2 °F, full power until then" while it heats up, or "used when the heat carries on"
+  while paused.
+- Pause: a tap on HEATING in AUTO shows PAUSING…, then PAUSED, and the line counts the pause in Prompt Amber.
+  Event: "BOIL ELEMENT paused · confirmed". A held press on PAUSED shows CARRYING ON…, then HEATING, with
+  "BOIL ELEMENT heating again". A tap on PAUSED only says "Keep holding for one second. Heat only comes on
+  with a held press." AUTO, the recipe, its timer and the boil power carry on while paused. MANUAL and ALL OFF
+  end the pause. Carrying on goes back to what AUTO would do: the boil power once boiling, full power below.
+- The editor: BOIL POWER opens it; BOIL AT inside it opens the target editor; USUAL is a reading, not a
+  button. It stays open if the kettle's mode changes, because it always sets the boil power.
+- Usual power: when a recipe starts from its first step, CraftBeerPi puts Boil_Power back to the usual power
+  and says so: "Boil power back to your usual 45 % (was 35 %) · by recipe". A change made later that day,
+  before or during the boil, is kept for that boil. Scott chose "each boil starts at your usual power"; I
+  moved the reset from the start of the Boil step to the start of the recipe, so a power set during the
+  "Ready to boil?" hold isn't thrown away the moment the boil starts.
+- This settles your question about the "Ready to boil?" hold: the button is BOIL POWER in every mode, and
+  in MANUAL the element runs at its own level, as the HLT's does. The screen no longer sets that level.
+
+What CraftBeerPi needs. The readout, −5 % and +5 %, BOIL AT and the hold need only the screen:
+CraftBeerPi already gives it the threshold, Boil_Power and `Hold_Target`. Two additions need BoilPower:
+- Pause: an action that switches the element off and keeps it off without stopping AUTO, keeping the boil
+  latch and Boil_Power, and one that resumes. Without it, BoilPower switches the element back on at its next
+  control decision, 2 s later. The screen needs to read that it's paused and, so that every screen counts the
+  same, since when. Declared like `set_boil_power`, the screen can tell a logic that has it. The mockup sends
+  them as "pause" and "resume" on the element's key.
+- Usual power: a setting (for example Usual_Boil_Power, shown in Hardware), copied into Boil_Power when a
+  recipe starts from its first step.
+If you'd rather release the screen first, it can leave out PAUSED and USUAL until the logic declares them.
+
+Moments: `#heatup` (15:12, the Boil step waits for 210.2 °F, so the step says HEATING, as your screen already
+does; with `?bk=power` the LOG has the usual power's reset at 10:02:16), `#pause` (15:31:20, a boil-over: the
+heat paused at 15:30:55), `#boiling` (15:52:40, PV 212.0 as on the simulator), `#boilpower` (the editor
+open), `#sparge` (MANUAL before the boil) and `#hold` (the whirlpool hold, 170 °F at 35 %).
+
+Changed since your boil power port, all in `proposal\`:
+- `brew-day.js`: the moments above; `bkNew`, `bkHolding`, `bkLine`, `holdOut`, `svCell`, `powerHTML`,
+  `boilAtHTML`, `nudgeHTML`, `bkLampHTML`, `bkNudges`; the boil kettle's parts of `lampHTML`, `auxHTML`,
+  `plateHTML` and `editorHTML`; `cmdTgtOpen` and `cmdTgtSet` (BOIL AT), `cmdPwrOpen`, `cmdPwrSet`,
+  `cmdNudge`, `cmdPause`, `setActor` and setMode's boil kettle branch (both end a pause), `cmdStart` (the
+  usual power), the 1 s tick (the pause count, and a step's timer waiting for its temperature), and
+  `bk.usual` in `load()`. Port what `BK === "power"` and `bkNew()` select; the `today` and `words` branches
+  go. Don't port `FOCUS` and `reportFocus()` at the bottom: they only serve `boil-kettle.html`.
+- `graphs.js`: the demo history for the new moments, rows with the hold as a 5th field, the threshold and
+  hold lines in `graphSVG`, and `graphSummary`'s wording.
+- `brew-day.css`: `[data-bk=power] .editor.pwr input`, `.ctrls.bkpow`, `.ctrls .nudge`,
+  `.lamp[data-state=paused]` (three rules), `.editor small`, `.editor .bkat`, `.editor .usual`, `.g-sv.g-dash`
+  and `.g-ref`, and the drawing's lower floor while an editor is open: 136 px, or 64 px with the graphs
+  (`[data-bk=power] .app[data-editing] .rig`). The power editor's third row needs it: without it, a note under
+  the open editor scrolled the page 15 px at 1920×950 and up to 20 px at 1440×900.
+- `brew-day.html`: links on the mockup strip. `boil-kettle.html` is new and only for comparing; nothing in it
+  to port.
+- `DESIGN.md` and `.impeccable\design.json`: the boil kettle's faceplate, buttons, editor, lamp states, the
+  Held Heat Rule, dos and don'ts.
+
+Checked: all 13 moments with `?bk=power`, at 1920×1080, 1920×950, 1440×900 and 390×844, with and without
+graphs: no page errors, nothing overflows, and no monitor size scrolls more than today's boil kettle does.
+With the power editor open and a two-line note under it, nothing scrolls at 900 px tall or more. On a
+1366×768 laptop, which already scrolls 92 px with today's editor open, it scrolls 118 px. Walked through
+−5 %/+5 %, a pause and a held carry-on, BOIL AT from the editor (213 °F refused), ALL OFF while paused, and
+the usual power: a fresh START goes back to 45 %, and 38 % set during the sparge is kept when the Boil step
+starts.
+
+Still open then, all answered by Scott later on 10 Nov (next section): the boil's timer keeps counting while the
+heat is paused; a forgotten pause gets a kept warning after 2 minutes; and a hold by hand is the kettle's own
+target, "like the HLT".
+
+## The boil kettle's target, KEEP BOILING and a forgotten pause: ready to build (10 Nov, evening)
+
+Build this with the section above; where they differ, this one wins. It covers three requests, all on
+`brew-day.html?bk=power` (with `&graphs=none` until the graphs ship):
+- Scott: "add a small checkbox with LED to choose keep at boil temp or let the boil power fully drive the temp
+  (ok to fall if I set it too low %)".
+- Scott, on holding by hand: "Set the boil kettle's target to 170 °F, like the HLT, and it holds there", "I
+  question if a new button is needed for it", and "work with design agent for most elegant and practical
+  solution... intuitive, elegant, and natural". Your BoilPower now treats the kettle's target T as BOIL when
+  it is within 3.6 °F of the boil point B or above (or unset), and as a temperature to hold below that.
+- Scott, on the pause: the boil's timer keeps counting, and a forgotten pause gets a kept warning after 2
+  brewing minutes.
+
+The idea in one line: the boil kettle works like the HLT, plus BOIL. TARGET sits beside AUTO/MANUAL as on the
+HLT, and its box has one more key, BOIL. While the target is BOIL, the green number is the boil power, and the
+number itself is the button for it. While the target is a temperature, the faceplate reads like the HLT's.
+
+### The faceplate, part by part
+
+| Part | Target BOIL | Target a temperature (a hold) |
+|---|---|---|
+| Nameplate row | BOIL KETTLE, then KEEP BOILING at the right | BOIL KETTLE only: a hold never uses KEEP BOILING |
+| Green readout | BOIL and the framed boil power: [45 % change] | SV 170.0 °F, as on the HLT |
+| Beside it | MODE | OUT (with its bar) and MODE, as on the HLT |
+| Line under the window, AUTO | As before: "Boiling", "Full power until it boils · about 20 min", "Below a boil · back to full power at 206.6 °F", "Not boiling · 10.9 °F below 210.2 °F" | As on the HLT: "0.6 °F below target", "At target", "18.4 °F above target · about 15 min at this rate". Resting inside 3.6 °F below it: "1.2 °F below target · heats again at 166.4 °F" |
+| Controls, AUTO | −5 % · HEATING · +5 % | HEATING, or OFF while it rests, alone; a tap pauses here too |
+| Beside AUTO/MANUAL | TARGET · change | TARGET · change |
+
+In MANUAL the line says "MANUAL · element by hand", there are no −5 % and +5 %, and the readout follows the
+target: BOIL [45 % change], or SV 170.0 °F. Paused, in either kind of target: "Heat paused for 2:15" in Prompt
+Amber, as before.
+
+The readout's kind comes from T and B alone: a hold when 0 < T < B − 3.6 °F, otherwise BOIL. B is the kettle's
+`Boil_Threshold` prop; the screen no longer reads a separate hold.
+
+### TARGET's box
+
+```
+[ −1 ][ −.1 ][  BOIL  ][ +.1 ][ +1 ]
+[      SET BOIL       ][  CANCEL   ]
+[ BOIL                ][ BOIL POWER]
+  full power to 210.2 °F    change
+```
+- It opens at the current target, BOIL or the hold, with the number selected, so typing replaces it ("BOIL"
+  too). Your built screen only focuses the box; the HLT's and mash tun's boxes would gain from the same
+  `select()`, since typing 150 into "168.0" gives "150168.0" there today. That one is your call.
+- From B − 3.6 °F up everything is BOIL, as in your BoilPower (206.6 °F with B at 210.2). So the steps run
+  ...205.6, 206.5, BOIL: from BOIL, −.1 gives 206.5 and −1 gives 205.6. At BOIL, +.1 and +1 are refused with
+  "BOIL is the top. BOIL AT, under BOIL POWER, sets where the boil starts."
+- BOIL fills the box with BOIL and shows as pressed, like AUTO or MANUAL, whenever the box says BOIL. Typing
+  212, or anything from 206.6 up, turns SET into SET BOIL and presses BOIL before SET is pressed; the box keeps
+  what was typed.
+- SET BOIL sends B as the target. SET 170.0 °F sends 170. Below 32 °F: "Enter a target from 32 to 206.5 °F,
+  or press BOIL."
+- Events: "Boil kettle target BOIL · confirmed" and "Boil kettle target 170.0 °F · confirmed". A hold set
+  while the Boil step runs adds "it holds instead of boiling; the Boil step's timer carries on": the screen
+  offers it, as you decided, and says what it does. While paused: "the heat stays paused".
+- BOIL POWER, in the third row, swaps this box for the power box.
+- Setting a target in AUTO takes effect as BoilPower would: BOIL is full power until B, then the boil power
+  (at once if the wort is already at B); a hold eases in, or rests while the wort is above it (an element that
+  was heating carries on, as in `_hold_climb_power`).
+
+### The boil power's button, in the window
+
+- Shown only while the target is BOIL: the green "45 %" with a small "change", in a 1 px frame
+  (`box-shadow: inset 0 0 0 1px #3b4d5e`, radius 3 px). The frame takes no room: padding .28em with margin
+  −.28em, so the digits sit where a plain reading's would. Hover: frame #7f91a3 and "change" in Text. While its
+  box is open: a 2 px Select Blue frame (`aria-expanded="true"`). Offline: frame #2a3846, disabled with the usual
+  note. After SET in its box: "sending…" in place of "change" (not for −5 % and +5 %, which say "sending…"
+  under themselves).
+- It is 29 to 44 px tall; `::before` makes the tap area at least 44 px at every size, the phone included.
+- Accessible name: "Boil power 45 percent: change". It opens the power box, and closes it if it is open.
+- Why there: a third button beside AUTO/MANUAL doesn't fit (TARGET is 94 px wide at 1366 and 102 px at 1440),
+  and the boil power can't live only inside TARGET's box: "I seem to have lost the critical ability to set the
+  boil power percentage" came from it going missing once already. The frame and "change" make it read as a
+  control, in the window's own style (the graph's chosen span is framed the same way). The HLT's and the mash
+  tun's readings stay plain readings.
+
+### The power box and BOIL AT
+
+- The power box is as approved, opened from the framed 45 % or from BOIL POWER in TARGET's box, with its
+  number selected.
+- BOIL AT now opens a box of its own, two rows like the HLT's (aria-label "New boil temperature for the boil
+  kettle"). It sends `set_boil_at(Boil_Threshold)`, 190-212 °F, with the same two refusals as before.
+- Event: "Boil kettle boils at 205.0 °F (was 210.2 °F) · confirmed". In a hold it adds "not used while it holds
+  170 °F". A target at BOIL keeps aiming at the boil, as your server does; the mockup moves T with B.
+- An edge case for you: lowering B to within 3.6 °F of a hold turns that hold into BOIL (a hold at 200 °F
+  with B lowered to 202). Holds are usually far below, so I've left it.
+
+### KEEP BOILING
+
+- A small checkbox at the right end of the nameplate row. The box is the LED: lit Setpoint Green with a dark
+  tick and a soft glow while ticked ("Yes"); dark with a #7f91a3 edge while unticked ("No"). It is no taller
+  than the name, so the row doesn't grow; `::before` stretches its tap area to 44 px. Label "KEEP BOILING";
+  `role="checkbox"`, `aria-checked`; screen readers also hear ": full power again if the wort falls 3.6 °F
+  below a boil".
+- Shown only while the target is BOIL, in AUTO or MANUAL. One tap sends `set_keep_boiling(Keep_Boiling)`,
+  "Yes" or "No". Waiting: the box shows the marching stripes, as a pending button does. Offline: grey.
+  ALL OFF leaves it alone.
+- Events: "Keep boiling on · confirmed" or "Keep boiling off · confirmed", with what it means now: in MANUAL
+  "kept for the boil in AUTO"; paused "used when the heat carries on"; ticked while held at the boil power
+  more than 3.6 °F below B "full power until it boils"; ticked while boiling "back to full power if it falls to
+  206.6 °F"; unticked while boiling "the boil power only, even below a boil"; unticked while still heating
+  "full power until it boils, then the boil power only".
+- The line under the window, while held at the boil power below B: ticked, "Below a boil · back to full power
+  at 206.6 °F"; unticked, "Not boiling · 10.9 °F below 210.2 °F". The screen can't read the latch; it can tell
+  from the element running at the boil power, not full power, while PV < B.
+- Scott asked for a "small checkbox with LED". I read that as an LED-style checkbox, one lit box, so the state
+  shows once. If he wants a round lamp beside a tick box instead, it is a small change.
+
+### A forgotten pause
+
+- Your interface: a tap on HEATING (or OFF) in AUTO sends `set_paused(Paused="Yes")`; a held press on PAUSED
+  sends `set_paused(Paused="No")`. The line counts from `Paused_At`, so every screen shows the same time. Pause
+  works in a hold too.
+- The warning, from the server: title "Boil Kettle heat still paused", message "The heat has been paused for 2
+  minutes. To heat again, press and hold PAUSED on the Boil Kettle." (the kettle's name where it says Boil
+  Kettle). One OK. Kept, once per pause, and taken down when the heat carries on, the kettle goes to MANUAL, or
+  ALL OFF. OK only puts it away; the heat stays paused. In the mockup it waits its turn behind another prompt.
+  Event: "Boil Kettle heat still paused · waiting for you".
+- The boil's timer keeps counting while paused, as Scott chose; the mockup already did.
+
+### Graphs (option A)
+
+- Target BOIL: drawn at B as the grey dashed reference, as before. A hold: the green line at the target, as on
+  the HLT. With `?bk=power` the demo rows no longer use a fifth field for a hold; it is the target, in the third.
+- The line's "about N min at this rate" heads for the hold, or for B while BOIL. The graph's screen-reader
+  summary ends "; target 170.0 °F" for a hold.
+
+### Moments
+
+- `#bktarget` (12:41:02, no recipe; boiling by hand in AUTO): TARGET's box open with 170.0 typed.
+- `#handhold` (12:58:40, the same day): AUTO, target 170, the wort at 188.4 °F and cooling, element off, SV
+  170.0, OUT 0 %, "18.4 °F above target · about 15 min at this rate" with graphs.
+- `#hold` (the recipe's whirlpool) now has the target at 170: SV 170.0, OUT 35 %, "0.6 °F below target".
+- `#pause-long` (15:33:10): the `#pause` boil-over 2:15 later, PV 206.3, the warning in the title bar, "Heat
+  paused for 2:15".
+- `#keepboil` and `#letfall` (16:31:10, 2 %): KEEP BOILING ticked, and unticked at 16:10:21.
+- Opened by a press, for the identity test: TARGET in `#boiling` (the box at BOIL), the framed 45 % in
+  `#boiling`, BOIL AT inside the power box in `#boilpower`.
+- Today's view of every moment is as it was. The new moments show today's faceplate honestly: SV 210.2 while
+  it holds.
+
+### Changed since the last boil kettle notes, all in `proposal\`
+
+- `brew-day.js`:
+  - New: `bkHoldT`, `endPause`, `pauseBanner`, `boilReadHTML`, `bkTgtEditorHTML`, `focusTin`, `cmdBatOpen`,
+    `cmdTgtBoil`, `cmdBkTgtSet`, `cmdBatSet`, `bkRetarget`, `stepTarget`.
+  - Changed: `boilFrom` (`Boil_Threshold` with power), `bkHolding`, `bkLatched`, `bkLine`,
+    `holdOut(T, pv, heating)`, `tgtHTML` ("change"), `powerHTML` (power branch gone), `keepHTML` (new),
+    `editorHTML` (BOIL AT is `bat`), `auxHTML` (OUT in a hold), `svCell`, `plateHTML`, `setMode`'s boil kettle
+    branch, `cmdTgtOpen`, `cmdTgtStep`, `cmdTgtSet`, `cmdPwrOpen`, `cmdPwrSet`, `cmdNudge`, `cmdKeep` (new),
+    `cmdPause`, `stepStart`, `cmdStart`, `setActor`, `run` (`tboil`, `bat`, `keep`), the input handler, the 1 s
+    tick (the warning) and `load()` (`bk.boilAt`, `bk.keep`).
+  - Scenes `hold`, `keepboil`, `letfall`, `pause-long`, `handhold`, `bktarget`.
+- `graphs.js`: `gDemo` (`pause-long`, `handhold`, `hold`, `keepboil`, `letfall`), `graphTick`, `graphSummary`,
+  `graphETA`, and `graphSVG`'s `svOf`/`hoOf`.
+- `brew-day.css`: `.phead`, the `.keep` rules, the `.svbtn` rules, `.editor .tboil` and `.editor .tpwr` (4
+  rules), and `.keep .box` in the reduced-motion line.
+- `brew-day.html`: strip links. `boil-kettle.html`: moments and captions only, nothing to port.
+
+### Checked
+
+- All 18 moments at 1920×1080, 1920×950, 1440×900 and 390×844, with and without graphs: no page errors,
+  nothing overflows, and no size scrolls more than today's boil kettle does.
+- TARGET's box open with a two-line note under it: no scrolling at 900 px tall or more; 113-115 px at
+  1366×768, where today's open box already scrolls 92 and the approved power box 118.
+- The framed 45 % has a 44 px tap area at every size.
+- Pressed through: the BOIL key, steps either side of BOIL, + refused at BOIL, a typed 212 (SET BOIL) and 20
+  (refused); a hold set mid-boil (element off, OUT 0 %, SV, the Boil step's caveat) and back to BOIL (45 %, KEEP
+  BOILING and the steps back); the framed 45 % opening and closing the power box; BOIL AT 213 refused, 205 moving
+  a BOIL target, 208 in a hold leaving it alone; from a hold to BOIL below the boil point (full power); a pause,
+  the warning at 2:00 and only once, OK, carrying on with a held press (warning gone), and MANUAL or ALL OFF
+  taking it down; a pause in a hold.
+
+## The SpargeStep: ready to build (core 4.7.7.post35, 10 Nov, evening)
+
+Scott, 10 Nov: "sparge step needs to let the HLT get up to mash out temperature before pumping wort over to boil
+kettle. I also may do a "batch sparge" - it should be flexible to let me do either", then "I think the wort pump
+may need to be manual". Core 4.7.7.post35 adds the step type SpargeStep for it. The screen as built copes with
+most of it. What it gets wrong is the drawing: today it shows the valves set for the runoff from the step's first
+second, while the HLT is still heating the sparge water and the wort pump is off.
+
+The reference is the mockup with `?bk=power`, moments `#sparge-heat`, `#sparge-ready`, `#sparge-run` and
+`#sparge-batch`, in both layouts and with or without `?graphs=none`. `#sparge` is unchanged: recipes already in
+the book keep the old MashStep sparge until they are imported again.
+
+### What the screen shows, phase by phase
+
+| Phase | How the screen knows | Step row | Drawing |
+|---|---|---|---|
+| Heating the sparge water | `state_text` "Waiting for Target Temp", no countdown | HEATING (as built) | Recirculating, as built |
+| The water is ready | A prompt titled with the step's name, no countdown | WAITING FOR YOU (as built) | Recirculating, with the valves to change marked in amber |
+| Sparge started, with a timer | The step's props have `_sparge_started: true`; countdown in `state_text` | mm:ss LEFT (as built) | The runoff, as built today for a runoff step |
+| Sparge started, Timer 0 | `_sparge_started: true`, no countdown | **SPARGING** (new; was NOW) | The runoff |
+
+### The hand valves
+
+- **A SpargeStep is the runoff by its type**, whatever it is called, as in the core's
+  `StepController._collects_wort` (`collectsWort`). Steps of other types are still found by name, as before.
+- **Held on recirculating until Sparge started.** While the current step is a SpargeStep and its props don't
+  have `_sparge_started: true`, the drawing shows recirculating, exactly as during the mash (`held` in
+  `renderRig`). That covers HEATING, WAITING FOR YOU, and a SpargeStep stopped before the press. Use
+  `_sparge_started`, not the countdown: with Timer 0 there never is one. Once it is true, the drawing shows the
+  runoff, as it does today for a runoff step.
+- **Marked while the step waits for you.** When the step row says WAITING FOR YOU on that step, and the
+  connection is up, each valve that has to change stays drawn where it is now and turns Prompt Amber
+  (`--prompt`, #ffb21e), like everything else waiting for the brewer:
+  - its outline: `.rig-line .valve.set.liq path, .rig-line .valve.set.wrt path {stroke: var(--prompt); stroke-width: 3}`,
+    placed after the `.valve.live` rule so it wins over a valve's blue or brown;
+  - its tag, which says where it has to go: "SET OPEN" or "SET CLOSED" (`.tag.set {fill: var(--prompt)}`);
+  - the second line of the note under the boil kettle: "SET THEM FOR STEP 4 (SPARGE)", amber (`.vnote .set`), in
+    place of "SHOWN FOR RECIRCULATING".
+  The pipes stay lit as they really run: the HLT pump round the hot liquor tank, the wort pump off.
+- Layout B marks four valves: the coil line SET CLOSED, the line to the boil kettle SET OPEN, the HLT return SET
+  CLOSED and the sparge line SET OPEN. Layout A has no sparge line, so its HLT return stays "OPEN", unmarked, and
+  only the two wort valves are marked.
+- **The HLT return's tag moves while it is marked.** Its run, from the riser to the drop into the HLT, is 90
+  drawing units; "SET CLOSED" is 87 units wide without graphs and 112 with them, so under the valve it would sit
+  on both pipes. While marked, it goes to the left of the riser, level with its valve: x = `hltRiser - 14`,
+  y = `yTop + 8`, `text-anchor="end"` (`rigValve`'s new `alt` argument, applied in `setValve`). At any other
+  time, and every other tag, stays where it is now, so no other moment changes.
+- The drawing's description for screen readers (`rigDesc`) adds, while it waits: "Step 4, Sparge, is waiting for
+  you to set them for the sparge: close the coil line and the HLT return, and open the line to the boil kettle
+  and the sparge line to the top of the mash tun." Layout A leaves out the HLT return and the sparge line.
+- On the phone there is no drawing, as built. The title-bar prompt and the step row carry the moment there.
+
+**Fly or batch: one set of valves covers both**, as you thought. In a fly sparge both pumps run (`#sparge-run`:
+the sparge line and the line to the boil kettle lit). In a batch sparge each pump runs alone: the wort pump drains
+the first runnings to the boil kettle, then the HLT pump refills the mash tun (`#sparge-batch`: only the sparge
+line lit, the wort pump off). Only the running pump's line lights, so the drawing is right for both. One thing it
+can't show: a vorlauf between batches, running the wort back into the mash tun through the coil line. The valves
+would be set for that by hand and the drawing would still show the runoff. I left it; it only matters if Scott
+vorlaufs between batches.
+
+**WAITING FOR YOU needs nothing more.** The prompt and its SPARGE STARTED button are in the title bar on every
+page, the step row says WAITING FOR YOU, and the drawing marks the valves. A fourth signal would be noise.
+
+### The step row and the "now" line
+
+- The step's temperature is the sparge water's, not the mash's, so a SpargeStep's reads "water 168 °F · 40 min"
+  in the step row, the "now" line and a "Next:" line (`stepTemp`). With Temp blank there is no temperature, as
+  for any step.
+- After Sparge started with Timer 0: **SPARGING** in the step row and "sparging" in the "now" line, in place of
+  NOW (`runWord`). NOW stays for every other step without a timer.
+- WAITING FOR YOU stays the brighter amber of the screen as built (`.wfy {color: #ffd27a}`, now in the mockup's
+  CSS too).
+
+### Events
+
+- **The step starting.** The screen as built logs "Sparge started, hot liquor tank target 168.0 °F" as the step
+  starts (`observe()`, the "started" line). For a SpargeStep that says the button's words 8 minutes before anyone
+  presses it. Log instead "Sparge: heating the sparge water to 168 °F, mash tun MANUAL" (by recipe), or with
+  Temp blank "Sparge: mash tun MANUAL, the pumps are yours". "Sparge resumed" after a Stop is fine as it is.
+- **The countdown starting.** The screen as built logs "Sparge: 168 °F reached, 40 min timer started" when a
+  countdown appears. For a SpargeStep the countdown starts at the press, not at the temperature. Log "Sparge:
+  sparge started, 40 min timer started" when `_sparge_started` turns true ("…, until NEXT STEP" with Timer 0),
+  unless this screen pressed it.
+- **The press, here.** "Sparge: sparge started, 40 min timer started" (confirmed). CraftBeerPi's notice that
+  follows ("The HLT's AUTO is off now, so its element won't run as the HLT empties. Sparge timer started. …") is
+  logged as any notice is; the mockup shortens it to "HLT AUTO off, so its element won't run as the HLT empties".
+- The prompt itself is logged "waiting for you" as any prompt is, and its button reads SPARGE STARTED, upper-cased
+  from CraftBeerPi's label as built.
+
+### Faceplates: nothing to change
+
+- Heating: the HLT in AUTO at SV 168.0, with its usual line ("7.4 °F below target · about 4 min at this rate"
+  with graphs). The mash tun in MANUAL, keeping its SV 149.0.
+- After Sparge started: the HLT in MANUAL, element off, still showing SV 168.0, because CraftBeerPi leaves its
+  target until the step's timer runs out.
+
+### The mockup's step, to match the server
+
+- Starting (`spargeBegin`, from `stepStart` and from START): the mash tun's AUTO off, so the wort pump stops. Unless
+  Sparge started was pressed before, the HLT's target goes to Temp and its AUTO on: HEATING, and if the water is
+  already there, the question within a second.
+- SPARGE STARTED (`cmdBanner("sparge")`): the prompt goes, the countdown starts (or SPARGING), the HLT goes to
+  MANUAL, and the drawing goes over to the runoff.
+- STOP: the prompt is taken down and the HLT's AUTO goes off. START before Sparge started heats again and asks
+  again; START after it carries on without heating.
+- Leaving the step: the HLT's AUTO off, the pumps as they are.
+
+**One thing to check in the server, not the screen.** Your message says the HLT's target goes to 0 as the step
+ends "(time up, NEXT or Stop)". In `SpargeStep` only `on_timer_done` sets it to 0; `on_stop`, which NEXT and Stop
+run, only switches the HLT's AUTO off, so after a NEXT the HLT shows MANUAL with SV 168.0. The mockup follows the
+code. Either is fine for the screen; tell me if you change it.
+
+### Moments
+
+All four use the `#mash` day and recipe with step 4 replaced by a SpargeStep (`SPARGE_STEP`: Sparge, HLT, 168 °F,
+40 min). Saccharification ended at 14:56:21.
+
+- `#sparge-heat` (14:59:40): the HLT at 160.6 °F heating at 100 %, the mash tun MANUAL at 148.4 °F, the HLT pump
+  running round the HLT, the wort pump off. HEATING; the drawing on recirculating.
+- `#sparge-ready` (15:04:40): the water reached 168 °F at 15:04:10. The prompt in the title bar, WAITING FOR YOU,
+  the four valves marked.
+- `#sparge-run` (15:12:40): a fly sparge. Sparge started was pressed at 15:05:02: both pumps running, the HLT
+  MANUAL at 166.9 °F, the boil kettle filling (146.8 °F), 32:22 LEFT.
+- `#sparge-batch` (15:20:30): a batch sparge, with the step's Timer at 0: the first runnings went over from 15:05
+  to 15:13; now the HLT pump refills the mash tun with the wort pump off. SPARGING.
+
+### Changed, all in `proposal\`
+
+- `brew-day.js`:
+  - New: `SPARGE_MASH`, `SPARGE_STEP`, `WFY`, `spargeBanner`, `spargeBegin`, `waitHTML`, `stepTemp`, `runWord`.
+  - Changed: `collectsWort`, `rigDesc(ro, held, setNow)`, `setValve(id, open, flowing, change)`, `renderRig`,
+    `stepHTML`, `nowHTML`, `stepStart`, `cmdStart`, `cmdStop`, `cmdBanner` (`sparge`) and `load()` (step 4).
+  - Scenes `sparge-heat`, `sparge-ready`, `sparge-run`, `sparge-batch`.
+- `rig.js`: `rigValve(…, alt)`, and the HLT return's `alt` in layout B.
+- `graphs.js`: `gDemo`'s `sparge-…` branch.
+- `brew-day.css`: `.wfy`, `.rig-line .valve.set…` and `.tag.set, .vnote .set`.
+- `brew-day.html`: four strip links.
+
+### Checked
+
+- The four moments and `#sparge` at 1920×950, 1366×768 and 390×844, layouts A and B, with and without graphs: no
+  page errors and no words in the drawing overlapping. Nothing scrolls more than `#sparge` does today: none at
+  1920×950, 92 px at 1366×768.
+- The moved tag sits 14 units clear of the riser at every size.
+- Pressed through: SPARGE STARTED (countdown from 39:59, the HLT MANUAL, the drawing to the runoff, the HLT
+  return's tag back under its valve); STOP and START after it (no heating, the countdown carries on); STOP while
+  waiting (prompt down, valves unmarked) and START (heats, asks again); STOP and START while heating; NEXT STEP
+  from the fly sparge (the HLT stays MANUAL at SV 168.0, the pumps as they were).
+- `#mash`, `#sparge` and the 22 boil kettle moments are unchanged.
 
 ## Open questions about the drawing
 

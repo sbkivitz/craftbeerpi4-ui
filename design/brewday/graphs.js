@@ -56,6 +56,24 @@ function gDemo(scene) {
     bk: {pv: [[hms(12, 40), 68.0], [hms(14, 57, 30), 68.0, "h"], [hms(14, 59), 147.6, "s"], [hms(15, 6), 148.3, "s"], [hms(15, 12, 40), 146.8, "s"]],
       out: [[hms(12, 40), E, 0]]}
   };
+  /* the SpargeStep (#sparge-heat, -ready, -run, -batch): the #mash day on, Saccharification ending at 14:56:21. The
+     mash tun's AUTO off then (its SV stays 149); the HLT on its own AUTO heats to 168 °F by 15:04:10 and holds it until
+     Sparge started at 15:05:02, which switches its AUTO off. Then a fly sparge (-run) fills the boil kettle from 15:05;
+     a batch sparge (-batch) drains the first runnings until 15:13:20 and refills the mash tun from 15:13:31 */
+  if (/^sparge-/.test(scene)) {
+    const S0 = hms(14, 56, 21), RDY = hms(15, 4, 10), GO = hms(15, 5, 2), batch = scene === "sparge-batch";
+    const hltPv = [...hltMash, [S0, 154.4, "h"], [hms(15, 3), 166.8, "l"], [RDY, 168.1, "e"], [GO, 168.2, "s"],
+      batch ? [hms(15, 20, 30), 167.1, "s"] : [hms(15, 12, 40), 166.9, "s"]];
+    const mtPv = [...mtMash, [S0, 148.7, "s"], [GO, 147.9, "s"], ...(batch ? [[hms(15, 13, 20), 147.1, "s"], [hms(15, 20, 30), 165.3, "s"]] : [[hms(15, 12, 40), 151.6, "s"]])];
+    const bkPv = [[hms(12, 40), 68.0], [hms(15, 5, 40), 68.0, "h"], [hms(15, 7), 146.0, "s"], ...(batch ? [[hms(15, 13, 20), 148.0, "s"], [hms(15, 20, 30), 147.6, "s"]] : [[hms(15, 12, 40), 146.8, "s"]])];
+    return {
+      start: hms(12, 40), steps: [...steps, [S0, 4]],
+      hlt: {pv: hltPv, sv: [[hms(12, 40), hms(14, 9, 40), 131.4], [hms(14, 9, 40), S0, 154.4], [S0, GO, 168.0]],
+        out: [...hltOut, [hms(14, 17, 30), S0, [52, 72]], [S0, hms(15, 3), 100], [hms(15, 3), GO, [28, 44]], [GO, E, 0]]},
+      mt: {pv: mtPv, sv: [[hms(12, 40), hms(14, 9, 40), 126.0], [hms(14, 9, 40), S0, 149.0]]},
+      bk: {pv: bkPv, out: [[hms(12, 40), E, 0]]}
+    };
+  }
   /* hop: an earlier day, started 11:58; sparge 14:14-14:58, "Ready to boil?" until 15:01:47, boiling from 15:30 */
   if (scene === "hop") return {
     start: hms(11, 58), steps: [[hms(11, 58), 1], [hms(12, 45), 2], [hms(13, 27, 22), 3], [hms(14, 14, 2), 4], [hms(15, 1, 47), 5]],
@@ -75,6 +93,73 @@ function gDemo(scene) {
       sv: [[hms(15, 1, 47), E, 210.2]],
       out: [[hms(11, 58), hms(15, 1, 47), 0], [hms(15, 1, 47), hms(15, 29, 30), 100], [hms(15, 29, 30), E, 45]]}
   };
+  /* a boil-over (#pause): the boiling day at 15:31:20. With the proposed boil kettle (?bk=power) the heat was paused at
+     15:30:55, so the OUT band drops to 0 there. #pause-long, at 15:33:10, has the wort falling since */
+  if (scene === "pause" || scene === "pause-long") {
+    const d = gDemo("boiling");
+    if (BK !== "power") return d;
+    d.bk.out = [[hms(11, 58), hms(15, 1, 47), 0], [hms(15, 1, 47), hms(15, 29, 30), 100], [hms(15, 29, 30), hms(15, 30, 55), 45], [hms(15, 30, 55), E, 0]];
+    if (scene === "pause-long") d.bk.pv = d.bk.pv.filter(k => k[0] <= hms(15, 30, 4)).concat([[hms(15, 30, 55), 210.4, "s"], [hms(15, 33, 10), 206.3, "s"]]);
+    return d;
+  }
+  /* a hop stand by hand (#handhold at 12:58:40; #bktarget borrows it at 12:41:02): no recipe. The boil kettle in AUTO
+     from 10:21:40, boiling from 11:03 at 45 %; its target set to 170 °F at 12:41:10 (today: a Hold_Target), so the
+     element went off and the wort cools towards it. The HLT and the mash tun, done for the day, cool too. */
+  if (scene === "handhold") {
+    const t0 = hms(10, 20), a = hms(10, 21, 40), T = hms(12, 41, 10), now = hms(12, 58, 40), pw = BK === "power";
+    return {
+      start: t0, steps: [],
+      hlt: {pv: [[t0, 166.2], [now, 148.3, "s"]], out: [[t0, E, 0]]},
+      mt: {pv: [[t0, 150.6], [now, 131.0, "s"]]},
+      bk: {pv: [[t0, 146.0], [a, 145.8, "h"], [hms(11, 1, 30), 208.4, "l"], [hms(11, 3, 12), 210.2, "e"], [hms(11, 8), 212.0, "s"], [T, 212.0, "h"],
+        [hms(12, 46), 203.0, "s"], [now, 188.4, "l"]],
+        sv: pw ? [[a, T, 210.2], [T, E, 170.0]] : [[a, E, 210.2]],
+        hold: pw ? null : [[T, E, 170.0]],
+        out: [[t0, a, 0], [a, hms(11, 3, 12), 100], [hms(11, 3, 12), T, 45], [T, E, 0]]}
+    };
+  }
+  /* AUTO with no target (#notarget at 13:47, #notarget-hlt at 09:12): cold kettles, and nothing has heated */
+  if (scene === "notarget" || scene === "notarget-hlt") {
+    const a = scene === "notarget", s0 = a ? hms(13, 0) : hms(8, 40);
+    return {start: s0, steps: [], hlt: {pv: [[s0, a ? 68.0 : 66.2]], out: [[s0, E, 0]]}, mt: {pv: [[s0, a ? 67.6 : 65.8]]}, bk: {pv: [[s0, 66.9]], out: [[s0, E, 0]]}};
+  }
+  /* boiling and hold: the #hop day, carried on. The simulator boils at 212 °F, so the boil kettle settles there. At
+     17:00:04 the boil ends; the wort is chilled to 170 °F for the whirlpool and cools to 166.3 °F in the stand, and from
+     17:14:31 BoilPower holds 170 °F: today a separate Hold_Target, which only the words design draws; with Brett's new
+     BoilPower (?bk=power) the kettle's own target. */
+  if (scene === "boiling" || scene === "hold") {
+    const d = gDemo("hop"), bk = d.bk;
+    bk.pv = bk.pv.filter(k => k[0] <= hms(15, 30, 4)).concat([[hms(15, 36), 212.0, "s"], [hms(17, 0, 4), 212.0, "h"]]);
+    if (scene === "boiling") return d;
+    d.steps.push([hms(17, 0, 4), 6], [hms(17, 8, 10), 7]);
+    bk.pv.push([hms(17, 1, 30), 209.8, "s"], [hms(17, 7, 30), 170.6, "e"], [hms(17, 8, 10), 170.4, "s"], [hms(17, 14, 20), 166.3, "s"], [hms(17, 18, 40), 169.4, "e"]);
+    bk.sv = [[hms(15, 1, 47), hms(17, 0, 4), 210.2], [hms(17, 14, 31), E, BK === "power" ? 170.0 : 210.2]];
+    if (BK !== "power") bk.hold = [[hms(17, 14, 31), E, 170.0]];
+    bk.out = [[hms(11, 58), hms(15, 1, 47), 0], [hms(15, 1, 47), hms(15, 29, 30), 100], [hms(15, 29, 30), hms(17, 0, 4), 45], [hms(17, 0, 4), hms(17, 14, 31), 0],
+      [hms(17, 14, 31), hms(17, 15, 40), 64], [hms(17, 15, 40), hms(17, 16, 50), 54], [hms(17, 16, 50), hms(17, 17, 50), 44], [hms(17, 17, 50), E, 35]];
+    d.hlt.pv.push([hms(17, 18, 40), 156.8, "s"]);
+    d.mt.pv.push([hms(17, 18, 40), 139.6, "s"]);
+    return d;
+  }
+  /* the boil power set to 2 % at 16:10 (#keepboil, #letfall: the #hop day at 16:31:10). Ticked, BoilPower cycles: 5½ min
+     at 2 % falling to 206.6 °F, where it lets go, then full power until 210.2 °F, with a little overshoot. Unticked from
+     16:10:21 (?bk=power only), it stays at 2 % and the wort keeps falling. */
+  if (scene === "keepboil" || scene === "letfall") {
+    const d = gDemo("hop"), bk = d.bk, fall = scene === "letfall" && BK === "power";
+    bk.pv = bk.pv.filter(k => k[0] <= hms(15, 30, 4)).concat([[hms(15, 36), 212.0, "s"], [hms(16, 10), 212.0, "h"]]);
+    if (fall) {
+      bk.pv.push([hms(16, 15, 30), 207.4, "l"], [hms(16, 31, 10), 199.3, "l"]);
+      bk.out = [[hms(11, 58), hms(15, 1, 47), 0], [hms(15, 1, 47), hms(15, 29, 30), 100], [hms(15, 29, 30), hms(16, 10), 45], [hms(16, 10), E, 2]];
+    } else {
+      bk.pv.push([hms(16, 15, 30), 206.6, "l"], [hms(16, 18, 10), 210.2, "l"], [hms(16, 18, 40), 211.0, "e"], [hms(16, 24, 10), 206.6, "l"],
+        [hms(16, 26, 50), 210.2, "l"], [hms(16, 27, 20), 211.0, "e"], [hms(16, 31, 10), 207.9, "l"]);
+      bk.out = [[hms(11, 58), hms(15, 1, 47), 0], [hms(15, 1, 47), hms(15, 29, 30), 100], [hms(15, 29, 30), hms(16, 10), 45], [hms(16, 10), hms(16, 15, 30), 2],
+        [hms(16, 15, 30), hms(16, 18, 10), 100], [hms(16, 18, 10), hms(16, 24, 10), 2], [hms(16, 24, 10), hms(16, 26, 50), 100], [hms(16, 26, 50), E, 2]];
+    }
+    d.hlt.pv.push([hms(16, 31, 10), 162.4, "s"]);
+    d.mt.pv.push([hms(16, 31, 10), 146.9, "s"]);
+    return d;
+  }
   /* manual, no recipe: strike water heated by hand from 08:30 and moved to the mash tun at 09:25; the HLT refilled,
      heated by hand again, then on its own AUTO to 168 °F from 09:58 */
   if (scene === "manual") return {
@@ -94,8 +179,8 @@ function gDemo(scene) {
     bk: {pv: [[hms(12, 40), 68.0]], out: [[hms(12, 40), E, 0]]}
   };
 }
-/* one row every 10 s: [time, PV, SV or null, OUT % or null]. The small wobble fades out at the moment's own time,
-   so each line ends on the reading its faceplate shows. */
+/* one row every 10 s: [time, PV, SV or null, OUT % or null, hold °F or null]. The small wobble fades out at the moment's
+   own time, so each line ends on the reading its faceplate shows. */
 function gHistory(scene) {
   const d = gDemo(scene), end = d.until || st.t, seed = {hlt: 1.3, mt: 2.9, bk: 4.4};
   const h = {start: d.start, steps: d.steps.map(s => s.slice()), v: {}};
@@ -105,7 +190,7 @@ function gHistory(scene) {
       const fade = Math.min(1, (end - t) / 180);
       let out = s.out ? gRun(s.out, t) : null;
       if (Array.isArray(out)) out = Math.round(out[0] + (out[1] - out[0]) * (0.5 + 0.5 * Math.sin(t / 53 + seed[v]) * fade));
-      rows.push([t, +(gKey(s.pv, t) + gWob(t, seed[v]) * fade).toFixed(2), gRun(s.sv, t), out]);
+      rows.push([t, +(gKey(s.pv, t) + gWob(t, seed[v]) * fade).toFixed(2), gRun(s.sv, t), out, gRun(s.hold, t)]);
     }
     h.v[v] = rows;
   });
@@ -120,7 +205,8 @@ function gOut(v) {
 }
 function graphTick() {
   if (!st.hist || st.t % 10) return;
-  if (st.link !== "lost") ["hlt", "mt", "bk"].forEach(v => st.hist.v[v].push([st.t, st.v[v].pv, gDriven(v) && st.v[v].sv != null ? st.v[v].sv : null, gOut(v)]));
+  if (st.link !== "lost") ["hlt", "mt", "bk"].forEach(v => st.hist.v[v].push([st.t, st.v[v].pv, gDriven(v) && st.v[v].sv != null ? st.v[v].sv : null, gOut(v),
+    v === "bk" && BK !== "power" && st.v.bk.mode === "auto" ? st.v.bk.hold ?? null : null]));
   drawGraphs();
 }
 const gStart = () => gSpan === "day" ? Math.min(st.hist.start, st.t - 1800) : st.t - GSPANS.find(s => s[0] === gSpan)[1];
@@ -133,13 +219,18 @@ function graphSummary(v) {
   let lo = Infinity, hi = -Infinity;
   rows.forEach(p => { lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]); });
   const how = Math.abs(b - a) < 1 ? `held between ${lo.toFixed(1)} and ${hi.toFixed(1)} °F` : `${b > a ? "rose" : "fell"} from ${a.toFixed(1)} to ${b.toFixed(1)} °F`;
-  return `${VNAME[v]}, ${GSAY[gSpan]}: ${how}${last[2] != null ? `; target ${last[2].toFixed(1)} °F` : ""}${last[3] != null ? `; element ${last[3]} %` : ""}.`;
+  /* the proposed boil kettle: a target below BOIL is held, like the HLT's; at BOIL the boil counts from the boil point */
+  const tgt = v === "bk" && BK === "power" ? (last[2] == null ? "" : last[2] < bkLetGo() ? `; target ${last[2].toFixed(1)} °F` : `; the boil counts from ${boilFrom().toFixed(1)} °F`)
+    : v === "bk" && BK !== "today" ? (last[4] != null ? `; holding ${last[4].toFixed(1)} °F` : last[2] != null ? `; the boil counts from ${last[2].toFixed(1)} °F` : "")
+    : last[2] != null ? `; target ${last[2].toFixed(1)} °F` : "";
+  return `${VNAME[v]}, ${GSAY[gSpan]}: ${how}${tgt}${last[3] != null ? `; element ${last[3]} %` : ""}.`;
 }
-/* from the last three minutes of readings; only while heading for the target, and only up to two hours away */
+/* from the last three minutes of readings; only while heading for the target, and only up to two hours away. The proposed
+   boil kettle heads for its hold, or for the boil point while its target is BOIL */
 function graphETA(v) {
-  const V = st.v[v];
-  if (!st.hist || V.sv == null || V.pv == null) return "";
-  const d = V.sv - V.pv;
+  const V = st.v[v], T = v === "bk" && BK === "power" ? bkHoldT() ?? boilFrom() : V.sv;
+  if (!st.hist || T == null || V.pv == null) return "";
+  const d = T - V.pv;
   if (Math.abs(d) < 1) return "";
   const rows = st.hist.v[v].filter(p => p[0] >= st.t - 180 && p[1] != null);
   if (rows.length < 2 || rows[rows.length - 1][0] - rows[0][0] < 90) return "";
@@ -168,11 +259,17 @@ function graphSVG(v, w, h, id, tw = w) {
   let pts = all.slice(Math.max(0, i0 - 1));
   const stride = Math.max(1, Math.floor(pts.length / w)), gapAfter = 10 * stride + 25;
   if (stride > 1) pts = pts.filter((p, i) => i % stride === 0 || i === pts.length - 1);
+  /* the boil kettle's redesigns (?bk=). Proposed (power): a target at BOIL is drawn at the boil point, a grey dashed
+     reference, since BoilPower never holds it; a target below BOIL is held, so it is the green line, as on the HLT.
+     The dropped words design drew its threshold dashed green and a whirlpool hold (the 5th field) solid green */
+  const pw = v === "bk" && BK === "power", wd = v === "bk" && BK === "words", alt = pw || wd, edge = pw ? bkLetGo() : 0;
+  const svOf = p => pw ? (p[2] != null && p[2] >= edge ? boilFrom() : null) : wd && p[4] != null ? null : p[2];
+  const hoOf = p => pw ? (p[2] != null && p[2] > 0 && p[2] < edge ? p[2] : null) : wd ? p[4] ?? null : null;
   /* each vessel gets its own scale, never less than 4, 8 or 20 °F tall */
   let lo = Infinity, hi = -Infinity;
   for (const p of pts) {
     if (p[0] < t0) continue;
-    for (const x of [p[1], p[2]]) if (x != null) { lo = Math.min(lo, x); hi = Math.max(hi, x); }
+    for (const x of [p[1], svOf(p), hoOf(p)]) if (x != null) { lo = Math.min(lo, x); hi = Math.max(hi, x); }
   }
   if (lo === Infinity) lo = hi = st.v[v].pv ?? 68;
   const pad = Math.max(0.5, (hi - lo) * 0.08), least = gSpan === "10" ? 4 : gSpan === "30" ? 8 : 20;
@@ -201,13 +298,15 @@ function graphSVG(v, w, h, id, tw = w) {
     nums += `<g transform="translate(${f(x)} ${yT})"><rect x="-8" y="0" width="16" height="15" rx="2"/><text y="11.5">${n}</text></g>`;
   }
   /* PV and SV lines, broken where readings stopped; OUT as a stepped band */
-  let pv = "", sv = "", out = "", pen = false, svOn = false, outOn = false, prev = -1e9, lastPv = null;
+  let pv = "", sv = "", ho = "", out = "", pen = false, svOn = false, hoOn = false, outOn = false, prev = -1e9, lastPv = null;
   for (const p of pts) {
-    const x = f(X(p[0])), gap = p[0] - prev > gapAfter;
+    const x = f(X(p[0])), gap = p[0] - prev > gapAfter, s2 = svOf(p), h2 = hoOf(p);
     if (gap || p[1] == null) pen = false;
     if (p[1] != null) { pv += `${pen ? "L" : "M"}${x} ${f(Y(p[1]))}`; pen = true; lastPv = p; }
-    if (gap || p[2] == null) svOn = false;
-    if (p[2] != null) { const y = f(Y(p[2])); sv += svOn ? `H${x}V${y}` : `M${x} ${y}`; svOn = true; }
+    if (gap || s2 == null) svOn = false;
+    if (s2 != null) { const y = f(Y(s2)); sv += svOn ? `H${x}V${y}` : `M${x} ${y}`; svOn = true; }
+    if (gap || h2 == null) hoOn = false;
+    if (h2 != null) { const y = f(Y(h2)); ho += hoOn ? `H${x}V${y}` : `M${x} ${y}`; hoOn = true; }
     if ((gap || p[3] == null) && outOn) { out += `V${yO}Z`; outOn = false; }
     if (p[3] != null) { const y = f(yO - p[3] / 100 * band); out += outOn ? `H${x}V${y}` : `M${x} ${yO}V${y}`; outOn = true; }
     prev = p[0];
@@ -220,7 +319,7 @@ function graphSVG(v, w, h, id, tw = w) {
     + `<defs><clipPath id="${id}-c"><rect x="0" y="${yT - 3}" width="${w}" height="${yB - yT + 6}"/></clipPath></defs>`
     + `<path class="g-grid" d="${grid}"/>${gapRect}<path class="g-mark" d="${marks}"/>`
     + `<path class="g-base" d="M0 ${yO}H${w}"/>${out ? `<path class="g-out" d="${out}"/>` : ""}<text class="g-bl" x="3" y="${yO - 2}">${outLabel}</text>`
-    + `<g clip-path="url(#${id}-c)"><path class="g-sv" d="${sv}"/><path class="g-pv" d="${pv}"/></g>${dot}`
+    + `<g clip-path="url(#${id}-c)">${alt ? `<path class="${BK === "power" ? "g-ref" : "g-sv g-dash"}" d="${sv}"/><path class="g-sv" d="${ho}"/>` : `<path class="g-sv" d="${sv}"/>`}<path class="g-pv" d="${pv}"/></g>${dot}`
     + `<g class="g-gl">${gl}</g><g class="g-tl">${tl}</g><g class="g-mn">${nums}</g></svg>`;
 }
 function drawGraphs() {

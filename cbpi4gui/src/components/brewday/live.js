@@ -90,11 +90,12 @@ export const isHerms = (k, herms) =>
 export const declares = (logic, type, method) =>
   !!type && (logic || []).some((t) => t && t.name === type && (t.actions || []).some((a) => a && a.method === method));
 
-// Where BoilPower's boil power starts to be used (BoilPower._threshold): the kettle's target when it has one,
-// else its Boil_Threshold setting, else BoilPower's default, 99 °C / 210.2 °F.
-export function boilThreshold(k, C) {
+// Where BoilPower's boil power starts to be used (BoilPower._threshold, before 0.0.3.post7): the kettle's target when it
+// has one, else its Boil_Threshold setting, else BoilPower's default, 99 °C / 210.2 °F. From 0.0.3.post7 (it declares
+// set_boil_at) the target is an ordinary target, BOIL or a temperature to hold, and the boil point is Boil_Threshold alone.
+export function boilThreshold(k, C, fromSetting = false) {
   const sv = num(k && k.target_temp);
-  if (sv != null && sv > 0) return sv;
+  if (!fromSetting && sv != null && sv > 0) return sv;
   return num(k && k.props && k.props.Boil_Threshold) ?? (C === "F" ? 210.2 : 99);
 }
 
@@ -176,6 +177,8 @@ export function model(snap) {
   const roleOf = {};
   for (const v of ROLES) if (K[v]) roleOf[K[v].id] = v;
   const steps = (snap.steps || []).filter(Boolean).map((s) => stepModel(s, roleOf, U));
+  // the new boil kettle (BUILD-NOTES, 10 Nov): a BoilPower whose target is BOIL or a hold, from 0.0.3.post7
+  const BKNEW = !!K.bk && declares(snap.logic, K.bk.type, "set_boil_at");
   return {
     K, A, VNAME, ACT, VACT, U, C,
     HERMS: isHerms(K.mt, herms),
@@ -183,7 +186,8 @@ export function model(snap) {
     HERMS_DELTA: num(K.mt && K.mt.props && K.mt.props.DeltaTemp) ?? 0,
     // the boil power button (Scott, 10 Nov): only for a boil kettle whose logic declares set_boil_power
     BOILPOWER: !!K.bk && declares(snap.logic, K.bk.type, "set_boil_power"),
-    BOIL_TH: boilThreshold(K.bk, C),
+    BKNEW,
+    BOIL_TH: boilThreshold(K.bk, C, BKNEW),
     RECIPE: { name: (snap.basic && snap.basic.name) || "Brew steps", steps },
     BOOK: snap.book || [],
     LIMITS: C === "F" ? [32, 230] : [0, 110],

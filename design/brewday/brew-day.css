@@ -96,6 +96,9 @@ html.bare .mock{display:none}
 .outbar i{display:block;height:100%;background:var(--heat)}
 .dev{margin:0;font:500 clamp(15px,calc(4.8 * var(--pu)),19px)/1.2 var(--cond);letter-spacing:.03em;color:var(--text-2)}
 .dev .age{color:#ffc9c4}
+/* AUTO with no target: it runs but holds nothing, so the line says so in Prompt Amber, and TARGET's hint matches */
+.dev .warn{color:var(--prompt);font-weight:600}
+.tgtbtn.notgt small{color:var(--prompt)}
 /* buttons topped by lamp strips: the strip and the words both carry the state */
 .ctrls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .ctrls>:only-child{grid-column:1/-1}
@@ -137,7 +140,53 @@ html.bare .mock{display:none}
 .editor .no{grid-column:4/6}
 /* boil power: a level, not a temperature, so its digits are plain white (green is for targets, orange for heating now) */
 .editor.pwr input{color:var(--text)}
-.pwrbtn[aria-expanded=true]{border-color:var(--select);box-shadow:inset 0 0 0 1px var(--select)}
+/* in the "power first" redesign the boil power is the boil kettle's set value, so it is typed in Setpoint Green */
+[data-bk=power] .editor.pwr input{color:var(--sv)}
+/* the proposed boil kettle (?bk=power): while AUTO boils, −5 % and +5 % either side of the element button, a third
+   each of its height-setting lamp; the element button pauses the heat, and PAUSED is Prompt Amber, like anything
+   waiting for the brewer. Its box adds BOIL AT and the usual boil power under SET */
+.ctrls.bkpow{grid-template-columns:minmax(0,1fr) minmax(0,2fr) minmax(0,1fr)}
+.ctrls .nudge{min-height:0}
+.lamp[data-state=paused]{border-color:var(--prompt)}
+.lamp[data-state=paused]::before{background:var(--prompt);box-shadow:0 2px 14px rgb(255 178 30/.5)}
+.lamp[data-state=paused] .st{color:var(--prompt)}
+.editor small{display:block;margin-top:4px;font:500 13px/1.1 var(--cond);letter-spacing:.04em;color:var(--text-3)}
+.editor .bkat{grid-column:1/4}
+.editor .usual{grid-column:4/6;align-self:center;margin:0;font:600 19px/1 var(--cond);letter-spacing:.05em;color:var(--sv);text-align:center}
+.tgtbtn[aria-expanded=true]{border-color:var(--select);box-shadow:inset 0 0 0 1px var(--select)}
+/* the proposed boil kettle's Keep boiling checkbox, at the end of its nameplate row. The box is the LED: dark with a steel
+   edge while unticked, lit Setpoint Green with a dark tick and a glow while ticked. It is no taller than the name, so the
+   row doesn't grow; ::before stretches its tap area to 44 px into the padding above and the gap below */
+.phead{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.phead h2{min-width:0}
+.keep{--th:clamp(18px,calc(7 * var(--pu)),27px);position:relative;display:inline-flex;align-items:center;gap:8px;flex:none;height:var(--th);padding:0 2px;border:0;border-radius:4px;background:none;color:var(--text-2);font:600 clamp(13px,calc(4.6 * var(--pu)),16px)/1 var(--cond);letter-spacing:.08em;white-space:nowrap;cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.keep::before{content:"";position:absolute;inset:calc((var(--th) - 44px) / 2) 0}
+.keep .box{display:grid;place-items:center;width:clamp(16px,calc(5.8 * var(--pu)),20px);aspect-ratio:1;border:2px solid #7f91a3;border-radius:3px;background:var(--face)}
+.keep .box svg{width:100%;height:100%;fill:none;stroke:var(--face);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;visibility:hidden}
+.keep[aria-checked=true] .box{border-color:var(--sv);background:var(--sv);box-shadow:0 0 10px rgb(61 220 111/.55)}
+.keep[aria-checked=true] .box svg{visibility:visible}
+.keep:not([aria-disabled=true]):hover .kl{color:var(--text)}
+.keep[data-state=pending] .box{border-color:#7f91a3;background:repeating-linear-gradient(-45deg,#a9bccd 0 6px,#33475a 6px 12px);background-size:17px 17px;box-shadow:none;animation:march .6s linear infinite}
+.keep[data-state=pending] .box svg{visibility:hidden}
+.keep.stale .box{border-color:#6b7785;box-shadow:none}
+.keep.stale[aria-checked=true] .box{background:#6b7785}
+/* the proposed boil kettle's boil power in its window, while the target is BOIL: the one reading that is also a button,
+   because TARGET took its place beside AUTO/MANUAL. Framed in steel like the graph's chosen span, with a small "change"
+   like every other button's, so it reads as a control. The frame takes no room, so the digits sit where a plain
+   reading's would; ::before makes its tap area at least 44 px tall */
+.svbtn{position:relative;display:inline-flex;align-items:baseline;gap:.3em;margin:0 -.28em;padding:0 .28em;border:0;border-radius:3px;background:none;color:inherit;font:inherit;letter-spacing:inherit;text-shadow:inherit;box-shadow:inset 0 0 0 1px #3b4d5e;cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.svbtn::before{content:"";position:absolute;inset:min(0px,calc(50% - 22px)) 0}
+.svbtn small{font:600 clamp(12px,calc(3.9 * var(--pu)),14px)/1 var(--cond);letter-spacing:.06em;color:var(--text-3);text-shadow:none}
+.svbtn:not([aria-disabled=true]):hover{box-shadow:inset 0 0 0 1px #7f91a3}
+.svbtn:not([aria-disabled=true]):hover small{color:var(--text)}
+.svbtn[aria-expanded=true]{box-shadow:inset 0 0 0 2px var(--select)}
+.face.stale .svbtn{box-shadow:inset 0 0 0 1px #2a3846}
+/* its TARGET box: the HLT's, with a third row. BOIL is pressed while the box says BOIL, like AUTO or MANUAL; BOIL POWER
+   is the second way to the power box */
+.editor .tboil{grid-column:1/4}
+.editor .tpwr{grid-column:4/6}
+.editor .tboil[aria-pressed=true]{background:#070c11;color:#fff;box-shadow:inset 0 0 0 2px #a9bfd4}
+.editor .tboil[aria-pressed=true] small{color:#c9d6e2}
 
 /* recipe column */
 .recipe{container-type:inline-size;--pu:1cqi;display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0;padding:14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
@@ -158,6 +207,8 @@ html.bare .mock{display:none}
 .step .t{grid-column:2;font:600 20px/1.1 var(--cond);letter-spacing:.02em}
 .step .p{grid-column:2;font:500 16px/1.25 var(--cond);letter-spacing:.02em;color:var(--text-2)}
 .step .s{grid-column:3;grid-row:1/3;font:600 15px/1 var(--cond);letter-spacing:.06em;color:var(--text-3);text-align:right;white-space:nowrap}
+/* WAITING FOR YOU on a step held for the brewer, in the brighter amber of Brett's screen (brewday-extra.css) */
+.wfy{color:#ffd27a}
 .step.done .t,.step.done .p,.step.done .n{color:var(--text-3)}
 .step.done .s{color:var(--run)}
 .step[aria-current=step]{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),var(--active);border-color:#3c7fcc}
@@ -246,6 +297,10 @@ html.bare .mock{display:none}
 .rig-line .valve path{fill:#1b2833;stroke:#b9c6d2;stroke-width:2.5;stroke-linejoin:round}
 .rig-line .valve.shut path{fill:#b9c6d2}
 .rig-line .valve.live.liq path{stroke:var(--liquor)}.rig-line .valve.live.wrt path{stroke:var(--wort)}
+/* a SpargeStep's "Sparge started" question: each valve to change keeps its drawn position and is marked in Prompt Amber,
+   outline and words ("SET OPEN", "SET CLOSED"), like anything else waiting for the brewer */
+.rig-line .valve.set.liq path,.rig-line .valve.set.wrt path{stroke:var(--prompt);stroke-width:3}
+.tag.set,.vnote .set{fill:var(--prompt)}
 .rig-line .p-ring{fill:#1b2833;stroke:#b9c6d2}
 .rig-line .p-tri{fill:#b9c6d2}
 .rig-line .p-base{fill:none;stroke:#b9c6d2;stroke-width:2.5}
@@ -282,7 +337,7 @@ html.bare .mock{display:none}
 @keyframes march{to{background-position:17px 0}}
 @keyframes flow{to{stroke-dashoffset:-24}}
 @keyframes blink{50%{opacity:.25}}
-@media (prefers-reduced-motion:reduce){.pd,.lamp::before,.link i{animation:none!important}}
+@media (prefers-reduced-motion:reduce){.pd,.lamp::before,.link i,.keep .box{animation:none!important}}
 
 /* desktop: one fixed screen */
 @media (min-width:1180px){.app{height:max(calc(100dvh - var(--mock-h)),860px)}}
@@ -358,6 +413,9 @@ html.bare .mock{display:none}
 /* with graphs in the faceplates the drawing is shorter, so its labels are set larger (drawRig's --rs, up to 1.3) */
 /* the One Screen Rule wins: on a short screen the drawing gives up height, never the PV digits */
 @media (min-width:1180px){[data-graphs=face] .rig{min-height:140px}[data-graphs=face] .app[data-editing] .rig{min-height:110px}}
+/* the proposed boil kettle's power box has a third row (BOIL AT, USUAL), so while an editor is open the drawing may give
+   up a little more, and a two-line note under the box still doesn't make the page scroll */
+@media (min-width:1180px){[data-bk=power] .app[data-editing] .rig{min-height:136px}[data-graphs=face][data-bk=power] .app[data-editing] .rig{min-height:64px}}
 /* a browser window on a 1080-line monitor is about 950 px tall: there the faceplates tighten their gaps,
    buttons (still at least 56 px) and span labels, so the drawing keeps readable labels */
 @media (min-width:1180px) and (max-height:1000px){
@@ -389,6 +447,9 @@ html.bare .mock{display:none}
 .g-base{fill:none;stroke:#1d2833;stroke-width:1}
 .g-out{fill:rgb(255 123 28/.6);stroke:none}
 .g-sv{fill:none;stroke:var(--sv);stroke-width:1.6;stroke-linejoin:round}
+/* the boil kettle's redesigns (?bk=): where the boil counts from is a threshold, not a held target, so it is dashed */
+.g-sv.g-dash{stroke-dasharray:7 5}
+.g-ref{fill:none;stroke:var(--text-3);stroke-width:1.4;stroke-dasharray:7 5}
 .g-pv{fill:none;stroke:var(--pv);stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round;filter:drop-shadow(0 0 3px rgb(255 75 62/.5))}
 .g-dot{fill:var(--pv)}
 .g-gap{fill:#0b1117}

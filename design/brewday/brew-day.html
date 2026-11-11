@@ -21,11 +21,15 @@ FORM: Brewhouse touch panel with process-mimic plumbing (Scott's picks, rounds 2
 9 Nov 2026 over A/D1); seed fad8ffb4.
 
 This is a proposal mockup with demo data. It does not talk to CraftBeerPi.
-Scenes: #mash (default), #sparge, #hop, #boilpower, #fail, #manual, #offline. Add ?bare to hide the mockup strip.
+Scenes: #mash (default), #sparge, #hop, #boilpower, #heatup, #pause, #boiling, #hold, #fail, #manual, #offline, #notarget,
+#notarget-hlt. Add ?bare to hide the mockup strip.
 Layouts: ?layout=b (default, chosen) or ?layout=a (the D1 alternative, kept for comparison; its drawing has no
 sparge line, so its HLT pump always goes back round the hot liquor tank).
 Graphs: in the faceplates by default (option A, chosen 10 Nov 2026). ?graphs=none shows the screen without them,
 as first built; ?graphs=panel is option B, kept only for graphs.html. ?span=10|30|day picks the starting span.
+Boil kettle: ?bk=today (default, as built), or the proposed boil kettle, ?bk=power, which Scott said yes to on 10 Nov
+with three additions (one-tap −5/+5 %, a pause for boil-overs, a usual boil power); compared in boil-kettle.html.
+?bk=words is an earlier option he didn't take. ?focus=bk is for that page.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,11 +41,27 @@ as first built; ?graphs=panel is option B, kept only for graphs.html. ?span=10|3
   <strong>Mockup with demo data.</strong> Show:
   <a href="#mash">Mid-mash</a>
   <a href="#sparge">Sparge</a>
+  <a href="#sparge-heat">Sparge step: heating the water</a>
+  <a href="#sparge-ready">Sparge step: waiting for you</a>
+  <a href="#sparge-run">Sparge step: fly sparge</a>
+  <a href="#sparge-batch">Sparge step: batch sparge</a>
   <a href="#hop">Hop addition due</a>
   <a href="#boilpower">Turning the boil down</a>
+  <a href="#heatup">Heating to the boil</a>
+  <a href="#pause">Boil-over</a>
+  <a href="#pause-long">Pause forgotten</a>
+  <a href="#boiling">Boiling</a>
+  <a href="#hold">Whirlpool hold</a>
+  <a href="#keepboil">Boil at 2 %, keep boiling</a>
+  <a href="#letfall">Boil at 2 %, let it fall</a>
+  <a href="#bktarget">Setting a hop stand by hand</a>
+  <a href="#handhold">Hop stand by hand</a>
   <a href="#fail">A command failed</a>
   <a href="#manual">Brewing by hand</a>
   <a href="#offline">Connection lost</a>
+  <a href="#notarget">Mash tun AUTO, no target</a>
+  <a href="#notarget-hlt">HLT AUTO, no target</a>
+  <span class="lay">Boil kettle: <a data-bk="today" href="?bk=today">today</a> <a data-bk="power" href="?bk=power">proposed</a></span>
   <span class="lay">Layout: <a data-layout="a" href="?layout=a">A · recipe right</a> <a data-layout="b" href="?layout=b">B · recipe left</a></span>
 </nav>
 <div class="app" id="app" data-link="ok">
