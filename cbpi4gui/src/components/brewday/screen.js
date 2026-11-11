@@ -23,6 +23,8 @@ import { rigSVG, RIG_H } from "./rig";
 import * as DEMO from "./demo";
 import { api, why as failWhy } from "./api";
 import { model, num, parseLeft, bookLine, isHerms, unitText, ROLES } from "./live";
+import { GSPANS, GSAY, graphHTML, graphSVG, graphETA } from "./graphs";
+import { createHistory } from "./history";
 // As text, exactly as written (config-overrides.js): the CSS pipeline would rewrite the mockup's colours.
 import BREWDAY_CSS from "./brewday.css";
 import EXTRA_CSS from "./brewday-extra.css";
@@ -135,8 +137,12 @@ const setText = (el, s) => { if (el && el.textContent !== s) el.textContent = s;
 // One screen at a time, as in the mockup: its state lives here. gen tells a command that finishes after the
 // screen has gone (or been opened again) to keep its answer to itself.
 let root = null, DEMO_MODE = false, opts = {}, gen = 0;
-let st, M, timers = [], noteTimers = {}, hold = null, toastT = 0, raf = 0, rigW = 0, teardown = () => {};
+let st, M, timers = [], noteTimers = {}, hold = null, toastT = 0, raf = 0, rigW = 0, rigRs = 1, teardown = () => {};
 let last = null, everConnected = false, book = [], bookBusy = false, bookShown = false;
+/* the temperature graphs in the faceplates (Scott, 10 Nov: option A, "graphs always showing"); ?graphs=none leaves
+   them out, as the screen was first built. gSpan: the span the three show, kept on each device. H: the live history. */
+let GRAPHS = "face", gSpan = "30", H = null;
+const GSPAN_KEY = "cbpi.brewday.graphspan";
 const answered = new Set(), own = {};
 const $ = s => root.querySelector(s);
 // Temperatures in CraftBeerPi's own words follow its unit's sign: "170 F" -> "170 °F".
@@ -200,7 +206,10 @@ function tgtHTML(v) {
    sits beside the element it governs and works at any time: no step locks it. In AUTO it sets the logic's Boil_Power,
    used from the boil threshold up; in MANUAL it sets the element's own level, used when it is on by hand (M61).
    Changing it is a tap on SET, like a target: it changes a level, it never switches heat on. */
-const boilTh = () => +M.BOIL_TH.toFixed(1);
+// Where BoilPower starts using the boil power (BoilPower._threshold): the kettle's target when it has one, else its
+// Boil_Threshold (M.BOIL_TH; live.js boilThreshold). The mockup's boilFrom.
+const boilFrom = () => st.v.bk.sv > 0 ? st.v.bk.sv : M.BOIL_TH;
+const boilTh = () => +boilFrom().toFixed(1);
 function powerHTML() {
   const V = st.v.bk, el = st.a.bkEl, auto = V.mode === "auto", pend = st.pend["p:bk"];
   const why = st.link === "lost" ? PAUSED : pend ? WAIT : !auto && el.missing ? "CraftBeerPi has no boil element set up." : "";
@@ -213,7 +222,7 @@ function editorHTML(v) {
     const p = st.edit.val;
     return `<div class="editor pwr" role="group" aria-label="${st.edit.what === "boil" ? "New boil power for the boil kettle" : "New power for the boil element by hand"}">
     <button type="button" data-cmd="pstep:-5" aria-label="Down 5 percent">−5</button><button type="button" data-cmd="pstep:-1" aria-label="Down 1 percent">−1</button>
-    <input id="tin" inputmode="numeric" value="${p}" aria-label="New boil power in percent">
+    <input id="tin" inputmode="numeric" value="${p}" aria-label="${st.edit.what === "boil" ? "New boil power in percent" : "New power by hand in percent"}">
     <button type="button" data-cmd="pstep:1" aria-label="Up 1 percent">+1</button><button type="button" data-cmd="pstep:5" aria-label="Up 5 percent">+5</button>
     <button type="button" class="ok" data-cmd="pset">SET <span id="tok">${p}</span> %</button><button type="button" class="no" data-cmd="tcancel">CANCEL</button></div>`;
   }
@@ -235,7 +244,8 @@ function devHTML(v) {
   if (v === "bk" && V.pv >= V.sv - 0.5) return "Boiling";
   const d = V.sv - V.pv;
   if (Math.abs(d) < 0.3) return "At target";
-  return d > 0 ? `${d.toFixed(1)} ${M.U} below target` : `${(-d).toFixed(1)} ${M.U} above target`;
+  const eta = GRAPHS ? graphETA(G(), v) : "";
+  return (d > 0 ? `${d.toFixed(1)} ${M.U} below target` : `${(-d).toFixed(1)} ${M.U} above target`) + (eta ? ` · ${eta}` : "");
 }
 /* layout B's faceplate also shows output and mode, like a hardware PID controller */
 function auxHTML(v) {
@@ -256,6 +266,7 @@ function plateHTML(v) {
       <dl class="pvsv"><dt>PV</dt><dd class="pv">${f1(V.pv)}<span class="u">${M.U}</span></dd>
       <dt>SV</dt><dd class="sv">${V.sv == null ? "– –" : f1(V.sv) + `<span class="u">${M.U}</span>`}</dd></dl>
       ${LAYOUT === "b" ? auxHTML(v) : ""}
+      ${GRAPHS ? graphHTML(G(), v, "f") : ""}
     </div>
     <p class="dev">${devHTML(v)}${by ? " · SV set by the mash tun" : ""}</p>
     <div class="ctrls">${M.VACT[v].map(lampHTML).join("")}${v === "bk" && M.BOILPOWER ? powerHTML() : ""}</div>
@@ -410,9 +421,11 @@ function drawRig() {
   const box = $("#rig"), w = box.clientWidth - 12, h = box.clientHeight - 12;
   if (w < 60 || h < 60) return;
   const W = Math.max(1200, Math.round(RIG_H * w / h));
-  if (Math.abs(W - rigW) < 4 && $("#rigsvg")) return;
-  rigW = W;
-  box.innerHTML = rigSVG(LAYOUT === "b" ? "line" : "kettle", W);
+  /* with graphs in the faceplates the drawing gets shorter, so its labels grow to stay readable (up to 1.3 times) */
+  const rs = GRAPHS === "face" ? Math.round(Math.min(1.3, Math.max(1, 0.68 / Math.min(h / RIG_H, w / 1200))) * 100) / 100 : 1;
+  if (Math.abs(W - rigW) < 4 && rs === rigRs && $("#rigsvg")) return;
+  rigW = W; rigRs = rs;
+  box.innerHTML = rigSVG(LAYOUT === "b" ? "line" : "kettle", W, rs);
   renderRig();
 }
 function renderAll() {
@@ -435,6 +448,52 @@ function renderAll() {
   morph($("#recipe"), recipeHTML());
   morph($("#now"), nowHTML());
   renderRig();
+  if (GRAPHS) drawGraphs();
+}
+
+/* ---------- the temperature graphs (graphs.js) ---------- */
+// What the graphs draw. Their clock: the demo's, or CraftBeerPi's brewing clock, which a simulation runs faster. Its
+// times are seconds since a midnight, and a span can reach back past it, so the labels wrap round the day.
+const graphNow = () => H ? H.now() : daySeconds();
+// a graph's clock labels: live, the local time at that moment, so a day with a daylight-saving change (23 or 25 hours)
+// is labelled right; the mockup's demo counts from its midnight
+const ghhmm = t => H && !DEMO_MODE ? hhmm(daySeconds(new Date((H.day() + t) * 1000)))
+  : hhmm(((Math.floor(t) % 86400) + 86400) % 86400);
+const G = () => ({hist: st.hist, t: DEMO_MODE ? st.t : graphNow(), span: gSpan, lost: st.link === "lost", V: st.v, VNAME: M.VNAME, U: M.U, hhmm: ghhmm, scale: H && !DEMO_MODE ? H.scale() : 1});
+// the logs the live history reads: each vessel's temperature, its kettle's target and AUTO, its element's level (M63)
+function graphNames() {
+  const n = {};
+  for (const v of ROLES) {
+    const k = M.K[v], el = v === "hlt" ? M.ACT.hltEl.id : v === "bk" ? M.ACT.bkEl.id : null;
+    n[v] = k && k.sensor ? {pv: k.sensor, sv: `${k.id}.target`, auto: `${k.id}.auto`, out: el ? `${el}.out` : null,
+      herms: v === "hlt" && M.HERMS && M.K.mt ? `${M.K.mt.id}.auto` : null} : {};
+  }
+  return n;
+}
+async function loadHistory() {
+  const g = gen, h = H;
+  if (!h || !h.due()) return;
+  const ok = await h.load(graphNames());
+  if (g === gen && root && ok) schedule();
+}
+function drawGraphs() {
+  if (!root || !st || !st.hist) return;
+  const g = G();
+  const boxes = Array.from(root.querySelectorAll(".graph")).map(el => {
+    const box = el.querySelector(".gsvg");
+    return {v: el.dataset.v, box, w: Math.floor(box.clientWidth), h: Math.floor(box.clientHeight)};
+  }).filter(b => b.w >= 60 && b.h >= 40);
+  /* the three show one span, so they share time marks: chosen for the narrowest */
+  const tw = Math.min(...boxes.map(b => b.w));
+  boxes.forEach(b => { b.box.innerHTML = graphSVG(g, b.v, b.w, b.h, b.box.id, tw); });
+}
+/* tapping a graph moves all three to the next span; tapping a span's name goes straight to it */
+function graphCmd(x) {
+  const i = GSPANS.findIndex(s => s[0] === gSpan);
+  gSpan = x === "next" ? GSPANS[(i + 1) % GSPANS.length][0] : GSPANS.some(s => s[0] === x) ? x : gSpan;
+  if (!DEMO_MODE) { try { localStorage.setItem(GSPAN_KEY, gSpan); } catch (e) { /* private mode: kept for this page */ } }
+  renderAll();
+  say(`Graphs: ${GSAY[gSpan]}`);
 }
 // Live readings arrive many times a second (each step tick under SIM_TIME_SCALE): drawn once a frame.
 function schedule() {
@@ -499,7 +558,7 @@ function setMode(v, m) {
     a.hltEl.on = m === "auto"; a.hltEl.pct = m === "auto" ? (V.sv - V.pv > 2 ? 100 : 40) : 0;
   } else {
     if (m === "auto" && V.sv == null) V.sv = 210.2;
-    a.bkEl.on = m === "auto"; a.bkEl.pct = m === "auto" ? (V.pv >= M.BOIL_TH ? V.bp : 100) : 0;
+    a.bkEl.on = m === "auto"; a.bkEl.pct = m === "auto" ? (V.pv >= boilFrom() ? V.bp : 100) : 0;
     powerModeChanged(m);
   }
   ["hltEl", "wortPump", "bkEl"].forEach(id => { a[id].failed = null; });
@@ -545,18 +604,19 @@ function cmdPwrSet() {
   st.edit = null; st.notes.bk = "";
   if (val === was) { renderAll(); return; }
   /* when the new level isn't in use yet, the event says when it will be, so an OUT that doesn't move isn't taken for a failure */
-  const cav = boil ? (V.mode === "auto" && V.pv >= M.BOIL_TH ? "" : `used from ${boilTh()} ${M.U}, full power until then`)
+  const cav = boil ? (V.mode === "auto" && V.pv >= boilFrom() ? "" : `used from ${boilTh()} ${M.U}, full power until then`)
     : (el.on ? "" : "used when you switch the element on");
   const label = boil ? `Boil power ${val} % (was ${was} %)` : `Boil element by hand ${val} % (was ${was} %)`;
   if (!DEMO_MODE) return livePower(boil, val, was, label, cav);
   send("p:bk", "set", label, () => {
-    if (boil) { V.bp = val; if (V.mode === "auto" && el.on && V.pv >= M.BOIL_TH) el.pct = val; }
+    if (boil) { V.bp = val; if (V.mode === "auto" && el.on && V.pv >= boilFrom()) el.pct = val; }
     else { el.lvl = val; if (V.mode !== "auto" && el.on) el.pct = val; }
   }, cav);
 }
 function stepStart(i) {
   const r = st.recipe, s = M.RECIPE.steps[i];
   r.cur = i; r.left = (s.min || 0) * 60; r.adds = [];
+  if (st.hist) st.hist.steps.push([st.t, i + 1]);
   if (s.k === "bk") { st.fill.bk = true; st.fill.mtLiq = false; if (st.v.mt.mode === "auto") setMode("mt", "manual"); }
   if (s.temp != null) {
     st.v[s.k].sv = s.temp;
@@ -567,6 +627,7 @@ function stepStart(i) {
 function cmdStart() {
   send("r:start", "start", "Recipe started", () => {
     const r = st.recipe, s = M.RECIPE.steps[r.cur];
+    if (r.state === "ready" && st.hist) st.hist.steps.push([st.t, r.cur + 1]);
     r.state = "running";
     if (s.temp != null && st.v[s.k].mode !== "auto") setMode(s.k, "auto");
   });
@@ -833,6 +894,7 @@ function run(cmd) {
     case "tm": return DEMO_MODE ? cmdTimer(x) : liveTimer(x);
     case "tab": return DEMO_MODE ? toast(`Mockup: this opens the existing ${x} page.`) : go(TAB_PATH[x] || "/");
     case "load": return DEMO_MODE ? cmdLoad(+x) : liveLoad(+x);
+    case "gspan": return graphCmd(x);
     default: return undefined;
   }
 }
@@ -1158,9 +1220,22 @@ const handlers = {
 const onWindow = () => closeMore();
 
 /* ---------- clock, step timer, rest timer, reading age ---------- */
+/* the graphs' rows: one every 10 s, none while the connection is lost (the mockup's graphTick) */
+const gDriven = v => st.v[v].mode === "auto" || (v === "hlt" && hermsOn());
+function gOut(v) {
+  const a = v === "hlt" ? st.a.hltEl : v === "bk" ? st.a.bkEl : null;
+  return a && !a.missing ? (a.on ? a.pct : 0) : null;
+}
+const gRow = (v, t) => [t, st.v[v].pv, gDriven(v) && st.v[v].sv != null ? st.v[v].sv : null, gOut(v)];
+function graphTick() {
+  if (!st.hist || st.t % 10) return;
+  if (st.link !== "lost") ["hlt", "mt", "bk"].forEach(v => st.hist.v[v].push(gRow(v, st.t)));
+  drawGraphs();
+}
 function demoTick() {
   st.t++;
   $("#clock").textContent = hhmm(st.t);
+  if (GRAPHS) graphTick();
   if (st.link === "lost") {
     st.age++;
     root.querySelectorAll(".age").forEach(n => { n.textContent = `Last reading ${st.age} s ago`; });
@@ -1189,6 +1264,8 @@ function liveTick() {
   st.t = daySeconds();
   setText($("#clock"), hhmm(st.t));
   if (st.link === "lost") {
+    // the graphs go grey, and a dark stretch grows over the time with no readings
+    if (H) { H.tick(gRow, false); drawGraphs(); }
     // never connected: calm for the first few seconds, then red
     if (!everConnected) { renderAll(); return; }
     if (everConnected && st.lostAt != null) st.age = Math.floor((Date.now() - st.lostAt) / 1000);
@@ -1200,6 +1277,10 @@ function liveTick() {
   }
   if (last && Object.values(st.expect).some(x => Date.now() > x.until)) { applyLive(last); schedule(); }
   if (last && last.timer && last.timer.running) { st.timer = timerNow(last.timer); const o = $("#tm-out"); if (o) setText(o, mmss(st.timer.left)); }
+  if (H) {
+    if (H.tick(gRow, true)) drawGraphs();
+    loadHistory();
+  }
 }
 
 /* ---------- the screen ---------- */
@@ -1221,22 +1302,32 @@ export function createBrewDay(el, o = {}) {
   }
   html.classList.add("bd-page");
   html.dataset.layout = LAYOUT;
+  GRAPHS = o.graphs === "none" ? "" : "face";
+  if (GRAPHS) html.dataset.graphs = GRAPHS; else delete html.dataset.graphs;
+  // the span: ?span= for a screenshot, else the one this device last chose (the demo always starts at 30 MIN, as the mockup)
+  gSpan = "30";
+  let kept = null;
+  if (!DEMO_MODE) { try { kept = localStorage.getItem(GSPAN_KEY); } catch (e) { /* private mode */ } }
+  for (const s of [o.span, kept]) if (GSPANS.some(x => x[0] === s)) { gSpan = s; break; }
+  rigRs = 1; H = null;
   root.innerHTML = skeleton(DEMO_MODE);
   if (DEMO_MODE) {
     const key = DEMO.SCENES[o.demo] || DEMO.EXTRA[o.demo] ? o.demo : "mash";
     M = {RECIPE: DEMO.RECIPE, VNAME: DEMO.VNAME, VACT: DEMO.VACT, ACT: DEMO.ACT, HERMS_DELTA: DEMO.HERMS_DELTA, BOOK: DEMO.BOOK, U: "°F", LIMITS: [32, 230],
       BOILPOWER: true, BOIL_TH: DEMO.BOIL_TH};
     st = (DEMO.SCENES[key] || DEMO.EXTRA[key])();
-    // a moment can open an editor (open); base, which moment's graph history to use, is for the graphs
-    const open = st.open;
+    // a moment can open an editor (open) and borrow another moment's graph history (base)
+    const open = st.open, base = st.base || key;
     delete st.open; delete st.base;
     Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, logOpen: false}, open);
     if (st.v.bk.bp == null) st.v.bk.bp = 45; // the boil kettle's Boil_Power setting, read from its props
     if (st.a.bkEl.lvl == null) st.a.bkEl.lvl = 100; // the boil element's own level (its power), used when it is on by hand
+    if (GRAPHS) st.hist = DEMO.history(base, st.t);
     applyLocks();
   } else {
     st = blankMoment();
     M = model({book});
+    if (GRAPHS) { H = createHistory(); st.hist = H.hist; }
     // shown until the first connection, and never kept: e[5] is 0
     if (!st.events.length) st.events.unshift([hhmmss(st.t), "Connecting to CraftBeerPi", "", "", "", 0]);
   }
@@ -1247,9 +1338,16 @@ export function createBrewDay(el, o = {}) {
   const ticker = setInterval(() => { if (gen === myGen && st) (DEMO_MODE ? demoTick : liveTick)(); }, 1000);
   const ro = new ResizeObserver(drawRig);
   ro.observe($("#rig"));
+  // each graph is drawn to its box: again when the boxes change size, and when the fonts arrive, which widens them
+  const gro = GRAPHS ? new ResizeObserver(() => drawGraphs()) : null;
+  if (gro) gro.observe($(".brewhouse"));
+  const onFonts = () => { if (gen === myGen) drawGraphs(); };
+  if (GRAPHS && document.fonts) document.fonts.addEventListener("loadingdone", onFonts);
   function teardownThis() {
     clearInterval(ticker);
     ro.disconnect();
+    if (gro) gro.disconnect();
+    if (document.fonts) document.fonts.removeEventListener("loadingdone", onFonts);
   }
   teardown = () => {
     teardownThis();
@@ -1263,6 +1361,8 @@ export function createBrewDay(el, o = {}) {
     hold = null;
     html.classList.remove("bd-page");
     delete html.dataset.layout;
+    delete html.dataset.graphs;
+    H = null;
     if (root) root.innerHTML = "";
     root = null; st = null; gen++;
     teardown = () => {};
@@ -1273,6 +1373,8 @@ export function createBrewDay(el, o = {}) {
       const prev = last;
       last = snap;
       applyLive(snap);
+      // the graphs' step marks: when each step started, as CraftBeerPi keeps it (M63)
+      if (H) H.steps(snap.steps);
       if (snap.connected && !everConnected) {
         if (st.events[0] && st.events[0][5] === 0) st.events.shift();
         if (!st.events.length) logEvent("Connected to CraftBeerPi", "", "");

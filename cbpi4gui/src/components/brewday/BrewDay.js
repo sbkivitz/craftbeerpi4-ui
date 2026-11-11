@@ -25,12 +25,16 @@ const BrewDay = () => {
   const { remove, hideStack } = alert;
 
   useEffect(() => {
-    const demo = new URLSearchParams(window.location.search).get("demo");
+    const qs = new URLSearchParams(window.location.search);
+    const demo = qs.get("demo");
     const title = document.title;
     document.title = "Brew day · CraftBeerPi";
     if (hideStack) hideStack(true);
     screen.current = createBrewDay(ref.current, {
       demo,
+      // the temperature graphs: ?graphs=none leaves them out; ?span=10, 30 or day picks the span they start at
+      graphs: qs.get("graphs"),
+      span: qs.get("span"),
       navigate: (path) => go.current(path),
       removeAlert: (id) => remove(id),
     });

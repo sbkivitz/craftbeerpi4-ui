@@ -143,7 +143,8 @@ What Scott sees:
 - On the boil kettle's faceplate, a button beside the BOIL ELEMENT lamp. The lamp used to fill that row on its
   own; now each takes half, so the faceplate gets no taller.
   - Boil kettle in AUTO: **BOIL POWER 45 %**, with "used from 210.2 °F · change" under it. This is BoilPower's
-    `Boil_Power`.
+    `Boil_Power`. The temperature is where BoilPower starts using it: the kettle's target, which the Boil step
+    sets to 210.2 °F (see the table).
   - Boil kettle in MANUAL: **POWER 100 %**, with "used by hand · change". This is the element's own level, the
     one it runs at when switched on by hand.
 - Tapping it opens an editor in place of the mode row, the same shape as the target editor: −5, −1, the value,
@@ -160,7 +161,8 @@ What Scott sees:
   40 %. (Test Recipe v5's boil is step 5.)
 - With no connection it pauses like every other control.
 
-Decisions I made, from Brett's facts. Scott hasn't seen the first two yet:
+Decisions I made, from Brett's facts. I showed Scott the first and fourth on 10 Nov (one button for both modes,
+and no held press); he hasn't answered yet:
 
 - **One button for both modes**, as Brett suggested: BOIL POWER in AUTO, POWER in MANUAL, and the hint says
   when the level is used. Hardware boil controllers work the same way: their output keys set the boil output
@@ -170,6 +172,14 @@ Decisions I made, from Brett's facts. Scott hasn't seen the first two yet:
   editor closes without sending anything, and the note under the faceplate says "The boil kettle switched to
   AUTO, so the button now sets the boil power. Nothing was changed." Otherwise SET could change the by-hand
   level while the button above it says BOIL POWER.
+- **During the "Ready to boil?" hold the button offers POWER (by hand), not BOIL POWER.** Brett asked (10 Nov),
+  since the kettle is in MANUAL then. Keep it that way. The button always sets the level the element runs at
+  in the kettle's current mode, so it always agrees with the lamp and OUT. If Scott heats the first runnings
+  by hand while the wort comes over, POWER is the level that matters. The boil power can be set as soon as
+  "Start the boil" switches AUTO on: the kettle then takes minutes to reach 210.2 °F, and the event line says
+  "full power until then". Offering BOIL POWER during the hold would make the button's meaning depend on the
+  recipe as well as the mode, and would leave no way to turn by-hand heat down. CraftBeerPi itself accepts a
+  boil power at any time; the screen just doesn't offer it in MANUAL.
 - **No held press for SET.** The Held Heat Rule is about switching heat on. SET changes a level and never
   switches the element on; when it is heating, a held press or AUTO already switched it on. It is already a
   deliberate tap, adjust, SET, and the urgent case, turning a boil-over down, has to be quick. DESIGN.md's
@@ -181,11 +191,12 @@ Decisions I made, from Brett's facts. Scott hasn't seen the first two yet:
 | Part | What it needs | Notes |
 |---|---|---|
 | Which kettle gets the button | React UI | Only a kettle whose logic declares the `set_boil_power` action, read from the logic's actions as the old KettleControl dialog did. On the rig, the boil kettle. |
-| BOIL POWER value and hint | React UI | The kettle's `Boil_Power` prop. The 210.2 °F in the hint is the kettle's `Boil_Threshold` prop, not a constant. |
+| BOIL POWER value and hint | React UI | The kettle's `Boil_Power` prop. The temperature in the hint is where BoilPower starts using the boil power, `BoilPower._threshold`: the kettle's target when it has one above 0 (the Boil step sets 210.2 °F), else its `Boil_Threshold` setting, else 99 °C / 210.2 °F. So with a 170 °F target the hint reads "used from 170 °F". It is shown as a plain number: 210.2, or 170 for 170.0. Corrected on 10 Nov: this row said `Boil_Threshold` only. Brett's port already followed the plugin; the mockup's `boilFrom()` now does too. |
 | Setting it (AUTO) | React UI | `POST /kettle/{id}/action` with `{"action": "set_boil_power", "parameter": {"Boil_Power": N}}`. Works with the kettle off or on and at any step, and is kept in the kettle's settings, so a step restarting the logic keeps it. BoilPower uses it at its next control decision, about 2 s later, so OUT can lag "confirmed" by up to 2 s. A warning from CraftBeerPi (a value it can't use) is a failure: the button says so and the value stays as it was. |
 | POWER value and setting it (MANUAL) | React UI | The element actor's `power`, and `POST /actor/{id}/set_power` with `{"power": N}`. Since M61 this level is the brewer's own and stays put when AUTO stops. |
 | The lamp and OUT | React UI | Unchanged: the element's power while it is on. In AUTO below the threshold that is Max_Output (100 %), so OUT reads 100 % while the button reads the boil power. That is right, and the hint says why. |
-| The editor | React UI | The target editor's layout with −5/−1/+1/+5, whole numbers and `inputmode="numeric"` (`.editor.pwr`). In the mockup: `powerHTML`, `editorHTML`, `cmdPwrOpen`, `cmdPwrStep` and `cmdPwrSet`, the `pwr`, `pstep` and `pset` cases in `run()`, the Enter and input handlers, and the `kind` and `what` fields of `st.edit`. The mode-change rule is at the end of the boil kettle's branch of `setMode`. |
+| Whether a new boil power is in use yet | React UI | BoilPower switches to the boil power when the wort reaches the threshold, and keeps it until the wort falls 3.6 °F (2 °C) below (its boil latch). The screen can't see the latch, so it judges by PV ≥ threshold. Just after a dip below the threshold (a lid opened, a cold addition), the event line may say "full power until then" when the new level is already in use; OUT shows the real power within 2 s. |
+| The editor | React UI | The target editor's layout with −5/−1/+1/+5, whole numbers and `inputmode="numeric"` (`.editor.pwr`). In the mockup: `powerHTML`, `editorHTML`, `cmdPwrOpen`, `cmdPwrStep` and `cmdPwrSet`, the `pwr`, `pstep` and `pset` cases in `run()`, the Enter and input handlers, and the `kind` and `what` fields of `st.edit`. The mode-change rule is at the end of the boil kettle's branch of `setMode`. The number box's screen-reader label follows the mode: "New boil power in percent" in AUTO, "New power by hand in percent" in MANUAL (corrected 10 Nov; it said "boil power" in both). |
 | Two small fixes that come with it | React UI | (1) While any value editor is open, `#app` gets `data-editing`. Then the other faceplates' button rows stop stretching to the editor's height (the faceplates share row heights), and the drawing may shrink further (to 160 px, or 110 px with the graphs), so a two-line note under an editor can't make the page scroll. Before this, tapping the locked element lamp with the editor open scrolled the page 6–20 px at 1920×950 and 1440×900. With no editor open neither rule applies. (2) A valid SET clears a "Enter a … from … to …" note left from an earlier try, in both editors. |
 | The demo moment | Mockup | `#boilpower`. Scenes can now carry `open` (state applied after `load()` resets the editor and notes) and `base` (whose graph history to use). |
 
@@ -197,8 +208,31 @@ Checked in the mockup (Edge), both with `?graphs=none` and with the graphs:
   to 100 %."; an unchanged SET just closes; Escape and a second tap close; 60 % set in AUTO while still heating
   up (OUT stays 100 % and the event says when the new level applies); 70 % set in MANUAL with the element off,
   then the element held on (HEATING 70 %), then 55 % while on; NEXT STEP into the Boil with the by-hand editor
-  open (it closes, says why, sends nothing); no connection (paused). No script errors.
+  open (it closes, says why, sends nothing); no connection (paused); the boil kettle's target changed to 170 °F
+  (the hint follows: "used from 170 °F"). No script errors.
 - With no editor open, the six existing moments change only in the boil kettle's lamp row.
+
+### Found while checking: the whirlpool hold (not designed yet)
+
+When the wort in a whirlpool stand cools more than 3.6 °F below the stand's temperature, CraftBeerPi asks
+whether to heat it back and hold it there until the stand ends (the core's `WhirlpoolStep`). On "Heat and
+hold" it sets BoilPower's `Hold_Target` and switches the kettle's logic on. While a hold is set, BoilPower
+doesn't use the boil power at all. More than 7.2 °F below the hold it heats at Max_Output; then it eases off
+to `Hold_Power` (30 % by default) as the wort reaches the hold, and switches off at or above it. The Boil step
+leaves the kettle's target at 0, so BoilPower also puts its 210.2 °F threshold back as the target, for display
+only.
+
+So during a hold, the screen as built shows the boil kettle with SV 210.2 °F, and the line under the window
+counts from 210.2 ("44.2 °F below target" at 166 °F), while the kettle is really holding 170 °F. The power
+button says "used from 210.2 °F". If Scott set a boil power then, the event line's "full power until then"
+would also be wrong. This was true before boil power, apart from the button.
+
+I'll design it with the whirlpool and chiller drawing, which needs a whirlpool moment anyway. My starting
+point: the faceplate shows the hold as its SV, MODE reads HOLD, and the line under the window counts from the
+hold; the power button says the boil power isn't used during a hold. The screen can tell a hold is set from
+the kettle's `Hold_Target` setting: a number above 0 and more than 3.6 °F below the boil point
+(`BoilPower._hold_target`). Whether Scott also wants to set a hold from this screen is the question Brett is
+keeping for him.
 
 ## Open questions about the drawing
 

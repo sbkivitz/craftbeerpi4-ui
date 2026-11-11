@@ -69,4 +69,7 @@ export const api = {
   timerStart: () => post("/resttimer/start"),
   timerPause: () => post("/resttimer/pause"),
   timerAdd: (seconds) => post("/resttimer/add", { seconds }),
+  // The temperature graphs' history: each log from `since` on (brewing clock seconds), about `points` readings each.
+  // Reading a day of logs can take longer than a command.
+  logWindow: (names, since, points) => call("POST", "/log/window", { names, since, points }, 20000),
 };

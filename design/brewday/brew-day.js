@@ -21,9 +21,13 @@ const ACT = {
   bkEl: {name: "BOIL ELEMENT", kind: "heat", v: "bk"}
 };
 const HERMS_DELTA = 5.4; // PID_HERMS DeltaTemp in the simulator
-/* BoilPower, the boil kettle's logic: below Boil_Threshold it heats at full power (Max_Output); at or above it, it holds
-   the element at Boil_Power, which Scott sets with set_boil_power (45 % on the simulators) */
+/* BoilPower, the boil kettle's logic: below its threshold it heats at full power (Max_Output); once the wort reaches it, it
+   holds the element at Boil_Power, which Scott sets with set_boil_power (45 % on the simulators), until the wort falls
+   3.6 °F (2 °C) below again. The threshold is BoilPower._threshold: the kettle's target when it has one (the Boil step
+   sets 210.2 °F), else its Boil_Threshold setting (BOIL_TH, 210.2 °F on Scott's set-up), else 99 °C / 210.2 °F. */
 const BOIL_TH = 210.2;
+const boilFrom = () => (st.v.bk.sv > 0 ? st.v.bk.sv : BOIL_TH);
+const boilFromText = () => String(+boilFrom().toFixed(1)); // 210.2, or 170 for a 170.0 °F target
 const BOOK = [ // the simulator's Recipe Book (config/recipes/*.yaml)
   {n: "Craftbeerpi Test Recipe v5", d: "7 steps · mash 126, 149 and 168 °F · 90 min boil"},
   {n: "Craftbeerpi Test Recipe v4", d: "6 steps · mash 126 and 149 °F · 90 min boil"},
@@ -183,12 +187,13 @@ function tgtHTML(v) {
 }
 /* only a kettle whose logic declares set_boil_power has this (on Scott's rig, the boil kettle). It sits beside the
    element it governs and works at any time, also while a recipe runs (Scott, 10 Nov). In AUTO it sets the logic's
-   Boil_Power, used from the boil threshold up; in MANUAL it sets the element's own level, used when it is on by hand.
+   Boil_Power, used from BoilPower's threshold up (boilFrom); in MANUAL, including the "Ready to boil?" hold, it sets the
+   element's own level, used when it is on by hand. The kettle's mode decides what it sets, never the recipe.
    Changing it is a tap on SET, like a target: it changes a level, it doesn't switch heat on */
 function powerHTML() {
   const V = st.v.bk, auto = V.mode === "auto", pend = st.pend["p:bk"], why = st.link === "lost" ? PAUSED : pend ? WAIT : "";
   return b("tgtbtn pwrbtn", auto ? `BOIL POWER ${V.bp} %` : `POWER ${st.a.bkEl.lvl} %`,
-    pend ? "sending…" : auto ? `used from ${BOIL_TH} °F · change` : "used by hand · change",
+    pend ? "sending…" : auto ? `used from ${boilFromText()} °F · change` : "used by hand · change",
     {cmd: "pwr:bk", why, expanded: !!st.edit && st.edit.kind === "pwr"});
 }
 function editorHTML(v) {
@@ -196,7 +201,7 @@ function editorHTML(v) {
     const p = st.edit.val;
     return `<div class="editor pwr" role="group" aria-label="${st.edit.what === "boil" ? "New boil power for the boil kettle" : "New power for the boil element by hand"}">
     <button type="button" data-cmd="pstep:-5" aria-label="Down 5 percent">−5</button><button type="button" data-cmd="pstep:-1" aria-label="Down 1 percent">−1</button>
-    <input id="tin" inputmode="numeric" value="${p}" aria-label="New boil power in percent">
+    <input id="tin" inputmode="numeric" value="${p}" aria-label="${st.edit.what === "boil" ? "New boil power in percent" : "New power by hand in percent"}">
     <button type="button" data-cmd="pstep:1" aria-label="Up 1 percent">+1</button><button type="button" data-cmd="pstep:5" aria-label="Up 5 percent">+5</button>
     <button type="button" class="ok" data-cmd="pset">SET <span id="tok">${p}</span> %</button><button type="button" class="no" data-cmd="tcancel">CANCEL</button></div>`;
   }
@@ -454,7 +459,7 @@ function setMode(v, m) {
     a.hltEl.on = m === "auto"; a.hltEl.pct = m === "auto" ? (V.sv - V.pv > 2 ? 100 : 40) : 0;
   } else {
     if (m === "auto" && V.sv == null) V.sv = 210.2;
-    a.bkEl.on = m === "auto"; a.bkEl.pct = m === "auto" ? (V.pv >= BOIL_TH ? V.bp : 100) : 0;
+    a.bkEl.on = m === "auto"; a.bkEl.pct = m === "auto" ? (V.pv >= boilFrom() ? V.bp : 100) : 0;
     /* the power editor edits the setting its button named when it opened; if a step or ALL OFF changes the mode,
        that setting is no longer the one in use, so the editor closes without sending anything */
     if (st.edit && st.edit.kind === "pwr" && st.edit.what !== (m === "auto" ? "boil" : "hand")) {
@@ -496,10 +501,10 @@ function cmdPwrSet() {
   st.edit = null; st.notes.bk = "";
   if (val === was) { renderAll(); return; }
   /* when the new level isn't in use yet, the event says when it will be, so an OUT that doesn't move isn't taken for a failure */
-  const cav = boil ? (V.mode === "auto" && V.pv >= BOIL_TH ? "" : `used from ${BOIL_TH} °F, full power until then`)
+  const cav = boil ? (V.mode === "auto" && V.pv >= boilFrom() ? "" : `used from ${boilFromText()} °F, full power until then`)
     : (el.on ? "" : "used when you switch the element on");
   send("p:bk", "set", boil ? `Boil power ${val} % (was ${was} %)` : `Boil element by hand ${val} % (was ${was} %)`, () => {
-    if (boil) { V.bp = val; if (V.mode === "auto" && el.on && V.pv >= BOIL_TH) el.pct = val; }
+    if (boil) { V.bp = val; if (V.mode === "auto" && el.on && V.pv >= boilFrom()) el.pct = val; }
     else { el.lvl = val; if (V.mode !== "auto" && el.on) el.pct = val; }
   }, cav);
 }
