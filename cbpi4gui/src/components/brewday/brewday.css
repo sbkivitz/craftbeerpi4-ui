@@ -80,7 +80,7 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .face .u{font-size:.4em;margin-left:.12em;vertical-align:1em}
 :where(html.bd-page) .aux{display:grid;align-self:stretch;align-content:center;margin:0;padding-left:clamp(10px,calc(3.5 * var(--pu)),16px);border-left:1px solid #2a3846}
 :where(html.bd-page) .aux dt{font:600 clamp(12px,calc(3.6 * var(--pu)),15px)/1 var(--cond);letter-spacing:.1em;color:var(--text-3)}
-:where(html.bd-page) .aux dd{margin:3px 0 10px;font:600 clamp(20px,calc(6.6 * var(--pu)),32px)/1 var(--cond);letter-spacing:.03em;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
+:where(html.bd-page) .aux dd{min-width:2.55em;margin:3px 0 10px;font:600 clamp(20px,calc(6.6 * var(--pu)),32px)/1 var(--cond);letter-spacing:.03em;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
 :where(html.bd-page) .aux dd:last-child{margin-bottom:0}
 :where(html.bd-page) .face.stale .pv,:where(html.bd-page) .face.stale .sv,:where(html.bd-page) .face.stale .aux dd{color:#6b7785;text-shadow:none}
 :where(html.bd-page) .face.stale .outbar i{background:#6b7785}
@@ -371,7 +371,7 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page)[data-layout=b] .tabs{margin-top:10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);min-height:56px}
 :where(html.bd-page)[data-layout=b] .main{grid-template-columns:clamp(340px,23vw,440px) minmax(0,1fr)}
 :where(html.bd-page)[data-layout=b] .brewhouse{grid-template-rows:auto minmax(0,1fr)}
-:where(html.bd-page)[data-layout=b] .face .pv{font-size:clamp(48px,calc(21 * var(--pu)),110px)}
+:where(html.bd-page)[data-layout=b] .face .pv{font-size:min(clamp(48px,calc(21 * var(--pu)),110px),calc((100 * var(--pu) - 3 * clamp(10px,calc(4 * var(--pu)),18px) - clamp(10px,calc(3.5 * var(--pu)),16px) - 2.55 * clamp(20px,calc(6.6 * var(--pu)),32px) - 1.89 * clamp(15px,calc(5 * var(--pu)),22px) - 9px) / 2.47))}
 :where(html.bd-page)[data-layout=b] .face .sv{font-size:clamp(26px,calc(9.5 * var(--pu)),50px)}
 @keyframes bd-march{to{background-position:17px 0}}
 @keyframes bd-flow{to{stroke-dashoffset:-24}}

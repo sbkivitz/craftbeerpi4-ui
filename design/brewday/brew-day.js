@@ -739,14 +739,13 @@ function devHTML(v) {
   const eta = GRAPHS ? graphETA(v) : "";
   return (d > 0 ? `${d.toFixed(1)} °F below target` : `${(-d).toFixed(1)} °F above target`) + (eta ? ` · ${eta}` : "");
 }
-/* layout B's faceplate also shows output and mode, like a hardware PID controller */
+/* layout B's faceplate also shows output and mode, like a hardware PID controller. OUT is the element's power now, on
+   every vessel and in every state: on the boil kettle 100 % while it heats to the boil, the boil power once it boils,
+   0 while paused, and the hand level in MANUAL. The green BOIL number is the setting; OUT is what the element is doing
+   (Scott, 11 Nov: "BoilPower's display has lost its current 'out' element power number? Please put it back") */
 function auxHTML(v) {
   const el = v === "hlt" ? st.a.hltEl : v === "bk" ? st.a.bkEl : null;
   const mode = v === "hlt" && st.v.mt.mode === "auto" ? "HERMS" : st.v[v].mode === "auto" ? "AUTO" : "MAN";
-  /* power first: the boil power is the boil kettle's green number, so its window doesn't repeat the element's power as
-     OUT (Scott, 10 Nov: "I don't need the heating element power echoed so many places"). In a hold the green number is
-     the target, so OUT comes back, as on the HLT */
-  if (bkNew(v) && BK === "power" && bkHoldT() == null) return `<dl class="aux"><dt>MODE</dt><dd>${mode}</dd></dl>`;
   const pct = el && el.on ? el.pct : 0;
   return `<dl class="aux"><dt>OUT</dt><dd>${el ? pct + " %" : "– –"}<span class="outbar"${el ? "" : ' style="visibility:hidden"'} aria-hidden="true"><i style="width:${pct}%"></i></span></dd><dt>MODE</dt><dd>${mode}</dd></dl>`;
 }

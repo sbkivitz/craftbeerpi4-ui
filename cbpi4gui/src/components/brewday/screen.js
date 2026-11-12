@@ -78,6 +78,7 @@ const daySeconds = (d = new Date()) => d.getHours() * 3600 + d.getMinutes() * 60
 const pctOf = (left, min) => Math.max(0, Math.min(100, Math.round(100 * (1 - left / (min * 60)))));
 const EVENTS_KEY = "cbpi.brewday.events";
 const EVENTS_KEEP_MS = 12 * 3600 * 1000;
+const LOST = "Connection to CraftBeerPi lost";
 const EXPECT_MS = 3000;
 // The websocket's own "server down" and "connected" messages (data/websocket.js): the screen shows the
 // connection itself.
@@ -476,14 +477,13 @@ function devHTML(v) {
   const eta = GRAPHS ? graphETA(G(), v) : "";
   return (d > 0 ? `${d.toFixed(1)} ${M.U} below target` : `${(-d).toFixed(1)} ${M.U} above target`) + (eta ? ` · ${eta}` : "");
 }
-/* layout B's faceplate also shows output and mode, like a hardware PID controller */
+/* layout B's faceplate also shows output and mode, like a hardware PID controller. OUT is the element's power now, on
+   every vessel and in every state: on the boil kettle 100 % while it heats to the boil, the boil power once it boils,
+   0 while paused, and the hand level in MANUAL. The green BOIL number is the setting; OUT is what the element is doing
+   (Scott, 11 Nov: "BoilPower's display has lost its current 'out' element power number? Please put it back") */
 function auxHTML(v) {
   const e = v === "hlt" ? st.a.hltEl : v === "bk" ? st.a.bkEl : null, el = e && !e.missing ? e : null;
   const mode = v === "hlt" && hermsOn() ? "HERMS" : st.v[v].mode === "auto" ? "AUTO" : "MAN";
-  /* the new boil kettle: while its target is BOIL the boil power is its green number, so its window doesn't repeat the
-     element's power as OUT (Scott, 10 Nov: "I don't need the heating element power echoed so many places"). In a hold the
-     green number is the target, so OUT comes back, as on the HLT */
-  if (bkNew(v) && bkHoldT() == null) return `<dl class="aux"><dt>MODE</dt><dd>${mode}</dd></dl>`;
   const pct = el && el.on ? el.pct : 0;
   return `<dl class="aux"><dt>OUT</dt><dd>${el ? pct + " %" : "– –"}<span class="outbar"${el ? "" : ' style="visibility:hidden"'} aria-hidden="true"><i style="width:${pct}%"></i></span></dd><dt>MODE</dt><dd>${mode}</dd></dl>`;
 }
@@ -1971,7 +1971,7 @@ function stepStartLine(m, resumed, s) {
 // recipe's steps starting, finishing and starting their timers. Commands from this screen log themselves.
 function observe(prev, snap) {
   if (!prev) return;
-  if (prev.connected && !snap.connected) logEvent("Connection to CraftBeerPi lost", "trying again", "bad");
+  if (prev.connected && !snap.connected) logEvent(LOST, "trying again", "bad");
   if (!prev.connected && snap.connected && everConnected) {
     logEvent("Connection to CraftBeerPi back", "", "");
     if (!st.recipe) loadBook();
@@ -2427,7 +2427,11 @@ export function createBrewDay(el, o = {}) {
       if (H) H.steps(snap.steps);
       if (snap.connected && !everConnected) {
         if (st.events[0] && st.events[0][5] === 0) st.events.shift();
-        if (!st.events.length) logEvent("Connected to CraftBeerPi", "", "");
+        /* a fresh page says it's connected when nothing is kept, or when the newest line kept is a lost connection. That
+           line can come from the page this one replaced, logged as it closed, and nothing else would follow it, as this
+           page never lost its own connection: Scott's tab showed "Connection to CraftBeerPi lost · trying again" while
+           connected (11 Nov, 21:25) */
+        if (!st.events.length || st.events[0][1] === LOST) logEvent("Connected to CraftBeerPi", "", "");
         if (!st.recipe) loadBook();
         probeBrewScribe();
       }

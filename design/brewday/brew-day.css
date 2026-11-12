@@ -95,7 +95,10 @@ html.bare .mock{display:none}
 .face .u{font-size:.4em;margin-left:.12em;vertical-align:1em}
 .aux{display:grid;align-self:stretch;align-content:center;margin:0;padding-left:clamp(10px,calc(3.5 * var(--pu)),16px);border-left:1px solid #2a3846}
 .aux dt{font:600 clamp(12px,calc(3.6 * var(--pu)),15px)/1 var(--cond);letter-spacing:.1em;color:var(--text-3)}
-.aux dd{margin:3px 0 10px;font:600 clamp(20px,calc(6.6 * var(--pu)),32px)/1 var(--cond);letter-spacing:.03em;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
+/* OUT and MODE always keep the room "100 %" takes (2.55em, the widest they hold; HERMS is 2.49em), so the line beside
+   the numbers stays put as the power goes from 45 % to 100 %, lines up across the three windows, and the graph under
+   it keeps its width */
+.aux dd{min-width:2.55em;margin:3px 0 10px;font:600 clamp(20px,calc(6.6 * var(--pu)),32px)/1 var(--cond);letter-spacing:.03em;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
 .aux dd:last-child{margin-bottom:0}
 .face.stale .pv,.face.stale .sv,.face.stale .aux dd{color:#6b7785;text-shadow:none}
 .face.stale .outbar i{background:#6b7785}
@@ -414,7 +417,11 @@ html.bare .mock{display:none}
 [data-layout=b] .tabs{margin-top:10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);min-height:56px}
 [data-layout=b] .main{grid-template-columns:clamp(340px,23vw,440px) minmax(0,1fr)}
 [data-layout=b] .brewhouse{grid-template-rows:auto minmax(0,1fr)}
-[data-layout=b] .face .pv{font-size:clamp(48px,calc(21 * var(--pu)),110px)}
+/* the PV is never so big that it runs into the line beside it. A window is 100 --pu wide; from it come its padding, the
+   gap after the label, the widest label (BOIL, 1.89em), the OUT/MODE column ("100 %", 2.55em, and its padding), the
+   borders and 6 px clear of the line, and the PV ("212.0°F") is 2.47em. The small words stop shrinking at their
+   smallest sizes, so only narrow windows need this (1180, 1280 and 900 px wide), and all three PVs stay one size */
+[data-layout=b] .face .pv{font-size:min(clamp(48px,calc(21 * var(--pu)),110px),calc((100 * var(--pu) - 3 * clamp(10px,calc(4 * var(--pu)),18px) - clamp(10px,calc(3.5 * var(--pu)),16px) - 2.55 * clamp(20px,calc(6.6 * var(--pu)),32px) - 1.89 * clamp(15px,calc(5 * var(--pu)),22px) - 9px) / 2.47))}
 [data-layout=b] .face .sv{font-size:clamp(26px,calc(9.5 * var(--pu)),50px)}
 .mock .lay{margin-left:auto}
 

@@ -1498,7 +1498,8 @@ page titled). The mockup adds "(mockup)".
   lines (44 px) where it said "CRAFTBEERPI"; the title bar keeps its height, as ALL OFF's 46 px is taller.
 - With `?name=`: whatever name you give. For Scott's,
   `?name=EBrews%20-%20A%20CraftBeerPi%20Brewery&brewscribe=none#mash`. The mockup strip has "Brewery name: default ·
-  Scott's · a simulator · 36 characters".
+  Scott's · a simulator · 30 characters · 36 characters". Since Scott shortened his name, "Scott's" is "EBrews" and his
+  first name is "30 characters" (mockup only, hidden by `?bare`; nothing to port).
 
 ### Changed, all in `proposal\`
 
@@ -1530,6 +1531,17 @@ page titled). The mockup adds "(mockup)".
    cutting Scott's name in moments where it fits whole today. I left it.
 3. For Scott, not the screen: if the rig and the simulators all say "EBrews - A CraftBeerPi Brewery", the title bar
    can't tell them apart. Naming the simulators "Simulator 8000" and "Simulator 8012" would.
+
+### Built (11 Nov, evening)
+
+- Brett built it the same evening: web UI e3735aa, build 5d3d66b. His identity test matches with `?name=` on both
+  pages: Scott's 30-character name in `#mash`, `#sparge-ready`, `#boil-hold`, `#notarget` and `#offline`, and
+  "Simulator 8012", the 36-character name and a blank one in `#mash`, at his five sizes. The page's title is ported
+  too. A change in Settings shows at once on open screens.
+- He agreed with all three calls above, and leaves the simulators' names to Scott.
+- Scott has since shortened his 8012 name to "EBrews": one line at full size at every width.
+- Looked at on 8012 at 1920, 960 and 390 px, without pressing anything: "EBREWS" at 34, 22 and 22 px, the title bar
+  71, 127 and 121 px tall, the page's title "EBrews · Brew day", all as the mockup with `?name=EBrews`.
 
 ## BREWSCRIBE: a tab that opens BrewScribe in its own browser tab, ready to build (11 Nov, evening)
 
@@ -1610,6 +1622,115 @@ row keeps its height everywhere (56 px on a monitor, 97 px on a phone). With `?b
    them. If Scott records in BrewScribe on the phone that also shows brew day, a timer or hop alarm may not sound until
    he switches back. The monitor's screen still rings. BrewScribe showing CraftBeerPi's alarms would cover it.
 3. The mockup still plays the soft ping. The sounds are the Settings page's (`alarm.js`), so there's nothing to port.
+
+### Built (11 Nov, evening)
+
+- Brett built it the same evening: web UI 625c63a, build 281129d. Every moment opens with the tab, as in the mockup;
+  his identity test also compares the press, and `#mash` and the timers without the tab (`?brewscribe=none`), at
+  every size: 451/451.
+- Item 1 above, how the screen tells: it asks CraftBeerPi `HEAD /brewscribe/`, and anything but 404 counts as
+  installed. Each device remembers the answer, so the tab row doesn't move as the screen opens.
+- Item 2, Porter's answer (11 Nov, evening; his newer build, not yet installed): BrewScribe shows CraftBeerPi's waiting
+  prompts (hop alerts, timers that run out) on its own alarm line, with their title, message and "Answer in Brew Day
+  ↗", and keeps each until it is answered on any screen. A tab the phone paused reconnects when it comes back to the
+  front, and CraftBeerPi's snapshot brings the waiting prompts back. So Scott sees them; BrewScribe plays no sound, and
+  Porter left that to Scott.
+- The way back, already done by Porter and you: BrewScribe names its tab "brewscribe" (and an unnamed brew-day tab that
+  opened it "craftbeerpi"); the brew-day screen names its own tab "craftbeerpi" (`screen.js`, `createBrewDay`); BREW
+  DAY and "Answer in Brew Day ↗" go to the page CraftBeerPi's "/" leads to (its `index_url`) at `#/`, so the brew-day
+  tab comes to the front without reloading. A reload would also stop its sound until the next tap.
+- Looked at on 8012 at 1920, 960 and 390 px, without pressing anything: BrewScribe is installed there, so eight tabs,
+  with `href="/brewscribe/#now"`, `target="brewscribe"` and no `rel`; on a phone four and four, BREW / SCRIBE with the
+  icon after Scribe, as the mockup.
+
+## OUT back on the boil kettle's window: ready to build (11 Nov, night)
+
+Scott, 11 Nov, via Brett: "BoilPower's display has lost its current 'out' element power number? Please put it back".
+The 10 Nov rule left the boil kettle's window with MODE only while its target was BOIL, and the afternoon's change took
+the % off HEATING, so nothing showed what the element was doing.
+
+### What it shows
+
+OUT is the boil element's power now, in every state, as on the HLT: 100 % while it heats to the boil, the boil power
+once it boils (45 % in `#boiling`), 0 % while paused, and the hand level in MANUAL (0 % with the element off). The green
+BOIL number stays as it is: that is the setting, and OUT is what the element is doing. While it boils steadily both say
+45, a setting beside the reading, like the HLT's SV and PV. HEATING keeps no %. In `auxHTML`, the boil kettle's special
+case goes:
+
+```js
+// gone, with its comment:
+if (bkNew(v) && BK === "power" && bkHoldT() == null) return `<dl class="aux"><dt>MODE</dt><dd>${mode}</dd></dl>`;
+```
+
+### Two style changes, so it fits
+
+1. **OUT and MODE keep the room "100 %" takes.** `.aux dd` gets `min-width:2.55em`. "100 %" is 2.548em, the widest
+   thing that column holds (HERMS is 2.491em, the span labels are narrower). Without this, the boil kettle's line
+   would move about 10 px as the boil starts (100 % to 45 %), and the graph under it would change width with it: at
+   960 px it dropped its "14:45" time label. The HLT already did this whenever its power went from two digits to three.
+   Now the line stays put, in the same place in all three windows.
+2. **The PV never runs into the line.** Narrower than about 1366 px, the small words and gaps stop shrinking at their
+   smallest sizes while the windows keep narrowing, so they take the PV's room. At 1180 the boil kettle's "°F" already
+   crossed the line before today (by 8 px, with graphs); with OUT back it would cross it by 12 px, and at 900 it would
+   touch it. The PV now has a size limit worked out from the window's width, the same for all three windows, so the
+   three PVs stay one size:
+
+```css
+[data-layout=b] .face .pv{font-size:min(clamp(48px,calc(21 * var(--pu)),110px),calc((100 * var(--pu) - 3 * clamp(10px,calc(4 * var(--pu)),18px) - clamp(10px,calc(3.5 * var(--pu)),16px) - 2.55 * clamp(20px,calc(6.6 * var(--pu)),32px) - 1.89 * clamp(15px,calc(5 * var(--pu)),22px) - 9px) / 2.47))}
+```
+
+   A window is 100 `--pu` wide. From that come: the window's side padding and the gap after the label (the `3 *` term;
+   all three are `clamp(10px,4pu,18px)`), OUT/MODE's padding (`.aux` padding-left), "100 %" (2.55 × the `.aux dd`
+   font), the widest label, BOIL (1.89 × the `.pvsv dt` font), and 9 px: the window's two borders, the line itself,
+   and 6 px kept clear of it. What's left is for the PV, which is 2.47em wide ("212.0°F"). If any of those sizes
+   differ in your copy, the formula follows them.
+
+The PV changes size only where it had to:
+
+| Width | PV before | PV now |
+|---|---|---|
+| 1180 | 48 px | 40.6 px |
+| 1280 | 55 px | 53.5 px |
+| 900 | 53.1 px | 50.2 px |
+| 1920, 1440, 1366, 1024, 960, 768, 701, phones | unchanged | unchanged |
+
+### Moments whose pictures change
+
+- **The boil kettle's window, in every moment but `#hold` and `#handhold`**, whose OUT was already there: OUT and its bar
+  appear above MODE.
+- **All three windows, in every moment, at every size:** where OUT/MODE was narrower than "100 %" (the mash tun's "– –"
+  with AUTO or MAN, the HLT's "0 %" with MAN, and so on), the line moves left to where "100 %" needs it and the graph
+  under it narrows to match. The PV and SV don't move.
+- **The PV at 1180, 1280 and 900**, in all three windows (the table above).
+- **Phones:** the boil kettle's plate is 10 px taller in the moments that lacked OUT, now as tall as the HLT's, so the
+  page is 9-11 px longer.
+- `?bk=today` changes with the column and the PV limit. Layout A doesn't change.
+
+### Changed, all in `proposal\`
+
+- `brew-day.js`: `auxHTML` (the special case and its comment out; the new comment quotes Scott).
+- `brew-day.css`: `.aux dd` (`min-width:2.55em`) and `[data-layout=b] .face .pv`, each with a comment.
+
+### Checked
+
+- OUT in all 30 moments at 1920: 100 % in `#heatup`; 45 % in `#hop`, `#boilpower`, `#boiling` and `#bktarget`; 2 % in
+  `#keepboil` and `#letfall`; 35 % in `#hold`; 0 % paused (`#pause`, `#pause-long`), in `#handhold` and in every MANUAL
+  moment, whose element is off.
+- At 14 sizes from 360 to 1920, with and without graphs, in every moment, all three windows: the PV at least 6 px clear
+  of the line (before today: −8 px at 1180 with graphs; with OUT back and no limit: −12 px), and nothing else in the
+  window clipped, wrapped or past its edge. At 900-1280 the PV runs up to 4 px into the 10 px gap in front of the
+  line, as intended.
+- Every moment before and after at those 14 sizes, with and without graphs, plus `?bk=today`, layout A and
+  `?timers=today`: every changed pixel is inside the three windows, apart from the phones' 10 px. Twelve differences
+  elsewhere (the step list's scroll, and layout A's drawing) were gone on three reloads each. No page errors.
+
+### Found while checking: the boil kettle's step row on narrow windows (next)
+
+The row −5 % −1 % HEATING +1 % +5 % keeps each step at least 44 px wide, so the element gets what's left: 29 px at
+1180 (it shows "ATI"), 53 px at 900 and 62 px at 1280; it needs about 73. So where the window is narrow, the button
+needed in a hurry for a boil-over is the smallest one in the row. It came with the ±1 % hand-off, whose checks covered
+1920, 1440, 1366 and the phone only. It's on Scott's screen at those widths now. I'm fixing it next, as its own
+hand-off.
 
 ## Open questions about the drawing
 
