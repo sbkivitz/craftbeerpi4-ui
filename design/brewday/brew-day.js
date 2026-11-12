@@ -671,8 +671,9 @@ function nudgeHTML(d) {
   /* a step that would pass 0 or 100 % stops there; only at the end itself is the button refused */
   const why = st.link === "lost" ? PAUSED : pend ? WAIT : d < 0 && V.bp <= 0 ? "The boil power is already 0 %." : d > 0 && V.bp >= 100 ? "The boil power is already 100 %." : "";
   /* waiting for CraftBeerPi, all four are greyed and the one pressed shows the lamps' marching stripes; the wait is
-     kept under the step itself, so −5 and −1 can't both look pressed */
-  return b(`cmdbtn nudge${pend === String(d) ? " sending" : ""}`, `${d < 0 ? "−" : "+"}${Math.abs(d)} %`, "",
+     kept under the step itself, so −5 and −1 can't both look pressed. The " %" is its own span: on the narrowest
+     windows it goes (.nudge .pc), as the steps are too narrow for it there; the spoken name keeps "percent" */
+  return b(`cmdbtn nudge${pend === String(d) ? " sending" : ""}`, `${d < 0 ? "−" : "+"}${Math.abs(d)}<span class="pc"> %</span>`, "",
     {cmd: `pnudge:${d}`, why, label: `Boil power ${d < 0 ? "down" : "up"} ${Math.abs(d)} percent`});
 }
 function bkLampHTML() {

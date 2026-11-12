@@ -153,12 +153,18 @@ html.bare .mock{display:none}
 /* in the "power first" redesign the boil power is the boil kettle's set value, so it is typed in Setpoint Green */
 [data-bk=power] .editor.pwr input{color:var(--sv)}
 /* the proposed boil kettle (?bk=power): while AUTO boils, the one-tap steps either side of the element button, −5 −1 on
-   its left and +1 +5 on its right, never under 44 px; the element button keeps twice their share, as the boil-over
-   button it is the biggest. They take the lamp's height. The element button pauses the heat, and PAUSED is Prompt
+   its left and +1 +5 on its right. The element button is the boil-over button, so it is the biggest: twice a step, and
+   never narrower than HEATING needs (3.45 times its word's size, plus padding and border); the steps share the rest.
+   Where the row has room (1366 px wide and up, 1024, 960 and phones) a step is 44 px or more, as before; on the
+   narrowest windows (1180, 1280 and 900 px) the steps get narrower instead of the element (32 px at 1180), and lose
+   their % (.nudge .pc). They take the lamp's height. The element button pauses the heat, and PAUSED is Prompt
    Amber, like anything waiting for the brewer. Its box adds BOIL AT and the usual boil power under SET */
-.ctrls.bkpow{grid-template-columns:repeat(2,minmax(44px,1fr)) minmax(0,2fr) repeat(2,minmax(44px,1fr));column-gap:6px}
+.ctrls.bkpow{grid-template-columns:repeat(2,minmax(0,1fr)) minmax(calc(3.45 * clamp(18px,calc(6.4 * var(--pu)),24px) + 14px),2fr) repeat(2,minmax(0,1fr));column-gap:6px}
 .ctrls.bkpow .lamp{padding-left:6px;padding-right:6px}
 .ctrls .nudge{min-height:0;padding:6px 2px}
+/* a step's " %": there while the window is at least 270 px wide (100 --pu), where "−5 %" fits; gone below that, so the
+   steps read −5 −1 +1 +5, as in the power box */
+.nudge .pc{font-size:clamp(0px,calc((100 * var(--pu) - 270px) * 99),1em)}
 /* a step on its way to CraftBeerPi: the lamps' marching stripes along its top */
 .ctrls .nudge.sending::before{content:"";position:absolute;inset:0 0 auto;height:6px;background:repeating-linear-gradient(-45deg,#a9bccd 0 6px,#33475a 6px 12px);background-size:17px 6px;animation:march .6s linear infinite}
 .lamp[data-state=paused]{border-color:var(--prompt)}

@@ -402,8 +402,10 @@ function nudgeHTML(d) {
   const V = st.v.bk, pend = st.pend["p:bk"];
   const why = st.link === "lost" ? PAUSED : pend ? WAIT : d < 0 && V.bp <= 0 ? "The boil power is already 0 %." : d > 0 && V.bp >= 100 ? "The boil power is already 100 %." : "";
   /* waiting for CraftBeerPi, all four are greyed and the one pressed shows the lamps' marching stripes; the wait is kept
-     under the step itself, so −5 and −1 can't both look pressed */
-  return b(`cmdbtn nudge${pend === String(d) ? " sending" : ""}`, `${d < 0 ? "−" : "+"}${Math.abs(d)} %`, "",
+     under the step itself, so −5 and −1 can't both look pressed. The " %" is its own span: on the narrowest windows it
+     goes (.nudge .pc), as the steps are too narrow for it there; the spoken name keeps "percent" (the dashboard agent's
+     hand-off of 11 Nov, night: HEATING was clipped to "ATI" at 1180 px) */
+  return b(`cmdbtn nudge${pend === String(d) ? " sending" : ""}`, `${d < 0 ? "−" : "+"}${Math.abs(d)}<span class="pc"> %</span>`, "",
     {cmd: `pnudge:${d}`, why, label: `Boil power ${d < 0 ? "down" : "up"} ${Math.abs(d)} percent`});
 }
 /* the element button in AUTO: not locked, a tap pauses the heat (set_paused) and keeps AUTO, the recipe and the boil power;

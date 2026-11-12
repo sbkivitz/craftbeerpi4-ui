@@ -1221,7 +1221,8 @@ Why it's drawn this way:
   HLT's and mash tun's rows taller too, appearing and vanishing with AUTO.
 - No step is under 44 px wide (WCAG 2.5.5; NN/g asks for 1 cm). The element keeps twice their share: it's the button
   needed in a hurry for a boil-over, so it stays the biggest target. A slip onto the step beside it costs 1 %; a slip
-  from a step onto it pauses the heat, which a held press undoes.
+  from a step onto it pauses the heat, which a held press undoes. (Changed 11 Nov, night: at 1180, 1280 and 900 px
+  the two rules clashed and the element lost; see "The boil kettle's step row on narrow windows".)
 - The element without its name. "BOIL ELEMENT · tap to pause" wrapped onto 2 lines at 1920 and 4 at 1366 in layout
   A, making the row 15-30 px taller as the boil started and moving the other faceplates' buttons under the brewer's
   finger. The faceplate's title says BOIL KETTLE, and it has one element.
@@ -1724,13 +1725,93 @@ The PV changes size only where it had to:
   `?timers=today`: every changed pixel is inside the three windows, apart from the phones' 10 px. Twelve differences
   elsewhere (the step list's scroll, and layout A's drawing) were gone on three reloads each. No page errors.
 
-### Found while checking: the boil kettle's step row on narrow windows (next)
+### Found while checking: the boil kettle's step row on narrow windows
 
-The row −5 % −1 % HEATING +1 % +5 % keeps each step at least 44 px wide, so the element gets what's left: 29 px at
-1180 (it shows "ATI"), 53 px at 900 and 62 px at 1280; it needs about 73. So where the window is narrow, the button
-needed in a hurry for a boil-over is the smallest one in the row. It came with the ±1 % hand-off, whose checks covered
-1920, 1440, 1366 and the phone only. It's on Scott's screen at those widths now. I'm fixing it next, as its own
-hand-off.
+The row −5 % −1 % HEATING +1 % +5 % kept each step at least 44 px wide, so the element got what was left. It's fixed
+in the next section.
+
+### Built (11 Nov, night)
+
+- Brett built it the same night (DEFECTS M76; web UI a513fe4, build ad897b3), live on 8012. The special case is gone
+  from `auxHTML`, and both CSS rules came over as written, through his scoped stylesheet. His sizes match the
+  mockup's, so the PV formula stands unchanged. Identity 451/451 on every moment, size and graphs setting.
+- His live boil power test now reads OUT on both pages: 30 % at the boil power, 25 % after −5, 0 % paused (BOIL still
+  40), 40 % heating again, 0 % in MANUAL with the element off, and 40 % back in AUTO: 92/92. The build before fails
+  exactly those six checks.
+- Also in that build, for the event line (a live page only, so nothing in the mockup): a fresh page now logs
+  "Connected to CraftBeerPi" when the newest kept line is "Connection to CraftBeerPi lost". Before, it did that only
+  when nothing was kept, so Scott's Edge tab said "lost · trying again" while connected: the page it replaced had
+  logged the loss as it closed, and nothing followed it.
+
+## The boil kettle's step row on narrow windows: ready to build (11 Nov, night)
+
+Found while checking OUT. The ±1 % hand-off's checks covered 1920, 1440, 1366 and the phone only. Narrower, the row
+kept each step at least 44 px wide, so the element button got what was left. It needs about 73 px for HEATING:
+
+| Width | Element before | Steps before | Element now | Steps now |
+|---|---|---|---|---|
+| 1280 | 62 px, HEATING clipped | 44 px | 79 px | 40 px |
+| 1180 | 29 px, "ATI" | 44 px | 76 px | 32 px |
+| 960 | 73 px, 1 px over | 44 px | 83 px | 41 px |
+| 900 | 53 px, "HEATIN" | 44 px | 76 px | 38 px |
+| 1920, 1440, 1366, 1024, 768, 701, phones | unchanged | unchanged | unchanged | unchanged |
+
+So where the window was narrow, the boil-over button was the smallest in the row, not the biggest. At 1180 a pause
+also wrapped "hold to heat" onto three lines, so the shared button row grew 15 px and every plate's AUTO / MANUAL /
+TARGET row moved down as the heat paused.
+
+### The rule now
+
+- The element is the boil-over button, so it stays the biggest: twice a step, and never narrower than HEATING needs
+  (3.45 times its state word's size, plus 12 px padding and 2 px border).
+- The steps share the rest. Where the row has room, that's 44 px or more, as before. On the narrowest windows (1180,
+  1280 and 900 px) the steps get narrower instead of the element: 32 px at 1180, still the row's full 71 px height,
+  above WCAG 2.5.8's 24 px. A slip there costs a step of the boil power or a pause that a held press undoes, while a
+  boil-over needs the element at once.
+- There "−5 %" (about 39 px with padding) no longer fits, so the steps read −5 −1 +1 +5, as the power box's steps do.
+  Their spoken names still say "percent" (`aria-label`, unchanged).
+- The element's small line may take two lines ("tap to / pause"), never three, and the row keeps its height in every
+  state.
+
+```css
+.ctrls.bkpow{grid-template-columns:repeat(2,minmax(0,1fr)) minmax(calc(3.45 * clamp(18px,calc(6.4 * var(--pu)),24px) + 14px),2fr) repeat(2,minmax(0,1fr));column-gap:6px}
+/* a step's " %": there while the window is at least 270 px wide (100 --pu), where "−5 %" fits; gone below that */
+.nudge .pc{font-size:clamp(0px,calc((100 * var(--pu) - 270px) * 99),1em)}
+```
+
+The `clamp(18px,…,24px)` is the lamp's `.st` font. In `nudgeHTML` the " %" gets its own span:
+
+```js
+`${d < 0 ? "−" : "+"}${Math.abs(d)}<span class="pc"> %</span>`
+```
+
+The 270 px threshold falls between 1280's 262 px window, where "−5 %" would have 0.4 px to spare, and 960's 273 px,
+where it has 2 px. So the " %" goes at exactly the three widths where the PV is also limited.
+
+### Moments whose pictures change
+
+- **The boil kettle's step row, in the seven moments that show it** (`#hop`, `#heatup`, `#boiling`, `#pause`,
+  `#keepboil`, `#letfall`, `#pause-long`), at 1280, 1180, 960 and 900 px, with and without graphs. At 1024 the " %"
+  span moves the ±1 labels by 0.02 px, which changes only the smoothing of their edges.
+- **All three plates at 1180 in `#pause` and `#pause-long`:** 15 px shorter than before, as tall as in the other
+  moments, so everything under the step row moves back up.
+- Layout A changes the same way at 1180. `?bk=today` (no steps) doesn't change.
+
+### Changed, all in `proposal\`
+
+- `brew-day.css`: `.ctrls.bkpow` (the columns) and the new `.nudge .pc`, with the comment above them.
+- `brew-day.js`: `nudgeHTML`'s label and its comment.
+
+### Checked
+
+- At 14 sizes from 360 to 1920 px, in layout B with and without graphs and in layout A, in seven states (heating,
+  paused, pausing, carrying on, off, a step waiting, MANUAL): HEATING and PAUSED on one line, the small line on two at
+  most, no step's label spilling or wrapping, the element at least twice a step, and the row never taller than
+  before. Within a moment, the row and the AUTO / MANUAL / TARGET rows never move from one state to another; before,
+  pausing at 1180 moved them 15 px.
+- Every moment before and after at the same 14 sizes, plus `?bk=today`, layout A and `?timers=today`: the changes above
+  and nothing else. Sixteen other differences (the step list's scroll, layout A's drawing, a 3 × 4 px speck at 1440 and
+  a 3 px line along the drawing's foot at 1180) were each gone on reload. No page errors.
 
 ## Open questions about the drawing
 

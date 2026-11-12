@@ -129,9 +129,10 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .editor .no{grid-column:4/6}
 :where(html.bd-page) .editor.pwr input{color:var(--text)}
 :where(html.bd-page)[data-bk=power] .editor.pwr input{color:var(--sv)}
-:where(html.bd-page) .ctrls.bkpow{grid-template-columns:repeat(2,minmax(44px,1fr)) minmax(0,2fr) repeat(2,minmax(44px,1fr));column-gap:6px}
+:where(html.bd-page) .ctrls.bkpow{grid-template-columns:repeat(2,minmax(0,1fr)) minmax(calc(3.45 * clamp(18px,calc(6.4 * var(--pu)),24px) + 14px),2fr) repeat(2,minmax(0,1fr));column-gap:6px}
 :where(html.bd-page) .ctrls.bkpow .lamp{padding-left:6px;padding-right:6px}
 :where(html.bd-page) .ctrls .nudge{min-height:0;padding:6px 2px}
+:where(html.bd-page) .nudge .pc{font-size:clamp(0px,calc((100 * var(--pu) - 270px) * 99),1em)}
 :where(html.bd-page) .ctrls .nudge.sending::before{content:"";position:absolute;inset:0 0 auto;height:6px;background:repeating-linear-gradient(-45deg,#a9bccd 0 6px,#33475a 6px 12px);background-size:17px 6px;animation:bd-march .6s linear infinite}
 :where(html.bd-page) .lamp[data-state=paused]{border-color:var(--prompt)}
 :where(html.bd-page) .lamp[data-state=paused]::before{background:var(--prompt);box-shadow:0 2px 14px rgb(255 178 30/.5)}
