@@ -30,9 +30,11 @@ html.bare .mock{display:none}
 /* top bar */
 .topbar{display:flex;align-items:center;gap:16px;padding:10px var(--pad);background:var(--bar);border-bottom:1px solid var(--line)}
 .topbar p{margin:0}
-.brand{display:flex;align-items:center;gap:12px;margin-right:auto!important;font:700 clamp(22px,2.1vw,34px)/1 var(--cond);letter-spacing:.04em;text-transform:uppercase}
+.brand{display:flex;align-items:center;gap:12px;margin-right:auto!important;max-width:12em;font:700 clamp(22px,2.1vw,34px)/1 var(--cond);letter-spacing:.04em;text-transform:uppercase}
 .brand svg{width:clamp(24px,2vw,32px);height:auto;flex:none}
-.brand .short{display:none}
+/* the BREWERY_NAME setting: two lines at most, then an ellipsis; a long name is drawn smaller (data-long) */
+.brand .bname{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:break-word}
+.brand[data-long] .bname{font-size:.7em}
 .link{display:flex;align-items:center;gap:8px;font:600 16px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase;color:var(--text-2)}
 .link i{width:12px;height:12px;border-radius:50%;background:var(--run)}
 .link[data-link=lost]{color:#ffc9c4}
@@ -315,6 +317,10 @@ html.bare .mock{display:none}
 .tabs a:hover{background:var(--panel)}
 .tabs a[aria-current=page]{background:var(--select);color:#fff}
 .tabs .short{display:none}
+/* BREWSCRIBE opens another program in a browser tab of its own: the icon says so before the press (its words are for
+   screen readers). Where the tab is narrow the name breaks between Brew and Scribe, and the icon stays with Scribe */
+.tabs .ext .nw{white-space:nowrap}
+.tabs .ext svg{width:.8em;height:.8em;margin-left:.3em;vertical-align:-.05em;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .toast{position:fixed;left:50%;bottom:calc(var(--tabs-h) + 18px);z-index:60;transform:translateX(-50%);width:max-content;max-width:min(560px,calc(100% - 24px));padding:12px 16px;border-radius:var(--r);background:#e8eef3;color:#10161c;font:500 16px/1.35 var(--sans);box-shadow:0 12px 30px rgb(0 0 0/.45)}
 .toast[hidden]{display:none}
 
@@ -452,16 +458,18 @@ html.bare .mock{display:none}
   [data-layout=b] .topbar{flex-wrap:wrap;row-gap:8px}
   [data-layout=b] .brand{margin-right:auto!important}
   [data-layout=b] .topbar .banner{order:1;flex:1 1 100%;margin:0;max-width:none}
+  /* with the question on its own row, the name has the room left beside the connection, ALL OFF and the clock: a long
+     name keeps the full size there, and takes that room without pushing them onto another row */
+  [data-layout=b] .brand{flex:1 1 0;min-width:0;max-width:none}
+  [data-layout=b] .brand[data-long] .bname{font-size:1em}
 }
 /* phone: list view, bottom tab bar */
 @media (max-width:700px){
   :root{--pad:12px;--gap:10px;--tabs-h:97px}
   .app{padding-bottom:calc(var(--tabs-h) + env(safe-area-inset-bottom))}
   .topbar{gap:10px;padding:8px var(--pad)}
-  .brand .long{display:none}
   .clock{font-size:24px;min-width:0}
   #link-t{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-  .brand .short{display:inline}
   .link{font-size:15px}
   .alloff{flex:0 1 auto;max-width:108px;min-height:46px;padding:4px 10px;font-size:16px;line-height:1.05}
   .status{grid-template-columns:minmax(0,1fr);padding-top:8px}
@@ -496,8 +504,11 @@ html.bare .mock{display:none}
   .tabs a{font-size:14px;letter-spacing:.05em}
   .tabs a:nth-child(n+5){border-top:1px solid var(--line)}
   .tabs a:nth-child(5){border-left:0}
-  .tabs a:nth-child(7){grid-column:span 2}
+  /* MORE takes the last two cells only where BrewScribe isn't installed; with it, the eight tabs are four and four */
+  .tabs a:nth-child(7):last-child{grid-column:span 2}
   [data-layout=b] .topbar{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;row-gap:8px}
+  /* layout A's title bar is a row: the name takes only the room left, as in B's grid, so ALL OFF keeps its width */
+  [data-layout=a] .brand{flex:1 1 0;min-width:0}
   [data-layout=b] .topbar .banner{grid-column:1/-1;grid-row:2;margin:0;max-width:none}
   /* a long question (data-long): its words take the width, its buttons go under them at the right, and the bell stays
      beside the title */

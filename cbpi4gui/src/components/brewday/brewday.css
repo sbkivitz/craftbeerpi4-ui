@@ -20,9 +20,10 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .app{display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;min-height:calc(100dvh - var(--mock-h))}
 :where(html.bd-page) .topbar{display:flex;align-items:center;gap:16px;padding:10px var(--pad);background:var(--bar);border-bottom:1px solid var(--line)}
 :where(html.bd-page) .topbar p{margin:0}
-:where(html.bd-page) .brand{display:flex;align-items:center;gap:12px;margin-right:auto!important;font:700 clamp(22px,2.1vw,34px)/1 var(--cond);letter-spacing:.04em;text-transform:uppercase}
+:where(html.bd-page) .brand{display:flex;align-items:center;gap:12px;margin-right:auto!important;max-width:12em;font:700 clamp(22px,2.1vw,34px)/1 var(--cond);letter-spacing:.04em;text-transform:uppercase}
 :where(html.bd-page) .brand svg{width:clamp(24px,2vw,32px);height:auto;flex:none}
-:where(html.bd-page) .brand .short{display:none}
+:where(html.bd-page) .brand .bname{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:break-word}
+:where(html.bd-page) .brand[data-long] .bname{font-size:.7em}
 :where(html.bd-page) .link{display:flex;align-items:center;gap:8px;font:600 16px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase;color:var(--text-2)}
 :where(html.bd-page) .link i{width:12px;height:12px;border-radius:50%;background:var(--run)}
 :where(html.bd-page) .link[data-link=lost]{color:#ffc9c4}
@@ -268,6 +269,8 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .tabs a:hover{background:var(--panel)}
 :where(html.bd-page) .tabs a[aria-current=page]{background:var(--select);color:#fff}
 :where(html.bd-page) .tabs .short{display:none}
+:where(html.bd-page) .tabs .ext .nw{white-space:nowrap}
+:where(html.bd-page) .tabs .ext svg{width:.8em;height:.8em;margin-left:.3em;vertical-align:-.05em;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 :where(html.bd-page) .toast{position:fixed;left:50%;bottom:calc(var(--tabs-h) + 18px);z-index:60;transform:translateX(-50%);width:max-content;max-width:min(560px,calc(100% - 24px));padding:12px 16px;border-radius:var(--r);background:#e8eef3;color:#10161c;font:500 16px/1.35 var(--sans);box-shadow:0 12px 30px rgb(0 0 0/.45)}
 :where(html.bd-page) .toast[hidden]{display:none}
 :where(html.bd-page) .k-name{font:700 28px var(--cond);letter-spacing:.06em;fill:#c3cfda;text-anchor:middle}
@@ -408,15 +411,15 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page)[data-layout=b] .topbar{flex-wrap:wrap;row-gap:8px}
 :where(html.bd-page)[data-layout=b] .brand{margin-right:auto!important}
 :where(html.bd-page)[data-layout=b] .topbar .banner{order:1;flex:1 1 100%;margin:0;max-width:none}
+:where(html.bd-page)[data-layout=b] .brand{flex:1 1 0;min-width:0;max-width:none}
+:where(html.bd-page)[data-layout=b] .brand[data-long] .bname{font-size:1em}
 }
 @media (max-width:700px){
 :where(html.bd-page){--pad:12px;--gap:10px;--tabs-h:97px}
 :where(html.bd-page) .app{padding-bottom:calc(var(--tabs-h) + env(safe-area-inset-bottom))}
 :where(html.bd-page) .topbar{gap:10px;padding:8px var(--pad)}
-:where(html.bd-page) .brand .long{display:none}
 :where(html.bd-page) .clock{font-size:24px;min-width:0}
 :where(html.bd-page) #link-t{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-:where(html.bd-page) .brand .short{display:inline}
 :where(html.bd-page) .link{font-size:15px}
 :where(html.bd-page) .alloff{flex:0 1 auto;max-width:108px;min-height:46px;padding:4px 10px;font-size:16px;line-height:1.05}
 :where(html.bd-page) .status{grid-template-columns:minmax(0,1fr);padding-top:8px}
@@ -451,8 +454,9 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .tabs a{font-size:14px;letter-spacing:.05em}
 :where(html.bd-page) .tabs a:nth-child(n+5){border-top:1px solid var(--line)}
 :where(html.bd-page) .tabs a:nth-child(5){border-left:0}
-:where(html.bd-page) .tabs a:nth-child(7){grid-column:span 2}
+:where(html.bd-page) .tabs a:nth-child(7):last-child{grid-column:span 2}
 :where(html.bd-page)[data-layout=b] .topbar{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;row-gap:8px}
+:where(html.bd-page)[data-layout=a] .brand{flex:1 1 0;min-width:0}
 :where(html.bd-page)[data-layout=b] .topbar .banner{grid-column:1/-1;grid-row:2;margin:0;max-width:none}
 :where(html.bd-page) .banner[data-long]{flex-wrap:wrap;row-gap:8px}
 :where(html.bd-page) .banner[data-long] .msg{flex-basis:calc(100% - 38px)}

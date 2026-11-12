@@ -1733,7 +1733,8 @@ document.addEventListener("click", e => {
   const tab = e.target.closest(".tabs a");
   if (tab) {
     e.preventDefault();
-    if (tab.dataset.tab) toast(tab.dataset.tab === "More" ? "Mockup: MORE holds Fermenter Profile, Plugins, System and About." : `Mockup: this opens the existing ${tab.dataset.tab} page.`);
+    if (tab.dataset.tab === "BrewScribe") toast("Mockup: this opens BrewScribe in a browser tab of its own, or goes back to that tab if it's open, without reloading it.");
+    else if (tab.dataset.tab) toast(tab.dataset.tab === "More" ? "Mockup: MORE holds Fermenter Profile, Plugins, System and About." : `Mockup: this opens the existing ${tab.dataset.tab} page.`);
     return;
   }
   const el = e.target.closest("[data-cmd]");
@@ -1848,6 +1849,12 @@ function load(name) {
     a.href = `?${q}#${key}`;
     a.setAttribute("aria-current", a.dataset.tm === TIMERS ? "true" : "false");
   });
+  document.querySelectorAll(".mock a[data-nm]").forEach(a => {
+    const q = new URLSearchParams(location.search);
+    if (a.dataset.nm) q.set("name", a.dataset.nm); else q.delete("name");
+    a.href = `?${q}#${key}`;
+    a.setAttribute("aria-current", (a.dataset.nm || "CraftBeerPi Brewery") === BREWERY ? "true" : "false");
+  });
 }
 
 /* ---------- layout A (D1) or B (D3): same parts, arranged differently ---------- */
@@ -1875,6 +1882,19 @@ document.documentElement.dataset.bk = BK;
    CraftBeerPi without the timers */
 const TIMERS = QS.get("timers") === "today" ? "today" : "new";
 document.documentElement.dataset.timers = TIMERS;
+/* the title bar's name: the BREWERY_NAME setting, at every width, so the rig and a simulator can't be taken for each
+   other. ?name=… tries another; blank shows CraftBeerPi. Two lines at most, then an ellipsis. A name of more than
+   LONG_NAME characters is drawn smaller (0.7 of the size), so two lines fit the title bar's height on a monitor and a
+   phone's narrow corner holds it; from 701 to 1023 px wide, where the question has a row of its own, it keeps the full
+   size. Its title gives it whole. The page's title starts with it too, as the browser's tab is where two CraftBeerPis
+   sit side by side */
+const LONG_NAME = 24;
+const BREWERY = (QS.has("name") ? QS.get("name") : "CraftBeerPi Brewery").trim() || "CraftBeerPi";
+$(".brand .bname").textContent = BREWERY;
+if (BREWERY.length > LONG_NAME) { $(".brand").setAttribute("data-long", ""); $(".brand").title = BREWERY; }
+document.title = `${BREWERY} · Brew day (mockup)`;
+/* BREWSCRIBE: the screen shows it where BrewScribe is installed; ?brewscribe=none shows the screen without it */
+if (QS.get("brewscribe") === "none") $('.tabs a[data-tab="BrewScribe"]').remove();
 /* ?focus=bk (boil-kettle.html): keep that vessel's faceplate in view and tell the page around this one where it is,
    so the page can show just that faceplate */
 const FOCUS = QS.get("focus");

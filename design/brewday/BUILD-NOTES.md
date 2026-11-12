@@ -1425,6 +1425,192 @@ Pumps, the hold and long questions:
 4. Not changed: the event line's ellipsis hides the result of a long line, so `#boil-hold`'s "waiting for you" is cut
    off; LOG has it whole. One fix would shorten the words and keep the result. Tell me if you want it.
 
+## The brewery's name in the title bar: ready to build (11 Nov, evening)
+
+Scott asked about it today. His BREWERY_NAME on 8012 is "EBrews - A CraftBeerPi Brewery", 30 characters, which the
+title bar sets in capitals. Until now the mockup printed "CraftBeerPi Brewery" on a monitor and "CraftBeerPi" on a
+phone, whatever the setting said; PRODUCT.md promised the setting.
+
+The mockup also has a BREWSCRIBE tab now. Its notes come next, in their own section. Until you build it, add
+`&brewscribe=none` to your identity test's addresses: that is the screen without it, and every rule below holds there.
+
+### What it shows
+
+- The setting, at every width: one span, no `.long` and `.short`. The phone shows it too. The name is what tells
+  Scott's rig from his simulators, and a phone is where he is most likely to have both open.
+- Blank, or only spaces: "CraftBeerPi".
+- Two lines at most, then "…". The cut is drawn only: the page keeps the whole name, so a screen reader reads it all.
+- More than 24 characters (`LONG_NAME`): `data-long` on `.brand`, and the whole name as its `title`. It is drawn at 0.7 of
+  the size on a monitor and on a phone. That keeps two lines inside the title bar's 50 px on a monitor, and fits 30
+  characters on two lines in a phone's corner. From 701 to 1023 px wide it keeps the full size: the question has a row
+  of its own there, so the name has the room beside the connection, ALL OFF and the clock.
+- How wide: on a monitor, at most 12 times its font size. The default name is 9.2, so it is unchanged. From 701 to
+  1023 px, whatever room is left in its row; it never pushes the clock onto another row.
+- When a long question squeezes the title bar, the name gives way, as the default name does today: it narrows to its
+  longest word and, if that takes more than two lines, ends in "…". Whole again when the question is answered.
+
+### Scott's name, size by size
+
+- His monitor, 1920 px: one line, 23.8 px (the default name is 34 px): EBREWS - A CRAFTBEERPI BREWERY. With the sparge
+  question, two lines, whole. With "Ready to boil?", the longest question, "EBREWS - A / CRAFTBEERPI…".
+- Half his monitor, 960 px: one line at the full 22 px.
+- A phone: 15.4 px. Two lines at 360 and 390 px (EBREWS - A CRAFTBEERPI / BREWERY), one at 430.
+- In every one of those moments the title bar is exactly as tall as with the default name. At laptop sizes it grows
+  in two moments: at 1366 px "connection lost", and at 1440 px "no target", wrap onto a second line (22 px). His
+  name is wider than the default there, and both keep it whole.
+
+### The markup and the rules
+
+```html
+<p class="brand"><span class="bname">EBrews - A CraftBeerPi Brewery</span></p>
+<!-- over 24 characters: <p class="brand" data-long title="…the whole name…"> -->
+```
+
+```css
+.brand{…as before…;max-width:12em}
+.brand .bname{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:break-word}
+.brand[data-long] .bname{font-size:.7em}
+/* gone: .brand .short{display:none}, and the phone's .brand .long{display:none} and .brand .short{display:inline} */
+@media (min-width:701px) and (max-width:1023px){
+  [data-layout=b] .brand{flex:1 1 0;min-width:0;max-width:none}
+  [data-layout=b] .brand[data-long] .bname{font-size:1em}
+}
+/* phone, layout A only (you don't build it): [data-layout=a] .brand{flex:1 1 0;min-width:0} */
+```
+
+`overflow-wrap:break-word`, not `anywhere`: `anywhere` would let a long question break the default name inside a word,
+where today it gives way at the space. The 701–1023 px rule gives the name only what is left of its row, so it can't
+push the clock onto another row as a plain `max-width:none` would.
+
+In `brew-day.js`: `LONG_NAME = 24` and `BREWERY` (trimmed; blank gives "CraftBeerPi"), set once after `TIMERS`. The
+screen would set them again when the setting changes, as it does for the timer names (configupdate).
+
+### The page's title
+
+`${name} · Brew day`, where your port says "Brew day · CraftBeerPi". A browser tab shows the start of its title, and
+the name is what tells two CraftBeerPis apart: "EBrews - A CraftB…" and "Simulator 8012 ·…" in two tabs (WCAG 2.4.2,
+page titled). The mockup adds "(mockup)".
+
+### Moments whose pictures change
+
+- On a monitor and from 701 to 1023 px, with the default name: none. Every moment matches the copy you ported (m71).
+- On a phone (700 px and less), with the default name: every moment's name corner. "CRAFTBEERPI / BREWERY" on two
+  lines (44 px) where it said "CRAFTBEERPI"; the title bar keeps its height, as ALL OFF's 46 px is taller.
+- With `?name=`: whatever name you give. For Scott's,
+  `?name=EBrews%20-%20A%20CraftBeerPi%20Brewery&brewscribe=none#mash`. The mockup strip has "Brewery name: default ·
+  Scott's · a simulator · 36 characters".
+
+### Changed, all in `proposal\`
+
+- `brew-day.html`: the brand's markup (one span, `.bname`); "Brewery name:" in the mockup strip; the header comment.
+- `brew-day.css`: `.brand` (`max-width`), `.brand .bname`, `.brand[data-long] .bname`; the two rules in the 701–1023 px
+  block; the phone's `.brand .long` and `.brand .short` rules gone; layout A's phone rule.
+- `brew-day.js`: `LONG_NAME`, `BREWERY`, the brand's text, `data-long` and `title`, `document.title`; the strip's
+  `data-nm` links in `load`.
+
+### Checked
+
+- Every moment against m71 with the tab row hidden (and the name too on a phone): 1,290 pairs. Layout B with and
+  without graphs and layout A at 1920×1080, 1920×950, 1440, 1366, 1024, 1023, 960, 768, 701, 430, 390 and 360 px;
+  `?bk=today` and `?timers=today` at the first four and 390. All match, except two specks of 1 and 2 brightness levels
+  out of 255 (3×1 px in `#timer-new`, 6×6 px at the recipe panel's corner in `#timer-names`, both at 1920), the same
+  on every reload.
+- 5,040 loads: every moment at 14 sizes, with the default name, Scott's, "Simulator 8012", 36 and 52 characters, one
+  33-letter word, a blank name, and layout A. No page errors, nothing past the screen's edge, the tab row's height
+  unchanged, and the title bar never taller with the default, a simulator's or a blank name.
+- Names of 36 characters and more make the title bar taller in a few alarm moments at 1024–1440 px (22 px, the alarm's
+  second line), the 52-character one also in "Ready to boil?" at 1920, and the 33-letter word in more, as one word
+  can't give way.
+
+### For you to decide, or tell me
+
+1. The phone's default name now takes two lines. I'd keep the name rather than shorten it to "CraftBeerPi": a short
+   form hides what tells two CraftBeerPis apart.
+2. At laptop sizes a long name keeps its line while an alarm takes a second one. Making the name give way first means
+   cutting Scott's name in moments where it fits whole today. I left it.
+3. For Scott, not the screen: if the rig and the simulators all say "EBrews - A CraftBeerPi Brewery", the title bar
+   can't tell them apart. Naming the simulators "Simulator 8000" and "Simulator 8012" would.
+
+## BREWSCRIBE: a tab that opens BrewScribe in its own browser tab, ready to build (11 Nov, evening)
+
+You asked for a link to BrewScribe for Porter, the BrewScribe agent, on the brew-day screen. Scott chose a separate
+browser tab for now, and you gave the address: `<a href="/brewscribe/#now" target="brewscribe">`. Where it goes was
+mine.
+
+### Where: the last tab
+
+- In the tab row, after MORE. The tabs are where the screen's places are. Scott goes between brew day and BrewScribe
+  many times on a brew day, so it shouldn't hide in MORE, and the title bar is for the state of the brew, not for
+  places.
+- Last, because the first seven are CraftBeerPi's own, in the order Scott knows, and none of them moves. BrewScribe
+  is another program, so it sits at the end.
+- On a phone the bar becomes four and four: BrewScribe takes the bottom right, under the thumb, and MORE no longer
+  takes two cells. Where BrewScribe isn't installed, MORE takes two cells again (`?brewscribe=none`).
+
+### What it says
+
+- BREWSCRIBE, the program's name, in capitals like the rest, so the tab and the page it opens agree.
+- After it, an icon drawn for this: a box with an arrow out of its corner, the usual sign for "opens elsewhere". It
+  says so before the press (NN/g on new tabs; W3C technique G201), as Back won't bring Scott back from BrewScribe.
+- For screen readers, " (opens in its own tab)". The name read out starts with the word on the tab, so "click
+  BrewScribe" works by voice too.
+- Where the tab is narrow, the name breaks between Brew and Scribe, and the icon stays with Scribe: "BREW / SCRIBE"
+  at 701 px and on 360 and 390 px phones, as "RECIPE / BOOK" already does at 701. Elsewhere, one line.
+
+```html
+<a href="/brewscribe/#now" target="brewscribe" data-tab="BrewScribe" class="ext"><span class="lbl">Brew<wbr><span
+  class="nw">Scribe<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M5 1.8H2.4a.6.6 0 0 0-.6.6v7.2c0 .3.3.6.6.6h7.2c.3
+  0 .6-.3.6-.6V7M7.2 1.8h3v3M10.2 1.8 5.6 6.4"/></svg></span></span><span class="sr"> (opens in its own tab)</span></a>
+```
+
+```css
+.tabs .ext .nw{white-space:nowrap}
+.tabs .ext svg{width:.8em;height:.8em;margin-left:.3em;vertical-align:-.05em;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+/* phone: was .tabs a:nth-child(7){grid-column:span 2} */
+.tabs a:nth-child(7):last-child{grid-column:span 2}
+```
+
+The mockup's tab has `href="#tab"`, like the others, and its press shows: "Mockup: this opens BrewScribe in a browser
+tab of its own, or goes back to that tab if it's open, without reloading it."
+
+### What the link does: tried in Edge
+
+On a throwaway local server (`named_target_probe.py`):
+- Two presses with `#now`: one BrewScribe tab, loaded once, and what was typed in it is kept. You're right about `#now`:
+  without it the second press reloads BrewScribe.
+- Don't add `rel="noopener"`. With it, every press opens another BrewScribe tab.
+- If BrewScribe was opened from a bookmark or by typing its address, the first press still opens a second BrewScribe
+  tab. BrewScribe naming its own tab "brewscribe" doesn't help: Edge only looks among the tabs this screen opened.
+- For Porter: a press while BrewScribe shows another part (another `#…`) takes it to `#now`. When it's already at
+  `#now`, the page isn't touched: no reload, and no hashchange.
+
+### Moments whose pictures change
+
+Every moment, in every view, at every size: the tab row only. On a monitor each tab is an eighth of the row instead of
+a seventh; at 701–1023 px BREWSCRIBE takes two lines where its tab is narrow; on a phone the bar is four and four. The
+row keeps its height everywhere (56 px on a monitor, 97 px on a phone). With `?brewscribe=none`, nothing changes.
+
+### Changed, all in `proposal\`
+
+- `brew-day.html`: the tab, and the header comment.
+- `brew-day.css`: `.tabs .ext .nw`, `.tabs .ext svg`, and the phone's `.tabs a:nth-child(7):last-child`.
+- `brew-day.js`: the press's message, and `?brewscribe=none`.
+
+### Checked
+
+- The labels at 14 sizes from 360 to 1920 px, with and without BrewScribe: every label inside its tab, the row's height
+  unchanged.
+- The same 5,040 loads as the name: no page errors, nothing past the screen's edge.
+
+### For you to decide, or tell me
+
+1. Show the tab only where BrewScribe is installed. How the screen tells is yours: the plugin list, or the server
+   answering `/brewscribe/`.
+2. For Scott and Porter, not the screen: a browser slows down tabs you aren't looking at, and on a phone it may pause
+   them. If Scott records in BrewScribe on the phone that also shows brew day, a timer or hop alarm may not sound until
+   he switches back. The monitor's screen still rings. BrewScribe showing CraftBeerPi's alarms would cover it.
+3. The mockup still plays the soft ping. The sounds are the Settings page's (`alarm.js`), so there's nothing to port.
+
 ## Open questions about the drawing
 
 Both were answered by Scott on 10 Nov; the drawing hasn't been changed for them yet, and the change will come

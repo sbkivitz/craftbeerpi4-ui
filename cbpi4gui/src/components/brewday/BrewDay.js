@@ -28,6 +28,7 @@ const BrewDay = () => {
     const qs = new URLSearchParams(window.location.search);
     const demo = qs.get("demo");
     const title = document.title;
+    // the screen puts the brewery's name first, once CraftBeerPi's settings arrive (screen.js, setBrewery)
     document.title = "Brew day · CraftBeerPi";
     if (hideStack) hideStack(true);
     screen.current = createBrewDay(ref.current, {
@@ -35,6 +36,8 @@ const BrewDay = () => {
       // the temperature graphs: ?graphs=none leaves them out; ?span=10, 30 or day picks the span they start at
       graphs: qs.get("graphs"),
       span: qs.get("span"),
+      // with ?demo=, ?name= tries another brewery name in the title bar, as the mockup's does
+      name: qs.has("name") ? qs.get("name") : null,
       navigate: (path) => go.current(path),
       removeAlert: (id) => remove(id),
     });

@@ -37,6 +37,11 @@ Timers: the ones Scott approved on 11 Nov, built on the screen that day, are the
 #timer-new, #timer-names, #timer-nonames, #timers-hand, #sound-allow); ?timers=new shows the same. ?timers=today is
 the one rest timer, which the screen keeps for an older CraftBeerPi without the timers.
 ?names=Hop stand,Yeast tries a BREWDAY_TIMER_NAMES list (blank: none), read as CraftBeerPi reads the setting.
+Title bar: the BREWERY_NAME setting at every width (11 Nov), so a rig and a simulator can't be taken for each other.
+?name=Simulator 8012 tries another name; blank shows CraftBeerPi. Two lines at most, and a name of more than 24
+characters is drawn smaller (0.7 of the size) on a monitor and a phone; from 701 to 1023 px wide it keeps the full size.
+Tabs: BREWSCRIBE, last, opens BrewScribe in a browser tab of its own (11 Nov); ?brewscribe=none shows the screen
+where BrewScribe isn't installed.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -76,13 +81,14 @@ the one rest timer, which the screen keeps for an older CraftBeerPi without the 
   <a href="#timer-nonames">No names in Settings</a>
   <a href="#timers-hand">Timers by hand</a>
   <a href="#sound-allow">Sound waiting for a tap</a>
+  <span class="lay">Brewery name: <a data-nm="" href="?">default</a> <a data-nm="EBrews - A CraftBeerPi Brewery" href="?name=EBrews - A CraftBeerPi Brewery">Scott's</a> <a data-nm="Simulator 8012" href="?name=Simulator 8012">a simulator</a> <a data-nm="Old Mill Lane Garage Brewing Company" href="?name=Old Mill Lane Garage Brewing Company">36 characters</a></span>
   <span class="lay">Timers: <a data-tm="new" href="?">as built</a> <a data-tm="today" href="?timers=today">older CraftBeerPi</a></span>
   <span class="lay">Boil kettle: <a data-bk="power" href="?bk=power">as built</a> <a data-bk="today" href="?bk=today">older BoilPower</a></span>
   <span class="lay">Layout: <a data-layout="a" href="?layout=a">A · recipe right</a> <a data-layout="b" href="?layout=b">B · recipe left</a></span>
 </nav>
 <div class="app" id="app" data-link="ok">
   <header class="topbar">
-    <p class="brand"><span class="long">CraftBeerPi Brewery</span><span class="short">CraftBeerPi</span></p>
+    <p class="brand"><span class="bname">CraftBeerPi Brewery</span></p>
     <p class="link" id="link" data-link="ok"><i aria-hidden="true"></i><span id="link-t">Connected</span></p>
     <button class="alloff" id="alloff" data-cmd="alloff" type="button">ALL OFF</button>
     <p class="clock" id="clock">14:32</p>
@@ -110,6 +116,7 @@ the one rest timer, which the screen keeps for an older CraftBeerPi without the 
     <a href="#tab" data-tab="Hardware">Hardware</a>
     <a href="#tab" data-tab="Settings">Settings</a>
     <a href="#tab" data-tab="More">More</a>
+    <a href="#tab" data-tab="BrewScribe" class="ext"><span class="lbl">Brew<wbr><span class="nw">Scribe<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M5 1.8H2.4a.6.6 0 0 0-.6.6v7.2c0 .3.3.6.6.6h7.2c.3 0 .6-.3.6-.6V7M7.2 1.8h3v3M10.2 1.8 5.6 6.4"/></svg></span></span><span class="sr"> (opens in its own tab)</span></a>
   </nav>
 </div>
 <div class="toast" id="toast" role="status" hidden></div>

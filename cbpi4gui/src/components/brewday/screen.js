@@ -52,6 +52,12 @@ const WAIT = "Waiting for CraftBeerPi to answer.";
    put heat on with two taps, so NEXT STEP is greyed and says how to start it */
 const HELD_NEXT = "The boil is waiting for you. To start it, hold START here or START THE BOIL at the top.";
 const LONG_Q = 140; // characters: longer questions are the sparge's (about 200) and the boil's (300); the rest are 125 or under
+/* the title bar's name: the BREWERY_NAME setting, at every width, so the rig and a simulator can't be taken for each other
+   (the dashboard agent's hand-off of 11 Nov, evening; Scott, 11 Nov: "the brewery name does not follow what is in the settings").
+   Blank shows CraftBeerPi. Two lines at most, then an ellipsis (the CSS); a name of more than LONG_NAME characters is drawn
+   smaller, with its title giving it whole. The page's title starts with it, as a browser's tab shows the start of it */
+const LONG_NAME = 24;
+const NO_NAME = "CraftBeerPi";
 const ICON = {
   ok: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M6.5 12.5l3.5 3.5 7-8" fill="none" stroke="#0a1016" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   bell: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a6 6 0 0 0-6 6v4.5L4 16v1.5h16V16l-2-3.5V8a6 6 0 0 0-6-6zm-2.5 17a2.5 2.5 0 0 0 5 0z"/></svg>',
@@ -91,7 +97,7 @@ function skeleton(demo) {
   const h = p => demo ? "#tab" : p;
   return `<div class="app" id="app" data-link="ok">
   <header class="topbar">
-    <p class="brand"><span class="long">CraftBeerPi Brewery</span><span class="short">CraftBeerPi</span></p>
+    <p class="brand"><span class="bname">CraftBeerPi Brewery</span></p>
     <div class="banner" id="banner" data-tone="ok"></div>
     <p class="link" id="link" data-link="ok"><i aria-hidden="true"></i><span id="link-t">Connected</span></p>
     <button class="alloff" id="alloff" data-cmd="alloff" type="button">ALL OFF</button>
@@ -172,8 +178,20 @@ let tAns = null, tMsg = null, lastBannerKey = null, actx = null, rangAt = 0;
    them out, as the screen was first built. gSpan: the span the three show, kept on each device. H: the live history. */
 let GRAPHS = "face", gSpan = "30", H = null;
 const GSPAN_KEY = "cbpi.brewday.graphspan";
+// the name in the title bar now (LONG_NAME): set again only when the setting changes; null as the screen opens
+let brewery = null;
 const answered = new Set(), own = {};
 const $ = s => root.querySelector(s);
+function setBrewery(raw) {
+  const name = String(raw ?? "").trim() || NO_NAME;
+  const el = root && root.querySelector(".brand"), nm = el && el.querySelector(".bname");
+  if (!nm || name === brewery) return;
+  brewery = name;
+  nm.textContent = name;
+  el.toggleAttribute("data-long", name.length > LONG_NAME);
+  if (name.length > LONG_NAME) el.title = name; else el.removeAttribute("title");
+  document.title = `${name} · Brew day`;
+}
 // Temperatures in CraftBeerPi's own words follow its unit's sign: "170 F" -> "170 °F".
 const ut = s => unitText(s, M.U);
 const connecting = () => !DEMO_MODE && !everConnected && Date.now() - st.openedAt < CONNECTING_MS;
@@ -1823,6 +1841,9 @@ function applyLive(snap) {
   // the alarm sound: BREWDAY_ALARM_SOUND as the settings have it now; an older CraftBeerPi has none, the default. Not
   // st.alarm, which is a command that failed, in the title bar
   st.alarmSound = soundOf(cfg(snap.config, "BREWDAY_ALARM_SOUND"));
+  // the name: until the settings arrive, the title bar keeps the one it opened with
+  const bn = cfg(snap.config, "BREWERY_NAME");
+  if (bn !== undefined) setBrewery(bn);
   if (st.tedit && st.tedit.id != null) {
     const t = tById(st.tedit.id);
     if (!t || (t.state === "done" && was && was.state !== "done")) st.tedit = null;
@@ -2286,6 +2307,9 @@ export function createBrewDay(el, o = {}) {
   for (const s of [o.span, kept]) if (GSPANS.some(x => x[0] === s)) { gSpan = s; break; }
   rigRs = 1; H = null;
   root.innerHTML = skeleton(DEMO_MODE);
+  // the name: the demo's (?name= tries another, as in the mockup); live, CraftBeerPi's once its settings arrive (applyLive)
+  brewery = null;
+  if (DEMO_MODE) setBrewery(o.name != null ? o.name : "CraftBeerPi Brewery");
   if (DEMO_MODE) {
     const key = DEMO.SCENES[o.demo] || DEMO.EXTRA[o.demo] ? o.demo : "mash";
     M = {RECIPE: DEMO.RECIPE, VNAME: DEMO.VNAME, VACT: DEMO.VACT, ACT: DEMO.ACT, HERMS_DELTA: DEMO.HERMS_DELTA, BOOK: DEMO.BOOK, U: "°F", LIMITS: [32, 230],
