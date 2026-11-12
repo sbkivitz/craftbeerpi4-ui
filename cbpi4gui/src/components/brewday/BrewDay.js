@@ -38,6 +38,8 @@ const BrewDay = () => {
       span: qs.get("span"),
       // with ?demo=, ?name= tries another brewery name in the title bar, as the mockup's does
       name: qs.has("name") ? qs.get("name") : null,
+      // with ?demo=, ?brewscribe=none shows the screen where BrewScribe isn't installed, without its tab
+      brewscribe: qs.get("brewscribe"),
       navigate: (path) => go.current(path),
       removeAlert: (id) => remove(id),
     });

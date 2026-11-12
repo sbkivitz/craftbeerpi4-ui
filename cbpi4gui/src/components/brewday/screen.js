@@ -58,6 +58,14 @@ const LONG_Q = 140; // characters: longer questions are the sparge's (about 200)
    smaller, with its title giving it whole. The page's title starts with it, as a browser's tab shows the start of it */
 const LONG_NAME = 24;
 const NO_NAME = "CraftBeerPi";
+/* BREWSCRIBE, the last tab (the dashboard agent's hand-off of 11 Nov, evening, for the BrewScribe agent's ask): BrewScribe
+   in a browser tab of its own, named "brewscribe" so every press goes back to that one, at #now so going back doesn't
+   reload it and loses nothing typed. Not rel="noopener": with it, every press opens another. Shown only where BrewScribe
+   is installed: CraftBeerPi then has /brewscribe/, which answers a HEAD with anything but 404 (today 405). The screen
+   asks as it connects and when the connection comes back, and the device remembers the answer, so the tabs don't move
+   each time the screen opens */
+const BS_KEY = "cbpi.brewday.brewscribe";
+const bsTab = demo => `<a href="${demo ? "#tab" : "/brewscribe/#now"}"${demo ? "" : ' target="brewscribe"'} data-tab="BrewScribe" class="ext"><span class="lbl">Brew<wbr><span class="nw">Scribe<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M5 1.8H2.4a.6.6 0 0 0-.6.6v7.2c0 .3.3.6.6.6h7.2c.3 0 .6-.3.6-.6V7M7.2 1.8h3v3M10.2 1.8 5.6 6.4"/></svg></span></span><span class="sr"> (opens in its own tab)</span></a>`;
 const ICON = {
   ok: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M6.5 12.5l3.5 3.5 7-8" fill="none" stroke="#0a1016" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   bell: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a6 6 0 0 0-6 6v4.5L4 16v1.5h16V16l-2-3.5V8a6 6 0 0 0-6-6zm-2.5 17a2.5 2.5 0 0 0 5 0z"/></svg>',
@@ -191,6 +199,21 @@ function setBrewery(raw) {
   el.toggleAttribute("data-long", name.length > LONG_NAME);
   if (name.length > LONG_NAME) el.title = name; else el.removeAttribute("title");
   document.title = `${name} · Brew day`;
+}
+function showBrewScribe(on) {
+  const nav = root && root.querySelector(".tabs"), tab = nav && nav.querySelector('a[data-tab="BrewScribe"]');
+  if (!nav || !!tab === !!on) return;
+  if (on) nav.insertAdjacentHTML("beforeend", bsTab(DEMO_MODE)); else tab.remove();
+}
+function probeBrewScribe() {
+  const g = gen;
+  fetch("/brewscribe/", {method: "HEAD", cache: "no-store"}).then(r => {
+    // 401 and 403 can't tell: CraftBeerPi asking for a login answers them for any address
+    if (g !== gen || !root || r.status === 401 || r.status === 403) return;
+    const on = r.status !== 404;
+    try { localStorage.setItem(BS_KEY, on ? "1" : "0"); } catch (e) { /* private mode: asked again next time */ }
+    showBrewScribe(on);
+  }, () => { /* no answer: as it was */ });
 }
 // Temperatures in CraftBeerPi's own words follow its unit's sign: "170 F" -> "170 °F".
 const ut = s => unitText(s, M.U);
@@ -1952,6 +1975,8 @@ function observe(prev, snap) {
   if (!prev.connected && snap.connected && everConnected) {
     logEvent("Connection to CraftBeerPi back", "", "");
     if (!st.recipe) loadBook();
+    // a plugin comes or goes with a restart: ask again whether BrewScribe is there
+    probeBrewScribe();
   }
   const before = new Map((prev.alerts || []).map(a => [String(a.id), a]));
   const now = new Set((snap.alerts || []).map(a => String(a.id)));
@@ -2158,7 +2183,8 @@ const handlers = {
     if (tab) {
       if (DEMO_MODE) {
         e.preventDefault();
-        if (tab.dataset.tab) toast(tab.dataset.tab === "More" ? "Mockup: MORE holds Fermenter Profile, Plugins, System and About." : `Mockup: this opens the existing ${tab.dataset.tab} page.`);
+        if (tab.dataset.tab === "BrewScribe") toast("Mockup: this opens BrewScribe in a browser tab of its own, or goes back to that tab if it's open, without reloading it.");
+        else if (tab.dataset.tab) toast(tab.dataset.tab === "More" ? "Mockup: MORE holds Fermenter Profile, Plugins, System and About." : `Mockup: this opens the existing ${tab.dataset.tab} page.`);
       } else if (tab.dataset.tab === "More") { e.preventDefault(); toggleMore(tab); }
       else if (!tab.dataset.tab) e.preventDefault();
       return;
@@ -2310,6 +2336,10 @@ export function createBrewDay(el, o = {}) {
   // the name: the demo's (?name= tries another, as in the mockup); live, CraftBeerPi's once its settings arrive (applyLive)
   brewery = null;
   if (DEMO_MODE) setBrewery(o.name != null ? o.name : "CraftBeerPi Brewery");
+  // BREWSCRIBE: in the demo unless ?brewscribe=none, as in the mockup; live, as this device last found it, until asked
+  let bsKept = false;
+  if (!DEMO_MODE) { try { bsKept = localStorage.getItem(BS_KEY) === "1"; } catch (e) { /* private mode: not shown until asked */ } }
+  showBrewScribe(DEMO_MODE ? o.brewscribe !== "none" : bsKept);
   if (DEMO_MODE) {
     const key = DEMO.SCENES[o.demo] || DEMO.EXTRA[o.demo] ? o.demo : "mash";
     M = {RECIPE: DEMO.RECIPE, VNAME: DEMO.VNAME, VACT: DEMO.VACT, ACT: DEMO.ACT, HERMS_DELTA: DEMO.HERMS_DELTA, BOOK: DEMO.BOOK, U: "°F", LIMITS: [32, 230],
@@ -2399,6 +2429,7 @@ export function createBrewDay(el, o = {}) {
         if (st.events[0] && st.events[0][5] === 0) st.events.shift();
         if (!st.events.length) logEvent("Connected to CraftBeerPi", "", "");
         if (!st.recipe) loadBook();
+        probeBrewScribe();
       }
       observe(prev, snap);
       if (snap.connected) everConnected = true;
