@@ -1,0 +1,712 @@
+/* The simulator's settings as served at http://127.0.0.1:8000/config/ on 11 Nov 2026 (cbpi4 4.7.7.post36), read-only,
+   plus Brett's two new settings (marked new: true) as 8012 served them later that day. Generated; do not edit by hand. */
+window.CBPI_CONFIG = {
+"ACTOR_INTERLOCK_GROUPS": {
+"d": "Advanced. Only needed if ACTOR_INTERLOCK_MODE cannot express your rig. Actor NAMES that must never be on together, e.g. 'HLT Heater,Boil Heater'; separate groups with ';'. Renaming an actor silently breaks this, so prefer the mode setting above.",
+"o": null,
+"s": "craftbeerpi",
+"t": "string",
+"v": ""
+},
+"ACTOR_INTERLOCK_MODE": {
+"d": "Prevent two heating elements running at once. 'One heating element at a time' uses the heaters your kettles already name, so there is nothing to type and renaming an actor cannot break it. Leave 'Off' if your supply can run both elements together.",
+"o": [
+{
+"label": "Off",
+"value": "Off"
+},
+{
+"label": "One heating element at a time",
+"value": "One heating element at a time"
+}
+],
+"s": "craftbeerpi",
+"t": "select",
+"v": "Off"
+},
+"AUTHOR": {
+"d": "Author",
+"o": null,
+"s": "craftbeerpi",
+"t": "string",
+"v": "John Doe"
+},
+"AddMashInStep": {
+"d": "Add MashIn Step automatically if not defined in recipe",
+"o": [
+{
+"label": "Yes",
+"value": "Yes"
+},
+{
+"label": "No",
+"value": "No"
+}
+],
+"s": "steps",
+"t": "select",
+"v": "Yes"
+},
+"AddMashOutStep": {
+"d": "Yes: when an imported recipe has a sparge step but no Mash Out before it, add one: the mash heated to 168 °F (76 °C) and held 10 minutes, just before the sparge. No: only the recipe's own steps",
+"new": true,
+"o": [
+{
+"label": "Yes",
+"value": "Yes"
+},
+{
+"label": "No",
+"value": "No"
+}
+],
+"s": "steps",
+"t": "select",
+"v": "Yes"
+},
+"AutoMode": {
+"d": "Use AutoMode in steps",
+"o": [
+{
+"label": "Yes",
+"value": "Yes"
+},
+{
+"label": "No",
+"value": "No"
+}
+],
+"s": "steps",
+"t": "select",
+"v": "Yes"
+},
+"BREWDAY_ALARM_SOUND": {
+"d": "Brew-day screen: the sound of a timer that has run out, played every 3 seconds until you answer it; a new message plays its first two beeps. Kitchen timer: four quick, bright beeps. Alarm: a fuller, lower tone, three beeps then two. High beep: three high, pure beeps, the soft ping at full strength. Soft ping: the first sound, quiet. Switching SOUND on at the screen plays it. (default: Kitchen timer)",
+"new": true,
+"o": [
+{
+"label": "Kitchen timer",
+"value": "kitchen"
+},
+{
+"label": "Alarm",
+"value": "alarm"
+},
+{
+"label": "High beep",
+"value": "high"
+},
+{
+"label": "Soft ping",
+"value": "soft"
+}
+],
+"s": "craftbeerpi",
+"t": "select",
+"v": "kitchen"
+},
+"BREWDAY_OVERRIDE_ACTOR": {
+"d": "Brew-day screen: a switch with its own override switch on the rig, which can run it whatever CraftBeerPi says. The screen then warns that it may still run after it is switched off. (default: None)",
+"o": null,
+"s": "craftbeerpi",
+"t": "actor",
+"v": ""
+},
+"BREWDAY_TIMER_NAMES": {
+"d": "Brew-day screen: names to pick with one tap when you add or change a timer, separated by commas, up to 24 characters each. The first six show, in this order. You can still type any name on brew day. Blank shows none. (default: Hop stand, Yeast, Vorlauf)",
+"o": null,
+"s": "craftbeerpi",
+"t": "string",
+"v": "Hop stand, Yeast, Vorlauf"
+},
+"BREWERY_NAME": {
+"d": "Brewery Name",
+"o": null,
+"s": "craftbeerpi",
+"t": "string",
+"v": "CraftBeerPi Brewery"
+},
+"BREWSTART_LANGUAGE": {
+"d": "Language of BrewStart's settings and messages. The step form shows a change after a restart.",
+"o": [
+{
+"label": "English",
+"value": "English"
+},
+{
+"label": "Deutsch",
+"value": "Deutsch"
+}
+],
+"s": "cbpi4_BrewStart",
+"t": "select",
+"v": "English"
+},
+"BoilAutoTimer": {
+"d": "Start Boil timer automatically if Temp does not change for 5 Minutes and is above 95C/203F",
+"o": [
+{
+"label": "Yes",
+"value": "Yes"
+},
+{
+"label": "No",
+"value": "No"
+}
+],
+"s": "steps",
+"t": "select",
+"v": "No"
+},
+"BoilKettle": {
+"d": "Define Kettle that is used for Boil, Whirlpool and Cooldown. If not selected, MASH_TUN will be used",
+"o": null,
+"s": "steps",
+"t": "kettle",
+"v": "b7qhSvKJ25y3qQivGZbdpi"
+},
+"CONFIG_STATUS": {
+"d": "Status of the config file. Internal use for maintenance",
+"o": null,
+"s": "hidden",
+"t": "string",
+"v": "4.7.7.post36"
+},
+"CONFIRM_BEFORE_BOIL": {
+"d": "Ask before heating the boil kettle. A mash step advances the moment its timer ends, which can energize the boil element before the wort has been transferred.",
+"o": [
+{
+"label": "Yes",
+"value": "Yes"
+},
+{
+"label": "No",
+"value": "No"
+}
+],
+"s": "steps",
+"t": "select",
+"v": "Yes"
+},
+"CSVLOGFILES": {
+"d": "Write sensor data to csv logfiles (enabling requires restart)",
+"o": [
+{
+"label": "Yes",
+"value": "Yes"
+},
+{
+"label": "No",
+"value": "No"
+}
+],
+"s": "craftbeerpi",
+"t": "select",
+"v": "Yes"
+},
+"HLT_PUMP_WITH_HEAT": {
+"d": "Start the HLT pump (the HLT kettle's agitator) whenever the HLT starts heating, until the recipe reaches its sparge, so the water does not settle into hot and cool layers. Also when BrewStart heats the water before you are up: starting a BrewStart step asks you to check the pump and its valves. It is left running when the heating stops. You can still stop it; it starts again the next time the HLT starts heating.",
+"o": [
+{
+"label": "Yes",
+"value": "Yes"
+},
+{
+"label": "No",
+"value": "No"
+}
+],
+"s": "steps",
+"t": "select",
+"v": "Yes"
+},
+"INFLUXDB": {
+"d": "Write sensor data to influxdb (enabling requires restart)",
+"o": [
+{
+"label": "Yes",
+"value": "Yes"
+},
+{
+"label": "No",
+"value": "No"
+}
+],
+"s": "craftbeerpi",
+"t": "select",
+"v": "No"
+},
+"INFLUXDBADDR": {
+"d": "URL Address of your influxdb server incl. http:// and port, e.g. http://localhost:8086 (If INFLUXDBCLOUD set to Yes use URL Address of your influxdb cloud server)",
+"o": null,
+"s": "craftbeerpi",
+"t": "string",
+"v": "http://localhost:8086"
+},
+"INFLUXDBCLOUD": {
+"d": "Write sensor data to influxdb cloud (INFLUXDB must set to Yes)",
+"o": [
+{
+"label": "Yes",
+"value": "Yes"
+},
+{
+"label": "No",
+"value": "No"
+}
+],
+"s": "craftbeerpi",
+"t": "select",
+"v": "No"
+},
+"INFLUXDBMEASUREMENT": {
+"d": "Name of the measurement in your INFLUXDB database (default: measurement)",
+"o": null,
+"s": "craftbeerpi",
+"t": "string",
+"v": "measurement"
+},
+"INFLUXDBNAME": {
+"d": "Name of your influxdb database name (If INFLUXDBCLOUD set to Yes use bucket of your influxdb cloud database)",
+"o": null,
+"s": "craftbeerpi",
+"t": "string",
+"v": "cbpi4"
+},
+"INFLUXDBPWD": {
+"d": "Password for your influxdb database (only if required)(If INFLUXDBCLOUD set to Yes use token of your influxdb cloud database)",
+"o": null,
+"s": "craftbeerpi",
+"t": "string",
+"v": " "
+},
+"INFLUXDBUSER": {
+"d": "User Name for your influxdb database (only if required)(If INFLUXDBCLOUD set to Yes use organisation of your influxdb cloud database)",
+"o": null,
+"s": "craftbeerpi",
+"t": "string",
+"v": " "
+},
+"MASH_TUN": {
+"d": "Default Mash Tun",
+"o": null,
+"s": "steps",
+"t": "kettle",
+"v": "oQhZqfBjSC88UNNcWE3CCv"
+},
+"MIN_MEMORY": {
+"d": "Minimum required memory in MB for CraftBeerPi to run properly",
+"o": null,
+"s": "craftbeerpi",
+"t": "number",
+"v": 200
+},
+"MQTTUpdate": {
+"d": "Forced MQTT Update frequency in s for Kettle and Fermenter (no changes in payload required). Restart required after change",
+"o": [
+{
+"label": "30",
+"value": 30
+},
+{
+"label": "60",
+"value": 60
+},
+{
+"label": "120",
+"value": 120
+},
+{
+"label": "300",
+"value": 300
+},
+{
+"label": "Never",
+"value": 0
+}
+],
+"s": "craftbeerpi",
+"t": "select",
+"v": 0
+},
+"NOTIFY_ON_ERROR": {
+"d": "Send Notification on Logging Error",
+"o": [
+{
+"label": "Yes",
+"value": "Yes"
+},
+{
+"label": "No",
+"value": "No"
+}
+],
+"s": "craftbeerpi",
+"t": "select",
+"v": "No"
+},
+"PID_LOGGING": {
+"d": "Record what the control logics ask for - element duty and setpoint - alongside the temperatures, so a PID can be judged after the brew. Off by default; it writes extra log data.",
+"o": [
+{
+"label": "Yes",
+"value": "Yes"
+},
+{
+"label": "No",
+"value": "No"
+}
+],
+"s": "craftbeerpi",
+"t": "select",
+"v": "No"
+},
+"PLAY_BUZZER": {
+"d": "Play buzzer sound in Web interface on Notifications",
+"o": [
+{
+"label": "Yes",
+"value": "Yes"
+},
+{
+"label": "No",
+"value": "No"
+}
+],
+"s": "craftbeerpi",
+"t": "select",
+"v": "No"
+},
+"PRESSURE_UNIT": {
+"d": "Set unit for pressure",
+"o": [
+{
+"label": "kPa",
+"value": "kPa"
+},
+{
+"label": "PSI",
+"value": "PSI"
+}
+],
+"s": "craftbeerpi",
+"t": "select",
+"v": "kPa"
+},
+"RECIPE_CREATION_PATH": {
+"d": "API path to creation plugin. Default: upload . CHANGE ONLY IF USING A RECIPE CREATION PLUGIN",
+"o": null,
+"s": "craftbeerpi",
+"t": "string",
+"v": "upload"
+},
+"SENSOR_LOG_BACKUP_COUNT": {
+"d": "Max. number of backup logs",
+"o": null,
+"s": "craftbeerpi",
+"t": "number",
+"v": 5
+},
+"SENSOR_LOG_MAX_BYTES": {
+"d": "Max. number of bytes in sensor logs",
+"o": null,
+"s": "craftbeerpi",
+"t": "number",
+"v": 500000
+},
+"SIM_TIME_SCALE": {
+"d": "Simulated seconds per real second, for SimVessel testing. 1 is real time; 60 rehearses an hour-long ramp in a minute. Applies to every simulated vessel at once - running them at different speeds would make the HERMS coupling meaningless. Scales vessel physics only, not step timers.",
+"o": null,
+"s": "simvessel",
+"t": "number",
+"v": "30"
+},
+"TEMP_UNIT": {
+"d": "Temperature Unit",
+"o": [
+{
+"label": "C",
+"value": "C"
+},
+{
+"label": "F",
+"value": "F"
+}
+],
+"s": "craftbeerpi",
+"t": "select",
+"v": "F"
+},
+"brewfather_api_key": {
+"d": "Brewfather API Key",
+"o": null,
+"s": "craftbeerpi",
+"t": "string",
+"v": ""
+},
+"brewfather_list_length": {
+"d": "Brewfather Recipe List length",
+"o": [
+{
+"label": "5",
+"value": 5
+},
+{
+"label": "10",
+"value": 10
+},
+{
+"label": "25",
+"value": 25
+},
+{
+"label": "50",
+"value": 50
+},
+{
+"label": "100",
+"value": 100
+}
+],
+"s": "craftbeerpi",
+"t": "select",
+"v": 50
+},
+"brewfather_user_id": {
+"d": "Brewfather User ID",
+"o": null,
+"s": "craftbeerpi",
+"t": "string",
+"v": ""
+},
+"current_dashboard_number": {
+"d": "Number of current Dashboard",
+"o": null,
+"s": "hidden",
+"t": "number",
+"v": 1
+},
+"current_grid": {
+"d": "Dashboard Grid Width",
+"o": null,
+"s": "hidden",
+"t": "number",
+"v": 5
+},
+"max_dashboard_number": {
+"d": "Max Number of Dashboards",
+"o": [
+{
+"label": "1",
+"value": 1
+},
+{
+"label": "2",
+"value": 2
+},
+{
+"label": "3",
+"value": 3
+},
+{
+"label": "4",
+"value": 4
+},
+{
+"label": "5",
+"value": 5
+},
+{
+"label": "6",
+"value": 6
+},
+{
+"label": "7",
+"value": 7
+},
+{
+"label": "8",
+"value": 8
+},
+{
+"label": "9",
+"value": 9
+},
+{
+"label": "10",
+"value": 10
+}
+],
+"s": "craftbeerpi",
+"t": "select",
+"v": 4
+},
+"slow_pipe_animation": {
+"d": "Slow down dashboard pipe animation taking up close to 100% of the CPU's capacity",
+"o": [
+{
+"label": "Yes",
+"value": "Yes"
+},
+{
+"label": "No",
+"value": "No"
+}
+],
+"s": "craftbeerpi",
+"t": "select",
+"v": "Yes"
+},
+"steps_boil": {
+"d": "Boil step type",
+"o": null,
+"s": "steps",
+"t": "step",
+"v": ""
+},
+"steps_boil_actor": {
+"d": "Actor that can be toggled with lid alert to activate exhaust or steam condensor (default: None)",
+"o": null,
+"s": "steps",
+"t": "actor",
+"v": ""
+},
+"steps_boil_lid_alert": {
+"d": "What the boil step says as the wort nears boiling, when its LidAlert is Yes. With a steam condenser on the lid, say to turn it on instead.",
+"o": null,
+"s": "steps",
+"t": "string",
+"v": "Turn on the Steam Slayer mister"
+},
+"steps_boil_temp": {
+"d": "Default Boil Temperature for Recipe Creation",
+"o": null,
+"s": "steps",
+"t": "number",
+"v": 210.2
+},
+"steps_cooldown": {
+"d": "Cooldown step type",
+"o": null,
+"s": "steps",
+"t": "step",
+"v": ""
+},
+"steps_cooldown_actor": {
+"d": "Actor to trigger cooldown water on and off (default: None)",
+"o": null,
+"s": "steps",
+"t": "actor",
+"v": ""
+},
+"steps_cooldown_sensor": {
+"d": "Alternative Sensor to monitor temperature durring cooldown (if not selected, Kettle Sensor will be used)",
+"o": null,
+"s": "steps",
+"t": "sensor",
+"v": ""
+},
+"steps_cooldown_temp": {
+"d": "Cooldown temp will send notification when this temeprature is reached",
+"o": null,
+"s": "steps",
+"t": "number",
+"v": 68.0
+},
+"steps_mash": {
+"d": "Mash step type",
+"o": null,
+"s": "steps",
+"t": "step",
+"v": ""
+},
+"steps_mashin": {
+"d": "MashIn step type",
+"o": null,
+"s": "steps",
+"t": "step",
+"v": ""
+},
+"steps_mashout": {
+"d": "MashOut step type",
+"o": null,
+"s": "steps",
+"t": "step",
+"v": ""
+},
+"steps_sparge": {
+"d": "Sparge step type for recipe creation: SpargeStep heats the HLT to the sparge temperature and leaves both pumps to you, for a fly or a batch sparge; MashStep runs the sparge as a mash rest, as before",
+"o": null,
+"s": "steps",
+"t": "step",
+"v": "SpargeStep"
+},
+"steps_whirlpool_temp": {
+"d": "Whirlpool temperature for recipe creation: cool the wort to this before the whirlpool hops go in, when the recipe gives none (BeerXML files never do)",
+"o": null,
+"s": "steps",
+"t": "number",
+"v": 170
+}
+};
+window.CBPI_THINGS = {
+"kettle": [
+[
+"npqm66B5iuYbDt2KrvuDS5",
+"HLT"
+],
+[
+"oQhZqfBjSC88UNNcWE3CCv",
+"Mash Tun"
+],
+[
+"b7qhSvKJ25y3qQivGZbdpi",
+"Boil Kettle"
+]
+],
+"actor": [
+[
+"CPgMajE4XGucCT8fbw2xQf",
+"Boil Heater"
+],
+[
+"TB4KRvhTsWJXEJro2VdT7k",
+"Glycol Pump"
+],
+[
+"ekAhWurViFMGBSQHoUMEr7",
+"HLT Heater"
+],
+[
+"TZf9NpePBSrStdEqr6VoTX",
+"Mash Pump"
+]
+],
+"sensor": [
+[
+"bo8gTWBKSSJUeLfuSWUJmx",
+"Boil Temp"
+],
+[
+"afft72Vaoj33KfkXVqyiD8",
+"HLT Temp"
+],
+[
+"G9je5TwkPNKDE3cRVXrSci",
+"Mash Temp"
+]
+],
+"step": [
+"ActorStep",
+"BoilStep",
+"BrewStart",
+"CooldownStep",
+"MashInStep",
+"MashStep",
+"NotificationStep",
+"SpargeStep",
+"ToggleStep",
+"WaitStep",
+"WhirlpoolStep"
+]
+};

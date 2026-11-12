@@ -5,6 +5,22 @@ import { useCBPi } from "../data";
 import "./fonts/barlow.css";
 import { createBrewDay } from "./screen";
 
+// CraftBeerPi's state as the screen's frame reads it, for the brew-day screen and the Settings page in its frame
+export const liveSnap = (state, alerts, retired) => ({
+  connected: !!state.connection,
+  kettles: state.kettle,
+  logic: state.logic,
+  actors: state.actors,
+  sensorData: state.sensorData,
+  config: state.config,
+  steps: state.mashProfile,
+  basic: state.mashBasic,
+  timer: state.resttimer,
+  timers: state.timers,
+  alerts,
+  retired,
+});
+
 // The brew-day screen, Scott's fixed screen for brewing (layout B, chosen 9 Nov 2026). It is not drawn by
 // React: screen.js is the approved mockup's own code, so that it looks exactly like the mockup, and this
 // component only hands it CraftBeerPi's state. It sits outside the app's menu bar and page frame - it has
@@ -22,7 +38,7 @@ const BrewDay = () => {
   const navigate = useNavigate();
   const go = useRef(navigate);
   go.current = navigate;
-  const { remove, hideStack } = alert;
+  const { remove, hideStack, alerts, retiredReason } = alert;
 
   useEffect(() => {
     const qs = new URLSearchParams(window.location.search);
@@ -53,21 +69,8 @@ const BrewDay = () => {
 
   useEffect(() => {
     if (!screen.current) return;
-    screen.current.update({
-      connected: !!state.connection,
-      kettles: state.kettle,
-      logic: state.logic,
-      actors: state.actors,
-      sensorData: state.sensorData,
-      config: state.config,
-      steps: state.mashProfile,
-      basic: state.mashBasic,
-      timer: state.resttimer,
-      timers: state.timers,
-      alerts: alert.alerts,
-      retired: alert.retiredReason,
-    });
-  }, [state, alert.alerts]);
+    screen.current.update(liveSnap(state, alerts, retiredReason));
+  }, [state, alerts, retiredReason]);
 
   return <div ref={ref} className="bd-root" />;
 };

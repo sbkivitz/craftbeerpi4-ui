@@ -102,8 +102,11 @@ const TIMER_RAN_OUT = /^The \d+(?::\d\d){1,2} timer has run out\.$/;
 
 /* ---------- the screen's markup: the mockup's page, after layout B's moves ---------- */
 const MORE = [["#/dashboard", "Dashboard"], ["#/fermenterprofile", "Fermenter profile"], ["#/plugins", "Plugins"], ["#/system", "System"], ["#/about", "About"]];
-function skeleton(demo) {
+/* page: "" the brew-day screen; "settings", its frame (title bar, last event, tabs) round the Settings page, whose host
+   (#sp) takes the brewhouse's place and which draws itself (settings/page.js) */
+function skeleton(demo, page) {
   const h = p => demo ? "#tab" : p;
+  const cur = t => (page === "settings" ? t === "Settings" : t === "") ? ' aria-current="page"' : "";
   return `<div class="app" id="app" data-link="ok">
   <header class="topbar">
     <p class="brand"><span class="bname">CraftBeerPi Brewery</span></p>
@@ -118,23 +121,23 @@ function skeleton(demo) {
   </section>
 
   <nav class="tabs" aria-label="Screens">
-    <a href="${h("#/")}" data-tab="" aria-current="page">Brew day</a>
+    <a href="${h("#/")}" data-tab=""${cur("")}>Brew day</a>
     <a href="${h("#/mashprofile")}" data-tab="Brew Steps"><span class="long">Brew steps</span><span class="short">Steps</span></a>
     <a href="${h("#/recipes")}" data-tab="Recipe Book"><span class="long">Recipe book</span><span class="short">Recipes</span></a>
     <a href="${h("#/charting")}" data-tab="Analytics">Analytics</a>
     <a href="${h("#/hardware")}" data-tab="Hardware">Hardware</a>
-    <a href="${h("#/settings/All")}" data-tab="Settings">Settings</a>
+    <a href="${h("#/settings/All")}" data-tab="Settings"${cur("Settings")}>Settings</a>
     <a href="${h("#/more")}" data-tab="More"${demo ? "" : ' aria-haspopup="true" aria-expanded="false" aria-controls="bd-more"'}>More</a>
   </nav>
 
-  <main class="main">
+  ${page ? `<div class="sp-host" id="sp"></div>` : `<main class="main">
     <aside class="recipe" id="recipe" aria-label="Recipe"></aside>
     <section class="brewhouse" aria-label="Brewhouse">
       <div class="now" id="now"></div>
       <div class="plates" id="plates"></div>
       <div class="rig" id="rig"></div>
     </section>
-  </main>
+  </main>`}
 </div>
 ${demo ? "" : `<ul class="moremenu" id="bd-more" aria-label="More screens" hidden>${MORE.map(([href, label]) => `<li><a href="${href}">${label}</a></li>`).join("")}</ul>\n`}<div class="toast" id="toast" role="status" hidden></div>
 <p class="sr" id="sr" aria-live="polite"></p>
@@ -176,7 +179,7 @@ const setText = (el, s) => { if (el && el.textContent !== s) el.textContent = s;
 /* ---------- state ---------- */
 // One screen at a time, as in the mockup: its state lives here. gen tells a command that finishes after the
 // screen has gone (or been opened again) to keep its answer to itself.
-let root = null, DEMO_MODE = false, opts = {}, gen = 0;
+let root = null, DEMO_MODE = false, opts = {}, gen = 0, PAGE = "";
 let st, M, timers = [], noteTimers = {}, hold = null, toastT = 0, raf = 0, rigW = 0, rigRs = 1, teardown = () => {};
 let last = null, everConnected = false, book = [], bookBusy = false, bookShown = false;
 /* the timers: tAns, a command's answer, newer than the websocket's last word until that catches up; tMsg, the word the
@@ -199,7 +202,7 @@ function setBrewery(raw) {
   nm.textContent = name;
   el.toggleAttribute("data-long", name.length > LONG_NAME);
   if (name.length > LONG_NAME) el.title = name; else el.removeAttribute("title");
-  document.title = `${name} · Brew day`;
+  document.title = `${name} · ${PAGE === "settings" ? "Settings" : "Brew day"}`;
 }
 function showBrewScribe(on) {
   const nav = root && root.querySelector(".tabs"), tab = nav && nav.querySelector('a[data-tab="BrewScribe"]');
@@ -727,11 +730,13 @@ function renderAll() {
   bn.toggleAttribute("data-long", !!(st.banner && (st.banner.act || st.banner.acts) && String(st.banner.text || "").length > LONG_Q));
   morph(bn, bannerHTML());
   morph($("#event"), eventHTML());
-  morph($("#plates"), ["hlt", "mt", "bk"].map(plateHTML).join(""));
-  // a timer's editor open: on the one-screen layout the step list (by hand, the recipe book) makes room for it
-  $("#recipe").toggleAttribute("data-tedit", !!M.TIMERS && !!st.tedit);
-  morph($("#recipe"), recipeHTML());
-  morph($("#now"), nowHTML());
+  if (!PAGE) {
+    morph($("#plates"), ["hlt", "mt", "bk"].map(plateHTML).join(""));
+    // a timer's editor open: on the one-screen layout the step list (by hand, the recipe book) makes room for it
+    $("#recipe").toggleAttribute("data-tedit", !!M.TIMERS && !!st.tedit);
+    morph($("#recipe"), recipeHTML());
+    morph($("#now"), nowHTML());
+  }
   /* a timer that has run out and not been answered: its row, the title bar and a frame round the whole screen pulse
      together, on every screen. Any other alert beeps twice as it arrives, with SOUND on */
   $("#app").toggleAttribute("data-ring", !!M.TIMERS && st.tmrs.some(t => t.state === "done"));
@@ -741,6 +746,8 @@ function renderAll() {
     if (key && st.banner.timer == null && st.banner.tone !== "connecting") ring(2);
     lastBannerKey = key;
   }
+  // the Settings page's frame has no brewhouse to draw
+  if (PAGE) return;
   if (M.TIMERS) keepStepInView();
   renderRig();
   if (GRAPHS) drawGraphs();
@@ -800,10 +807,11 @@ function schedule() {
 
 /* ---------- messages ---------- */
 function toast(text) { const t = $("#toast"); t.textContent = text; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3800); }
-function logEvent(what, res, tone, cav = "") {
+// shared: a line for every tab (the Settings page's), marked so another tab open on this device adds it (onStorage)
+function logEvent(what, res, tone, cav = "", shared = false) {
   if (DEMO_MODE) { st.events.unshift([hhmmss(st.t), what, res, tone, cav]); return; }
   st.t = daySeconds();
-  st.events.unshift([hhmmss(st.t), what, res, tone, cav, Date.now()]);
+  st.events.unshift([hhmmss(st.t), what, res, tone, cav, Date.now(), ...(shared ? [1] : [])]);
   if (st.events.length > 50) st.events.length = 50;
   saveEvents();
 }
@@ -1743,6 +1751,8 @@ function go(path) { if (opts.navigate) opts.navigate(path); else window.location
 
 function run(cmd) {
   const [k, x, y] = cmd.split(":");
+  // the Settings page's demo has a title bar and no brewhouse: ALL OFF only says what it does, as in its mockup
+  if (DEMO_MODE && PAGE && k !== "log") return toast("Mockup: ALL OFF works here exactly as on the brew-day screen.");
   switch (k) {
     case "act": return DEMO_MODE ? cmdAct(x) : liveAct(x);
     case "mode": return DEMO_MODE ? cmdMode(x, y) : liveMode(x, y);
@@ -1874,7 +1884,7 @@ function applyLive(snap) {
     if (!t || (t.state === "done" && was && was.state !== "done")) st.tedit = null;
   }
   if (!M.TIMERS) st.tedit = null;
-  if (!st.recipe && !bookShown) { bookShown = true; loadBook(); }
+  if (!PAGE && !st.recipe && !bookShown) { bookShown = true; loadBook(); }
   if (st.recipe) bookShown = false;
   powerModeChanged(st.v.bk.mode);
 }
@@ -1976,7 +1986,7 @@ function observe(prev, snap) {
   if (prev.connected && !snap.connected) logEvent(LOST, "trying again", "bad");
   if (!prev.connected && snap.connected && everConnected) {
     logEvent("Connection to CraftBeerPi back", "", "");
-    if (!st.recipe) loadBook();
+    if (!PAGE && !st.recipe) loadBook();
     // a plugin comes or goes with a restart: ask again whether BrewScribe is there
     probeBrewScribe();
   }
@@ -2027,9 +2037,9 @@ function observe(prev, snap) {
 }
 
 /* ---------- the event log is kept on this device ---------- */
-function loadEvents() {
+function loadEvents(text) {
   try {
-    const xs = JSON.parse(window.localStorage.getItem(EVENTS_KEY) || "[]");
+    const xs = JSON.parse((text === undefined ? window.localStorage.getItem(EVENTS_KEY) : text) || "[]");
     const keep = Date.now() - EVENTS_KEEP_MS;
     return Array.isArray(xs) ? xs.filter(e => Array.isArray(e) && e.length >= 4 && e[5] > keep).slice(0, 50) : [];
   } catch (e) { return []; }
@@ -2188,7 +2198,8 @@ const handlers = {
         if (tab.dataset.tab === "BrewScribe") toast("Mockup: this opens BrewScribe in a browser tab of its own, or goes back to that tab if it's open, without reloading it.");
         else if (tab.dataset.tab) toast(tab.dataset.tab === "More" ? "Mockup: MORE holds Fermenter Profile, Plugins, System and About." : `Mockup: this opens the existing ${tab.dataset.tab} page.`);
       } else if (tab.dataset.tab === "More") { e.preventDefault(); toggleMore(tab); }
-      else if (!tab.dataset.tab) e.preventDefault();
+      // the page's own tab goes nowhere: Brew day on the brew-day screen, SETTINGS on the Settings page
+      else if (tab.getAttribute("aria-current") === "page") e.preventDefault();
       return;
     }
     const el = e.target.closest("[data-cmd]");
@@ -2309,7 +2320,7 @@ function liveTick() {
 export function createBrewDay(el, o = {}) {
   if (root) teardown();
   const myGen = ++gen;
-  root = el; opts = o; DEMO_MODE = !!o.demo;
+  root = el; opts = o; DEMO_MODE = !!o.demo; PAGE = o.page === "settings" ? "settings" : "";
   /* this tab's name, so BrewScribe's BREW DAY button (target="craftbeerpi") comes back to it rather than opening another
      (Porter, 11 Nov) */
   if (!DEMO_MODE) { try { window.name = "craftbeerpi"; } catch (_) { /* a sandboxed frame: no name */ } }
@@ -2326,7 +2337,8 @@ export function createBrewDay(el, o = {}) {
   }
   html.classList.add("bd-page");
   html.dataset.layout = LAYOUT;
-  GRAPHS = o.graphs === "none" ? "" : "face";
+  if (PAGE) html.dataset.page = PAGE; else delete html.dataset.page;
+  GRAPHS = PAGE || o.graphs === "none" ? "" : "face";
   if (GRAPHS) html.dataset.graphs = GRAPHS; else delete html.dataset.graphs;
   // the span: ?span= for a screenshot, else the one this device last chose (the demo always starts at 30 MIN, as the mockup)
   gSpan = "30";
@@ -2334,7 +2346,7 @@ export function createBrewDay(el, o = {}) {
   if (!DEMO_MODE) { try { kept = localStorage.getItem(GSPAN_KEY); } catch (e) { /* private mode */ } }
   for (const s of [o.span, kept]) if (GSPANS.some(x => x[0] === s)) { gSpan = s; break; }
   rigRs = 1; H = null;
-  root.innerHTML = skeleton(DEMO_MODE);
+  root.innerHTML = skeleton(DEMO_MODE, PAGE);
   // the name: the demo's (?name= tries another, as in the mockup); live, CraftBeerPi's once its settings arrive (applyLive)
   brewery = null;
   if (DEMO_MODE) setBrewery(o.name != null ? o.name : "CraftBeerPi Brewery");
@@ -2342,7 +2354,13 @@ export function createBrewDay(el, o = {}) {
   let bsKept = false;
   if (!DEMO_MODE) { try { bsKept = localStorage.getItem(BS_KEY) === "1"; } catch (e) { /* private mode: not shown until asked */ } }
   showBrewScribe(DEMO_MODE ? o.brewscribe !== "none" : bsKept);
-  if (DEMO_MODE) {
+  if (DEMO_MODE && PAGE) {
+    /* the Settings page's mockup: a still title bar, at 14:32 with no alarms; the page hands it the last event and the
+       connection (demo below) */
+    M = {TIMERS: false, BKNEW: false, U: "°F"};
+    st = {link: "ok", banner: null, t: 14 * 3600 + 32 * 60, pend: {}, notes: {}, edit: null, tedit: null, logOpen: false,
+      confirmNext: false, tmrs: [], events: [["14:31:52", "Mash Tun at target, 149.0 °F", "confirmed", "ok"]]};
+  } else if (DEMO_MODE) {
     const key = DEMO.SCENES[o.demo] || DEMO.EXTRA[o.demo] ? o.demo : "mash";
     M = {RECIPE: DEMO.RECIPE, VNAME: DEMO.VNAME, VACT: DEMO.VACT, ACT: DEMO.ACT, HERMS_DELTA: DEMO.HERMS_DELTA, BOOK: DEMO.BOOK, U: "°F", LIMITS: [32, 230],
       BOILPOWER: true, BKNEW: true, BOIL_TH: DEMO.BOIL_TH, TIMERS: true};
@@ -2383,9 +2401,12 @@ export function createBrewDay(el, o = {}) {
   for (const k in handlers) document.addEventListener(k, handlers[k]);
   window.addEventListener("resize", onWindow);
   window.addEventListener("scroll", onWindow, {passive: true});
-  const ticker = setInterval(() => { if (gen === myGen && st) (DEMO_MODE ? demoTick : liveTick)(); }, 1000);
-  const ro = new ResizeObserver(drawRig);
-  ro.observe($("#rig"));
+  // the Settings page's lines from another tab (onStorage), so a save there shows here
+  if (!DEMO_MODE) window.addEventListener("storage", onStorage);
+  // the Settings page's demo stands still, as its mockup's title bar does
+  const ticker = setInterval(() => { if (gen === myGen && st && !(DEMO_MODE && PAGE)) (DEMO_MODE ? demoTick : liveTick)(); }, 1000);
+  const ro = PAGE ? null : new ResizeObserver(drawRig);
+  if (ro) ro.observe($("#rig"));
   // each graph is drawn to its box: again when the boxes change size, and when the fonts arrive, which widens them
   const gro = GRAPHS ? new ResizeObserver(() => drawGraphs()) : null;
   if (gro) gro.observe($(".brewhouse"));
@@ -2393,7 +2414,7 @@ export function createBrewDay(el, o = {}) {
   if (GRAPHS && document.fonts) document.fonts.addEventListener("loadingdone", onFonts);
   function teardownThis() {
     clearInterval(ticker);
-    ro.disconnect();
+    if (ro) ro.disconnect();
     if (gro) gro.disconnect();
     if (document.fonts) document.fonts.removeEventListener("loadingdone", onFonts);
   }
@@ -2402,6 +2423,7 @@ export function createBrewDay(el, o = {}) {
     for (const k in handlers) document.removeEventListener(k, handlers[k]);
     window.removeEventListener("resize", onWindow);
     window.removeEventListener("scroll", onWindow);
+    window.removeEventListener("storage", onStorage);
     timers.forEach(clearTimeout); Object.values(noteTimers).forEach(clearTimeout); clearTimeout(toastT);
     if (raf) cancelAnimationFrame(raf);
     raf = 0;
@@ -2409,6 +2431,7 @@ export function createBrewDay(el, o = {}) {
     hold = null;
     html.classList.remove("bd-page");
     delete html.dataset.layout;
+    delete html.dataset.page;
     delete html.dataset.graphs;
     delete html.dataset.bk;
     delete html.dataset.timers;
@@ -2434,13 +2457,40 @@ export function createBrewDay(el, o = {}) {
            page never lost its own connection: Scott's tab showed "Connection to CraftBeerPi lost · trying again" while
            connected (11 Nov, 21:25) */
         if (!st.events.length || st.events[0][1] === LOST) logEvent("Connected to CraftBeerPi", "", "");
-        if (!st.recipe) loadBook();
+        if (!PAGE && !st.recipe) loadBook();
         probeBrewScribe();
       }
       observe(prev, snap);
       if (snap.connected) everConnected = true;
       schedule();
     },
+    /* for the Settings page (page "settings"): its host; the last-event line, the screen reader's line and the toast,
+       which it shares; MORE's list; and in its demo, the title bar's connection and last events, from its mockup */
+    host: PAGE ? $("#sp") : null,
+    log(what, res, tone, cav = "") { if (gen === myGen && st) { logEvent(what, res, tone, cav, true); schedule(); } },
+    say(text, urgent) { if (gen === myGen && st) say(text, urgent); },
+    toast(text) { if (gen === myGen && st) toast(text); },
+    closeMore() { if (gen === myGen && st) closeMore(); },
+    demo(x) {
+      if (gen !== myGen || !st || !DEMO_MODE || !PAGE || !x) return;
+      if (x.link) st.link = x.link;
+      if (x.events && x.events.length) st.events = x.events.map(e => e.slice());
+      if ("name" in x) setBrewery(x.name);
+      renderAll();
+    },
     destroy() { if (gen === myGen) teardown(); }
   };
+}
+/* another tab's Settings lines, so a save in Settings reaches a brew-day screen open in another tab: added here in time
+   order, and kept with this tab's own lines from then on. Only those: every tab logs what it sees CraftBeerPi do (the
+   connection, its messages, the steps), so taking the other tab's list would show each of those twice. Read from the
+   event, not from storage, which this tab may already have written over */
+function onStorage(e) {
+  if (e.key !== EVENTS_KEY || !st || DEMO_MODE) return;
+  const have = new Set(st.events.map(x => `${x[5]}|${x[1]}`));
+  const add = loadEvents(e.newValue).filter(x => x[6] && !have.has(`${x[5]}|${x[1]}`));
+  if (!add.length) return;
+  // "Connecting to CraftBeerPi", never kept (0), stays first
+  st.events = st.events.concat(add).sort((a, b) => (b[5] || Infinity) - (a[5] || Infinity)).slice(0, 50);
+  schedule();
 }

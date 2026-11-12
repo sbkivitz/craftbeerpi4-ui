@@ -1,0 +1,344 @@
+/* Settings, in the brew-day screen's world (DESIGN.md, copied unchanged from craftbeerpi4-ui-impeccable). The frame
+   (title bar, last event, tabs) is layout B's, rule for rule; everything after "settings" is this page's own. */
+:root{
+  --bg:#0f161d;--bar:#0a1016;--panel:#17212b;--panel-2:#1e2b37;--hover:#253545;--line:#2a3b4b;--edge:#33475a;--face:#030609;
+  --text:#e8eef3;--text-2:#b6c3cf;--text-3:#8b9cad;
+  --run:#3ddc6f;--prompt:#ffb21e;--prompt-bg:#3a2a06;--prompt-ink:#fff1d2;--note:#ffd9a0;
+  --alarm:#ff4a4a;--alarm-bg:#6e1414;--fault-bg:#2b1315;--alarm-ink:#ffc9c4;
+  --select:#2a6fc0;--active:#1c5796;--active-edge:#3c7fcc;--active-ink:#dce9f7;--focus:#8cc2ff;
+  --answer:#f4f6f8;--answer-ink:#10161c;
+  --sunk:inset 0 3px 10px rgb(0 0 0/.9),inset 0 0 0 1px #1a2530,0 1px 0 rgb(255 255 255/.06);
+  --sans:"Barlow","Segoe UI",system-ui,sans-serif;
+  --cond:"Barlow Condensed","Roboto Condensed","Arial Narrow","Segoe UI",sans-serif;
+  --r:6px;--gap:12px;--pad:20px;--tabs-h:64px;--mock-h:38px;--row-l:560px;--row-c:420px
+}
+html.bare{--mock-h:0px}
+*{box-sizing:border-box}
+html{color-scheme:dark;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:400 16px/1.35 var(--sans);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;margin:0;top:0;left:0}
+.num{font-variant-numeric:tabular-nums}
+
+/* mockup strip: deliberately not part of the design */
+.mock{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;min-height:var(--mock-h);padding:4px var(--pad);background:#f2efe6;color:#1d232a;border-bottom:2px dashed #1d232a;font:500 14px/1.2 var(--sans)}
+.mock a{color:#1d232a;padding:4px 8px;border-radius:4px}
+.mock a[aria-current=true]{background:#1d232a;color:#f2efe6;text-decoration:none}
+html.bare .mock{display:none}
+.mock .lay{margin-left:auto}
+
+/* ---------- the frame: the brew-day screen's title bar, last event and tabs, layout B (html[data-layout=b]), copied
+   rule for rule from craftbeerpi4-ui-impeccable/proposal/brew-day.css as it was on 11 Nov at 22:55 (with M74's brewery
+   name and M75's BREWSCRIBE tab). Copy it again when that changes. Only .app is this page's own ---------- */
+.app{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto minmax(0,1fr);height:max(calc(100dvh - var(--mock-h)),620px)}
+
+/* top bar */
+.topbar{display:flex;align-items:center;gap:16px;padding:10px var(--pad);background:var(--bar);border-bottom:1px solid var(--line)}
+.topbar p{margin:0}
+.brand{display:flex;align-items:center;gap:12px;margin-right:auto!important;max-width:12em;font:700 clamp(22px,2.1vw,34px)/1 var(--cond);letter-spacing:.04em;text-transform:uppercase}
+/* the BREWERY_NAME setting: two lines at most, then an ellipsis; a long name is drawn smaller (data-long) */
+.brand .bname{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:break-word}
+.brand[data-long] .bname{font-size:.7em}
+.link{display:flex;align-items:center;gap:8px;font:600 16px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase;color:var(--text-2)}
+.link i{width:12px;height:12px;border-radius:50%;background:var(--run)}
+.link[data-link=lost]{color:#ffc9c4}
+.link[data-link=lost] i{background:transparent;border:3px solid var(--alarm);animation:blink 1s steps(2,start) infinite}
+.alloff{min-height:48px;padding:0 16px;border:2px solid #7d8fa2;border-radius:var(--r);background:var(--panel-2);color:var(--text);font:700 17px/1 var(--cond);letter-spacing:.06em}
+.alloff:hover{border-color:#ff8a80;background:#2b1315}
+.alloff[aria-disabled=true]{opacity:.5;cursor:not-allowed}
+.clock{font:600 clamp(26px,2.4vw,40px)/1 var(--cond);font-variant-numeric:tabular-nums;min-width:3.2ch;text-align:right}
+/* on a monitor or laptop only the alarm or prompt gives way to a long message in the title bar (it wraps): ALL OFF keeps
+   its shape and the clock its digits. Narrower, both still give way, so the prompt doesn't grow taller still */
+@media (min-width:1180px){.alloff,.clock{flex:none}}
+
+/* alarms and the last event (layout B moves the alarm into the top bar) */
+.status{display:grid;grid-template-columns:minmax(280px,34%) minmax(0,1fr);gap:var(--gap);padding:10px var(--pad) 0}
+.banner,.event{display:flex;align-items:center;gap:12px;min-height:58px;padding:8px 10px 8px 14px;border-radius:var(--r);background:var(--panel);border:1px solid var(--line)}
+.banner{font:600 18px/1.2 var(--cond);letter-spacing:.03em}
+.banner svg{flex:none;width:26px;height:26px}
+.banner[data-tone=ok]{color:var(--text-2)}
+.banner[data-tone=ok] svg{color:var(--run)}
+.banner .msg{flex:1;min-width:0}
+.event{position:relative;font:500 18px/1.2 var(--cond);letter-spacing:.02em;min-width:0}
+.event .line{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.event time{color:var(--text-3);margin-right:10px;font-variant-numeric:tabular-nums}
+.res{color:var(--text-2)}.res.ok{color:var(--run)}.res.bad{color:#ff9b93}.res.wait{color:var(--prompt)}
+.logbtn{flex:none;min-height:44px;padding:0 14px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);font:600 16px/1 var(--cond);letter-spacing:.08em}
+.logbtn:hover{background:#253545}
+
+/* screen tabs */
+.tabs{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);min-height:var(--tabs-h);background:var(--bar);border-top:1px solid var(--line)}
+.tabs a{display:flex;align-items:center;justify-content:center;padding:0 6px;font:600 clamp(15px,1.15vw,19px)/1.05 var(--cond);letter-spacing:.08em;text-transform:uppercase;color:var(--text-2);text-decoration:none;text-align:center}
+.tabs a+a{border-left:1px solid var(--line)}
+.tabs a:hover{background:var(--panel)}
+.tabs a[aria-current=page]{background:var(--select);color:#fff}
+.tabs .short{display:none}
+/* BREWSCRIBE opens another program in a browser tab of its own: the icon says so before the press (its words are for
+   screen readers). Where the tab is narrow the name breaks between Brew and Scribe, and the icon stays with Scribe */
+.tabs .ext .nw{white-space:nowrap}
+.tabs .ext svg{width:.8em;height:.8em;margin-left:.3em;vertical-align:-.05em;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+
+/* layout B */
+[data-layout=b] .brand{margin-right:0!important}
+[data-layout=b] .topbar .banner{flex:0 1 auto;min-width:0;margin:0 auto;min-height:50px;padding:5px 6px 5px 14px}
+[data-layout=b] .topbar .banner[data-tone=ok]{padding-right:18px;background:#11331f;border-color:#2b6a42;color:#c9f2d6;text-transform:uppercase;letter-spacing:.08em}
+[data-layout=b] .status{grid-template-columns:minmax(0,1fr);padding-top:8px}
+[data-layout=b] .event{min-height:48px}
+[data-layout=b] .tabs{margin-top:10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);min-height:56px}
+/* a tablet, or half a monitor (701–1023 px): the title bar's question gets a row of its own, as on a phone */
+@media (min-width:701px) and (max-width:1023px){
+  [data-layout=b] .topbar{flex-wrap:wrap;row-gap:8px}
+  [data-layout=b] .brand{margin-right:auto!important}
+  [data-layout=b] .topbar .banner{order:1;flex:1 1 100%;margin:0;max-width:none}
+  /* with the question on its own row, the name has the room left beside the connection, ALL OFF and the clock: a long
+     name keeps the full size there, and takes that room without pushing them onto another row */
+  [data-layout=b] .brand{flex:1 1 0;min-width:0;max-width:none}
+  [data-layout=b] .brand[data-long] .bname{font-size:1em}
+}
+.toast{position:fixed;left:50%;bottom:28px;z-index:60;transform:translateX(-50%);width:max-content;max-width:min(560px,calc(100% - 24px));padding:12px 16px;border-radius:var(--r);background:#e8eef3;color:var(--answer-ink);font:500 16px/1.35 var(--sans);box-shadow:0 12px 30px rgb(0 0 0/.45)}
+.toast[hidden]{display:none}
+
+/* ---------- settings ---------- */
+.main{display:grid;grid-template-columns:clamp(340px,23vw,440px) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);grid-template-areas:"idx tool" "idx pane";gap:var(--gap);padding:var(--gap) var(--pad);min-height:0}
+
+/* the index: the recipe column's place and shape, one row per group, numbered in brewing order */
+.idx{grid-area:idx;display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0;padding:14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.idx h1{margin:0;font:700 clamp(22px,2vw,31px)/1.05 var(--cond);letter-spacing:.03em;text-transform:uppercase}
+.idx .meta{margin:-4px 0 0;font:500 17px/1.3 var(--cond);letter-spacing:.03em;color:var(--text-3)}
+.idx .meta b{font-weight:600;color:var(--active-ink)}
+.idx .meta .bad{color:#ff9b93}
+.groups{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;margin:0;padding:0 2px 0 0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.gi{display:grid;grid-template-columns:36px minmax(0,1fr) auto;column-gap:12px;row-gap:2px;align-items:center;min-height:58px;padding:6px 12px 6px 6px;border:1px solid var(--line);border-radius:var(--r);background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),var(--panel-2);color:var(--text);text-decoration:none}
+.gi:hover{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),var(--hover)}
+.gi .n{grid-row:1/3;font:700 24px/1 var(--cond);text-align:center;color:var(--text-2)}
+.gi .t{grid-column:2;font:600 20px/1.1 var(--cond);letter-spacing:.02em}
+.gi .d{grid-column:2;font:500 15px/1.25 var(--cond);letter-spacing:.02em;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gi .s{grid-column:3;grid-row:1/3;font:600 15px/1 var(--cond);letter-spacing:.06em;color:var(--text-3);text-align:right;white-space:nowrap}
+.gi[aria-current=true]{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),var(--active);border-color:var(--active-edge)}
+.gi[aria-current=true] .n,.gi[aria-current=true] .d,.gi[aria-current=true] .s{color:var(--active-ink)}
+.gi .chg{display:inline-block;padding:4px 7px;border-radius:4px;background:var(--select);color:#fff;font:700 13px/1 var(--cond);letter-spacing:.06em}
+.gi .fl{display:inline-block;padding:4px 7px;border-radius:4px;background:var(--fault-bg);border:1px solid var(--alarm);color:#ffd0cc;font:700 13px/1 var(--cond);letter-spacing:.06em}
+.gi.none .t,.gi.none .n{color:var(--text-3)}
+.gi.none .d{color:#6f8194}
+
+/* FIND A SETTING and SAVE sit above the pane, which scrolls the plates under them */
+.pane{grid-area:pane;min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain;scroll-padding-top:8px}
+.tool{grid-area:tool;display:flex;align-items:center;gap:10px;min-width:0}
+.find{position:relative;flex:1 1 420px;max-width:520px;min-width:0}
+.find label{position:absolute;left:14px;top:50%;transform:translateY(-50%);font:600 15px/1 var(--cond);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);pointer-events:none}
+.find input{width:100%;min-height:56px;padding:0 56px 0 146px;border:1px solid var(--edge);border-radius:var(--r);background:var(--face);color:var(--text);font:500 18px/1 var(--sans);box-shadow:var(--sunk)}
+.find input::-webkit-search-cancel-button{display:none}
+.find .clr{position:absolute;right:6px;top:6px;width:44px;height:44px;border:0;border-radius:4px;background:transparent;color:var(--text-2);font:600 22px/1 var(--sans)}
+.find .clr:hover{background:var(--hover);color:var(--text)}
+.tool .sp{flex:1}
+.btns{display:flex;gap:10px;flex:none}
+.cmd{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:56px;min-width:112px;padding:6px 16px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);color:var(--text);font:700 19px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase;touch-action:manipulation}
+.cmd small{font:500 13px/1 var(--cond);letter-spacing:.04em;text-transform:none;color:var(--text-3)}
+.cmd:hover{background:var(--hover)}
+.cmd.go{background:var(--select);border-color:var(--select);color:#fff;min-width:150px}
+.cmd.go small{color:#d6e6f8}
+.cmd.go:hover{background:#3477c8}
+.cmd[aria-disabled=true]{background:var(--panel-2);border-color:var(--edge);color:var(--text-3);cursor:not-allowed}
+.cmd[aria-disabled=true] small{color:var(--text-3)}
+.cmd.busy{position:relative;overflow:hidden;cursor:progress}
+.cmd.busy::before{content:"";position:absolute;inset:0 0 auto;height:6px;background:repeating-linear-gradient(-45deg,#a9bccd 0 6px,#33475a 6px 12px);background-size:17px 6px;animation:march .6s linear infinite}
+.cmd.ans{background:var(--answer);border-color:var(--answer);color:var(--answer-ink)}
+.cmd.ans small{color:#3a4652}
+
+/* a prompt in the pane (restart waiting, leaving with changes): Prompt Amber, in place, never a pop-up */
+.note{margin:0 0 12px;padding:12px 14px;border:2px solid var(--prompt);border-radius:var(--r);background:var(--prompt-bg);color:var(--prompt-ink)}
+.note[hidden]{display:none}
+.note p{margin:0;font:500 17px/1.4 var(--sans)}
+.note b{font-weight:600}
+.note .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.note.alarm{border-color:var(--alarm);background:var(--alarm-bg);color:#fff}
+
+/* a plate per group */
+.plates{display:flex;flex-direction:column;gap:var(--gap);padding-bottom:40vh}
+.plate{padding:14px 18px 8px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.plate.none{display:none}
+.phd{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 14px;padding-bottom:12px}
+.phd h2{margin:0;font:700 27px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+.phd h2 .n{margin-right:12px;color:var(--text-3)}
+.phd .sum{margin:0;font:500 17px/1.3 var(--cond);letter-spacing:.02em;color:var(--text-2)}
+.phd .up{display:none}
+.plate.land .phd h2{animation:land 1.2s cubic-bezier(.16,1,.3,1)}
+.part+.part{margin-top:6px}
+.part h3{margin:0;padding:12px 10px 8px;border-top:1px solid var(--line);font:600 15px/1 var(--cond);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+.part h3 .pl{margin-left:10px;letter-spacing:.04em;text-transform:none;color:var(--text-2)}
+.part:first-of-type h3{border-top:0;padding-top:2px}
+
+/* a row: what it is on the left (name, what it does, key), the control on the right, aligned down the whole page */
+.row{display:grid;grid-template-columns:minmax(0,var(--row-l)) minmax(280px,var(--row-c));column-gap:32px;align-items:start;padding:14px 10px;border-top:1px solid var(--line);border-radius:4px}
+.part h3+.row,.phd+.part>.row:first-child{border-top-color:transparent}
+.row .nm{display:block;margin:0;font:600 20px/1.15 var(--cond);letter-spacing:.02em;color:var(--text)}
+.row .wh{margin:5px 0 0;max-width:62ch;font:500 15px/1.4 var(--sans);color:var(--text-2)}
+.row .ky{margin:7px 0 0;font:500 14px/1.2 var(--cond);letter-spacing:.06em;color:var(--text-3);overflow-wrap:anywhere}
+.row .ky .tg{display:inline-block;margin-left:10px;padding:2px 6px;border:1px solid var(--edge);border-radius:3px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-2)}
+.row .ct{display:grid;gap:8px;align-content:start;min-width:0}
+.row mark{padding:0 1px;border-radius:2px;background:#5a4300;color:#fff3d6}
+/* a detail that belongs to the setting above it: set in, under a 1px rule */
+.row.dep{grid-template-columns:minmax(0,calc(var(--row-l) - 30px)) minmax(280px,var(--row-c));margin-left:22px;padding-left:18px;border-top-color:transparent;border-left:1px solid var(--edge);border-radius:0}
+.row.dep+.row.dep{border-top-color:var(--line)}
+.row.dep .nm{font-size:19px}
+.row.idle .nm,.row.idle .wh{color:var(--text-3)}
+.row .why{margin:0;font:500 15px/1.35 var(--sans);color:var(--note)}
+/* a see-also line: a setting that lives in another group, shown where it is also used */
+.see{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin:0 0 4px;padding:10px;border-radius:4px;font:500 17px/1.3 var(--cond);letter-spacing:.02em;color:var(--text-2)}
+.see b{font-weight:600;color:var(--text)}
+.see a{display:inline-flex;align-items:center;min-height:44px;padding:0 12px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);color:var(--text);font:600 16px/1 var(--cond);letter-spacing:.06em;text-decoration:none;text-transform:uppercase}
+.see a:hover{background:var(--hover)}
+
+/* row states: changed (blue, what you are choosing), saving (the lamps' marching stripes), saved, failed */
+.row.chg{background:rgb(42 111 192/.12);box-shadow:inset 0 0 0 2px var(--select)}
+.row.dep.chg{border-left-color:transparent}
+.row.wait{position:relative;overflow:hidden}
+.row.wait::before{content:"";position:absolute;inset:0 0 auto;height:6px;background:repeating-linear-gradient(-45deg,#a9bccd 0 6px,#33475a 6px 12px);background-size:17px 6px;animation:march .6s linear infinite}
+.row.bad{background:var(--fault-bg);box-shadow:inset 0 0 0 2px var(--alarm)}
+.row.flash{animation:flash 1.6s cubic-bezier(.16,1,.3,1)}
+.st{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin:0;min-height:24px;font:600 15px/1.25 var(--cond);letter-spacing:.06em;text-transform:uppercase;color:var(--text-2)}
+.st .was{text-transform:none;letter-spacing:.02em;font-weight:500;color:var(--active-ink)}
+.st.ok{color:var(--run)}
+.st .later{color:var(--prompt)}
+.st.no{color:#ffd0cc}
+.st .why2{text-transform:none;letter-spacing:.02em;font-weight:500}
+.lnk{position:relative;min-height:24px;padding:0 2px;border:0;background:none;color:var(--text);font:700 15px/1 var(--cond);letter-spacing:.08em;text-transform:uppercase;text-decoration:underline;text-underline-offset:3px}
+.lnk::before{content:"";position:absolute;inset:-10px -8px}
+.lnk:hover{color:#fff}
+
+/* controls */
+.seg{display:inline-grid;grid-auto-flow:column;grid-auto-columns:minmax(96px,auto);justify-self:start;max-width:100%;border:1px solid var(--edge);border-radius:var(--r);overflow:hidden}
+.seg button{min-height:48px;padding:0 16px;border:0;background:var(--panel-2);color:var(--text-2);font:700 18px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase;touch-action:manipulation}
+.seg button+button{border-left:1px solid var(--edge)}
+.seg button:hover{background:var(--hover);color:var(--text)}
+.seg button[aria-checked=true]{background:#070c11;color:#fff;box-shadow:inset 0 0 0 2px #a9bfd4}
+.seg.keep button{text-transform:none;letter-spacing:.03em}
+.seg.four{grid-auto-flow:row;grid-template-columns:repeat(2,minmax(0,1fr))}
+.seg.four button:nth-child(3){border-left:0}
+.seg.four button:nth-child(n+3){border-top:1px solid var(--edge)}
+.fld{width:100%;min-height:48px;padding:10px 14px;border:1px solid var(--edge);border-radius:var(--r);background:var(--face);color:var(--text);font:500 17px/1.35 var(--sans);box-shadow:var(--sunk)}
+textarea.fld{display:block;resize:none;overflow:hidden;field-sizing:content;min-height:48px}
+select.fld{appearance:none;-webkit-appearance:none;padding:0 48px 0 14px;font:600 19px/1 var(--cond);letter-spacing:.02em;background:var(--face) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%23b6c3cf' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 14px center/22px;cursor:pointer}
+select.fld option{background:#101a23;color:var(--text)}
+.numf{display:inline-flex;align-items:stretch;justify-self:start;border:1px solid var(--edge);border-radius:var(--r);background:var(--face);box-shadow:var(--sunk)}
+.numf:focus-within{outline:3px solid var(--focus);outline-offset:2px}
+.numf input{width:9ch;min-height:48px;padding:0 4px 0 14px;border:0;background:transparent;color:var(--text);font:600 22px/1 var(--cond);font-variant-numeric:tabular-nums;outline:0}
+.numf input.wide{width:12ch}
+.numf span{display:flex;align-items:center;padding:0 14px 0 6px;font:600 18px/1 var(--cond);letter-spacing:.04em;color:var(--text-3)}
+.fx{margin:0;font:500 15px/1.35 var(--sans);color:var(--text-2)}
+.sec{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.sec .fld{font-family:var(--cond);font-weight:600;letter-spacing:.12em}
+.sec .fld.unset{letter-spacing:.02em;color:var(--text-3)}
+.sec .cmd,.try .cmd{min-height:48px;min-width:88px;font-size:17px}
+.try{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:start}
+.row .ct > .seg{justify-self:start}
+
+/* searching: rows that don't match go, plates with none go, and the index says what each group holds */
+.plates.finding .row.miss,.plates.finding .see,.plates.finding .part.empty{display:none}
+.nohit{margin:0;padding:22px 18px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel)}
+.nohit b{display:block;font:700 22px/1.1 var(--cond);letter-spacing:.04em;text-transform:uppercase}
+.nohit p{margin:8px 0 0;max-width:62ch;font:500 16px/1.4 var(--sans);color:var(--text-2)}
+
+/* the phone's save bar sits on the tab bar; on a monitor SAVE is in the pane's top bar */
+.savebar{display:none}
+
+@keyframes march{to{background-position:17px 0}}
+@keyframes blink{50%{opacity:.25}}
+@keyframes flash{0%{background:rgb(28 87 150/.85);box-shadow:inset 0 0 0 2px var(--active-edge)}100%{background:transparent;box-shadow:inset 0 0 0 2px transparent}}
+@keyframes land{0%{color:#fff;text-shadow:0 0 18px rgb(155 203 255/.75)}100%{color:var(--text);text-shadow:none}}
+@media (prefers-reduced-motion:reduce){.link i,.row.wait::before,.cmd.busy::before,.row.flash,.plate.land .phd h2{animation:none!important}}
+
+/* when the window is 1000 px tall or less (Scott's usual browser window is about 950), the index tightens so all nine
+   groups fit without scrolling */
+@media (min-width:1180px) and (max-height:1000px){
+  .gi{min-height:52px;padding-top:4px;padding-bottom:4px}
+  .gi .d{font-size:14px}
+  .idx{gap:8px;padding:12px 14px}
+}
+/* a laptop's window (about 820 px tall or less): each group shows its name only, so all nine still fit */
+@media (min-width:1180px) and (max-height:820px){
+  .gi{min-height:44px;padding-top:2px;padding-bottom:2px}
+  .gi .d{display:none}
+  .gi .n{grid-row:auto;font-size:22px}
+  .gi .s{grid-row:auto}
+  .groups{gap:5px}
+}
+
+/* tablet: one column, the page scrolls; FIND and SAVE stay at the top, the index sits above the plates, three across */
+@media (max-width:1179px){
+  .app{height:auto;min-height:calc(100dvh - var(--mock-h))}
+  .main{grid-template-columns:minmax(0,1fr);grid-template-rows:auto;grid-template-areas:"tool" "idx" "pane"}
+  .tool{position:sticky;top:0;z-index:5;margin:-8px 0 0;padding:8px 0;background:var(--bg)}
+  .groups{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));overflow:visible}
+  .pane{overflow:visible}
+  .plates{padding-bottom:24px}
+}
+@media (max-width:1179px) and (min-width:701px){
+  .row,.row.dep{grid-template-columns:minmax(0,1fr) minmax(260px,360px);column-gap:24px}
+}
+
+/* phone: the groups are a list; a tap opens that group on its own, with the way back at its top. Every row stacks, and
+   SAVE sits on the bottom tab bar */
+@media (max-width:700px){
+  :root{--pad:12px;--gap:10px;--tabs-h:97px}
+  .app{padding-bottom:calc(var(--tabs-h) + env(safe-area-inset-bottom))}
+  .app[data-dirty]{padding-bottom:calc(var(--tabs-h) + 66px + env(safe-area-inset-bottom))}
+  /* the frame on a phone: brew-day.css's own rules, in its order */
+  .topbar{gap:10px;padding:8px var(--pad)}
+  .clock{font-size:24px;min-width:0}
+  #link-t{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .link{font-size:15px}
+  .alloff{flex:0 1 auto;max-width:108px;min-height:46px;padding:4px 10px;font-size:16px;line-height:1.05}
+  .status{grid-template-columns:minmax(0,1fr);padding-top:8px}
+  .event{font-size:16px;min-height:50px;padding:3px 3px 3px 12px}
+  .logbtn{min-height:44px}
+  .banner{min-height:44px;padding:5px 6px 5px 12px}
+  .tabs{position:fixed;inset:auto 0 0;z-index:30;padding-bottom:env(safe-area-inset-bottom)}
+  .tabs{grid-auto-flow:row;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:48px}
+  .tabs .long{display:none}
+  .tabs .short{display:inline}
+  .tabs a{font-size:14px;letter-spacing:.05em}
+  .tabs a:nth-child(n+5){border-top:1px solid var(--line)}
+  .tabs a:nth-child(5){border-left:0}
+  /* MORE takes the last two cells only where BrewScribe isn't installed; with it, the eight tabs are four and four */
+  .tabs a:nth-child(7):last-child{grid-column:span 2}
+  [data-layout=b] .topbar{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;row-gap:8px}
+  [data-layout=b] .topbar .banner{grid-column:1/-1;grid-row:2;margin:0;max-width:none}
+  [data-layout=b] .tabs{margin-top:0;border-bottom:0}
+  /* this page */
+  .tool{position:static;margin:0;padding:0;background:none}
+  .tool .cmd{display:none}
+  .find{flex-basis:100%;max-width:none}
+  .find input{padding-left:126px}
+  .idx{padding:12px}
+  .groups{display:flex;overflow:visible}
+  .gi{grid-template-columns:36px minmax(0,1fr) auto;min-height:60px}
+  .gi .s{font-size:14px}
+  .gi .s::after{content:"\203A";margin-left:10px;font:600 26px/1 var(--cond);color:var(--text-2);vertical-align:-3px}
+  .main[data-view=group] .tool,.main[data-view=group] .idx{display:none}
+  .main[data-view=index]{grid-template-areas:"tool" "pane" "idx"}
+  .main[data-view=index]:not([data-finding]) .plates{display:none}
+  .main[data-view=index][data-finding] .idx{display:none}
+  .main[data-view=group] .plate:not(.pick){display:none}
+  .plate{padding:12px 12px 6px}
+  .phd{padding-bottom:10px}
+  .phd h2{font-size:24px}
+  .phd .sum{flex-basis:100%;font-size:16px}
+  .phd .up{display:inline-flex;align-items:center;order:-1;flex-basis:100%;width:max-content;min-height:44px;margin:-2px 0 8px;padding:0 14px 0 10px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);color:var(--text);font:600 16px/1 var(--cond);letter-spacing:.08em;text-transform:uppercase;text-decoration:none}
+  .main[data-view=index] .phd .up{display:none}
+  .row,.row.dep{grid-template-columns:minmax(0,1fr);row-gap:12px;padding:14px 6px}
+  .row.dep{margin-left:10px;padding-left:12px}
+  .try{grid-template-columns:minmax(0,1fr)}
+  .try .cmd{justify-self:start}
+  .seg{grid-auto-columns:minmax(88px,1fr);justify-self:stretch}
+  .seg.four{justify-self:stretch}
+  .plates{padding-bottom:12px}
+  .savebar{position:fixed;left:0;right:0;bottom:calc(var(--tabs-h) + env(safe-area-inset-bottom));z-index:31;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:6px 12px;background:var(--bar);border-top:2px solid var(--select)}
+  .savebar[hidden]{display:none}
+  .savebar p{margin:0;font:600 16px/1.2 var(--cond);letter-spacing:.04em;color:var(--active-ink)}
+  .savebar .cmd{min-height:52px;min-width:88px;padding:4px 12px;font-size:17px}
+  .note{margin-bottom:10px}
+  .toast{bottom:calc(var(--tabs-h) + 18px)}
+}

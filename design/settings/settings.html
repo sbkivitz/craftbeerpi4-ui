@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en" data-layout="b">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Settings · CraftBeerPi proposal (mockup)</title>
+<!--
+DIRECTION CONTRACT (Impeccable; source: .impeccable/decisions/direction-log.md)
+THESIS: Settings in brewing order: brewhouse, recipes, mash and sparge, boil, whirlpool and cooling, then timers,
+logs, plugins and system, each a plate on the brew-day panel, indexed down the left like the recipe. It refuses
+the alphabetical table of keys.
+OWN-WORLD: The brew-day touch panel: Garage Slate page, Cabinet Black title bar and tabs, Panel Slate plates with
+Title capitals, rows in Barlow Condensed with plain names first and keys in Dim Steel, YES | NO halves like
+AUTO | MANUAL, sunken black fields; blue only for where you are and what you are changing.
+STORY: Scott finds the one setting he came for by its stage, its plain name or its key, changes it, saves, and
+sees each row confirm or fail, and whether it waits for a restart.
+FIRST VIEWPORT: Title bar (alarms, ALL OFF, clock), last event, tabs with SETTINGS lit. Left: the nine groups
+numbered like recipe steps. Right: FIND A SETTING and SAVE over the plates, which scroll.
+FORM: brewing-order groups on one scrolling pane with an index (candidate 6 of 7); staging: the recipe column as
+the index; seed 021df8ab.
+
+This is a proposal mockup. Its values are the simulator's (http://127.0.0.1:8000, 11 Nov 2026), read once; it
+saves nothing and talks to no CraftBeerPi. Scenes are listed in the strip at the top; add ?bare to hide it.
+The frame (title bar, last event, tabs) is the brew-day screen's layout B, copied from its mockup on 11 Nov at 22:55.
+As there, ?name=… tries another brewery name (here it is the Brewery name setting too, so its row shows the same;
+blank shows CraftBeerPi), and ?brewscribe=none shows a CraftBeerPi without BrewScribe.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="settings.css">
+</head>
+<body>
+<nav class="mock" id="mock" aria-label="Mockup scenes (not part of the design)">
+  <strong>Mockup with the simulator's settings.</strong> Show:
+  <a href="#top">As it opens</a>
+  <a href="#boil">Boil, from the list</a>
+  <a href="#find-lid">Find "lid"</a>
+  <a href="#find-key">Find a key</a>
+  <a href="#find-none">Nothing found</a>
+  <a href="#changes">3 changes</a>
+  <a href="#saving">Saving</a>
+  <a href="#saved">Saved, one waits for a restart</a>
+  <a href="#failed">One didn't save</a>
+  <a href="#leave">Leaving with changes</a>
+  <a href="#cloud">InfluxDB Cloud</a>
+  <a href="#plugin">A plugin this page doesn't know</a>
+  <a href="#offline">Connection lost</a>
+  <span class="lay">Brewery name: <a data-nm="" href="?">default</a> <a data-nm="EBrews - Simulator" href="?name=EBrews - Simulator">Scott's</a> <a data-nm="Simulator 8012" href="?name=Simulator 8012">a simulator</a> <a data-nm="EBrews - A CraftBeerPi Brewery" href="?name=EBrews - A CraftBeerPi Brewery">30 characters</a> <a data-nm="Old Mill Lane Garage Brewing Company" href="?name=Old Mill Lane Garage Brewing Company">36 characters</a></span>
+</nav>
+<div class="app" id="app" data-link="ok">
+  <header class="topbar">
+    <p class="brand"><span class="bname">CraftBeerPi Brewery</span></p>
+    <div class="banner" id="banner" data-tone="ok"></div>
+    <p class="link" id="link" data-link="ok"><i aria-hidden="true"></i><span id="link-t">Connected</span></p>
+    <button class="alloff" id="alloff" data-cmd="alloff" type="button">ALL OFF</button>
+    <p class="clock" id="clock">14:32</p>
+  </header>
+
+  <section class="status" aria-label="The last event">
+    <div class="event" id="event"></div>
+  </section>
+
+  <nav class="tabs" aria-label="Screens">
+    <a href="#tab" data-tab="Brew day">Brew day</a>
+    <a href="#tab" data-tab="Brew steps"><span class="long">Brew steps</span><span class="short">Steps</span></a>
+    <a href="#tab" data-tab="Recipe book"><span class="long">Recipe book</span><span class="short">Recipes</span></a>
+    <a href="#tab" data-tab="Analytics">Analytics</a>
+    <a href="#tab" data-tab="Hardware">Hardware</a>
+    <a href="#tab" data-tab="Settings" aria-current="page">Settings</a>
+    <a href="#tab" data-tab="More">More</a>
+    <a href="#tab" data-tab="BrewScribe" class="ext"><span class="lbl">Brew<wbr><span class="nw">Scribe<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M5 1.8H2.4a.6.6 0 0 0-.6.6v7.2c0 .3.3.6.6.6h7.2c.3 0 .6-.3.6-.6V7M7.2 1.8h3v3M10.2 1.8 5.6 6.4"/></svg></span></span><span class="sr"> (opens in its own tab)</span></a>
+  </nav>
+
+  <main class="main" id="main" data-view="index">
+    <div class="tool" id="tool"></div>
+    <aside class="idx" id="idx" aria-label="Setting groups"></aside>
+    <section class="pane" id="pane" aria-label="Settings">
+      <div class="note" id="note" role="region" aria-label="Waiting for you" hidden></div>
+      <div class="plates" id="plates"></div>
+    </section>
+  </main>
+  <div class="savebar" id="savebar" hidden></div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+<p class="sr" id="sr" aria-live="polite"></p>
+<script src="alarm.js"></script>
+<script src="settings-data.js"></script>
+<script src="settings.js"></script>
+</body>
+</html>

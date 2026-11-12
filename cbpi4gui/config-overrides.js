@@ -49,11 +49,13 @@ module.exports = function override(config) {
   //    mockup's rgb(0 0 0/.26) as #00000042, an alpha of 66/255 instead of .26,
   //    and Chrome draws gradients with the difference. screen.js puts the text
   //    in a <style> element as it is. (Its fonts, fonts/barlow.css, still go
-  //    through the pipeline, which bundles the font files.)
+  //    through the pipeline, which bundles the font files.) The same goes for
+  //    the Settings page's (its mockup approved on 11 Nov 2026): page.js puts
+  //    settings.css in its shadow root and settings-frame.css in the document.
   const oneOf = config.module.rules.find((rule) => Array.isArray(rule.oneOf));
   if (!oneOf) throw new Error("config-overrides: no oneOf rule in the webpack config");
   oneOf.oneOf.unshift({
-    test: /components[\\/]brewday[\\/]brewday(-extra)?\.css$/,
+    test: /components[\\/](brewday[\\/]brewday(-extra)?|settings[\\/]settings(-frame)?)\.css$/,
     type: "asset/source",
   });
 

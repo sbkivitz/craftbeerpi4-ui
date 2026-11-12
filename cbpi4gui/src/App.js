@@ -239,6 +239,9 @@ const CraftBeerPiApp = () => {
         <Routes>
           {/* The brew-day screen (Scott, 9 Nov 2026): the first page, with its own title bar and tabs. */}
           <Route path="/" element={<BrewDay />} />
+          {/* Settings (Scott, 11 Nov 2026), in the brew-day screen's frame: its title bar and tabs, SETTINGS lit. */}
+          <Route path="settings" element={<Settings />} />
+          <Route path="settings/:source" element={<Settings />} />
           <Route element={<AppLayout appBarHeight={appBarHeight} /> } >
                   <Route path="dashboard" element={<Dashboard2 />}/>   
                   <Route path="fixdash/:dashboardid" element={<FixDashboard />}/>
@@ -255,8 +258,6 @@ const CraftBeerPiApp = () => {
                   <Route path="actor" element={<ActorForm />}/>
                   <Route path="sensor/:id" element={<SensorForm />}/>
                   <Route path="sensor" element={<SensorForm />}/>
-                  <Route path="settings" element={<Settings />}/>
-                  <Route path="settings/:source" element={<Settings />}/>
                   <Route path="mashprofile" element={<MashProfile />}/>
                   <Route path="fermenterprofile/:fermenterid" element={<FermenterProfile />}/>
                   <Route path="fermenterprofile" element={<FermenterProfile />}/>
