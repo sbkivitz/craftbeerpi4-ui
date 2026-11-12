@@ -13,7 +13,9 @@ This folder is a proposal. Nothing in it changes CraftBeerPi, and nothing is com
   kettle has more moments: `#heatup`, `#pause`, `#pause-long`, `#boiling`, `#hold`, `#keepboil`, `#letfall`,
   `#bktarget` and `#handhold`. `#notarget` and `#notarget-hlt` show a vessel in AUTO with no target.
   `#sparge-heat`, `#sparge-ready`, `#sparge-run` and `#sparge-batch` show the new SpargeStep (core
-  4.7.7.post35); `#sparge` keeps the old MashStep sparge that recipes already in the book still have. The timers
+  4.7.7.post35); `#sparge` keeps the old MashStep sparge that recipes already in the book still have.
+  `#boil-hold` is the hold before the boil, after a SpargeStep, with the pumps CraftBeerPi switches off for the
+  hoses (core 1c08d4c). The timers
   Scott approved on 11 Nov, built that day, are shown by default (`#timers`, `#timer-done`, `#timer-new`,
   `#timer-names`, `#timer-nonames`, `#timers-hand`, `#sound-allow`); add `?timers=today` for the one rest timer the
   screen keeps for an older CraftBeerPi.
@@ -159,7 +161,8 @@ What Scott sees:
 - Tapping it opens an editor in place of the mode row, the same shape as the target editor: −5, −1, the value,
   +1, +5, then SET 40 % and CANCEL. Whole numbers from 0 to 100; the keys stop at 0 and 100. Enter sets,
   Escape cancels, and a second tap on the button closes it. While it is open the button has a blue outline.
-- After SET the button says "sending…", then the button, the lamp ("HEATING 40 %") and OUT all show the new
+- After SET the button says "sending…", then the button, the lamp ("HEATING 40 %"; from 11 Nov just HEATING, see
+  "±1 % beside the boil element, and HEATING without its %") and OUT all show the new
   level, and the last-event line says "Boil power 40 % (was 45 %) · confirmed". When the new level isn't in
   use yet, the event line says when it will be, so an OUT that doesn't move isn't taken for a failure:
   "used from 210.2 °F, full power until then" (AUTO, still heating up) or "used when you switch the element
@@ -347,13 +350,14 @@ and the mash tun don't change.
 | Element button | HEATING 45 % · run by AUTO (locked) | Not locked in AUTO: HEATING · tap to pause. A tap pauses the heat: PAUSED in Prompt Amber, "hold to heat"; a held press heats again |
 | Line under the window | "Boiling", or "39.4 °F below target · about 20 min at this rate" | "Boiling", "Full power until it boils · about 20 min", "Heat paused for 0:26" (Prompt Amber), "Holding 170 °F for the whirlpool · 0.6 °F below" or "MANUAL · element by hand" |
 | Beside AUTO/MANUAL | TARGET · change SV | BOIL POWER · change: opens the power editor, with green digits |
-| Beside the element | BOIL POWER 45 % / POWER 100 % in MANUAL | −5 % · turn down and +5 % · turn up, while AUTO runs: one tap sends `set_boil_power` at once. Not in MANUAL, during a hold, or while the editor is open |
+| Beside the element | BOIL POWER 45 % / POWER 100 % in MANUAL | −5 % · turn down and +5 % · turn up, while AUTO runs: one tap sends `set_boil_power` at once. Not in MANUAL, during a hold, or while the editor is open. From 11 Nov: −5 % −1 % and +1 % +5 %, with no line under them (see "±1 % beside the boil element") |
 | In the power editor | −5 −1 [45] +1 +5, SET, CANCEL | The same, plus BOIL AT 210.2 °F · full power until then · change (the kettle's target, 190-212 °F; above 212 °F it refuses with a note), and USUAL 45 % · starts each recipe · set in Hardware |
 | In MANUAL | The power button sets the element's level by hand | The power button still sets Boil_Power ("kept for the boil in AUTO"); no level by hand |
 | Graph | The threshold as a solid green line | The threshold dashed grey; a hold solid green; OUT drops to 0 while paused |
 
 How it behaves:
-- −5 % and +5 %: "sending…" under the button while waiting. A tap that would pass 0 or 100 % stops there
+- −5 % and +5 %: "sending…" under the button while waiting (from 11 Nov, the marching stripes along its top, and
+  −1 % and +1 % too: see "±1 % beside the boil element"). A tap that would pass 0 or 100 % stops there
   (at 2 %, −5 % gives 0 %); only at 0 or 100 % itself is the button refused, with a note ("The boil power is
   already 100 %."). Corrected 10 Nov evening: until then the mockup refused −5 % at 2 %, saying it was
   already 0 %. The event says "Boil power 40 % (was 45 %) · confirmed", plus "used
@@ -447,10 +451,10 @@ number itself is the button for it. While the target is a temperature, the facep
 | Green readout | BOIL and the framed boil power: [45 % change] | SV 170.0 °F, as on the HLT |
 | Beside it | MODE | OUT (with its bar) and MODE, as on the HLT |
 | Line under the window, AUTO | As before: "Boiling", "Full power until it boils · about 20 min", "Below a boil · back to full power at 206.6 °F", "Not boiling · 10.9 °F below 210.2 °F" | As on the HLT: "0.6 °F below target", "At target", "18.4 °F above target · about 15 min at this rate". Resting inside 3.6 °F below it: "1.2 °F below target · heats again at 166.4 °F" |
-| Controls, AUTO | −5 % · HEATING · +5 % | HEATING, or OFF while it rests, alone; a tap pauses here too |
+| Controls, AUTO | −5 % · HEATING · +5 % (from 11 Nov −5 % −1 % · HEATING · +1 % +5 %) | HEATING, or OFF while it rests, alone; a tap pauses here too |
 | Beside AUTO/MANUAL | TARGET · change | TARGET · change |
 
-In MANUAL the line says "MANUAL · element by hand", there are no −5 % and +5 %, and the readout follows the
+In MANUAL the line says "MANUAL · element by hand", there are no one-tap steps, and the readout follows the
 target: BOIL [45 % change], or SV 170.0 °F. Paused, in either kind of target: "Heat paused for 2:15" in Prompt
 Amber, as before.
 
@@ -490,8 +494,8 @@ The readout's kind comes from T and B alone: a hold when 0 < T < B − 3.6 °F, 
   (`box-shadow: inset 0 0 0 1px #3b4d5e`, radius 3 px). The frame takes no room: padding .28em with margin
   −.28em, so the digits sit where a plain reading's would. Hover: frame #7f91a3 and "change" in Text. While its
   box is open: a 2 px Select Blue frame (`aria-expanded="true"`). Offline: frame #2a3846, disabled with the usual
-  note. After SET in its box: "sending…" in place of "change" (not for −5 % and +5 %, which say "sending…"
-  under themselves).
+  note. After SET in its box: "sending…" in place of "change" (not for the one-tap steps, which show it on
+  themselves).
 - It is 29 to 44 px tall; `::before` makes the tap area at least 44 px at every size, the phone included.
 - Accessible name: "Boil power 45 percent: change". It opens the power box, and closes it if it is open.
 - Why there: a third button beside AUTO/MANUAL doesn't fit (TARGET is 94 px wide at 1366 and 102 px at 1440),
@@ -1036,9 +1040,12 @@ timers. At 1440×900 three names fit and six scroll the page by 28 to 52 px. At 
 2. **A saved list reaches the screens already open**: the screen reads the names from the settings, as above.
 3. **One name per timer on the server too** (c9c83dc). `_name()` refuses a name another timer has, with the
    screen's words, comparing with `casefold()`; `_default_name()` skips a "Timer N" the same way.
-4. **A wider box on the Settings page: not done.** Text settings use MUI's default `TextField` (about 180 px wide),
-   so most of a six-name list is out of view while he types it. `fullWidth` would change every text setting's box,
-   so Brett is offering it to Scott.
+4. **A wider box on the Settings page: done** (web UI 4641a7f). Text settings used MUI's default `TextField`
+   (about 180 px wide), so most of a six-name list was out of view while he typed it. `fullWidth` alone wouldn't
+   have widened it, because the value column only grows to fit what's in it. Scott chose "wider boxes, and a long
+   value wraps": from 900 px wide every text box is 360 px, and six names fit on one line; below that it takes its
+   column's width, as before (a fixed width pushed the table 69 px past its frame on a phone). The box wraps a long
+   value, up to 8 lines; Enter adds nothing, and a pasted line break becomes a space.
 
 ### What the web UI needed
 
@@ -1086,6 +1093,13 @@ Three more, mine, for Brett to take or leave:
   mode copies, left the prompt pulsing in the title bar with buttons that did nothing. A new `tAnswered(t)` takes
   the prompt down (OK and +5 MIN use it too), and the next waiting alarm takes the title bar a second later. Live,
   CraftBeerPi already withdraws the prompt, so only the demo was wrong.
+
+> **Taken, 11 Nov.** Brett took all three as written, in web UI 7b0697d (build 091c9a2). One difference, right for
+> the screen: its `unlockSound()` calls `renderAll()` rather than redrawing only `.snd`, because the screen updates
+> its regions in place and the pressed button stays put. His identity test matched this folder 375/375 (the 11:23
+> copy), asking for `?timers=today` for a build without the timers; the timers live test passed 56/56 and the brew
+> day's 83/83. Still to check, on Scott's phone: after a reload with SOUND on, one tap anywhere, then a timer that
+> runs out should be heard.
 
 ### Changed, all in `proposal\`
 
@@ -1165,6 +1179,251 @@ Three more, mine, for Brett to take or leave:
 - Every moment in every view, the default and `?timers=today`, both layouts, at 1920×950 and 390×844, and the main
   views at 1366×768: 1073 loads, no page errors, nothing new spilling sideways. Layout A shows the timers without
   scrolling. `compare.html`, `graphs.html` and `boil-kettle.html` load, their frames showing the timers.
+
+## ±1 %, HEATING without its %, and pumps off for the hoses: ready to build (11 Nov, afternoon)
+
+Three changes, all on `brew-day.html` as it opens:
+- Scott, 13:19: "for BoilPower, I'd like the +/-1 in addition to the +/- 5 you already have."
+- Scott, 13:45: "I'd like the "HEATING xx %" button to only show HEATING since the percentage is shown in the graph and as a
+  number on the right side of the PID display. It would be cleaner to remove this duplicate version"
+- Your core 1c08d4c (DEFECTS M71), for Scott: "Any time I need to change hoses or "valves" that respective pump should
+  be off".
+
+The first two need nothing from the server. The third shows what the server now does, and brings the hold before the
+boil into the mockup, with two changes to it. Checking those turned up long questions crushed in the title bar on a
+phone and between 701 and 1023 px wide, fixed here too.
+
+### ±1 % beside the element
+
+While AUTO boils (target BOIL, no box open), the boil kettle's button row is now −5 % −1 % [element] +1 % +5 %. That
+is the power box's order, growing outward from the element like a number line, so down stays on the left and up on
+the right.
+
+| Part | 11:23 mockup | Now |
+|---|---|---|
+| Columns | `minmax(0,1fr) minmax(0,2fr) minmax(0,1fr)`, gap 8 px | `repeat(2,minmax(44px,1fr)) minmax(0,2fr) repeat(2,minmax(44px,1fr))`, `column-gap: 6px` |
+| Step labels | −5 % over "turn down", +5 % over "turn up" | −5 %, −1 %, +1 %, +5 %, nothing under them; padding 6px 2px |
+| A step waiting | "sending…" in place of its hint, kept under "down" or "up" | All four greyed, as before; the one pressed has the lamps' marching stripes along its top (6 px, `.nudge.sending::before`). The wait is kept under the step itself (`send("p:bk", String(d), …)`: "-5", "-1", "1" or "5"), so −5 and −1 can't both show it |
+| Element's small line | BOIL ELEMENT · tap to pause (or · hold to heat) | tap to pause (or hold to heat). "BOIL ELEMENT · " stays for screen readers, in a `.sr` span |
+| Element waiting | PAUSING… or CARRYING ON… over "BOIL ELEMENT · waiting for CraftBeerPi" | Its state word stays (HEATING, PAUSED or OFF) over "pausing…" or "heating…" ("waiting…" for anything else); its strip marches as before |
+| Element's sides | 8 px | 6 px (`.ctrls.bkpow .lamp`) |
+| Accessible names | Boil power down 5 percent, Boil power up 5 percent | Adds Boil power down 1 percent and Boil power up 1 percent |
+
+Everything else stays. One tap sends `set_boil_power` with the new whole number. A step that would pass 0 or 100 %
+stops there (2 % − 5 gives 0 %); only at 0 or 100 % itself is a step refused, with "The boil power is already 0 %."
+(or 100 %). The event line says "Boil power 44 % (was 45 %) · confirmed", plus "used once it boils at 210.2 °F, full
+power until then" while it heats up, or "used when the heat carries on" while paused. The steps hide in MANUAL,
+during a hold and while the boil kettle's box is open; there the element fills the row and says BOIL ELEMENT, as
+before.
+
+Why it's drawn this way:
+- One row, not two. From 900 px wide the three faceplates share their row heights, so a second row would make the
+  HLT's and mash tun's rows taller too, appearing and vanishing with AUTO.
+- No step is under 44 px wide (WCAG 2.5.5; NN/g asks for 1 cm). The element keeps twice their share: it's the button
+  needed in a hurry for a boil-over, so it stays the biggest target. A slip onto the step beside it costs 1 %; a slip
+  from a step onto it pauses the heat, which a held press undoes.
+- The element without its name. "BOIL ELEMENT · tap to pause" wrapped onto 2 lines at 1920 and 4 at 1366 in layout
+  A, making the row 15-30 px taller as the boil started and moving the other faceplates' buttons under the brewer's
+  finger. The faceplate's title says BOIL KETTLE, and it has one element.
+- The waiting words. At 1366 in layout A the element has 63 px for its words; PAUSING… needs 75 and CARRYING ON…
+  109, so they would spill or wrap. The wait is short, and what matters is that nothing jumps. This also ends a jump
+  the 11:23 faceplate made: its waiting line wrapped at 1920 and on a phone, so the row grew 19 px for that moment.
+
+Measured in `#boiling`:
+
+| View | Each step | Element |
+|---|---|---|
+| Layout B, 1920 wide | 70 px | 139 px |
+| Layout B, 1440×900 | 49 px | 97 px |
+| Layout B, 1366×768 | 44 px | 89 px |
+| Phone, 390 wide, either layout | 53 px | 107 px |
+| Layout A, 1920 wide | 66 px | 133 px |
+| Layout A, 1440×900 | 46 px | 92 px |
+| Layout A, 1366×768 | 44 px | 81 px |
+
+In every state the element can show between the steps (heating, off, paused, pausing, carrying on, a step
+waiting), each line of words is one line and nothing spills, at all five sizes, with and without graphs, in both
+layouts. In each steady state the row is exactly as tall as in the 11:23 mockup, and while waiting it is no taller.
+
+### HEATING without its %
+
+`lampHTML` says HEATING for any element in layout B. The power stays where Scott pointed: OUT beside the window, with
+its bar, and the graph's OUT band. That changes the HLT's element (by hand, in its own AUTO, and run by the mash
+tun's HERMS) and the older boil kettle's element (`?bk=today`); the new boil kettle already said HEATING. Layout A
+keeps "HEATING 62 %", because it has no OUT and no graphs, so there the button is the only place the power shows.
+The screen builds only layout B, so for you it is always HEATING:
+
+```js
+t = A.kind === "heat" ? (LAYOUT === "a" && !(id === "bkEl" && BK === "power") ? `HEATING ${a.pct} %` : "HEATING") : "RUNNING";
+```
+
+### Pumps off for the hoses (core 1c08d4c)
+
+The mockup now does what your server does, and shows it the way the screen already shows CraftBeerPi's own doings:
+the lamp goes to OFF, the drawing's line stops, and CraftBeerPi's words say why. The screen never switches these
+pumps itself and adds no warning of its own.
+
+| When | Pump switched off | What the screen shows |
+|---|---|---|
+| A SpargeStep starts (`spargeBegin`) | Wort pump | Nothing new: `#sparge-heat` already had it off |
+| The sparge water is ready (`#sparge-ready`) | HLT pump | HLT PUMP OFF, its line still and UNLESS OVERRIDE SWITCH IS ON under it in the drawing; the question's new words |
+| Sparge started | None | As now: Scott starts both by hand |
+| The runoff ends (NEXT STEP here; also its time running out on the server) | HLT pump | Event line, from CraftBeerPi: "HLT pump: Sparge has ended, so the HLT pump is off. The wort pump is still running, to finish draining the mash tun." |
+| The boil starts (START THE BOIL, or START) | Whichever still runs | Event line, from CraftBeerPi: "Boil: The wort pump is off, so you can move its hoses." |
+
+- The question's words are your SPARGE_READY_TEXT and SPARGE_NOW_TEXT. `spargeBanner(temp, a)` builds the pump phrase
+  from the pumps as they are when it asks, as the server does (`SPARGE_PUMPS_OFF`): ", and both pumps are off",
+  ", and the HLT pump is off", ", and the wort pump is off", or nothing when both run. Without a temperature it starts
+  "Both pumps are off. " (or "The HLT pump is off. ", "The wort pump is off. ").
+- `spargeHose(which)` switches a pump off once per run of the step (`r.hoses`), with no event line, as on the server.
+- The two notifications go in word for word, "from CraftBeerPi", as your `observe()` logs them. Both come 300 ms after
+  the press's own "confirmed" line (`soon()`), so CraftBeerPi's words end up on top.
+- In the book's recipe (`#sparge`, a MashStep), the mash tun's AUTO goes off as the recipe moves to the boil kettle,
+  as before, so its HERMS stops the wort pump first and the HLT pump's message has only its first sentence.
+- In LOG only: `#sparge-run` gains "15:04:55 HLT PUMP started · confirmed" (Scott starts it again by hand) and
+  `#sparge-batch` loses "15:04:50 HLT PUMP stopped" (CraftBeerPi did it at 15:04:10). The boil moments' older
+  histories (`#hop` and the moments built on it) are left as they were.
+
+### The hold before the boil: START THE BOIL held, NEXT STEP greyed
+
+The hold is now in the mockup's engine (NEXT STEP from the sparge gets there) and in a new moment, `#boil-hold`
+("Ready to boil?" in the mockup strip). It is your `?demo=longprompt`, carried on from `#sparge-run`: the fly
+sparge's 40 minutes ended at 15:45:02, and it is 15:53:12. As your screen shows it:
+- the question, titled with the step's name, in your words (`boilHoldBanner`);
+- "Ready to start · step 5 of 7", and step 5 says WAITING FOR YOU. The mockup's `stepHTML` and `nowHTML` now show
+  `r.wait` in the ready state, as yours do; they said READY;
+- the HLT pump off and the wort pump running, with the drawing still on the runoff.
+
+Two changes, both from The Held Heat Rule:
+1. **START THE BOIL takes a held press**: one second, with the orange fill, or Space or Enter held. It says "hold to
+   start" under its name, because it puts heat on, like START. Let go early and a toast says "Keep holding for one
+   second. Heat only comes on with a held press." (the title bar has no note line). `bannerHTML` passes `hold` to
+   `b()` for an answer that has it; `.banner .act` gets `position:relative; overflow:hidden` for the fill and a
+   `small` style; `holdEnd` falls back to the toast. Your screen sends it on a tap today (`cmd: "b:ok"`).
+2. **NEXT STEP is greyed during the hold.** A tap on it says "The boil is waiting for you. To start it, hold START
+   here or START THE BOIL at the top." (`HELD_NEXT`). CraftBeerPi takes NEXT here as starting the boil
+   (`StepController.next`, the branch with nothing active), so today NEXT STEP says "to Whirlpool Hop", asks "Skip
+   the rest of Boil and start Whirlpool Hop?", and a yes starts the boil, with heat, after two taps. Your line 1724
+   also shuts that question at the next update, because the recipe isn't running. Greyed, neither can happen.
+
+A held START during the hold starts the boil, as START THE BOIL does (`cmdStart` calls `boilStart`). The event line
+then reads, newest first: "Boil started, boil kettle AUTO · by recipe", the pumps' line from CraftBeerPi, then "Recipe
+started · confirmed" (or "Ready to boil? Start the boil · confirmed").
+
+`#boil-hold`'s data, if you want longprompt in the identity test: 15:53:12; step 4 is the SpargeStep (`sparge4: {}`);
+recipe `{state: "ready", cur: 4, left: 5400, adds: [], held: true, wait: "WAITING FOR YOU"}`; HLT 164.4 °F, no target,
+MANUAL; mash tun 166.9 °F, SV 149.0, MANUAL; boil kettle 151.3 °F, no target, MANUAL; both elements and the HLT pump
+off, the wort pump on; the mash tun and the boil kettle drawn full; three lines at 15:45:02 on top of `#sparge-run`'s
+(the question word for word, "waiting for you"; the HLT pump's message, "from CraftBeerPi"; "Sparge finished · by
+recipe"); the graphs from `gDemo`'s SpargeStep branch, carried on to 15:53:12. It differs from your longprompt in the
+HLT's 164.4 (yours 170.2: its element has been off since Sparge started, so it cools), the mash tun's SV 149.0 (as in
+the other SpargeStep moments), the SpargeStep and the events (yours are `#mash`'s).
+
+### Long questions in the title bar (phone, and 701–1023 px)
+
+Found while measuring the hold. It was there before, but the new words make it worse:
+- **Phone.** A long question sat in a column beside its button: `#boil-hold` 135 px wide and 405 px tall at 390 (513
+  at 360), `#sparge-ready` 319 (254 before the new words). Now a question over 140 characters with a button
+  (`data-long` on `#banner`, set in `renderAll`; `LONG_Q = 140`) keeps the width for its words, with its buttons under
+  them at the right and the bell beside the title: 267 and 202 px. Text length picks them out, not width: the other
+  questions are 125 characters or fewer, while a timer's alarm (32 characters, two buttons) leaves its words only
+  131 px, so a width rule would catch it too.
+- **701–1023 px wide, layout B** (a tablet, or half of Scott's 1920 monitor). The question shared the top row with the
+  brand, the connection, ALL OFF and the clock, leaving its words 36–175 px. At 701 px `#sparge-ready` was 837 px
+  tall and the bar ran 49 px past the screen. Now the banner has the title bar's second row to itself, as on a phone
+  ("NO ALARMS" too): 422–752 px for the words, 103–146 px tall. None of your five test sizes is in this range.
+
+```css
+/* in the phone block (max-width:700px) */
+.banner[data-long]{flex-wrap:wrap;row-gap:8px}
+.banner[data-long] .msg{flex-basis:calc(100% - 38px)}
+.banner[data-long] .msg+.act{margin-left:auto}
+.banner[data-long] svg{align-self:flex-start;margin-top:2px}
+/* new, just before the phone block */
+@media (min-width:701px) and (max-width:1023px){
+  [data-layout=b] .topbar{flex-wrap:wrap;row-gap:8px}
+  [data-layout=b] .brand{margin-right:auto!important}
+  [data-layout=b] .topbar .banner{order:1;flex:1 1 100%;margin:0;max-width:none}
+}
+```
+
+### Moments whose pictures change
+
+±1 (`?bk=power`, the default): 7 moments, `#hop`, `#heatup`, `#boiling`, `#pause`, `#pause-long`, `#keepboil` and
+`#letfall`, in layout B with and without graphs, layout A and `?timers=today`, at every size. Only the boil kettle's
+button row changes; it keeps its place and size, and no page gets taller. `?bk=today` is unchanged.
+
+HEATING: 14 moments in layout B, with and without graphs, and `?timers=today`: `#mash`, `#sparge`, `#sparge-heat`,
+`#sparge-ready`, `#fail`, `#manual`, `#offline`, `#timers`, `#timer-done`, `#timer-new`, `#timer-names`,
+`#timer-nonames`, `#timers-hand` and `#sound-allow`. With `?bk=today`, 24: those 14, plus `#hop`, `#boilpower`,
+`#heatup`, `#boiling`, `#pause`, `#pause-long`, `#hold`, `#keepboil`, `#letfall` and `#bktarget`. Layout A: none.
+
+Pumps and long questions: `#sparge-ready`, in every view at every size (the words, the HLT pump off, and on the phone
+the question's layout, which makes its page 52 px shorter), and the new `#boil-hold`. Against the copy with ±1 and
+HEATING, nothing else changes in any view. `#sparge-run` and `#sparge-batch` change only with LOG open. At 1366×768
+`#boil-hold`'s page is 873 px tall (891 without graphs) and `#sparge-ready`'s without graphs 869: the question takes
+three lines there, and the page is already at its 860 px least.
+
+Unchanged by all three, in layout B: `#bktarget`, `#boilpower`, `#handhold`, `#hold`, `#notarget`, `#notarget-hlt`,
+`#sparge-run` and `#sparge-batch`.
+
+Presses: SPARGE STARTED in `#sparge-ready` now leaves both pumps off (Scott starts them by hand), and on the phone its
+SENDING… sits under the words. The boxes opened by a press (TARGET and the framed 45 % in `#boiling`, BOIL AT in
+`#boilpower`) are unchanged; a press that starts in `#mash` shows the HEATING change.
+
+New for your identity test: `#boil-hold`. If your test walks the mockup's `SCENES`, it will ask your screen for it.
+
+### Changed, all in `proposal\`
+
+- `brew-day.js`:
+  - ±1: `nudgeHTML` (no hint line, the `sending` class), `bkLampHTML` (between the steps the name is in `.sr` and a
+    wait keeps the state word), `plateHTML` (five buttons), `cmdNudge` (the wait kept under the step itself).
+  - HEATING: `lampHTML`.
+  - Pumps and the hold: `spargeBanner(temp, a)` with `SPARGE_PUMPS_OFF`; new `spargeHose`, `boilHoldBanner`,
+    `boilStart` and `soon`; `stepStart` (the runoff's end, the hold, the mash tun's AUTO off before them, and the
+    boil's graph mark only when it starts); `spargeBegin`; `cmdStart`; `cmdNextYes` (keeps the hold); `cmdBanner`
+    ("boil"); `recipeHTML` (NEXT STEP, `HELD_NEXT`); `stepHTML` and `nowHTML` (the ready state shows its wait);
+    `bannerHTML` (held answers); `holdEnd` (the toast); scenes `sparge-ready`, `sparge-run`, `sparge-batch` and the
+    new `boil-hold`.
+  - Long questions: `renderAll` (`data-long`) and `LONG_Q`.
+- `graphs.js`: `gDemo`'s SpargeStep branch also draws `#boil-hold`'s history.
+- `brew-day.css`: `.ctrls.bkpow` (five columns, 6 px apart), `.ctrls .nudge` (padding), `.ctrls.bkpow .lamp` (6 px
+  sides), `.ctrls .nudge.sending::before` and its place in the reduced-motion line; `.banner .act` (position and
+  overflow) and `.banner .act small`; the 701–1023 px block; the phone's `.banner[data-long]` rules.
+- `brew-day.html`: "Ready to boil?" in the mockup strip, and the header comment. `boil-kettle.html`: four captions.
+  Words only, nothing to port.
+
+### Checked
+
+±1 and HEATING:
+- Every moment in five views at five sizes against the 11:23 mockup (638 pairs, flaky ones reloaded): ±1 changes only
+  the boil kettle's row in the 7 moments above, in place and at its size; HEATING the moments listed.
+- A walk through every label, step, the 0 and 100 % ends, refusals, the pause, the caveats, the phone and the views
+  without steps; the rows measured in every state at five sizes, both layouts, with and without graphs.
+- 1,450 loads: no page errors, and no spill the 11:23 mockup didn't have.
+
+Pumps, the hold and long questions:
+- A walk (`m71_walk.py`): the sparge moments' pumps and words; NEXT from `#sparge-run` into the hold (the HLT pump off,
+  its message, the question on top); NEXT STEP tapped in the hold (the why); START THE BOIL tapped (the toast) and held
+  (pumps off, their message, boil kettle AUTO, HEATING); START held and Space held in `#boil-hold`; the MashStep's way
+  into the hold; a SpargeStep started with the water already hot (the HLT pump off as it asks); SPARGE STARTED; the
+  four forms of the question's words. All as designed, no page errors.
+- Every moment against the copy with ±1 and HEATING, in five views at five sizes (660 pairs): only `#sparge-ready` and
+  `#boil-hold` differ. Six one-off differences in the step list were the known 1 px scroll flake; reloaded, they match.
+- 1,500 loads, both copies: no page errors. The only new spill is the event line's ellipsis on `#boil-hold`'s
+  question. `compare.html`, `graphs.html` and `boil-kettle.html` load.
+- The title bar at 14 widths from 360 to 1920 px, in eight moments: a long question's words are never narrower than
+  274 px, and nothing runs past the screen.
+
+### For you to decide, or tell me
+
+1. START THE BOIL held: please port it, or tell me if it must stay a tap.
+2. NEXT STEP greyed in the hold. The other way would be NEXT STEP saying it starts the boil, and held; I'd rather the
+   question's button and START stay the only ways, as its words say.
+3. Mash Out: not added to the mockup's recipe. It's an ordinary mash rest, which the screen draws already, and adding
+   it would renumber every moment and your demo data. Say if you want it.
+4. Not changed: the event line's ellipsis hides the result of a long line, so `#boil-hold`'s "waiting for you" is cut
+   off; LOG has it whole. One fix would shorten the words and keep the result. Tell me if you want it.
 
 ## Open questions about the drawing
 

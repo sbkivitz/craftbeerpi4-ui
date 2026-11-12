@@ -45,7 +45,8 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .banner[data-tone=alarm]{background:var(--alarm-bg);border:2px solid var(--alarm);color:#fff}
 :where(html.bd-page) .banner .msg{flex:1;min-width:0}
 :where(html.bd-page) .banner .msg b{display:block;font-size:20px;letter-spacing:.06em;text-transform:uppercase}
-:where(html.bd-page) .banner .act{flex:none;min-height:48px;padding:0 20px;border:0;border-radius:var(--r);background:#f4f6f8;color:#10161c;font:700 18px/1 var(--cond);letter-spacing:.06em}
+:where(html.bd-page) .banner .act{position:relative;overflow:hidden;flex:none;min-height:48px;padding:0 20px;border:0;border-radius:var(--r);background:#f4f6f8;color:#10161c;font:700 18px/1 var(--cond);letter-spacing:.06em}
+:where(html.bd-page) .banner .act small{position:relative;display:block;margin-top:3px;font:500 13px/1.1 var(--cond);letter-spacing:.04em;color:#3a4652}
 :where(html.bd-page) .event{position:relative;font:500 18px/1.2 var(--cond);letter-spacing:.02em;min-width:0}
 :where(html.bd-page) .event .line{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 :where(html.bd-page) .event time,:where(html.bd-page) .log time{color:var(--text-3);margin-right:10px;font-variant-numeric:tabular-nums}
@@ -127,8 +128,10 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .editor .no{grid-column:4/6}
 :where(html.bd-page) .editor.pwr input{color:var(--text)}
 :where(html.bd-page)[data-bk=power] .editor.pwr input{color:var(--sv)}
-:where(html.bd-page) .ctrls.bkpow{grid-template-columns:minmax(0,1fr) minmax(0,2fr) minmax(0,1fr)}
-:where(html.bd-page) .ctrls .nudge{min-height:0}
+:where(html.bd-page) .ctrls.bkpow{grid-template-columns:repeat(2,minmax(44px,1fr)) minmax(0,2fr) repeat(2,minmax(44px,1fr));column-gap:6px}
+:where(html.bd-page) .ctrls.bkpow .lamp{padding-left:6px;padding-right:6px}
+:where(html.bd-page) .ctrls .nudge{min-height:0;padding:6px 2px}
+:where(html.bd-page) .ctrls .nudge.sending::before{content:"";position:absolute;inset:0 0 auto;height:6px;background:repeating-linear-gradient(-45deg,#a9bccd 0 6px,#33475a 6px 12px);background-size:17px 6px;animation:bd-march .6s linear infinite}
 :where(html.bd-page) .lamp[data-state=paused]{border-color:var(--prompt)}
 :where(html.bd-page) .lamp[data-state=paused]::before{background:var(--prompt);box-shadow:0 2px 14px rgb(255 178 30/.5)}
 :where(html.bd-page) .lamp[data-state=paused] .st{color:var(--prompt)}
@@ -371,7 +374,7 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 @keyframes bd-flow{to{stroke-dashoffset:-24}}
 @keyframes bd-blink{50%{opacity:.25}}
 @media (prefers-reduced-motion:reduce){
-:where(html.bd-page) .pd,:where(html.bd-page) .lamp::before,:where(html.bd-page) .link i,:where(html.bd-page) .keep .box,:where(html.bd-page) .trow[data-state=done]::after,:where(html.bd-page) .banner[data-ring]::after,:where(html.bd-page) .app[data-ring]::after{animation:none!important}
+:where(html.bd-page) .pd,:where(html.bd-page) .lamp::before,:where(html.bd-page) .link i,:where(html.bd-page) .keep .box,:where(html.bd-page) .nudge.sending::before,:where(html.bd-page) .trow[data-state=done]::after,:where(html.bd-page) .banner[data-ring]::after,:where(html.bd-page) .app[data-ring]::after{animation:none!important}
 }
 @media (min-width:1180px){
 :where(html.bd-page) .app{height:max(calc(100dvh - var(--mock-h)),860px)}
@@ -400,6 +403,11 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 @media (min-width:900px){
 :where(html.bd-page) .plates{grid-template-rows:repeat(6,auto);row-gap:10px}
 :where(html.bd-page) .plate{grid-row:span 6;grid-template-rows:subgrid}
+}
+@media (min-width:701px) and (max-width:1023px){
+:where(html.bd-page)[data-layout=b] .topbar{flex-wrap:wrap;row-gap:8px}
+:where(html.bd-page)[data-layout=b] .brand{margin-right:auto!important}
+:where(html.bd-page)[data-layout=b] .topbar .banner{order:1;flex:1 1 100%;margin:0;max-width:none}
 }
 @media (max-width:700px){
 :where(html.bd-page){--pad:12px;--gap:10px;--tabs-h:97px}
@@ -446,6 +454,10 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .tabs a:nth-child(7){grid-column:span 2}
 :where(html.bd-page)[data-layout=b] .topbar{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;row-gap:8px}
 :where(html.bd-page)[data-layout=b] .topbar .banner{grid-column:1/-1;grid-row:2;margin:0;max-width:none}
+:where(html.bd-page) .banner[data-long]{flex-wrap:wrap;row-gap:8px}
+:where(html.bd-page) .banner[data-long] .msg{flex-basis:calc(100% - 38px)}
+:where(html.bd-page) .banner[data-long] .msg+.act{margin-left:auto}
+:where(html.bd-page) .banner[data-long] svg{align-self:flex-start;margin-top:2px}
 :where(html.bd-page)[data-layout=b] .tabs{margin-top:0;border-bottom:0}
 :where(html.bd-page)[data-layout=b] .face .pv{font-size:clamp(44px,calc(16 * var(--pu)),68px)}
 :where(html.bd-page)[data-layout=b] .face .sv{font-size:clamp(24px,calc(8.5 * var(--pu)),36px)}

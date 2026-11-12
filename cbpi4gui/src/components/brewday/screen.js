@@ -48,6 +48,10 @@ const hhmm = t => `${pad(Math.floor(t / 3600) % 24)}:${pad(Math.floor(t / 60) % 
 const hhmmss = t => `${hhmm(t)}:${pad(t % 60)}`;
 const PAUSED = "No connection. Controls are paused.";
 const WAIT = "Waiting for CraftBeerPi to answer.";
+/* held before the boil, CraftBeerPi takes NEXT as "start the boil" (StepController.next, with nothing active), which would
+   put heat on with two taps, so NEXT STEP is greyed and says how to start it */
+const HELD_NEXT = "The boil is waiting for you. To start it, hold START here or START THE BOIL at the top.";
+const LONG_Q = 140; // characters: longer questions are the sparge's (about 200) and the boil's (300); the rest are 125 or under
 const ICON = {
   ok: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M6.5 12.5l3.5 3.5 7-8" fill="none" stroke="#0a1016" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   bell: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a6 6 0 0 0-6 6v4.5L4 16v1.5h16V16l-2-3.5V8a6 6 0 0 0-6-6zm-2.5 17a2.5 2.5 0 0 0 5 0z"/></svg>',
@@ -202,7 +206,10 @@ function lampHTML(id) {
   if (pend) { s = "pending"; t = pend === "on" ? "SWITCHING ON…" : "SWITCHING OFF…"; n = A.name + " · waiting for CraftBeerPi"; }
   /* trying a failed "on" again is still a held press for heat */
   else if (a.failed) { h = a.failed === "on" && A.kind === "heat"; s = "failed"; t = a.on ? "DID NOT STOP" : "DID NOT START"; n = `${A.name} · still ${a.on ? (A.kind === "pump" ? "running" : "heating") : "off"} · ${h ? "hold" : "tap"} to try again`; }
-  else if (a.on) { s = A.kind === "heat" ? "heating" : "running"; t = A.kind === "heat" ? (id === "bkEl" && M.BKNEW ? "HEATING" : `HEATING ${a.pct} %`) : "RUNNING"; n = A.name + (locked ? ` · run by ${a.by === "mt" ? "mash tun" : "AUTO"}` : A.kind === "heat" ? " · tap to turn off" : " · tap to stop"); }
+  /* HEATING, without the element's power (Scott, 11 Nov: "I'd like the "HEATING xx %" button to only show HEATING since
+     the percentage is shown in the graph and as a number on the right side of the PID display"). Layout A has no OUT and
+     no graphs, so there the button is still the only place the power shows, and it keeps it */
+  else if (a.on) { s = A.kind === "heat" ? "heating" : "running"; t = A.kind === "heat" ? (LAYOUT === "a" && !(id === "bkEl" && M.BKNEW) ? `HEATING ${a.pct} %` : "HEATING") : "RUNNING"; n = A.name + (locked ? ` · run by ${a.by === "mt" ? "mash tun" : "AUTO"}` : A.kind === "heat" ? " · tap to turn off" : " · tap to stop"); }
   else { s = "off"; t = "OFF"; if (A.kind === "heat" && !locked) { h = true; n = A.name + " · hold to turn on"; } else n = A.name + (locked ? ` · run by ${a.by === "mt" ? "mash tun" : "AUTO"}` : " · tap to start"); }
   const why = lost ? PAUSED : pend ? WAIT : locked ? lockWhy(id) : "";
   const hh = h && !why;
@@ -345,13 +352,16 @@ function bkTgtEditorHTML() {
     <button type="button" class="ok" data-cmd="tset">SET <span id="tok">${boil ? "BOIL" : `${x} ${M.U}`}</span></button><button type="button" class="no" data-cmd="tcancel">CANCEL</button>
     <button type="button" class="tboil" data-cmd="tboil" aria-pressed="${boil}">BOIL<small>full power to ${boilTh()} ${M.U}</small></button><button type="button" class="tpwr" data-cmd="pwr:bk">BOIL POWER<small>change</small></button></div>`;
 }
-/* −5 % and +5 % either side of the element button while AUTO boils (Scott chose them on 10 Nov, with the pause and the usual
-   power: "All three"). One tap sends set_boil_power; a step that would pass 0 or 100 % stops there, and only at the end
-   itself is the button refused. */
+/* the boil power's one-tap steps either side of the element button while AUTO boils (Scott chose −5 % and +5 % on 10 Nov,
+   with the pause and the usual power: "All three"; on 11 Nov "I'd like the +/-1 in addition to the +/- 5"), in the power
+   box's order, −5 −1 … +1 +5. One tap sends set_boil_power; a step that would pass 0 or 100 % stops there, and only at the
+   end itself is the button refused. */
 function nudgeHTML(d) {
   const V = st.v.bk, pend = st.pend["p:bk"];
   const why = st.link === "lost" ? PAUSED : pend ? WAIT : d < 0 && V.bp <= 0 ? "The boil power is already 0 %." : d > 0 && V.bp >= 100 ? "The boil power is already 100 %." : "";
-  return b("cmdbtn nudge", `${d < 0 ? "−" : "+"}${Math.abs(d)} %`, pend === (d < 0 ? "down" : "up") ? "sending…" : d < 0 ? "turn down" : "turn up",
+  /* waiting for CraftBeerPi, all four are greyed and the one pressed shows the lamps' marching stripes; the wait is kept
+     under the step itself, so −5 and −1 can't both look pressed */
+  return b(`cmdbtn nudge${pend === String(d) ? " sending" : ""}`, `${d < 0 ? "−" : "+"}${Math.abs(d)} %`, "",
     {cmd: `pnudge:${d}`, why, label: `Boil power ${d < 0 ? "down" : "up"} ${Math.abs(d)} percent`});
 }
 /* the element button in AUTO: not locked, a tap pauses the heat (set_paused) and keeps AUTO, the recipe and the boil power;
@@ -359,10 +369,17 @@ function nudgeHTML(d) {
 function bkLampHTML() {
   const a = st.a.bkEl, V = st.v.bk, pend = st.pend["a:bkEl"], name = M.ACT.bkEl.name;
   if (V.mode !== "auto" || (a.failed && !pend)) return lampHTML("bkEl");
+  /* between the boil power's four steps the button is narrow, so its name is left to the faceplate's title (it is the
+     boil kettle's only element) and kept for screen readers; the line says only what a press does. Waiting for
+     CraftBeerPi there, it keeps its state word, as the steps keep theirs, and the line says what is on its way:
+     PAUSING… needs 75 px and the button has 63 at 1366 px, and a word that wrapped would make all three faceplates'
+     rows taller for that moment */
+  const narrow = bkNudges(), nm = narrow ? `<span class="sr">${name} · </span>` : `${name} · `;
   let s, t, n, cmd, h = false;
-  if (pend) { s = "pending"; t = pend === "pause" ? "PAUSING…" : pend === "resume" ? "CARRYING ON…" : pend === "on" ? "SWITCHING ON…" : "SWITCHING OFF…"; n = `${name} · waiting for CraftBeerPi`; cmd = "noop"; }
-  else if (a.paused) { s = "paused"; t = "PAUSED"; n = `${name} · hold to heat`; cmd = "pause:off"; h = true; }
-  else { s = a.on ? "heating" : "off"; t = a.on ? "HEATING" : "OFF"; n = `${name} · tap to pause`; cmd = "pause:on"; }
+  if (pend && narrow) { s = "pending"; t = a.paused ? "PAUSED" : a.on ? "HEATING" : "OFF"; n = nm + ({pause: "pausing…", resume: "heating…"}[pend] || "waiting…"); cmd = "noop"; }
+  else if (pend) { s = "pending"; t = pend === "pause" ? "PAUSING…" : pend === "resume" ? "CARRYING ON…" : pend === "on" ? "SWITCHING ON…" : "SWITCHING OFF…"; n = nm + "waiting for CraftBeerPi"; cmd = "noop"; }
+  else if (a.paused) { s = "paused"; t = "PAUSED"; n = nm + "hold to heat"; cmd = "pause:off"; h = true; }
+  else { s = a.on ? "heating" : "off"; t = a.on ? "HEATING" : "OFF"; n = nm + "tap to pause"; cmd = "pause:on"; }
   const why = st.link === "lost" ? PAUSED : pend ? WAIT : "", hh = h && !why;
   return `<button type="button" class="lamp" data-state="${s}" data-cmd="${cmd}"${hh ? " data-hold" : ""}${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}>${hh ? '<span class="fill"></span>' : ""}<span class="st">${t}</span><span class="nm">${n}</span></button>`;
 }
@@ -443,9 +460,10 @@ function svCell(v) {
 }
 function plateHTML(v) {
   const V = st.v[v], by = v === "hlt" && hermsOn() && st.v.mt.sv != null, [svT, svV] = svCell(v);
-  /* the new boil kettle has TARGET beside AUTO/MANUAL, as the HLT does, and its element button between −5 % and +5 % */
+  /* the new boil kettle has TARGET beside AUTO/MANUAL, as the HLT does, and its element button between the boil power's
+     steps, −5 −1 … +1 +5 */
   const pw = bkNew(v) && M.VACT.bk.includes("bkEl"), nudge = pw && bkNudges();
-  const lamps = pw ? (nudge ? nudgeHTML(-5) + bkLampHTML() + nudgeHTML(5) : bkLampHTML())
+  const lamps = pw ? (nudge ? nudgeHTML(-5) + nudgeHTML(-1) + bkLampHTML() + nudgeHTML(1) + nudgeHTML(5) : bkLampHTML())
     : M.VACT[v].map(lampHTML).join("") + (v === "bk" && M.BOILPOWER && !M.BKNEW ? powerHTML() : "");
   return `<section class="plate" id="pl-${v}" aria-labelledby="h-${v}">
     ${bkNew(v) ? `<div class="phead"><h2 id="h-${v}">${M.VNAME[v]}</h2>${bkHoldT() == null ? keepHTML() : ""}</div>` : `<h2 id="h-${v}">${M.VNAME[v]}</h2>`}
@@ -473,7 +491,9 @@ function recipeHTML() {
     : `<button type="button" class="lamp" data-state="off" data-cmd="r:start"${off ? ` aria-disabled="true" data-why="${off}"` : " data-hold"}>${off ? "" : '<span class="fill"></span>'}<span class="st">START</span><span class="nm">hold to start</span></button>`;
   const stop = b("cmdbtn", pX ? "STOPPING…" : "STOP", run ? "tap to stop" : "not running", {cmd: "r:stop", why: off || (pX ? WAIT : "") || (!run ? "The recipe is not running." : "")});
   const last = r.cur >= S.length - 1;
-  const next = b("cmdbtn", pN ? "MOVING ON…" : "NEXT STEP", last ? "last step" : `to ${esc(S[r.cur + 1].n)}`, {cmd: "r:next", why: off || (pN ? WAIT : "") || (last ? "This is the last step." : "")});
+  /* held before the boil, NEXT STEP is greyed and says how to start it (HELD_NEXT): CraftBeerPi would take it as "start the
+     boil" */
+  const next = b("cmdbtn", pN ? "MOVING ON…" : "NEXT STEP", last ? "last step" : `to ${esc(S[r.cur + 1].n)}`, {cmd: "r:next", why: off || (pN ? WAIT : "") || (r.held ? HELD_NEXT : "") || (last ? "This is the last step." : "")});
   return `<h2>${esc(M.RECIPE.name)}</h2>
     <p class="rmeta">${run ? "Running" : r.state === "ready" ? "Ready to start" : "Stopped"} · step ${r.cur + 1} of ${S.length}</p>
     <div class="rctl">${start}${stop}${next}</div>
@@ -536,8 +556,9 @@ function nowHTML() {
 function bannerHTML() {
   const x = st.banner;
   if (!x) return `${ICON.ok}<span class="msg">No alarms</span>`;
-  const acts = x.acts || (x.act ? [{label: x.act, cmd: x.cmd}] : []), busy = x.timer != null ? st.pend["t:" + x.timer] : st.pend.b;
-  const act = acts.map(y => b(y.sec ? "act sec" : "act", busy && (acts.length === 1 || busy === y.dir || busy === y.cmd) ? "SENDING…" : esc(y.label), "", {cmd: y.cmd, why: busy ? WAIT : ""})).join("");
+  const acts = x.acts || (x.act ? [{label: x.act, cmd: x.cmd, hold: x.hold}] : []), busy = x.timer != null ? st.pend["t:" + x.timer] : st.pend.b;
+  /* an answer that switches heat on (START THE BOIL) takes a held press, as START does, and says so under it */
+  const act = acts.map(y => b(y.sec ? "act sec" : "act", busy && (acts.length === 1 || busy === y.dir || busy === y.cmd) ? "SENDING…" : esc(y.label), y.hold && !busy ? "hold to start" : "", {cmd: y.cmd, why: busy ? WAIT : "", hold: y.hold})).join("");
   return `${x.tone === "prompt" ? ICON.bell : x.tone === "connecting" ? ICON.wait : ICON.warn}<span class="msg"><b>${esc(x.title)}${x.more ? ` · ${x.more} more waiting` : ""}</b>${esc(x.text).replace("{age}", `<span id="ban-age">${st.age}</span>`)}</span>${act}`;
 }
 /* an event with no result word (the connection coming and going) has no " · " after it */
@@ -658,6 +679,9 @@ function renderAll() {
   if (lost || st.pend.alloff) { ho.setAttribute("aria-disabled", "true"); ho.dataset.why = lost ? PAUSED : WAIT; } else { ho.removeAttribute("aria-disabled"); delete ho.dataset.why; }
   const bn = $("#banner");
   bn.dataset.tone = st.banner ? st.banner.tone : "ok";
+  /* a long question with a button (CraftBeerPi's sparge and boil prompts): on a phone its words keep the width and its
+     buttons go under them, rather than a column of three or four words a line beside them (brewday.css) */
+  bn.toggleAttribute("data-long", !!(st.banner && (st.banner.act || st.banner.acts) && String(st.banner.text || "").length > LONG_Q));
   morph(bn, bannerHTML());
   morph($("#event"), eventHTML());
   morph($("#plates"), ["hlt", "mt", "bk"].map(plateHTML).join(""));
@@ -927,15 +951,16 @@ function cmdPwrSet() {
     else { el.lvl = val; if (V.mode !== "auto" && el.on) el.pct = val; }
   }, cav);
 }
-/* −5 % and +5 %: sent at once, no SET. The same set_boil_power as the box; a tap that would go past 0 or 100 % stops there
-   (2 % − 5 → 0 %), and only at 0 or 100 % itself is the button refused */
+/* the boil power's one-tap steps, −5 % −1 % +1 % +5 %: sent at once, no SET. The same set_boil_power as the box; a tap that
+   would go past 0 or 100 % stops there (2 % − 5 → 0 %), and only at 0 or 100 % itself is the button refused. The wait is
+   kept under the step ("-5", "-1", "1", "5"), so only the button pressed shows it */
 function cmdNudge(d) {
   const V = st.v.bk, el = st.a.bkEl, was = V.bp, val = Math.min(100, Math.max(0, was + d));
   if (val === was) return;
   const cav = el.paused ? "used when the heat carries on" : bkLatched() ? "" : `used once it boils at ${boilTh()} ${M.U}, full power until then`;
   const label = `Boil power ${val} % (was ${was} %)`;
-  if (!DEMO_MODE) return livePower(true, val, was, label, cav, d < 0 ? "down" : "up");
-  send("p:bk", d < 0 ? "down" : "up", label, () => {
+  if (!DEMO_MODE) return livePower(true, val, was, label, cav, String(d));
+  send("p:bk", String(d), label, () => {
     V.bp = val;
     if (V.mode === "auto" && el.on && bkLatched()) el.pct = val;
   }, cav);
@@ -990,22 +1015,75 @@ function stepTarget(s) {
   else if (pw) bkRetarget();
 }
 function stepStart(i) {
-  const r = st.recipe, s = M.RECIPE.steps[i], was = M.RECIPE.steps[r.cur];
-  /* a SpargeStep ending: the HLT's AUTO off, the pumps left as they are. Only its timer running out also puts the HLT's
-     target to 0 (SpargeStep.on_timer_done); NEXT STEP leaves it */
-  if (was && was.type === "SpargeStep" && i !== r.cur) {
+  const r = st.recipe, s = M.RECIPE.steps[i], was = M.RECIPE.steps[r.cur], moved = was && i !== r.cur;
+  /* a SpargeStep ending: the HLT's AUTO off. Only its timer running out also puts the HLT's target to 0
+     (SpargeStep.on_timer_done); NEXT STEP leaves it */
+  if (moved && was.type === "SpargeStep") {
     if (st.v.hlt.mode === "auto") setMode("hlt", "manual");
     if (was.min && r.left === 0) st.v.hlt.sv = null;
-    r.started = false;
+    r.started = false; r.hoses = [];
     if (st.banner && st.banner.sparge) st.banner = null;
   }
+  /* on to the boil kettle: the mash tun's AUTO, and a mash step's HERMS with it, has done its work */
+  if (s.k === "bk") { st.fill.bk = true; if (st.v.mt.mode === "auto") setMode("mt", "manual"); }
+  /* the runoff over (core 1c08d4c, the hltpump extension): as the last step named for the runoff ends, by NEXT here or its
+     time up, CraftBeerPi switches the HLT pump off and leaves the wort pump to finish draining the mash tun. Its
+     information notification goes in the event line word for word, as CraftBeerPi's notifications do on the screen */
+  if (moved && collectsWort(was) && !collectsWort(s) && st.a.hltPump.on) {
+    const wort = st.a.wortPump.on;
+    setActor("hltPump", false);
+    soon(() => logEvent(`HLT pump: ${was.n} has ended, so the HLT pump is off.${wort ? " The wort pump is still running, to finish draining the mash tun." : ""}`, "from CraftBeerPi", ""));
+  }
   r.cur = i; r.left = (s.min || 0) * 60; r.adds = []; r.wait = null;
+  /* the boil waits for the brewer (CONFIRM_BEFORE_BOIL, as on Scott's rig): nothing is active, so nothing heats, and the
+     wort pump, if it runs, goes on draining the mash tun. The step says WAITING FOR YOU, as the live screen shows it. Its
+     prompt goes in the event line in CraftBeerPi's words, as there */
+  if (s.boil) {
+    const q = DEMO.boilHoldBanner(s);
+    Object.assign(r, {held: true, state: "ready", wait: WAITING_FOR_YOU});
+    st.banner = q;
+    soon(() => logEvent(`${q.title}: ${q.text}`, "waiting for you", "wait"));
+    return;
+  }
   if (st.hist) st.hist.steps.push([st.t, i + 1]);
-  if (s.k === "bk") { st.fill.bk = true; st.fill.mtLiq = false; if (st.v.mt.mode === "auto") setMode("mt", "manual"); }
+  if (s.k === "bk") st.fill.mtLiq = false;
   if (s.type === "SpargeStep") { r.started = false; spargeBegin(s); return; }
   if (s.temp != null) stepTarget(s);
   else if (s.note) st.banner = {tone: "prompt", title: s.n, text: s.note, act: "DONE", cmd: "b:done"};
 }
+/* the brewer starts the held boil, with START THE BOIL or a held START (core 1c08d4c, BoilStep._runoff_over): the runoff
+   is over, so CraftBeerPi switches the wort pump and the HLT pump off, whichever run, once a brew, and says so; then the
+   boil kettle's AUTO, heating to the boil before the step's timer starts. (Demo.) */
+function boilStart() {
+  const r = st.recipe, s = M.RECIPE.steps[r.cur], off = [];
+  if (st.banner && st.banner.boilHold) st.banner = null;
+  [["wortPump", "the wort pump"], ["hltPump", "the HLT pump"]].forEach(([id, w]) => { if (st.a[id].on) { setActor(id, false); off.push(w); } });
+  st.fill.mtLiq = false;
+  if (st.v.mt.mode === "auto") setMode("mt", "manual");
+  if (st.hist) st.hist.steps.push([st.t, r.cur + 1]);
+  stepTarget(s);
+  Object.assign(r, {held: false, state: "running", wait: st.v.bk.pv < boilFrom()});
+  soon(() => {
+    if (off.length) {
+      const w = off.join(" and ");
+      logEvent(`${s.n}: ${w[0].toUpperCase()}${w.slice(1)} ${off.length > 1 ? "are" : "is"} off, so you can move ${off.length > 1 ? "their" : "its"} hoses.`, "from CraftBeerPi", "");
+    }
+    logEvent(`${s.n} started, boil kettle AUTO`, "by recipe", "");
+  });
+}
+/* a SpargeStep switches a pump off for the brewer to move its hoses, once a run of the step (core 1c08d4c, _hose_off): the
+   wort pump as the step starts, the HLT pump as the water gets there. A Stop and Start never stops one the brewer has
+   since started. CraftBeerPi says so only in the prompt's words. (Demo.) */
+function spargeHose(which) {
+  const r = st.recipe, id = which === "hlt" ? "hltPump" : "wortPump";
+  r.hoses = r.hoses || [];
+  if (r.hoses.includes(which)) return;
+  r.hoses.push(which);
+  if (st.a[id].on) setActor(id, false);
+}
+/* what CraftBeerPi says as a command takes effect (its notifications, a step's start, a prompt) reaches the screen just
+   after the command's own "confirmed", so it comes out on top. (Demo.) */
+function soon(f) { timers.push(setTimeout(() => { f(); renderAll(); }, 300)); }
 /* a SpargeStep starting, or starting again after a Stop (SpargeStep.on_start): the mash tun's AUTO off, so its HERMS and
    the wort pump stop. Until "Sparge started" has been pressed, the HLT goes on its own AUTO at the step's temperature,
    HEATING until the water is there, when the step asks; after it, a Start carries on and doesn't heat again */
@@ -1013,20 +1091,26 @@ function spargeBegin(s) {
   const r = st.recipe, i = r.cur;
   if (st.v.mt.mode === "auto") setMode("mt", "manual");
   if (r.started) { r.wait = null; return; }
+  /* its hoses go over from recirculating to the runoff */
+  spargeHose("wort");
   st.v.hlt.sv = st.v.hlt.own = s.temp;
   if (st.v.hlt.mode !== "auto") setMode("hlt", "auto");
   r.wait = "HEATING";
   if (st.v.hlt.pv < s.temp) return;
-  /* the water is already there: the step's next look (within a brewing second) finds it and asks */
+  /* the water is already there: the step's next look (within a brewing second) finds it, switches the HLT pump off for
+     its hose to go over to the mash tun, and asks */
   timers.push(setTimeout(() => {
     if (st.recipe !== r || r.cur !== i || r.state !== "running" || r.started) return;
-    r.wait = WAITING_FOR_YOU; st.banner = DEMO.spargeBanner(s.temp);
+    spargeHose("hlt");
+    r.wait = WAITING_FOR_YOU; st.banner = DEMO.spargeBanner(s.temp, st.a);
     logEvent(`${s.n}: the sparge water is ready at ${s.temp} ${M.U}`, "waiting for you", "wait");
     renderAll();
   }, 600));
 }
 function cmdStart() {
   send("r:start", "start", "Recipe started", () => {
+    /* held before the boil, START starts the boil, as START THE BOIL does */
+    if (st.recipe.held) return boilStart();
     const r = st.recipe, s = M.RECIPE.steps[r.cur], fresh = r.state === "ready";
     if (fresh && st.hist) st.hist.steps.push([st.t, r.cur + 1]);
     r.state = "running";
@@ -1054,10 +1138,11 @@ function cmdStop() {
 function cmdNextYes() {
   const r = st.recipe, nx = M.RECIPE.steps[r.cur + 1];
   st.confirmNext = false;
-  send("r:next", "next", `Skipped to ${nx.n}`, () => { stepStart(r.cur + 1); r.state = "running"; });
+  send("r:next", "next", `Skipped to ${nx.n}`, () => { stepStart(r.cur + 1); if (!r.held) r.state = "running"; });
 }
 function cmdBanner(x) {
   if (x === "added") send("b", "x", "Hop alert answered: 3.00 oz Centennial added", () => { st.banner = null; if (st.recipe) st.recipe.adds[0] = "done"; });
+  else if (x === "boil") send("b", "x", "Ready to boil? Start the boil", boilStart);
   else if (x === "done") send("b", "x", `${M.RECIPE.steps[st.recipe.cur].n} done`, () => { st.banner = null; stepStart(st.recipe.cur + 1); });
   /* the SpargeStep's "Sparge started": its timer starts (or it runs until NEXT STEP), the HLT's AUTO goes off, and the
      drawing goes over to the runoff */
@@ -1790,7 +1875,11 @@ function liveRecipe(snap) {
     return due ? "due" : (n === "fw" ? props._first_wort_done : done.has(n)) ? "done" : "";
   });
   // a SpargeStep holds the drawing on recirculating until Sparge started: its _sparge_started, kept with the step
-  return {state, cur, left: left ?? (s.min ? s.min * 60 : 0), wait, adds, started: s.type === "SpargeStep" && !!props._sparge_started};
+  // held: the boil waiting for the brewer (StepController, CONFIRM_BEFORE_BOIL), not started, the profile begun, and
+  // CraftBeerPi's question under its name, whose button starts it. NEXT STEP is greyed then (HELD_NEXT), and the
+  // question's button takes a held press, as START does
+  const held = state === "ready" && !!s.boil && S.some(x => x.status === "D") && st.prompts.some(q => String(q.title || "") === s.n);
+  return {state, cur, left: left ?? (s.min ? s.min * 60 : 0), wait, adds, held, started: s.type === "SpargeStep" && !!props._sparge_started};
 }
 // The title bar: no connection first, then a command that failed, then CraftBeerPi's errors, its warnings, then
 // its prompts. For its first few seconds a page that has not connected yet says so calmly.
@@ -1807,11 +1896,13 @@ function liveBanner() {
   if (st.alarm) queue.push(st.alarm);
   st.errors.forEach(e => queue.push({tone: "alarm", title: ut(e.title || "Error"), text: ut(e.message || ""), act: "OK", cmd: `e:${e.id}`}));
   st.warnings.forEach(w => queue.push({tone: "warning", title: ut(w.title || "Warning"), text: ut(w.message || ""), act: "OK", cmd: `w:${w.id}`}));
+  // the held boil's question (liveRecipe, held): its button puts heat on, so it takes a held press, as START does
+  const hs = st.recipe && st.recipe.held ? M.RECIPE.steps[st.recipe.cur] : null;
   st.prompts.forEach(p => {
-    const t = promptTimer(p);
+    const t = promptTimer(p), hold = !!hs && String(p.title || "") === hs.n;
     queue.push(t ? {tone: "prompt", title: ut(p.title || t.name), text: ut(p.message || ""), timer: t.id,
       acts: [{label: "+5 MIN", cmd: `tm2:plus5:${t.id}`, dir: "plus5", sec: true}, {label: "OK", cmd: `tm2:ok:${t.id}`, dir: "ok"}]}
-      : {tone: "prompt", title: ut(p.title || "CraftBeerPi"), text: ut(p.message || ""), acts: p.action.map(a => ({label: String(a.label || "OK").toUpperCase(), cmd: `p:${p.id}:${a.id}`}))});
+      : {tone: "prompt", title: ut(p.title || "CraftBeerPi"), text: ut(p.message || ""), acts: p.action.map(a => ({label: String(a.label || "OK").toUpperCase(), cmd: `p:${p.id}:${a.id}`, hold}))});
   });
   st.banner = queue.length ? {...queue[0], more: queue.length - 1} : null;
 }
@@ -1949,6 +2040,8 @@ function holdEnd(early) {
   const pl = el.closest(".plate");
   if (pl) note(pl.id.slice(3), "Keep holding for one second. Heat only comes on with a held press.");
   else if (el.closest(".recipe")) note("r", "Keep holding for one second to start the recipe.");
+  // the title bar's START THE BOIL: it has no note line
+  else toast("Keep holding for one second. Heat only comes on with a held press.");
 }
 
 /* ---------- the MORE tab: the screens that have no tab of their own ---------- */
@@ -2168,6 +2261,9 @@ export function createBrewDay(el, o = {}) {
   if (root) teardown();
   const myGen = ++gen;
   root = el; opts = o; DEMO_MODE = !!o.demo;
+  /* this tab's name, so BrewScribe's BREW DAY button (target="craftbeerpi") comes back to it rather than opening another
+     (Porter, 11 Nov) */
+  if (!DEMO_MODE) { try { window.name = "craftbeerpi"; } catch (_) { /* a sandboxed frame: no name */ } }
   timers = []; noteTimers = {}; hold = null; afterHold = null; rigW = 0; last = null; everConnected = false; book = []; bookBusy = false; bookShown = false;
   tAns = null; tMsg = null; lastBannerKey = null; rangAt = 0;
   answered.clear(); Object.keys(own).forEach(k => delete own[k]);

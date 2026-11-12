@@ -22,13 +22,15 @@ FORM: Brewhouse touch panel with process-mimic plumbing (Scott's picks, rounds 2
 
 This is a proposal mockup with demo data. It does not talk to CraftBeerPi.
 Scenes: #mash (default), #sparge, #hop, #boilpower, #heatup, #pause, #boiling, #hold, #fail, #manual, #offline, #notarget,
-#notarget-hlt. Add ?bare to hide the mockup strip.
+#notarget-hlt, and the rest in the strip. #sparge-ready and #boil-hold show the pumps CraftBeerPi switches off so their
+hoses can move (core 1c08d4c, 11 Nov). Add ?bare to hide the mockup strip.
 Layouts: ?layout=b (default, chosen) or ?layout=a (the D1 alternative, kept for comparison; its drawing has no
 sparge line, so its HLT pump always goes back round the hot liquor tank).
 Graphs: in the faceplates by default (option A, chosen 10 Nov 2026). ?graphs=none shows the screen without them,
 as first built; ?graphs=panel is option B, kept only for graphs.html. ?span=10|30|day picks the starting span.
 Boil kettle: the redesign Scott said yes to on 10 Nov, built on the screen that evening, is the default (?bk=power):
-one-tap −5/+5 %, a pause for boil-overs, a usual boil power, TARGET (BOIL or a hold) and KEEP BOILING.
+one-tap −5/−1/+1/+5 % (±1 added 11 Nov), a pause for boil-overs, a usual boil power, TARGET (BOIL or a hold) and
+KEEP BOILING.
 ?bk=today is the faceplate from before it, which the screen keeps for an older BoilPower (one without set_boil_at);
 boil-kettle.html compares the two. ?bk=words is an earlier option he didn't take. ?focus=bk is for that page.
 Timers: the ones Scott approved on 11 Nov, built on the screen that day, are the default (#timers, #timer-done,
@@ -50,6 +52,7 @@ the one rest timer, which the screen keeps for an older CraftBeerPi without the 
   <a href="#sparge-ready">Sparge step: waiting for you</a>
   <a href="#sparge-run">Sparge step: fly sparge</a>
   <a href="#sparge-batch">Sparge step: batch sparge</a>
+  <a href="#boil-hold">Ready to boil?</a>
   <a href="#hop">Hop addition due</a>
   <a href="#boilpower">Turning the boil down</a>
   <a href="#heatup">Heating to the boil</a>

@@ -1,6 +1,6 @@
 // The approved mockup's demo data (design/brewday/brew-day.js, and graphs.js for the graphs' history), unchanged: the
 // moments of a brew day it shows, with its proposed boil kettle (?bk=power), which the screen builds. The screen's demo
-// mode (?demo=mash, sparge, sparge-heat, sparge-ready, sparge-run, sparge-batch, hop, boilpower, heatup, pause,
+// mode (?demo=mash, sparge, sparge-heat, sparge-ready, sparge-run, sparge-batch, boil-hold, hop, boilpower, heatup, pause,
 // pause-long, boiling, hold, keepboil, letfall, bktarget, handhold, fail, manual, offline, notarget, notarget-hlt, timers,
 // timer-done, timer-new, timer-names, timer-nonames, timers-hand or sound-allow) runs on this, so it can be compared with
 // the mockup pixel for pixel.
@@ -21,7 +21,8 @@ const RECIPE = {
    imported on core 4.7.7.post35 or later has it: a SpargeStep on the HLT (Scott, 10 Nov: "sparge step needs to let the
    HLT get up to mash out temperature before pumping wort over to boil kettle. I also may do a "batch sparge" - it
    should be flexible to let me do either"). It heats the sparge water on the HLT's own AUTO with the mash tun's AUTO
-   off, asks "Sparge started" when the water is ready, then leaves both pumps to the brewer. The sparge-… moments use
+   off, switches each pump off for its hose to move (the wort pump as it starts, the HLT pump as the water is ready:
+   core 1c08d4c), asks "Sparge started", then leaves both pumps to the brewer. The sparge-… moments and boil-hold use
    it (sparge4: the screen's demo recipe then has it as step 4); every other moment keeps the MashStep. */
 const SPARGE_STEP = {n: "Sparge", type: "SpargeStep", temp: 168, min: 40, k: "hlt"};
 const WFY = "WAITING FOR YOU";
@@ -237,18 +238,20 @@ const SCENES = {
     ]
   }),
   /* 15:04:40: the water reached 168 °F at 15:04:10, and CraftBeerPi asks, on every page, under the step's name. The
-     step's 40 min wait for "Sparge started"; the drawing marks the four valves to change */
+     step's 40 min wait for "Sparge started"; the drawing marks the four valves to change. As it asked, CraftBeerPi
+     switched the HLT pump off for its hose to move (core 1c08d4c), so both pumps are off, and the prompt says so */
   "sparge-ready": () => {
     const s = SCENES["sparge-heat"]();
     s.t = 15 * 3600 + 4 * 60 + 40;
     s.v.hlt.pv = 168.2; s.v.mt.pv = 147.9;
     s.a.hltEl = {on: true, pct: 36};
+    s.a.hltPump = {on: false};
     s.recipe.wait = WFY;
-    s.banner = spargeBanner(168);
+    s.banner = spargeBanner(168, s.a);
     s.events.unshift(["15:04:10", "Sparge: the sparge water is ready at 168 °F", "waiting for you", "wait"]);
     return s;
   },
-  /* 15:12:40, a fly sparge: Scott set the valves, started the wort pump and pressed Sparge started at 15:05:02. That
+  /* 15:12:40, a fly sparge: Scott set the hoses, started both pumps and pressed Sparge started at 15:05:02. That
      switched the HLT's AUTO off (Scott asked for the element off from here) and started the 40 min. Both pumps run: the
      HLT pump over to the top of the mash tun, the wort pump down to the boil kettle */
   "sparge-run": () => {
@@ -263,6 +266,7 @@ const SCENES = {
       ["15:05:02", "Sparge: sparge started, 40 min timer started", "confirmed", "ok"],
       ["15:05:02", "HLT AUTO off, so its element won't run as the HLT empties", "by recipe", ""],
       ["15:04:58", "WORT PUMP started", "confirmed", "ok"],
+      ["15:04:55", "HLT PUMP started", "confirmed", "ok"],
       ["15:04:10", "Sparge: the sparge water is ready at 168 °F", "answered", ""]);
     return s;
   },
@@ -282,10 +286,27 @@ const SCENES = {
       ["15:05:02", "Sparge: sparge started, until NEXT STEP", "confirmed", "ok"],
       ["15:05:02", "HLT AUTO off, so its element won't run as the HLT empties", "by recipe", ""],
       ["15:04:58", "WORT PUMP started", "confirmed", "ok"],
-      ["15:04:50", "HLT PUMP stopped", "confirmed", "ok", "its override switch can still run it"],
       ["15:04:10", "Sparge: the sparge water is ready at 168 °F", "answered", ""],
       ["14:56:21", "Sparge: heating the sparge water to 168 °F, mash tun MANUAL", "by recipe", ""]
     ];
+    return s;
+  },
+  /* 15:53:12, after the fly sparge (#sparge-run). Its 40 min ran out at 15:45:02. CraftBeerPi switched the HLT pump off
+     and left the wort pump draining the mash tun into the boil kettle (core 1c08d4c), and holds before the boil
+     (CONFIRM_BEFORE_BOIL, as on Scott's rig): nothing heats until Scott starts it. Its question is CraftBeerPi's longest,
+     and the screen writes it in the event line word for word. START THE BOIL puts heat on, so it takes a held press, as
+     START does; NEXT STEP is greyed (CraftBeerPi would take it as "start the boil") */
+  "boil-hold": () => {
+    const s = SCENES["sparge-run"](), q = boilHoldBanner(RECIPE.steps[4]);
+    s.t = 15 * 3600 + 53 * 60 + 12;
+    s.v = {hlt: {pv: 164.4, sv: null, own: 168.0, mode: "manual"}, mt: {pv: 166.9, sv: 149.0, mode: "manual"}, bk: {pv: 151.3, sv: null, mode: "manual"}};
+    s.a = {hltEl: {on: false, pct: 0}, hltPump: {on: false}, wortPump: {on: true}, bkEl: {on: false, pct: 0}};
+    s.recipe = {state: "ready", cur: 4, left: 90 * 60, adds: [], held: true, wait: WFY};
+    s.banner = q;
+    s.events.unshift(
+      ["15:45:02", `${q.title}: ${q.text}`, "waiting for you", "wait"],
+      ["15:45:02", "HLT pump: Sparge has ended, so the HLT pump is off. The wort pump is still running, to finish draining the mash tun.", "from CraftBeerPi", ""],
+      ["15:45:02", "Sparge finished", "by recipe", ""]);
     return s;
   },
   fail: () => {
@@ -398,12 +419,23 @@ function noTargetBanner(v) {
   return {tone: "prompt", title: `No target for the ${KNAME[v]}`, notgt: v, act: "OK", cmd: "b:ok",
     text: `AUTO is on with no target temperature, so ${v === "mt" ? "the HLT" : "it"} won't heat. Set a target, or switch to MANUAL.`};
 }
-/* the SpargeStep's kept prompt, titled with the step's name, in core 4.7.7.post35's words (SPARGE_READY_TEXT); its one
-   button answers it. With no water to heat it asks at once: SPARGE_NOW_TEXT */
-function spargeBanner(temp) {
+/* the SpargeStep's kept prompt, titled with the step's name, in core 1c08d4c's words (SPARGE_READY_TEXT, SPARGE_NOW_TEXT).
+   It says which pumps are off for the brewer's hoses (Scott, 11 Nov: "Any time I need to change hoses or "valves" that
+   respective pump should be off"), as CraftBeerPi finds them when it asks: a, the pumps as they are then. Its one button
+   answers it */
+const SPARGE_PUMPS_OFF = {"hlt,wort": "both pumps are off", hlt: "the HLT pump is off", wort: "the wort pump is off"};
+function spargeBanner(temp, a) {
+  const off = SPARGE_PUMPS_OFF[[!a.hltPump.on && "hlt", !a.wortPump.on && "wort"].filter(Boolean).join(",")] || "";
   return {tone: "prompt", title: "Sparge", sparge: true, act: "SPARGE STARTED", cmd: "b:sparge",
-    text: temp ? `The sparge water is ready at ${temp} °F. Set the valves and start the pumps by hand, for a fly or a batch sparge, then press Sparge started, which switches the HLT's AUTO off.`
-      : "Set the valves and start the pumps by hand, for a fly or a batch sparge, then press Sparge started."};
+    text: temp ? `The sparge water is ready at ${temp} °F${off ? `, and ${off}` : ""}. Set the hoses or valves for a fly or a batch sparge, start the pumps by hand, then press Sparge started, which switches the HLT's AUTO off.`
+      : `${off ? `${off[0].toUpperCase()}${off.slice(1)}. ` : ""}Set the hoses or valves for a fly or a batch sparge, start the pumps by hand, then press Sparge started.`};
+}
+/* the hold before the boil (CraftBeerPi's StepController, with CONFIRM_BEFORE_BOIL Yes, as on Scott's rig): the boil waits,
+   with nothing active, until the brewer starts it. Its words are BoilStep.wait_for_brewer's in core 1c08d4c. Starting the
+   boil switches heat on, so here, as with START, it takes a held press (the Held Heat Rule) */
+function boilHoldBanner(s) {
+  return {tone: "prompt", title: s.n, boilHold: true, act: "START THE BOIL", cmd: "b:boil", hold: true,
+    text: "Ready to boil? Move the wort to the boil kettle first - the dashboard is yours meanwhile. The boil kettle stays off until you press Start the boil, or Start on the Brew Steps page. That also switches the wort pump off, so you can move its hoses. (Set CONFIRM_BEFORE_BOIL to No to go straight on.)"};
 }
 /* BoilPower's warning for a forgotten pause (Scott, 10 Nov): after 2 brewing minutes paused, kept on every page with OK,
    said once per pause, and taken down when the heat carries on or AUTO stops; in the kettle's name from CraftBeerPi */
@@ -466,13 +498,17 @@ function gDemo(scene) {
   /* the SpargeStep (#sparge-heat, -ready, -run, -batch): the #mash day on, Saccharification ending at 14:56:21. The
      mash tun's AUTO off then (its SV stays 149); the HLT on its own AUTO heats to 168 °F by 15:04:10 and holds it until
      Sparge started at 15:05:02, which switches its AUTO off. Then a fly sparge (-run) fills the boil kettle from 15:05;
-     a batch sparge (-batch) drains the first runnings until 15:13:20 and refills the mash tun from 15:13:31 */
-  if (/^sparge-/.test(scene)) {
+     a batch sparge (-batch) drains the first runnings until 15:13:20 and refills the mash tun from 15:13:31. The fly
+     sparge's 40 min end at 15:45:02, and #boil-hold has the wort pump still draining into the boil kettle at 15:53:12 */
+  if (/^sparge-/.test(scene) || scene === "boil-hold") {
     const S0 = hms(14, 56, 21), RDY = hms(15, 4, 10), GO = hms(15, 5, 2), batch = scene === "sparge-batch";
+    const END = hms(15, 45, 2), NOW = hms(15, 53, 12), held = scene === "boil-hold";
     const hltPv = [...hltMash, [S0, 154.4, "h"], [hms(15, 3), 166.8, "l"], [RDY, 168.1, "e"], [GO, 168.2, "s"],
-      batch ? [hms(15, 20, 30), 167.1, "s"] : [hms(15, 12, 40), 166.9, "s"]];
-    const mtPv = [...mtMash, [S0, 148.7, "s"], [GO, 147.9, "s"], ...(batch ? [[hms(15, 13, 20), 147.1, "s"], [hms(15, 20, 30), 165.3, "s"]] : [[hms(15, 12, 40), 151.6, "s"]])];
-    const bkPv = [[hms(12, 40), 68.0], [hms(15, 5, 40), 68.0, "h"], [hms(15, 7), 146.0, "s"], ...(batch ? [[hms(15, 13, 20), 148.0, "s"], [hms(15, 20, 30), 147.6, "s"]] : [[hms(15, 12, 40), 146.8, "s"]])];
+      batch ? [hms(15, 20, 30), 167.1, "s"] : [hms(15, 12, 40), 166.9, "s"], ...(held ? [[END, 165.2, "s"], [NOW, 164.4, "s"]] : [])];
+    const mtPv = [...mtMash, [S0, 148.7, "s"], [GO, 147.9, "s"], ...(batch ? [[hms(15, 13, 20), 147.1, "s"], [hms(15, 20, 30), 165.3, "s"]] : [[hms(15, 12, 40), 151.6, "s"]]),
+      ...(held ? [[END, 166.2, "s"], [NOW, 166.9, "s"]] : [])];
+    const bkPv = [[hms(12, 40), 68.0], [hms(15, 5, 40), 68.0, "h"], [hms(15, 7), 146.0, "s"], ...(batch ? [[hms(15, 13, 20), 148.0, "s"], [hms(15, 20, 30), 147.6, "s"]] : [[hms(15, 12, 40), 146.8, "s"]]),
+      ...(held ? [[END, 150.2, "s"], [NOW, 151.3, "s"]] : [])];
     return {
       start: hms(12, 40), steps: [...steps, [S0, 4]],
       hlt: {pv: hltPv, sv: [[hms(12, 40), hms(14, 9, 40), 131.4], [hms(14, 9, 40), S0, 154.4], [S0, GO, 168.0]],
@@ -600,12 +636,13 @@ function history(scene, now) {
   return h;
 }
 
-export { RECIPE, SPARGE_STEP, VNAME, KNAME, VACT, ACT, HERMS_DELTA, BOIL_TH, BOOK, SCENES, history, noTargetBanner, pauseBanner, spargeBanner, tfmt, tBanner };
+export { RECIPE, SPARGE_STEP, VNAME, KNAME, VACT, ACT, HERMS_DELTA, BOIL_TH, BOOK, SCENES, history, noTargetBanner, pauseBanner, spargeBanner, boilHoldBanner, tfmt, tBanner };
 
 // Not the mockup's: two moments of the screen's own, for checking how the title bar holds what CraftBeerPi
-// really asks (the dashboard agent's review, 9 Nov). Not compared with the mockup, which has neither.
+// really asks (the dashboard agent's review, 9 Nov). Not compared with the mockup.
 // ?demo=resume: the server restarted mid-mash and asks, with two buttons.
-// ?demo=longprompt: the hold before the boil, CraftBeerPi's longest question, with the boil waiting for you.
+// ?demo=longprompt: the hold before the boil, CraftBeerPi's longest question. The mockup has it now, as #boil-hold
+// (11 Nov), so this is that moment, kept for the links that name it.
 const EXTRA = {
   resume: () => Object.assign(mash(), {
     banner: {tone: "prompt", title: "Resume brew?", text: "'Saccharification' was interrupted when the server stopped. About 16 min 19 s of it had already run, and that is remembered - resuming continues from there rather than starting the step again. Check your kettle first, then choose.",
@@ -614,15 +651,7 @@ const EXTRA = {
     v: {hlt: {pv: 152.9, sv: 154.4, own: 168.0, mode: "manual"}, mt: {pv: 147.8, sv: 149.0, mode: "manual"}, bk: {pv: 68.0, sv: null, mode: "manual"}},
     recipe: {state: "stopped", cur: 2, left: 23 * 60 + 41, adds: []}
   }),
-  longprompt: () => Object.assign(mash(), {
-    t: 15 * 3600 + 53 * 60 + 12,
-    banner: {tone: "prompt", title: "Boil", text: "Ready to boil? Move the wort to the boil kettle first - the dashboard is yours meanwhile. The boil kettle stays off until you press Start the boil, or Start on the Brew Steps page. That also switches the wort pump off, so you can move its hoses. (Set CONFIRM_BEFORE_BOIL to No to go straight on.)", act: "START THE BOIL", cmd: "b:ok"},
-    v: {hlt: {pv: 170.2, sv: null, own: 168.0, mode: "manual"}, mt: {pv: 166.9, sv: null, mode: "manual"}, bk: {pv: 151.3, sv: null, mode: "manual"}},
-    // the HLT pump switched off as the sparge ended (core M71); the wort pump still running, finishing the runoff
-    a: {hltEl: {on: false, pct: 0}, hltPump: {on: false}, wortPump: {on: true}, bkEl: {on: false, pct: 0}},
-    fill: {mtLiq: true, bk: true},
-    recipe: {state: "ready", cur: 4, left: 90 * 60, adds: [], wait: "WAITING FOR YOU"}
-  })
+  longprompt: () => SCENES["boil-hold"]()
 };
 
 export { EXTRA };
