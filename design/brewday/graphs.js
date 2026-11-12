@@ -130,19 +130,22 @@ function gDemo(scene) {
   /* boiling and hold: the #hop day, carried on. The simulator boils at 212 °F, so the boil kettle settles there. At
      17:00:04 the boil ends; the wort is chilled to 170 °F for the whirlpool and cools to 166.3 °F in the stand, and from
      17:14:31 BoilPower holds 170 °F: today a separate Hold_Target, which only the words design draws; with Brett's new
-     BoilPower (?bk=power) the kettle's own target. */
-  if (scene === "boiling" || scene === "hold") {
-    const d = gDemo("hop"), bk = d.bk;
+     BoilPower (?bk=power) the kettle's own target. finished: the stand ends at 17:28:10, switching the boil kettle off,
+     and the chiller takes the wort down to 88.4 °F by 17:41:30 */
+  if (scene === "boiling" || scene === "hold" || scene === "finished") {
+    const d = gDemo("hop"), bk = d.bk, fin = scene === "finished", OFF = fin ? hms(17, 28, 10) : E;
     bk.pv = bk.pv.filter(k => k[0] <= hms(15, 30, 4)).concat([[hms(15, 36), 212.0, "s"], [hms(17, 0, 4), 212.0, "h"]]);
     if (scene === "boiling") return d;
     d.steps.push([hms(17, 0, 4), 6], [hms(17, 8, 10), 7]);
     bk.pv.push([hms(17, 1, 30), 209.8, "s"], [hms(17, 7, 30), 170.6, "e"], [hms(17, 8, 10), 170.4, "s"], [hms(17, 14, 20), 166.3, "s"], [hms(17, 18, 40), 169.4, "e"]);
-    bk.sv = [[hms(15, 1, 47), hms(17, 0, 4), 210.2], [hms(17, 14, 31), E, BK === "power" ? 170.0 : 210.2]];
-    if (BK !== "power") bk.hold = [[hms(17, 14, 31), E, 170.0]];
+    if (fin) bk.pv.push([hms(17, 22), 170.0, "s"], [OFF, 170.0, "h"], [hms(17, 29, 10), 169.2, "s"], [hms(17, 41, 30), 88.4, "e"]);
+    bk.sv = [[hms(15, 1, 47), hms(17, 0, 4), 210.2], [hms(17, 14, 31), OFF, BK === "power" ? 170.0 : 210.2]];
+    if (BK !== "power") bk.hold = [[hms(17, 14, 31), OFF, 170.0]];
     bk.out = [[hms(11, 58), hms(15, 1, 47), 0], [hms(15, 1, 47), hms(15, 29, 30), 100], [hms(15, 29, 30), hms(17, 0, 4), 45], [hms(17, 0, 4), hms(17, 14, 31), 0],
-      [hms(17, 14, 31), hms(17, 15, 40), 64], [hms(17, 15, 40), hms(17, 16, 50), 54], [hms(17, 16, 50), hms(17, 17, 50), 44], [hms(17, 17, 50), E, 35]];
+      [hms(17, 14, 31), hms(17, 15, 40), 64], [hms(17, 15, 40), hms(17, 16, 50), 54], [hms(17, 16, 50), hms(17, 17, 50), 44], [hms(17, 17, 50), OFF, 35], [OFF, E, 0]];
     d.hlt.pv.push([hms(17, 18, 40), 156.8, "s"]);
     d.mt.pv.push([hms(17, 18, 40), 139.6, "s"]);
+    if (fin) { d.hlt.pv.push([hms(17, 41, 30), 154.9, "s"]); d.mt.pv.push([hms(17, 41, 30), 137.2, "s"]); }
     return d;
   }
   /* the boil power set to 2 % at 16:10 (#keepboil, #letfall: the #hop day at 16:31:10). Ticked, BoilPower cycles: 5½ min

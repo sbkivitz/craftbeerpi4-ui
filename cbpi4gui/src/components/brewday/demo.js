@@ -1,9 +1,9 @@
 // The approved mockup's demo data (design/brewday/brew-day.js, and graphs.js for the graphs' history), unchanged: the
 // moments of a brew day it shows, with its proposed boil kettle (?bk=power), which the screen builds. The screen's demo
 // mode (?demo=mash, sparge, sparge-heat, sparge-ready, sparge-run, sparge-batch, boil-hold, hop, boilpower, heatup, pause,
-// pause-long, boiling, hold, whirlpool, keepboil, letfall, bktarget, handhold, fail, manual, offline, notarget,
-// notarget-hlt, timers, timer-done, timer-new, timer-names, timer-nonames, timers-hand or sound-allow) runs on this, so it
-// can be compared with the mockup pixel for pixel.
+// pause-long, boiling, hold, whirlpool, finished, keepboil, letfall, bktarget, handhold, fail, manual, offline, notarget,
+// notarget-hlt, timers, timer-done, timer-new, timer-names, timer-nonames, timers-hand or sound-allow) runs on this, so
+// it can be compared with the mockup pixel for pixel.
 
 const RECIPE = {
   name: "Craftbeerpi Test Recipe v5",
@@ -154,6 +154,26 @@ const SCENES = {
     s.a.wortPump = {on: true};
     s.events.splice(2, 0, ["17:08:16", "WORT PUMP started", "confirmed", "ok"]);
     return Object.assign(s, {base: "hold"});
+  },
+  /* the recipe has finished, and Scott chills the wort. The #whirlpool day: the stand ended at 17:28:10 and switched the
+     boil kettle off, and the wort pump runs on through the chiller. CraftBeerPi keeps the recipe's steps, all done, so the
+     pump stays drawn at the boil kettle until a recipe is loaded or reset, or the mash tun's AUTO is on (Scott, 12 Nov).
+     The drawing can't show the wort going on to the fermenter */
+  finished: () => {
+    const s = SCENES.whirlpool();
+    s.events.unshift(
+      ["17:28:52", "Brewing Complete answered: OK", "confirmed", "ok"],
+      ["17:28:10", "Brewing Complete: Now the yeast will take over", "answered", ""],
+      ["17:28:10", "Recipe finished", "by recipe", "ok"],
+      ["17:28:10", `Whirlpool: Stand over: ${KNAME.bk} is off and no longer holding 170 °F.`, "from CraftBeerPi", ""],
+      ["17:28:10", "Whirlpool finished", "by recipe", ""]);
+    return Object.assign(s, {
+      t: 17 * 3600 + 41 * 60 + 30, base: "finished",
+      v: {hlt: {pv: 154.9, sv: 168.0, own: 168.0, mode: "manual"}, mt: {pv: 137.2, sv: null, mode: "manual"}, bk: {pv: 88.4, sv: 210.2, mode: "manual"}},
+      a: {hltEl: {on: false, pct: 0}, hltPump: {on: false}, wortPump: {on: true}, bkEl: {on: false, pct: 0}},
+      recipe: null, finished: true,
+      timer: {left: 60 * 60, running: false}
+    });
   },
   /* Scott on 8012, 10 Nov: he set the boil power to 2 % and asked why the kettle held about 210 °F. At 2 % the kettle can't
      hold a boil; BoilPower lets go 3.6 °F below its boil point and heats at full power until it boils again, so it cycles
@@ -399,7 +419,7 @@ const SCENES = {
     v: {hlt: {pv: 68.0, sv: null, own: 168.0, mode: "manual"}, mt: {pv: 67.6, sv: null, mode: "auto", noTgt: 1270, warned: true}, bk: {pv: 66.9, sv: null, mode: "manual"}},
     a: {hltEl: {on: false, pct: 0}, hltPump: {on: false}, wortPump: {on: true}, bkEl: {on: false, pct: 0}},
     fill: {mtLiq: true, bk: false},
-    recipe: null,
+    recipe: null, finished: true,
     timer: {left: 60 * 60, running: false},
     events: [
       ["13:26:21", "No target for the Mash Tun", "waiting for you", "wait"],
@@ -575,18 +595,21 @@ function gDemo(scene) {
   }
   /* boiling and hold: the #hop day, carried on. The simulator boils at 212 °F, so the boil kettle settles there. At 17:00:04
      the boil ends; the wort is chilled to 170 °F for the whirlpool and cools to 166.3 °F in the stand, and from 17:14:31
-     BoilPower holds 170 °F, the kettle's own target. */
-  if (scene === "boiling" || scene === "hold") {
-    const d = gDemo("hop"), bk = d.bk;
+     BoilPower holds 170 °F, the kettle's own target. finished: the stand ends at 17:28:10, switching the boil kettle off,
+     and the chiller takes the wort down to 88.4 °F by 17:41:30 */
+  if (scene === "boiling" || scene === "hold" || scene === "finished") {
+    const d = gDemo("hop"), bk = d.bk, fin = scene === "finished", OFF = fin ? hms(17, 28, 10) : E;
     bk.pv = bk.pv.filter(k => k[0] <= hms(15, 30, 4)).concat([[hms(15, 36), 212.0, "s"], [hms(17, 0, 4), 212.0, "h"]]);
     if (scene === "boiling") return d;
     d.steps.push([hms(17, 0, 4), 6], [hms(17, 8, 10), 7]);
     bk.pv.push([hms(17, 1, 30), 209.8, "s"], [hms(17, 7, 30), 170.6, "e"], [hms(17, 8, 10), 170.4, "s"], [hms(17, 14, 20), 166.3, "s"], [hms(17, 18, 40), 169.4, "e"]);
-    bk.sv = [[hms(15, 1, 47), hms(17, 0, 4), 210.2], [hms(17, 14, 31), E, 170.0]];
+    if (fin) bk.pv.push([hms(17, 22), 170.0, "s"], [OFF, 170.0, "h"], [hms(17, 29, 10), 169.2, "s"], [hms(17, 41, 30), 88.4, "e"]);
+    bk.sv = [[hms(15, 1, 47), hms(17, 0, 4), 210.2], [hms(17, 14, 31), OFF, 170.0]];
     bk.out = [[hms(11, 58), hms(15, 1, 47), 0], [hms(15, 1, 47), hms(15, 29, 30), 100], [hms(15, 29, 30), hms(17, 0, 4), 45], [hms(17, 0, 4), hms(17, 14, 31), 0],
-      [hms(17, 14, 31), hms(17, 15, 40), 64], [hms(17, 15, 40), hms(17, 16, 50), 54], [hms(17, 16, 50), hms(17, 17, 50), 44], [hms(17, 17, 50), E, 35]];
+      [hms(17, 14, 31), hms(17, 15, 40), 64], [hms(17, 15, 40), hms(17, 16, 50), 54], [hms(17, 16, 50), hms(17, 17, 50), 44], [hms(17, 17, 50), OFF, 35], [OFF, E, 0]];
     d.hlt.pv.push([hms(17, 18, 40), 156.8, "s"]);
     d.mt.pv.push([hms(17, 18, 40), 139.6, "s"]);
+    if (fin) { d.hlt.pv.push([hms(17, 41, 30), 154.9, "s"]); d.mt.pv.push([hms(17, 41, 30), 137.2, "s"]); }
     return d;
   }
   /* the boil power set to 2 % at 16:10 (#keepboil, #letfall: the #hop day at 16:31:10). Ticked, BoilPower cycles: 5½ min at

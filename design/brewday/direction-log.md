@@ -1,5 +1,25 @@
 # Direction decision log
 
+## After the recipe finishes: the wort pump stays at the boil kettle (12 Nov 2026, late morning)
+- Brett, building the chiller loop: once the recipe's last step finishes, the live screen has no recipe, so
+  `boilStarted()` was false and the drawing put the wort pump back by the mash tun. That's when Scott chills and moves
+  the wort to the fermenter, so the drawing lit the HERMS coil again. Brett asked what should tell the screen the
+  hoses have gone back.
+- What CraftBeerPi knows: it keeps a finished recipe's steps, all done, until a recipe is loaded, reset or cleared
+  (`StepController`). So "the boil has started" stays true after the recipe ends, for every screen and across reloads.
+  The mash tun's AUTO runs the wort pump through the HERMS coil, which only works with the hoses on the mash tun; Scott's
+  10 Nov test on 8012 (#notarget) was exactly that, after a finished recipe.
+- Not chosen: a HOSES switch (one more control, and the phone has no drawing to show it); forgetting after a time
+  (surprising); going by the vessels' modes alone (wrong when brewing by hand).
+- Asked Scott, with the catch spelled out (brewing by hand later, with the old recipe still loaded and the mash tun in
+  MANUAL, shows the pump at the kettle). He chose "Yes, keep it at the kettle until then": drawn at the boil kettle
+  until a recipe is loaded or reset, and by the mash tun while the mash tun's AUTO is on.
+- Mockup: `stepStatus` reads a demo moment's `finished` flag when no recipe runs; `boilStarted()` needs no running
+  recipe; `post` needs the mash tun's AUTO off; the drawing's description says the recipe has finished. New moment
+  #finished (the #whirlpool day at 17:41:30, chilling); #notarget gets the flag and looks the same. Checked: 310 of 310
+  pictures of the old moments identical; #finished fits at 11 sizes; pressed through. React UI only (`screen.js`, the
+  demo). Handed to Brett.
+
 ## The wort pump after the boil: three options (12 Nov 2026, morning); Scott chose 2, with the chiller
 - Scott: "whirlpool / hop-stand step pump symbol shows it going through the HERMS coil. What are some alternatives?",
   then "I don't want the symbols to become too chaotic. Maybe another representation of the wort pump instead of

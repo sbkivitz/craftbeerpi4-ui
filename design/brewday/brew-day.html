@@ -43,10 +43,11 @@ characters is drawn smaller (0.7 of the size) on a monitor and a phone; from 701
 Tabs: BREWSCRIBE, last, opens BrewScribe in a browser tab of its own (11 Nov); ?brewscribe=none shows the screen
 where BrewScribe isn't installed.
 The wort pump after the boil (12 Nov): Scott chose ?wp=chill, the default since: from the boil's start the wort pump is
-drawn at the boil kettle, on a short loop through the chiller (#whirlpool shows it running). ?wp=today is the drawing
-as built before (after the boil it went back to recirculating, through the HERMS coil); ?wp=move (no chiller) and
-?wp=swirl (the pump stays, the kettle swirls) are options he didn't take. whirlpool.html shows them side by side;
-?focus=rig is for that page.
+drawn at the boil kettle, on a short loop through the chiller (#whirlpool shows it running). It stays there after the
+recipe finishes (#finished), until a recipe is loaded or reset, or while the mash tun's AUTO is on (#notarget).
+?wp=today is the drawing as built before (after the boil it went back to recirculating, through the HERMS coil);
+?wp=move (no chiller) and ?wp=swirl (the pump stays, the kettle swirls) are options he didn't take. whirlpool.html
+shows them side by side; ?focus=rig is for that page.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -71,6 +72,7 @@ as built before (after the boil it went back to recirculating, through the HERMS
   <a href="#boiling">Boiling</a>
   <a href="#hold">Whirlpool hold</a>
   <a href="#whirlpool">Whirlpool, pump running</a>
+  <a href="#finished">Recipe finished, chilling</a>
   <a href="#keepboil">Boil at 2 %, keep boiling</a>
   <a href="#letfall">Boil at 2 %, let it fall</a>
   <a href="#bktarget">Setting a hop stand by hand</a>

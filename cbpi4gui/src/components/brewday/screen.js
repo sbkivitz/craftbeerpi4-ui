@@ -630,10 +630,13 @@ function collectsWort(s) {
   return RUNOFF_NAME.test(name) && !NOT_RUNOFF.test(name);
 }
 /* a step's status as CraftBeerPi reports it: D done, A active, S stopped, E failed, I waiting (a boil held for
-   "Ready to boil?" is I). Live, CraftBeerPi's own; in the demo, worked out from the scene, as in the mockup. */
+   "Ready to boil?" is I). Live, CraftBeerPi's own: it keeps a finished recipe's steps, all D, until a recipe is loaded or
+   reset. In the demo, worked out from the scene, as in the mockup; with no recipe running, a moment's finished flag
+   says the last one's steps are all done (#finished, #notarget), else there are none */
 function stepStatus(i) {
   const r = st.recipe, s = M.RECIPE.steps[i];
   if (s && s.status) return s.status;
+  if (!r) return st.finished ? "D" : "I";
   return i < r.cur ? "D" : i > r.cur ? "I" : r.state === "running" ? "A" : r.state === "stopped" ? "S" : "I";
 }
 /* the runoff step's index while the wort should be on its way to the boil kettle, else -1 */
@@ -645,14 +648,18 @@ function runoffStep() {
 }
 /* the boil has started (its step running, stopped, failed or done; held for "Ready to boil?" it is still I). From then
    on the wort pump's hoses are on the boil kettle: Scott moves them in that hold, as CraftBeerPi's notification says
-   ("The wort pump is off, so you can move its hoses", core 1c08d4c) */
+   ("The wort pump is off, so you can move its hoses", core 1c08d4c). After the recipe finishes its steps are all D, so
+   the hoses stay there for the chill and the transfer, until a recipe is loaded or reset and its boil is I again
+   (Scott, 12 Nov) */
 function boilStarted() {
   const bo = M.RECIPE.steps.findIndex(s => s.boil);
-  return !!st.recipe && bo >= 0 && stepStatus(bo) !== "I";
+  return bo >= 0 && stepStatus(bo) !== "I";
 }
 function rigDesc(ro, held, setNow, post) {
   const spLine = !!$("#ln-sparge"), head = "Hot liquor tank, mash tun and boil kettle. ";
-  if (post) return head + "The boil has started, so the wort pump's hoses are on the boil kettle. The wort pump is drawn under the boil kettle: it takes wort from the bottom of the kettle and sends it through the chiller and back in at the top. The mash tun and the HERMS coil are out of use. The HLT pump circulates hot water around the hot liquor tank. The valves are set by hand and CraftBeerPi can't see them: they are shown for recirculating.";
+  // with no recipe running, the boil can only have started if the recipe has finished (boilStarted)
+  if (post) return head + (st.recipe ? "The boil has started, so the wort pump's hoses are on the boil kettle. " : "The recipe has finished, and the wort pump's hoses are still on the boil kettle, where they went for the boil. ")
+    + "The wort pump is drawn under the boil kettle: it takes wort from the bottom of the kettle and sends it through the chiller and back in at the top. The mash tun and the HERMS coil are out of use. The HLT pump circulates hot water around the hot liquor tank. The valves are set by hand and CraftBeerPi can't see them: they are shown for recirculating.";
   if (ro < 0 || held) return head + "The HLT pump circulates hot water around the hot liquor tank. The wort pump moves wort from the mash tun, through the coil inside the hot liquor tank, and back into the mash tun. The valves are set by hand and CraftBeerPi can't see them: they are shown for recirculating, with the lines to the boil kettle"
     + (spLine ? " and to the top of the mash tun" : "") + " closed."
     + (setNow ? ` Step ${ro + 1}, ${M.RECIPE.steps[ro].n}, is waiting for you to set them for the sparge: close the coil line${spLine ? " and the HLT return" : ""}, and open the line to the boil kettle${spLine ? " and the sparge line to the top of the mash tun" : ""}.` : "");
@@ -696,8 +703,10 @@ function renderRig() {
   const out = ro >= 0 && !held, sp = out && hasSp;
   /* after the boil starts, the wort pump serves the boil kettle (Scott chose it on 12 Nov: drawn there, on a short loop
      through the chiller), so nothing on the mash tun's side lights. The valves are drawn as before: for recirculating, so
-     a running HLT pump (the HLT's stirrer too) still goes round the hot liquor tank */
-  const post = LAYOUT === "b" && boilStarted();
+     a running HLT pump (the HLT's stirrer too) still goes round the hot liquor tank. While the mash tun's AUTO is on, its
+     HERMS runs the wort pump through the coil, so the hoses are back on the mash tun (#notarget; Scott, 12 Nov: until a
+     recipe is loaded or reset, or the mash tun's AUTO is on) */
+  const post = LAYOUT === "b" && boilStarted() && st.v.mt.mode !== "auto";
   const wp = live && a.wortPump.on, hp = live && a.hltPump.on, mtw = wp && !post;
   on("#ln-wort-in", mtw); on("#ln-wort-out", mtw); on("#ln-wort-coil", mtw && !out); on("#ln-xfer", mtw && out); on("#coil", mtw && !out);
   on("#ln-bk-loop", wp && post);
@@ -1232,7 +1241,7 @@ function cmdBanner(x) {
 const spargeStartedLine = s => `${s.n}: sparge started, ${s.min ? `${s.min} min timer started` : "until NEXT STEP"}`;
 function cmdLoad(i) {
   if (i !== 0) return toast(`Mockup: only Test Recipe v5 is filled in here. On the real screen, LOAD sends ${M.BOOK[i].n} to Brew Steps, as the Recipe Book does today.`);
-  send("r:load", "load", `${M.BOOK[0].n} loaded`, () => { st.recipe = {state: "ready", cur: 0, left: 0, adds: []}; });
+  send("r:load", "load", `${M.BOOK[0].n} loaded`, () => { st.recipe = {state: "ready", cur: 0, left: 0, adds: []}; st.finished = false; });
 }
 /* ALL OFF (Scott, 9 Nov): stop the recipe first so it can't switch a kettle back on, then every vessel to MANUAL,
    then both elements and both pumps off */

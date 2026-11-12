@@ -2061,7 +2061,8 @@ function boilStarted() {
   at the boil kettle. Both say WORT PUMP. Moving the button between panels would be a much bigger change, and Scott
   hasn't asked for it.
 - **With no recipe loaded** (brewing by hand), the screen can't tell the boil has happened, so the drawing shows
-  recirculating, as now.
+  recirculating, as now. (After a recipe finishes, the pump now stays at the boil kettle: see "After the recipe
+  finishes" below.)
 - **The transfer to the fermenter** isn't drawn.
 
 ### Changed, all in `proposal\`
@@ -2093,6 +2094,169 @@ function boilStarted() {
 - **Found and fixed while checking:** the first swirl (option 3) was a closed ring that could pass for a chiller coil in
   the kettle; option 3's "→ BOIL KETTLE" on its own line sat on the runoff's pipe; the CHILLER box was tight round its
   word on big screens; and the valves rule above.
+
+### Built (12 Nov, morning)
+
+Brett built it and put it live on 8012: UI 0cec5eb, build 2f64c39 (main.3af9a77b.js). `rig.js` is the mockup's, with
+his header and export; the screen draws `?wp=chill`; `boilStarted()`, `renderRig` and `rigDesc` are as above; the CSS
+came through scope-css; the `#whirlpool` moment is `?demo=whirlpool`. design/brewday was synced as of 09:50, with
+`whirlpool.html`.
+
+- `test_ui_brewday_identity`: 461 of 461 (was 451), with `#whirlpool` at every size, with and without graphs.
+- `test_e2e_recipe_pumps`: 62 of 62, Test Recipe v5 run live. The pump stays by the mash tun through "Ready to boil?",
+  draining it. From the boil's start it's at the boil kettle with the chiller, OFF. In the whirlpool, switched on, only
+  `ln-bk-loop` lights, and it says RUNNING at the kettle; off again, it's grey. The build before fails the five checks
+  after the boil.
+- `test_e2e_sparge_step` 110 of 110, `test_e2e_brewday` 99 of 99.
+- He found a gap: once the recipe finished, the live screen had no recipe, so the pump went back by the mash tun. The
+  next section deals with it.
+
+## After the recipe finishes: the pump stays at the boil kettle, ready to build (Scott, 12 Nov)
+
+Brett found this while building the chiller loop. When the recipe's last step finishes, the screen has no recipe
+(`liveRecipe` returns null once every step is done), so `boilStarted()` was false and the drawing put the wort pump
+back by the mash tun. That is just when Scott chills the wort and sends it to the fermenter, so running the wort pump
+lit the HERMS coil again, which is what he asked about this morning.
+
+I asked Scott whether to keep the pump at the boil kettle until he loads or resets a recipe, or switches the mash
+tun's AUTO on. He chose: "Yes, keep it at the kettle until then".
+
+### The rule
+
+The wort pump is drawn at the boil kettle while both of these are true:
+
+- **The loaded recipe's boil step has started**: running, stopped, failed or done. CraftBeerPi keeps a finished
+  recipe's steps, all done, until a recipe is loaded, reset or cleared (`StepController`: `load_recipe`, `reset_all`,
+  `clear`). Then the boil step is waiting again, or there are no steps. It's CraftBeerPi's own state, so every screen
+  agrees and a reload changes nothing.
+- **The mash tun's AUTO is off.** While it's on, its HERMS runs the wort pump through the coil, which only makes sense
+  with the hoses back on the mash tun. `#notarget` is that case, from Scott's test on 8012 on 10 Nov: the recipe had
+  finished and he held the mash tun's AUTO. Its drawing shows recirculating, as now.
+
+Otherwise the pump is drawn by the mash tun, as before.
+
+What Scott accepted, which I told him before he chose: if he later brews by hand without loading or resetting a recipe,
+and runs the wort pump himself with the mash tun in MANUAL, the drawing still shows the pump at the boil kettle. The
+same goes for pumping cleaner through the HERMS coil after a brew. The mash tun's AUTO covers the usual case, mashing.
+
+### In `screen.js`
+
+`boilStarted()` no longer needs a recipe running. Live, `M.RECIPE.steps` keeps CraftBeerPi's statuses
+(`stepModel`'s `status`) after the recipe finishes, so the boil step reads D:
+
+```js
+/* the boil has started (its step running, stopped, failed or done; held for "Ready to boil?" it is still I). From then
+   on the wort pump's hoses are on the boil kettle: Scott moves them in that hold, as CraftBeerPi's notification says
+   ("The wort pump is off, so you can move its hoses", core 1c08d4c). After the recipe finishes its steps are all D, so
+   the hoses stay there for the chill and the transfer, until a recipe is loaded or reset and its boil is I again
+   (Scott, 12 Nov) */
+function boilStarted() {
+  const bo = M.RECIPE.steps.findIndex(s => s.boil);
+  return bo >= 0 && stepStatus(bo) !== "I";
+}
+```
+
+**`stepStatus(i)` needs a guard first.** Your demo's steps have no status of their own, so it reads `st.recipe.cur`,
+and `boilStarted()` now calls it in moments with no recipe (`#manual`, `#handhold`, `#timers-hand` and the rest).
+Without the guard those moments throw. Live, every step has CraftBeerPi's status, so the guard is never reached:
+
+```js
+function stepStatus(i) {
+  const r = st.recipe, s = M.RECIPE.steps[i];
+  if (s && s.status) return s.status;
+  if (!r) return st.finished ? "D" : "I";
+  return i < r.cur ? "D" : i > r.cur ? "I" : r.state === "running" ? "A" : r.state === "stopped" ? "S" : "I";
+}
+```
+
+`finished` is a demo moment's flag: no recipe running, but CraftBeerPi still has the finished one's steps, all done.
+
+`renderRig`, the end of the comment and `post`:
+
+```js
+  /* ...still goes round the hot liquor tank. While the mash tun's AUTO is on, its HERMS runs the wort pump through the
+     coil, so the hoses are back on the mash tun (#notarget; Scott, 12 Nov: until a recipe is loaded or reset, or the
+     mash tun's AUTO is on) */
+  const post = LAYOUT === "b" && boilStarted() && st.v.mt.mode !== "auto";
+```
+
+`rigDesc(ro, held, setNow, post)`: with no recipe running, the boil can only have started if the recipe has finished,
+so the first sentence says that instead:
+
+```js
+  if (post) return head + (st.recipe ? "The boil has started, so the wort pump's hoses are on the boil kettle. " : "The recipe has finished, and the wort pump's hoses are still on the boil kettle, where they went for the boil. ")
+    + "The wort pump is drawn under the boil kettle: ...as now";
+```
+
+### In your demo
+
+- **A new moment, `#finished`** (strip: "Recipe finished, chilling"), after `#whirlpool`. It's the `#whirlpool` day at
+  17:41:30. The stand ended at 17:28:10 and switched the boil kettle off, Scott answered Brewing Complete, and the wort
+  pump runs on through the chiller. The boil kettle is down to 88.4 °F. The scene is in the mockup's `brew-day.js`,
+  after `whirlpool`. A `?demo=finished` for your identity test, if you'd like one.
+- **`finished: true` on `#notarget`.** It looks the same, since its mash tun is in AUTO. But pressing MANUAL there now
+  puts the pump at the boil kettle, as live would.
+- **LOAD clears it**: the mockup's `cmdLoad` sets `st.finished = false` beside `st.recipe`. In the demo `st.recipe`
+  wins anyway; it's only tidiness.
+- **The graph history** (`gDemo` in the mockup's `graphs.js`): `finished` goes with `boiling` and `hold`. The boil
+  kettle holds 170 °F until 17:28:10 and is chilled to 88.4 °F by 17:41:30. Its SV line and the hold end at 17:28:10,
+  and its OUT is 0 from then on. The HLT and the mash tun cool a little. `hold`'s history is unchanged.
+
+### The events in `#finished`
+
+These are the lines the built screen would log, as far as I can tell from `observe()` and the core, oldest first:
+
+- 17:28:10 "Whirlpool finished", by recipe.
+- 17:28:10 "Whirlpool: Stand over: Boil Kettle is off and no longer holding 170 °F.", from CraftBeerPi
+  (`WhirlpoolStep._end_hold`).
+- 17:28:10 "Recipe finished", by recipe.
+- 17:28:10 "Brewing Complete: Now the yeast will take over", answered (the notification with OK in
+  `StepController.start`).
+- 17:28:52 "Brewing Complete answered: OK", confirmed.
+
+If any of these isn't what the screen logs, tell me and I'll match the screen.
+
+### Moments whose pictures change
+
+- **None of the old ones.**
+- **New: `#finished`.** On a monitor and at half of it, the drawing shows the pump at the boil kettle, RUNNING, with
+  the loop lit through the chiller. The recipe column is "No recipe running" with the Recipe Book, as live. A phone has
+  no drawing.
+
+### What it still doesn't do
+
+- **The transfer to the fermenter** isn't drawn: the loop goes back into the kettle's top. CraftBeerPi can't see where
+  the hose goes.
+- **An old finished recipe left loaded** keeps the pump at the boil kettle until a recipe is loaded or reset, or the
+  mash tun's AUTO comes on. Scott accepted this (above).
+
+### Changed, all in `proposal\`
+
+- `brew-day.js`: `stepStatus` (no recipe: `st.finished`), `boilStarted` (no recipe needed), `renderRig` (`post` needs
+  the mash tun's AUTO off), `rigDesc` (the finished sentence), `cmdLoad` (clears `finished`), the `#finished` moment,
+  and `finished: true` on `#notarget`.
+- `graphs.js`: `gDemo` gives `finished` the hold's history, carried on into the chill.
+- `brew-day.html`: the strip's "Recipe finished, chilling" and the header comment.
+- `whirlpool.html`: a "Recipe finished, chilling" moment, so the record of the choice shows it. Nothing to port.
+
+### Checked
+
+- **The 31 old moments, before and after**, at 1920×950, 960×1200 and 390×844, with graphs and without, and at
+  1920×950 with `?bk=today`, `?layout=a`, `?wp=today` and `?timers=today`: 310 of 310 identical.
+- **Fit**, at the 11 sizes from 701 to 1920 px wide: `#finished`'s drawing has the same result as `#whirlpool`'s. No
+  word touches another word, a pump, a valve, a pipe or a vessel's outline, except CHILLER over the loop behind its
+  box. The pump's labels keep 14 px or more from the drawing's edge, and the CHILLER box 7 px or more from the pump.
+- **The page**, at 14 sizes from 1920 to 360 px wide, with graphs and without: nothing is wider than the window,
+  nothing is cut off except the screen-reader text and the title bar's "Connected" on a phone (hidden on purpose, as in
+  every moment), and there are no page errors.
+- **Pressed through:**
+  - In `#finished`, a tap on WORT PUMP turns it OFF at the kettle and greys the loop; a second tap starts it again.
+  - Holding the mash tun's AUTO brings the pump back by the mash tun, recirculating through the coil. MANUAL puts it at
+    the kettle again, OFF, because the HERMS switched it off.
+  - LOAD on Test Recipe v5 puts it by the mash tun.
+  - In `#notarget`, MANUAL puts it at the kettle, OFF.
+  - `#whirlpool` is at the kettle; `#boil-hold`, `#notarget-hlt` and `#manual` are by the mash tun, as before.
+  - `?wp=today#finished` shows the problem as built: the pump by the mash tun, with the HERMS coil lit.
 
 ## Open questions about the drawing
 
