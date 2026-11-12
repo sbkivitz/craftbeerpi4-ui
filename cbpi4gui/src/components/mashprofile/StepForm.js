@@ -1,4 +1,5 @@
 import { Breadcrumbs, Container, Divider, Link, Paper, Typography } from "@mui/material";
+import Alert from "@mui/material/Alert";
 import { styled } from '@mui/material/styles';
 import Button from "@mui/material/Button";
 import Grid from "@mui/material/Grid";
@@ -76,6 +77,10 @@ const StepForm = () => {
   const [type, setType] = useState("");
   const [props, setProps] = useState({})
   const [propsConfig, setPropsConfig] = useState(null);
+  // Why CraftBeerPi did not save the step, in its words: a running step's
+  // settings are not changed (DEFECTS M33). The other pages are told in a
+  // warning, which this page shows for only 5 s; here it stays by Save.
+  const [refused, setRefused] = useState("");
   const { id } = useParams();
   const { state } = useCBPi();
 
@@ -108,10 +113,11 @@ const StepForm = () => {
     };
 
     if (id) {
+      setRefused("");
       stepapi.save(id, data, (data) => {
         
         navigate("/mashprofile");
-      });
+      }, (error) => setRefused(String(error?.response?.data?.error || "")));
     } else {
       stepapi.add(data, (data) => {
         
@@ -163,6 +169,7 @@ const StepForm = () => {
 
            <PropsEdit config={propsConfig} data={props} onChange={onChangeProps} />
          </Grid>
+         {refused ? <Alert severity="warning" sx={{ mt: 3 }} data-step-refused="">{refused}</Alert> : null}
          <div className={classes.buttons}>
            <Button
              variant="contained"

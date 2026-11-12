@@ -60,6 +60,22 @@ const MASH_EVENTS = [
   ["13:27:05", "MashIn answered: Next Step", "confirmed", "ok"],
   ["13:26:58", "MashIn: Target temperature reached. Please add malt.", "answered", ""]
 ];
+/* a boil step's start, as the screen logs any step's start (stepStartLine): its kettle's target. With the proposed boil
+   kettle, which the demo runs, a target at or above where BOIL starts is BOIL, as TARGET's editor and the window say ("Boil
+   kettle target BOIL"). `from` is the boil point, so a moment can call it before the screen has state (the mockup's
+   boilStartLine, with ?bk=power) */
+const boilStartLine = (s, from = BOIL_TH) => `${s.n} started, boil kettle target ${s.temp >= +(from - 3.6).toFixed(1) ? "BOIL" : `${s.temp.toFixed(1)} °F`}`;
+/* the #hop day from the end of the sparge (the MashStep) to the boil's start, newest first, in the order the screen logs it
+   (the live runs, 12 Nov): a step's line first, then what CraftBeerPi says because of it. The sparge ending switched the HLT
+   pump off, and the boil waited for Scott; he started it with START THE BOIL. The wort pump was already off, so the boil's
+   start had no pump to switch off */
+const boilDay = () => [
+  ["15:01:47", boilStartLine(RECIPE.steps[4]), "by recipe", ""],
+  ["15:01:45", "Boil answered: Start the boil", "confirmed", "ok"],
+  ["14:58:30", `Boil: ${boilHoldBanner(RECIPE.steps[4]).text}`, "answered", ""],
+  ["14:58:30", "HLT pump: Sparge has ended, so the HLT pump is off.", "from CraftBeerPi", ""],
+  ["14:58:30", "Sparge finished", "by recipe", ""]
+];
 const mash = () => ({
   t: 14 * 3600 + 32 * 60 + 31, link: "ok", age: 0, banner: null,
   v: {hlt: {pv: 154.2, sv: 154.4, own: 168.0, mode: "manual"}, mt: {pv: 148.6, sv: 149.0, mode: "auto"}, bk: {pv: 68.0, sv: null, mode: "manual"}},
@@ -81,8 +97,7 @@ const SCENES = {
     events: [
       ["16:00:02", "Hop Alert: Please add 3.00 oz Centennial (1)", "waiting for you", "wait"],
       ["15:30:04", "Boil: 210.2 °F reached, 90 min timer started", "by recipe", ""],
-      ["15:01:47", "Boil started, boil kettle AUTO", "by recipe", ""],
-      ["14:58:30", "Sparge finished", "by recipe", ""]
+      ...boilDay()
     ]
   }),
   /* boil power mid-recipe (Scott, 10 Nov: "I need to be able to adjust boil element power even while running a recipe"):
@@ -105,10 +120,7 @@ const SCENES = {
     a: {hltEl: {on: false, pct: 0}, hltPump: {on: false}, wortPump: {on: false}, bkEl: {on: true, pct: 100}},
     recipe: {state: "running", cur: 4, left: 90 * 60, adds: [], wait: "HEATING"},
     events: [
-      ["15:01:47", "Boil started, boil kettle AUTO", "by recipe", ""],
-      ["15:01:45", "Boil answered: Start the boil", "confirmed", "ok"],
-      ["14:58:30", `Boil: ${boilHoldBanner(RECIPE.steps[4]).text}`, "answered", ""],
-      ["14:58:30", "Sparge finished", "by recipe", ""],
+      ...boilDay(),
       ["10:02:16", "Boil power back to your usual 45 % (was 35 %)", "by recipe", ""]
     ]
   }),
@@ -120,8 +132,7 @@ const SCENES = {
     recipe: {state: "running", cur: 4, left: 67 * 60 + 24, adds: []},
     events: [
       ["15:30:04", "Boil: 210.2 °F reached, 90 min timer started", "by recipe", ""],
-      ["15:01:47", "Boil started, boil kettle AUTO", "by recipe", ""],
-      ["14:58:30", "Sparge finished", "by recipe", ""]
+      ...boilDay()
     ]
   }),
   /* a boil-over: 76 s into the boil the hot break foams up, and Scott taps the element button at 15:30:55: the heat pauses */
@@ -308,9 +319,11 @@ const SCENES = {
     s.a = {hltEl: {on: false, pct: 0}, hltPump: {on: true}, wortPump: {on: true}, bkEl: {on: false, pct: 0}};
     s.fill = {mtLiq: true, bk: true};
     Object.assign(s.recipe, {wait: null, started: true, left: 32 * 60 + 22});
+    /* CraftBeerPi's words after the press (SpargeStep._start_sparge): the HLT's AUTO off, as the step heated the water,
+       and the timer's end on the brewing clock */
     s.events.unshift(
+      ["15:05:02", "Sparge: The HLT's AUTO is off now, so its element won't run as the HLT empties. Sparge timer started. Estimated completion: 15:45", "from CraftBeerPi", ""],
       ["15:05:02", "Sparge: sparge started, 40 min timer started", "confirmed", "ok"],
-      ["15:05:02", "HLT AUTO off, so its element won't run as the HLT empties", "by recipe", ""],
       ["15:04:58", "WORT PUMP started", "confirmed", "ok"],
       ["15:04:55", "HLT PUMP started", "confirmed", "ok"],
       ["15:04:10", SPARGE_ASKED, "answered", ""]);
@@ -329,8 +342,8 @@ const SCENES = {
     s.events = [
       ["15:13:31", "HLT PUMP started", "confirmed", "ok"],
       ["15:13:20", "WORT PUMP stopped", "confirmed", "ok"],
+      ["15:05:02", "Sparge: The HLT's AUTO is off now, so its element won't run as the HLT empties.", "from CraftBeerPi", ""],
       ["15:05:02", "Sparge: sparge started, until NEXT STEP", "confirmed", "ok"],
-      ["15:05:02", "HLT AUTO off, so its element won't run as the HLT empties", "by recipe", ""],
       ["15:04:58", "WORT PUMP started", "confirmed", "ok"],
       ["15:04:10", SPARGE_ASKED, "answered", ""],
       ["14:56:21", "Sparge: heating the sparge water to 168 °F, mash tun MANUAL", "by recipe", ""]
@@ -687,7 +700,7 @@ function history(scene, now) {
   return h;
 }
 
-export { RECIPE, SPARGE_STEP, VNAME, KNAME, VACT, ACT, HERMS_DELTA, BOIL_TH, BOOK, SCENES, history, noTargetBanner, pauseBanner, spargeBanner, boilHoldBanner, tfmt, tBanner };
+export { RECIPE, SPARGE_STEP, VNAME, KNAME, VACT, ACT, HERMS_DELTA, BOIL_TH, BOOK, SCENES, history, noTargetBanner, pauseBanner, spargeBanner, boilHoldBanner, boilStartLine, tfmt, tBanner };
 
 // Not the mockup's: two moments of the screen's own, for checking how the title bar holds what CraftBeerPi
 // really asks (the dashboard agent's review, 9 Nov). Not compared with the mockup.

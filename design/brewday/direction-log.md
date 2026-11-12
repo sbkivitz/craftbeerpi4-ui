@@ -1,5 +1,31 @@
 # Direction decision log
 
+## The event log's order, warnings, and CraftBeerPi's own words (12 Nov 2026, late afternoon)
+- Brett built "a question's line turns answered" (M81) and ran it live. Lines that arrive in one update were logged
+  CraftBeerPi's messages first, steps after: "HLT pump: Batch Sparge has ended…" and the boil's question before "Batch
+  Sparge finished", and in one run of four a stand's question before "Whirlpool started". He offered to change the
+  order, and asked whether OK on a warning should turn its amber line plain.
+- Chosen, order: in each update, log what happened in the order it happened. Questions gone first (an answer before
+  what it sets going); what a step says as it stops (titled with its name, sent before it's marked done: "Stand
+  over…") before its line; then the steps' lines and "Recipe finished"; then everything else CraftBeerPi said, because
+  the steps' changes set it going. The event line then shows the consequence (the waiting question, "you can move its
+  hoses"), not the step change behind it. Cause before effect is how a log is read (Norman's gulf of evaluation; NN/g
+  visibility of system status). Not chosen: steps first with no exception, which would put "Stand over" after "Recipe
+  finished".
+- Chosen, warnings: amber while the warning waits in this screen's title bar for OK, plain once it's gone (OK, pushed
+  out, or a page opened later); the line keeps "from CraftBeerPi" and doesn't say "answered", because OK tells
+  CraftBeerPi nothing. Errors stay red: red records that something went wrong, which stays true; amber says something
+  waits, which stops being true.
+- Agreed, Brett's call: a question that drops off as the page reconnects, with no reason, says "no longer waiting".
+- From his live log: CraftBeerPi's sparge message replaces my "HLT AUTO off…" line; the boil's start line says "target
+  BOIL" with the new BoilPower (as TARGET's editor and the window do; today's BoilPower keeps 210.2 °F); the live
+  screen must not log "Whirlpool: 170 °F reached, 20 min timer started" (a WhirlpoolStep's timer starts with the step).
+  The #hop day's history now has the sparge's end, the HLT pump's message and the held boil as live logs them.
+- Raised with Brett, his core: questions CraftBeerPi waits on but doesn't keep ("Heating is not working" above all)
+  leave a reloaded page an amber line with nothing to press.
+- Checked: only 11 moments' lines change; 224 pictures, 210 identical, 14 differ only in the event line (#heatup,
+  #sparge-run); fit with LOG open at five widths; every press walked. Handed to Brett.
+
 ## A question's line turns "answered" (12 Nov 2026, afternoon)
 - Brett, after building #finished and running it live: the built screen never changes a line once it's logged. A
   question's line stays "waiting for you", in amber, after it's answered; the answer adds its own line. My moments

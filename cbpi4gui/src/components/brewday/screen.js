@@ -34,6 +34,11 @@
 //   the same line says "answered", "no longer needed" or, where the page can't tell which (opened later, or after the
 //   connection came back), "no longer waiting" (the dashboard agent's hand-off of 12 Nov, afternoon). Live, the line
 //   keeps the question's CraftBeerPi id to find it by; the mockup's lines have none, so it finds them by their words.
+// - What arrives together is logged in the order it happened: questions gone, a step's last words, the steps' lines, then
+//   the rest of what CraftBeerPi said, so the event line ends on what it led to. A warning's line is amber only while the
+//   warning waits in the title bar for OK (the dashboard agent's hand-off of 12 Nov, late afternoon). The mockup has
+//   neither: its presses log in that order themselves, and it has no warnings without buttons. Live, what a step's
+//   change set going can also reach the screen just before the change itself; its line goes before that (logStep).
 import { rigSVG, RIG_H } from "./rig";
 import * as DEMO from "./demo";
 import { api, why as failWhy } from "./api";
@@ -849,6 +854,27 @@ function logEvent(what, res, tone, cav = "", shared = false, q = null) {
   if (st.events.length > 50) st.events.length = 50;
   saveEvents();
 }
+/* a step's line, live, goes before what CraftBeerPi said in the second before it, as that followed from the step's change
+   but reached the screen first: CraftBeerPi tells a plugin a step has ended before it sends the step's own update, and the
+   HLT pump's "Batch Sparge has ended, so the HLT pump is off" came 18 ms ahead of "Batch Sparge finished" (12 Nov, the
+   sparge test). The event line then ends on the consequence, as it does when they come together (observe). Not before
+   what a step itself said as it stopped (ending: its name's lines), its last words; nor past another step's line, an
+   answer, or anything older. name is CraftBeerPi's name for the step, the title of its own messages */
+const BURST = 1000;
+function logStep(what, res, tone, name, ending = false) {
+  logEvent(what, res, tone);
+  if (DEMO_MODE) return;
+  const line = st.events[0], title = `${ut(String(name))}: `;
+  let i = 1;
+  for (; i < st.events.length; i++) {
+    const e = st.events[i];
+    if (!(line[5] - (e[5] || 0) <= BURST) || (e[2] !== "from CraftBeerPi" && e[2] !== "waiting for you")) break;
+    if (ending && String(e[1]).startsWith(title)) break;
+  }
+  if (i === 1) return;
+  st.events.splice(i, 0, st.events.shift());
+  saveEvents();
+}
 /* a question's line says "waiting for you", in Prompt Amber, only while CraftBeerPi waits for its answer. Once the
    question goes, the same line says what became of it, in the plain colour, and keeps the time it was asked (the
    dashboard agent's hand-off of 12 Nov, afternoon: amber in the log always means something still needs you). Live, q is
@@ -1175,12 +1201,14 @@ function boilStart() {
   if (st.hist) st.hist.steps.push([st.t, r.cur + 1]);
   stepTarget(s);
   Object.assign(r, {held: false, state: "running", wait: st.v.bk.pv < boilFrom()});
+  /* the step's line first, then what CraftBeerPi says as it starts: the screen logs a step's change before the words it
+     sets going (observe; the dashboard agent's hand-off of 12 Nov, late afternoon) */
   soon(() => {
+    logEvent(DEMO.boilStartLine(s, boilFrom()), "by recipe", "");
     if (off.length) {
       const w = off.join(" and ");
       logEvent(`${s.n}: ${w[0].toUpperCase()}${w.slice(1)} ${off.length > 1 ? "are" : "is"} off, so you can move ${off.length > 1 ? "their" : "its"} hoses.`, "from CraftBeerPi", "");
     }
-    logEvent(`${s.n} started, boil kettle AUTO`, "by recipe", "");
   });
 }
 /* a SpargeStep switches a pump off for the brewer to move its hoses, once a run of the step (core 1c08d4c, _hose_off): the
@@ -1267,10 +1295,12 @@ function cmdBanner(x) {
       const r = st.recipe;
       questionGone(s.n);
       st.banner = null; r.wait = null; r.started = true;
-      if (st.v.hlt.mode === "auto") {
-        setMode("hlt", "manual");
-        timers.push(setTimeout(() => { logEvent("HLT AUTO off, so its element won't run as the HLT empties", "by recipe", ""); renderAll(); }, 300));
-      }
+      if (st.v.hlt.mode === "auto") setMode("hlt", "manual");
+      /* CraftBeerPi says what it did, in its words, just after the press's own line (SpargeStep._start_sparge): the HLT's
+         AUTO off, when the step heated the sparge water, and the timer's end on the brewing clock, when it has one */
+      const said = [s.temp > 0 ? "The HLT's AUTO is off now, so its element won't run as the HLT empties." : "",
+        s.min ? `Sparge timer started. Estimated completion: ${hhmm(st.t + s.min * 60)}` : ""].filter(Boolean).join(" ");
+      if (said) timers.push(setTimeout(() => { logEvent(`${s.n}: ${said}`, "from CraftBeerPi", ""); renderAll(); }, 300));
     });
   }
   /* OK: the rest timer's alarm, or a warning that waits for one (no target, a forgotten pause) */
@@ -1854,7 +1884,7 @@ function run(cmd) {
       return renderAll();
     case "p": return livePrompt(x, y);
     case "e": st.errors = st.errors.filter(e => String(e.id) !== x); return renderAll();
-    case "w": st.warnings = st.warnings.filter(w => String(w.id) !== x); return renderAll();
+    case "w": st.warnings = st.warnings.filter(w => String(w.id) !== x); warningsGone(); return renderAll();
     case "alloff": return DEMO_MODE ? cmdAllOff() : liveAllOff();
     case "log": st.logOpen = !st.logOpen; return renderAll();
     case "tm": return DEMO_MODE ? cmdTimer(x) : liveTimer(x);
@@ -2038,11 +2068,22 @@ function liveBanner() {
   });
   st.banner = queue.length ? {...queue[0], more: queue.length - 1} : null;
 }
-/* a warning stays in the title bar until OK; the same one again is not shown twice */
+/* a warning stays in the title bar until OK; the same one again is not shown twice. Ten at most: a newer one pushes the
+   oldest out, and its line turns plain (warningsGone) */
 function addWarning(id, title, message) {
   if (st.warnings.some(w => w.title === title && w.message === message)) return;
   st.warnings.push({id, title, message});
-  if (st.warnings.length > 10) st.warnings.shift();
+  if (st.warnings.length > 10) { st.warnings.shift(); warningsGone(); }
+}
+/* a warning's line is amber only while the warning waits in this screen's title bar for OK. Once it has gone (OK, or pushed
+   out by newer ones), each line with its words takes the plain colour and keeps "from CraftBeerPi": OK tells CraftBeerPi
+   nothing, so it doesn't say "answered" (the dashboard agent's hand-off of 12 Nov, late afternoon). Lines kept from an
+   earlier page load plain: this page's title bar has no warnings yet. Errors stay red */
+function warningsGone() {
+  const shown = new Set((st.warnings || []).map(w => `${ut(w.title)}: ${ut(w.message)}`));
+  let changed = false;
+  for (const e of st.events) if (e[2] === "from CraftBeerPi" && e[3] === "wait" && !shown.has(e[1])) { e[3] = ""; changed = true; }
+  if (changed) saveEvents();
 }
 /* a step starting, or resuming after a Stop, for the event line. A SpargeStep says what it does as it starts (the design,
    10 Nov): it heats the sparge water with the mash tun MANUAL, or with no water to heat leaves the pumps to the brewer.
@@ -2056,7 +2097,11 @@ function stepStartLine(m, resumed, s) {
   /* a whirlpool sets no target as it starts: it holds its temperature only after "Heat and hold" (the dashboard agent's
      hand-off of 12 Nov, afternoon) */
   if (s && s.type === "WhirlpoolStep") return `${m.n} ${resumed ? "resumed" : "started"}${m.min ? `, ${m.min} min` : ""}`;
-  return `${m.n} ${resumed ? "resumed" : "started"}${m.temp != null ? `, ${M.VNAME[m.k].toLowerCase()} target ${m.temp.toFixed(1)} ${M.U}` : ""}`;
+  /* the proposed boil kettle shows a target at or above where BOIL starts as BOIL, never as a temperature, as its window
+     and TARGET's editor do (the dashboard agent's hand-off of 12 Nov, late afternoon). Today's BoilPower shows the
+     temperature */
+  const tgt = m.temp == null ? "" : m.boil && M.BKNEW && m.temp >= bkLetGo() ? "BOIL" : `${m.temp.toFixed(1)} ${M.U}`;
+  return `${m.n} ${resumed ? "resumed" : "started"}${tgt ? `, ${M.VNAME[m.k].toLowerCase()} target ${tgt}` : ""}`;
 }
 /* a question's words in the event line: a timer's alarm as "<name> finished", any other "title: message" */
 function promptWords(a) {
@@ -2089,18 +2134,12 @@ function observe(prev, snap) {
     // a plugin comes or goes with a restart: ask again whether BrewScribe is there
     probeBrewScribe();
   }
+  /* What came in this update is logged in the order it happened (the dashboard agent's hand-off of 12 Nov, late afternoon),
+     so the event line ends on what it led to: the question that waits, or that the hoses can be moved. First the questions
+     that have gone, as an answer comes before what it sets going; then what a step said as it stopped; then the steps'
+     lines and "Recipe finished"; then everything else CraftBeerPi said, in the order it came */
   const before = new Map((prev.alerts || []).map(a => [String(a.id), a]));
   const now = new Set((snap.alerts || []).map(a => String(a.id)));
-  for (const a of snap.alerts || []) {
-    const id = String(a.id), type = String(a.type || "").toLowerCase(), title = ut(a.title), msg = ut(a.message), line = `${title}: ${msg}`;
-    if (before.has(id) || OWN_ALERTS.has(id)) continue;
-    const tm = Array.isArray(a.action) && a.action.length ? promptTimer(a) : null;
-    if (tm) { if (!askedBefore(id, `${tm.name} finished`)) logEvent(`${tm.name} finished`, "waiting for you", "wait", "", false, id); say(`${tm.name}: time's up.`, true); }
-    else if (Array.isArray(a.action) && a.action.length) { if (!askedBefore(id, line)) logEvent(line, "waiting for you", "wait", "", false, id); say(`${title}. ${msg}`, true); }
-    else if (type === "error") { st.errors.push({id, title: a.title, message: a.message}); logEvent(line, "from CraftBeerPi", "bad"); say(`${title}. ${msg}`, true); }
-    else if (type === "warning") { addWarning(id, a.title, a.message); logEvent(line, "from CraftBeerPi", "wait"); say(`${title}. ${msg}`); }
-    else if (!ROUTINE.test(String(a.message || "").trim())) logEvent(line, "from CraftBeerPi", "");
-  }
   /* a question gone: its own line says so (questionGone): answered, here or on another screen; taken down by CraftBeerPi,
      no longer needed; or dropped as this page connected again, with no word of why, no longer waiting, as on a page
      opened later. A line of its own only when it was answered on another screen, which is news, or when this tab never
@@ -2116,6 +2155,14 @@ function observe(prev, snap) {
   }
   const old = new Map((prev.steps || []).filter(Boolean).map(s => [s.id, s]));
   const steps = (snap.steps || []).filter(Boolean);
+  /* CraftBeerPi's new messages, in two parts. What a step says as it stops is titled with its name ("Whirlpool: Stand
+     over: …"), and CraftBeerPi sends it before it marks the step done: it goes before the step's line. Everything else
+     goes after the steps' lines, because their changes set it going: the runoff's pump off and the held boil's question
+     after "Sparge finished", a step's own words after its start, Brewing Complete after "Recipe finished" */
+  const fresh = (snap.alerts || []).filter(a => !before.has(String(a.id)) && !OWN_ALERTS.has(String(a.id)));
+  const ending = new Set(steps.filter(s => { const o = old.get(s.id); return o && o.status === "A" && s.status !== "A"; }).map(s => String(s.name)));
+  const lastWords = a => ending.has(String(a.title));
+  fresh.filter(lastWords).forEach(logAlert);
   // START and NEXT STEP pressed here have logged themselves ("Recipe started", "Skipped to …"), as in the
   // mockup: the steps they start and finish are the brewer's doing, not the recipe's.
   const mine = id => ["start", "next"].some(k => own[k] && Date.now() - own[k].at < 10000 && own[k].ids.includes(id));
@@ -2125,20 +2172,37 @@ function observe(prev, snap) {
     const m = M.RECIPE.steps.find(x => x.id === s.id) || {n: s.name}, sparge = s.type === "SpargeStep";
     // a SpargeStep's Sparge started pressed elsewhere: its timer starts at the press, not at a temperature
     if (sparge && !(o.props || {})._sparge_started && (s.props || {})._sparge_started
-      && !(own.sparge && own.sparge.id === s.id && Date.now() - own.sparge.at < 10000)) logEvent(spargeStartedLine(m), "from another screen", "");
+      && !(own.sparge && own.sparge.id === s.id && Date.now() - own.sparge.at < 10000)) logStep(spargeStartedLine(m), "from another screen", "", s.name);
     if (o.status === s.status && parseLeft(o.state_text) != null) continue;
     if (o.status !== "A" && s.status === "A") {
-      if (!mine(s.id)) logEvent(stepStartLine(m, o.status === "S", s), "by recipe", "");
-    } else if (o.status === "A" && s.status === "D") { if (!mine(s.id)) logEvent(`${m.n} finished`, "by recipe", ""); }
-    else if (o.status === "A" && s.status === "S" && !(Date.now() - (own.stop || 0) < 10000)) logEvent(`${m.n} stopped`, "from another screen", "");
-    else if (s.status === "E" && o.status !== "E") logEvent(`${m.n}: error`, "by recipe", "bad");
-    else if (o.status === "A" && s.status === "A" && parseLeft(o.state_text) == null && parseLeft(s.state_text) != null && m.min && !sparge) {
-      logEvent(`${m.n}: ${m.temp != null ? `${m.temp} ${M.U} reached, ` : ""}${m.min} min timer started`, "by recipe", "");
+      if (!mine(s.id)) logStep(stepStartLine(m, o.status === "S", s), "by recipe", "", s.name);
+    } else if (o.status === "A" && s.status === "D") { if (!mine(s.id)) logStep(`${m.n} finished`, "by recipe", "", s.name, true); }
+    else if (o.status === "A" && s.status === "S" && !(Date.now() - (own.stop || 0) < 10000)) logStep(`${m.n} stopped`, "from another screen", "", s.name, true);
+    else if (s.status === "E" && o.status !== "E") logStep(`${m.n}: error`, "by recipe", "bad", s.name, true);
+    /* a timer that waited for a temperature. Not a SpargeStep's, which starts at the press, nor a whirlpool's, which starts
+       with the step whatever the temperature (WaitStep.on_start): its start line says the minutes (the dashboard agent's
+       hand-off of 12 Nov, late afternoon) */
+    else if (o.status === "A" && s.status === "A" && parseLeft(o.state_text) == null && parseLeft(s.state_text) != null
+      && m.min && !sparge && s.type !== "WhirlpoolStep") {
+      logStep(`${m.n}: ${m.temp != null ? `${m.temp} ${M.U} reached, ` : ""}${m.min} min timer started`, "by recipe", "", s.name);
     }
   }
   if (steps.length && steps.every(s => s.status === "D") && (prev.steps || []).some(s => s && s.status !== "D") && steps.every(s => old.has(s.id))) {
-    logEvent("Recipe finished", "by recipe", "ok");
+    logStep("Recipe finished", "by recipe", "ok", steps[steps.length - 1].name, true);
   }
+  fresh.filter(a => !lastWords(a)).forEach(logAlert);
+}
+/* one of CraftBeerPi's new messages, for the event line, and for the title bar when it waits there: a question (a timer's
+   alarm, by its name) waits for you, in amber, until it goes (questionGone); an error stays red; a warning is amber while
+   it waits in the title bar for OK (warningsGone); anything else, but the routine, in the plain colour */
+function logAlert(a) {
+  const id = String(a.id), type = String(a.type || "").toLowerCase(), title = ut(a.title), msg = ut(a.message), line = `${title}: ${msg}`;
+  const tm = Array.isArray(a.action) && a.action.length ? promptTimer(a) : null;
+  if (tm) { if (!askedBefore(id, `${tm.name} finished`)) logEvent(`${tm.name} finished`, "waiting for you", "wait", "", false, id); say(`${tm.name}: time's up.`, true); }
+  else if (Array.isArray(a.action) && a.action.length) { if (!askedBefore(id, line)) logEvent(line, "waiting for you", "wait", "", false, id); say(`${title}. ${msg}`, true); }
+  else if (type === "error") { st.errors.push({id, title: a.title, message: a.message}); logEvent(line, "from CraftBeerPi", "bad"); say(`${title}. ${msg}`, true); }
+  else if (type === "warning") { addWarning(id, a.title, a.message); logEvent(line, "from CraftBeerPi", "wait"); say(`${title}. ${msg}`); }
+  else if (!ROUTINE.test(String(a.message || "").trim())) logEvent(line, "from CraftBeerPi", "");
 }
 /* a page opened later: the lines kept on this device can hold a question that still waited as the last page closed. Once
    CraftBeerPi's list of the questions it waits on has come (it sends it as the page connects: snap.waiting), each such
@@ -2528,6 +2592,8 @@ export function createBrewDay(el, o = {}) {
   } else {
     st = blankMoment();
     M = model({book});
+    // a warning's line kept from an earlier page is plain: this page's title bar has none of them (warningsGone)
+    warningsGone();
     // the timers until CraftBeerPi says it has none (applyLive)
     M.TIMERS = true;
     if (GRAPHS) { H = createHistory(); st.hist = H.hist; }

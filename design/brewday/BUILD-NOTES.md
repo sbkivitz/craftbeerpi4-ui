@@ -2219,6 +2219,48 @@ If any of these isn't what the screen logs, tell me and I'll match the screen.
 Brett's live run on 12 Nov found two differences: the stand's notice comes first, and Brewing Complete's line stays
 "waiting for you". Both are settled in the next section, with the corrected list.
 
+### Moments whose pictures change
+
+- **None of the old ones.**
+- **New: `#finished`.** On a monitor and at half of it, the drawing shows the pump at the boil kettle, RUNNING, with
+  the loop lit through the chiller. The recipe column is "No recipe running" with the Recipe Book, as live. A phone has
+  no drawing.
+
+### What it still doesn't do
+
+- **The transfer to the fermenter** isn't drawn: the loop goes back into the kettle's top. CraftBeerPi can't see where
+  the hose goes.
+- **An old finished recipe left loaded** keeps the pump at the boil kettle until a recipe is loaded or reset, or the
+  mash tun's AUTO comes on. Scott accepted this (above).
+
+### Changed, all in `proposal\`
+
+- `brew-day.js`: `stepStatus` (no recipe: `st.finished`), `boilStarted` (no recipe needed), `renderRig` (`post` needs
+  the mash tun's AUTO off), `rigDesc` (the finished sentence), `cmdLoad` (clears `finished`), the `#finished` moment,
+  and `finished: true` on `#notarget`.
+- `graphs.js`: `gDemo` gives `finished` the hold's history, carried on into the chill.
+- `brew-day.html`: the strip's "Recipe finished, chilling" and the header comment.
+- `whirlpool.html`: a "Recipe finished, chilling" moment, so the record of the choice shows it. Nothing to port.
+
+### Checked
+
+- **The 31 old moments, before and after**, at 1920×950, 960×1200 and 390×844, with graphs and without, and at
+  1920×950 with `?bk=today`, `?layout=a`, `?wp=today` and `?timers=today`: 310 of 310 identical.
+- **Fit**, at the 11 sizes from 701 to 1920 px wide: `#finished`'s drawing has the same result as `#whirlpool`'s. No
+  word touches another word, a pump, a valve, a pipe or a vessel's outline, except CHILLER over the loop behind its
+  box. The pump's labels keep 14 px or more from the drawing's edge, and the CHILLER box 7 px or more from the pump.
+- **The page**, at 14 sizes from 1920 to 360 px wide, with graphs and without: nothing is wider than the window,
+  nothing is cut off except the screen-reader text and the title bar's "Connected" on a phone (hidden on purpose, as in
+  every moment), and there are no page errors.
+- **Pressed through:**
+  - In `#finished`, a tap on WORT PUMP turns it OFF at the kettle and greys the loop; a second tap starts it again.
+  - Holding the mash tun's AUTO brings the pump back by the mash tun, recirculating through the coil. MANUAL puts it at
+    the kettle again, OFF, because the HERMS switched it off.
+  - LOAD on Test Recipe v5 puts it by the mash tun.
+  - In `#notarget`, MANUAL puts it at the kettle, OFF.
+  - `#whirlpool` is at the kettle; `#boil-hold`, `#notarget-hlt` and `#manual` are by the mash tun, as before.
+  - `?wp=today#finished` shows the problem as built: the pump by the mash tun, with the HERMS coil lit.
+
 ## A question's line turns "answered": ready to build (12 Nov, afternoon)
 
 Brett ran `#finished` against the live screen (UI cf501e6) and found two differences:
@@ -2412,6 +2454,8 @@ answered: button".
   log there, I'll match `#boil-hold` and `#heatup` to it.
 - **`#hold`'s lines** are from the code, as yours were. The same, if a run reaches the stand.
 
+Settled by Brett's live runs the same afternoon: see the next section.
+
 ### Lines in my words that aren't questions, for one later pass
 
 These differ from what the screen as built logs, as far as I can tell from the code. They aren't questions, so this
@@ -2422,6 +2466,8 @@ by one from the code:
   CraftBeerPi's notice: "Sparge: The HLT's AUTO is off now, so its element won't run as the HLT empties. Sparge timer
   started. Estimated completion: 15:45", from CraftBeerPi.
 - The boil's start: the mockup's "Boil started, boil kettle AUTO"; live, "Boil started, boil kettle target 210.2 °F".
+
+Done in the next section, from Brett's live log.
 
 ### Moments whose pictures change
 
@@ -2459,47 +2505,213 @@ Only in the event line:
   - "no longer needed": STOP and NEXT STEP in `#sparge-ready` (the boil's question then waits, amber); MANUAL and a
     target in `#notarget`; MANUAL in `#pause-long`; the recipe's NEXT STEP past Whirlpool Hop.
 
+## The event log's order, warnings, and CraftBeerPi's own words: ready to build (12 Nov, late afternoon)
+
+Brett built the last section (M81: UI 60b858b, build 95a1f17; identity 471/471, and his live tests pass) and ran it
+live. What came back, and what I've decided:
+
+- **His call, agreed:** a question that drops off as the page connects again, or after a restart, with no reason from
+  CraftBeerPi, says "no longer waiting", as on a page opened later. The page can't tell whether it was answered or
+  taken down. DESIGN.md now says so.
+- **Brewing Complete is now kept for pages opened later** (core 3eda6aa). Nothing to design.
+- The rest is below: the order of lines that arrive together (1), warnings (2), two live lines that say something
+  untrue (3), the demo (4), and the questions CraftBeerPi still doesn't keep (5).
+
+### 1. Lines that arrive together: the step's change first
+
+When CraftBeerPi's messages and a step's change come in the same update, the screen as built logs the messages first.
+At the end of the sparge, Brett's run logged, oldest first:
+
+- HLT pump: Batch Sparge has ended, so the HLT pump is off. The wort pump is still running, …
+- Boil Step: Ready to boil? … · waiting for you
+- Batch Sparge finished
+
+The HLT pump's line talks about the sparge ending before the line that says it ended. And the event line, which shows
+the newest line, says "Batch Sparge finished" while the question waits. The order isn't even fixed: in one run of four
+the whirlpool's start came before its question, in the other three after it.
+
+**The rule: in each update, log things in the order they happened.**
+
+1. Questions that have gone (the loop that changes their lines, and its "answered on another screen" line). An answer
+   comes before what it sets going.
+2. What a step says as it stops. CraftBeerPi titles it with the step's name, and sends it before it marks the step
+   done: "Whirlpool: Stand over: Boil Kettle is off and no longer holding 170 °F."
+3. The steps' lines, then "Recipe finished".
+4. Everything else CraftBeerPi said, in the order it came, because the steps' changes set it going. The runoff's pump
+   off and the held boil's question come after "Sparge finished". A step's own words come after its start ("Boil
+   started…", then "Boil: The wort pump is off, so you can move its hoses."). Brewing Complete comes after "Recipe
+   finished".
+
+The event line then shows the consequence, which is what Scott needs to see: the question that waits, in amber, or
+that he can move the hoses.
+
+Your live runs, in this order:
+
+- End of the sparge (`#boil-hold`): Sparge finished; HLT pump: Sparge has ended…; Boil: Ready to boil?… The moment
+  already has this order.
+- START THE BOIL: Boil answered: Start the boil; Boil started, boil kettle target BOIL; Boil: The wort pump is off,
+  so you can move its hoses.
+- A stand that asks at once: Whirlpool Hop finished; Whirlpool started, 20 min; Whirlpool: The wort in Boil Kettle has
+  cooled… Heat it back…?
+- The end (`#finished`): Whirlpool: Stand over…; Whirlpool finished; Recipe finished; Brewing Complete… (as now).
+
+In `observe`:
+
+```js
+function observe(prev, snap) {
+  if (!prev) return;
+  // …the connection lines, as now…
+  const before = new Map((prev.alerts || []).map(a => [String(a.id), a]));
+  const now = new Set((snap.alerts || []).map(a => String(a.id)));
+  /* a question gone: …the loop as now, moved up from after the new messages. An answer comes before what it sets
+     going */
+  for (const [id, a] of before) { /* …as now… */ }
+  const old = new Map((prev.steps || []).filter(Boolean).map(s => [s.id, s]));
+  const steps = (snap.steps || []).filter(Boolean);
+  /* CraftBeerPi's new messages, in two parts (the design, 12 Nov, late afternoon). What a step says as it stops is
+     titled with its name ("Whirlpool: Stand over: …") and goes before its line. Everything else goes after the steps'
+     lines, because their changes set it going: the runoff's pump off and the held boil's question after "Sparge
+     finished", a step's own words after its start, Brewing Complete after "Recipe finished" */
+  const fresh = (snap.alerts || []).filter(a => !before.has(String(a.id)) && !OWN_ALERTS.has(String(a.id)));
+  const ending = new Set(steps.filter(s => { const o = old.get(s.id); return o && o.status === "A" && s.status !== "A"; }).map(s => String(s.name)));
+  const lastWords = a => ending.has(String(a.title));
+  fresh.filter(lastWords).forEach(logAlert);
+  // …mine, the steps' loop and "Recipe finished", as now…
+  fresh.filter(a => !lastWords(a)).forEach(logAlert);
+}
+/* one of CraftBeerPi's new messages, for the event line and the title bar: today's loop body, from `const id = …` on,
+   without its `continue` */
+function logAlert(a) { /* … */ }
+```
+
+The mockup has no `observe`. Its presses and moments follow the rule (part 4).
+
+### 2. Warnings: OK turns their line plain
+
+Brett's question: a warning without buttons is logged "from CraftBeerPi" in amber, and stays amber after OK in the
+title bar. Should OK turn it plain? **Yes.** A warning waits in this screen's title bar for OK, so its line is amber
+while it's there. Once it has gone, the line takes the plain colour and keeps "from CraftBeerPi". The words stay as
+they are: OK tells CraftBeerPi nothing, so the line doesn't say "answered".
+
+- **Gone** means OK, or pushed out of the title bar by newer ones (`addWarning` keeps 10).
+- **A page opened later** has no warnings in its title bar, so warning lines kept from before load plain.
+- **The same warning twice** is shown once (`addWarning`) but logged twice. Match by words, so both lines turn plain
+  together.
+- **Errors stay red, after OK too.** Red says something went wrong, and that stays true. Amber says something still
+  waits, which stops being true. A failed command's "failed: no answer in 5 s" is the same.
+
+```js
+/* a warning's line is amber only while the warning waits in this screen's title bar for OK. Once it has gone (OK, or
+   pushed out by newer ones), each line with its words takes the plain colour and keeps "from CraftBeerPi" (the design,
+   12 Nov, late afternoon). Lines kept from an earlier page load plain: this page's title bar has no warnings yet */
+function warningsGone() {
+  const shown = new Set(st.warnings.map(w => `${ut(w.title)}: ${ut(w.message)}`));
+  let changed = false;
+  for (const e of st.events) if (e[2] === "from CraftBeerPi" && e[3] === "wait" && !shown.has(e[1])) { e[3] = ""; changed = true; }
+  if (changed) saveEvents();
+}
+```
+
+Call it after OK (`case "w"`), after `addWarning` pushes one out, and once as the page loads its kept lines. The
+mockup has no warnings without buttons, so nothing changes there.
+
+### 3. Two live lines that say something untrue
+
+**The whirlpool's timer line.** In one of your four runs the screen logged "Whirlpool: 170 °F reached, 20 min timer
+started". A WhirlpoolStep is a WaitStep: its timer starts with the step (`WaitStep.on_start`), whatever the
+temperature, so nothing was reached. Its start line already says "Whirlpool started, 20 min", so leave the timer line
+out for it, as for a SpargeStep:
+
+```js
+    /* …a whirlpool's timer starts with the step, whatever the temperature, and its start line says the minutes */
+    else if (o.status === "A" && s.status === "A" && parseLeft(o.state_text) == null && parseLeft(s.state_text) != null
+      && m.min && !sparge && s.type !== "WhirlpoolStep") {
+```
+
+**The boil's start line with the new BoilPower.** Live logs "Boil Step started, boil kettle target 210.2 °F". With the
+proposed boil kettle, that target is BOIL in the window and in TARGET's editor, and the screen's own line for setting
+it by hand is "Boil kettle target BOIL". The design's rule is not to show the boil point as the boil kettle's target
+while its target is BOIL. So the start line says BOIL too. With today's BoilPower it stays 210.2 °F, as its window
+shows it. In `stepStartLine`:
+
+```js
+  /* the proposed boil kettle shows a target at or above where BOIL starts as BOIL, never as a temperature (the design,
+     12 Nov, late afternoon) */
+  const tgt = m.temp == null ? "" : m.boil && M.BKNEW && m.temp >= bkLetGo() ? "BOIL" : `${m.temp.toFixed(1)} ${M.U}`;
+  return `${m.n} ${resumed ? "resumed" : "started"}${tgt ? `, ${M.VNAME[m.k].toLowerCase()} target ${tgt}` : ""}`;
+```
+
+### 4. In your demo
+
+- **`boilStart`:** the start line first, then the pump message. Its words come from the mockup's `boilStartLine(s,
+  from)`: "Boil started, boil kettle target BOIL", or "…target 210.2 °F" with `?bk=today`.
+- **SPARGE STARTED (`cmdBanner`):** "HLT AUTO off, so its element won't run as the HLT empties · by recipe" becomes
+  CraftBeerPi's message, as live logs it: "Sparge: The HLT's AUTO is off now, so its element won't run as the HLT
+  empties. Sparge timer started. Estimated completion: 15:44 · from CraftBeerPi". It comes 300 ms after the press's
+  own line. The first sentence is there only when the step heated the sparge water, and the second only when it has
+  a timer. The time is the press plus the step's minutes, as hours and minutes.
+- **The moments:**
+  - `#hop`, `#heatup` and `#boiling`, and the moments built on them (`#boilpower`, `#keepboil`, `#letfall`, `#pause`,
+    `#pause-long`): the boil day, from the end of the sparge to the boil's start, is the mockup's `boilDay()`.
+    Oldest first: Sparge finished; "HLT pump: Sparge has ended, so the HLT pump is off." from CraftBeerPi; the boil's
+    question, answered; "Boil answered: Start the boil"; "Boil started, boil kettle target BOIL" (or "…210.2 °F"). It
+    was "Sparge finished" and "Boil started, boil kettle AUTO". The HLT pump line is your recipe test's, with a
+    MashStep Sparge.
+  - `#sparge-run` and `#sparge-batch`, and `#boil-hold`, which is built on `#sparge-run`: CraftBeerPi's sparge
+    message, as the newer of the two 15:05:02 lines. In `#sparge-batch`, with no timer, it's the first sentence alone.
+
+### 5. Questions CraftBeerPi doesn't keep
+
+You found that a page reloaded while "Heating is not working", the refusal to change a running step, or a sensor
+plugin's prompt waits shows an amber line with nothing to press. The line is true: CraftBeerPi does wait. But the
+design says a question stays on every screen until it's answered, and a phone opened later doesn't even get the line.
+The core is yours. My thoughts:
+
+- **"Heating is not working" matters most.** It's the only warning that the element isn't heating the wort, and its
+  Stop the profile is the way out. Please keep it as the steps' questions are, until it's answered or no longer
+  applies (the step ends, or the wort warms again).
+- **The refusal to change a running step** answers whoever made the change, on the page they used. Other screens have
+  nothing to answer. Sent as a warning without OK, the brew-day screen would show it in the title bar until OK and log
+  it as a warning (part 2). Check the Brew Steps page still shows it, though: the old pages let a notification without
+  a button go after 5 s.
+- **Sensor plugins' prompts** can't be changed one by one. Keeping every prompt that has buttons, in `notify()`, would
+  cover them. The cost: an old unanswered prompt shows on every page until its button is pressed or it drops out of
+  the cache.
+
 ### Moments whose pictures change
 
-- **None of the old ones.**
-- **New: `#finished`.** On a monitor and at half of it, the drawing shows the pump at the boil kettle, RUNNING, with
-  the loop lit through the chiller. The recipe column is "No recipe running" with the Recipe Book, as live. A phone has
-  no drawing.
+Only in the event line:
 
-### What it still doesn't do
+- `#heatup`: "Boil started, boil kettle target BOIL" ("…target 210.2 °F" with `?bk=today`).
+- `#sparge-run`: CraftBeerPi's sparge message, ending with "…" where the line is too narrow for it.
 
-- **The transfer to the fermenter** isn't drawn: the loop goes back into the kettle's top. CraftBeerPi can't see where
-  the hose goes.
-- **An old finished recipe left loaded** keeps the pump at the boil kettle until a recipe is loaded or reset, or the
-  mash tun's AUTO comes on. Scott accepted this (above).
+The other changes are in LOG only.
 
-### Changed, all in `proposal\`
+### Changed, all in `proposal\brew-day.js`
 
-- `brew-day.js`: `stepStatus` (no recipe: `st.finished`), `boilStarted` (no recipe needed), `renderRig` (`post` needs
-  the mash tun's AUTO off), `rigDesc` (the finished sentence), `cmdLoad` (clears `finished`), the `#finished` moment,
-  and `finished: true` on `#notarget`.
-- `graphs.js`: `gDemo` gives `finished` the hold's history, carried on into the chill.
-- `brew-day.html`: the strip's "Recipe finished, chilling" and the header comment.
-- `whirlpool.html`: a "Recipe finished, chilling" moment, so the record of the choice shows it. Nothing to port.
+- New: `boilStartLine` and `boilDay`.
+- `boilStart` (the order, and the start line's words), and SPARGE STARTED in `cmdBanner` (CraftBeerPi's message).
+- `#hop`, `#heatup`, `#boiling`, `#sparge-run` and `#sparge-batch`.
 
 ### Checked
 
-- **The 31 old moments, before and after**, at 1920×950, 960×1200 and 390×844, with graphs and without, and at
-  1920×950 with `?bk=today`, `?layout=a`, `?wp=today` and `?timers=today`: 310 of 310 identical.
-- **Fit**, at the 11 sizes from 701 to 1920 px wide: `#finished`'s drawing has the same result as `#whirlpool`'s. No
-  word touches another word, a pump, a valve, a pipe or a vessel's outline, except CHILLER over the loop behind its
-  box. The pump's labels keep 14 px or more from the drawing's edge, and the CHILLER box 7 px or more from the pump.
-- **The page**, at 14 sizes from 1920 to 360 px wide, with graphs and without: nothing is wider than the window,
-  nothing is cut off except the screen-reader text and the title bar's "Connected" on a phone (hidden on purpose, as in
-  every moment), and there are no page errors.
-- **Pressed through:**
-  - In `#finished`, a tap on WORT PUMP turns it OFF at the kettle and greys the loop; a second tap starts it again.
-  - Holding the mash tun's AUTO brings the pump back by the mash tun, recirculating through the coil. MANUAL puts it at
-    the kettle again, OFF, because the HERMS switched it off.
-  - LOAD on Test Recipe v5 puts it by the mash tun.
-  - In `#notarget`, MANUAL puts it at the kettle, OFF.
-  - `#whirlpool` is at the kettle; `#boil-hold`, `#notarget-hlt` and `#manual` are by the mash tun, as before.
-  - `?wp=today#finished` shows the problem as built: the pump by the mash tun, with the HERMS coil lit.
+- **Every moment's lines, before and after**, as they are and with `?bk=today` and `?timers=today`: only the 11
+  moments above differ (`#hop`, `#boilpower`, `#heatup`, `#boiling`, `#pause`, `#keepboil`, `#letfall`,
+  `#pause-long`, `#sparge-run`, `#sparge-batch` and `#boil-hold`).
+- **Pictures**, before and after, all 32 moments at 1920×950, 960×1200 and 390×844, with graphs and without, and at
+  1920×950 with `?bk=today` and `?timers=today`: 224 pictures, 210 identical. The other 14 are `#heatup` and
+  `#sparge-run` at each of the seven, and they differ only inside the event line.
+- **Fit** with LOG open, for `#sparge-run`, `#heatup`, `#boil-hold` and `#hop` at 1920, 1180, 960, 701 and 390 px
+  wide: the event line stays one line, ending with "…" where it's too long; LOG wraps every line inside its box;
+  nothing is wider than the window; no page errors. On a phone `#boil-hold`'s LOG runs past the first screen, as it
+  did before (it's 42 px longer now). It moves with the page, so its end can be scrolled to.
+- **Pressed through, at 1920×950, with no page errors:**
+  - START THE BOIL held in `#boil-hold`, newest first: "Boil: The wort pump is off, so you can move its hoses.";
+    "Boil started, boil kettle target BOIL" ("…210.2 °F" with `?bk=today`); "Boil answered: Start the boil".
+  - SPARGE STARTED in `#sparge-ready` at 15:04:41: CraftBeerPi's message with "Estimated completion: 15:44", after
+    "Sparge: sparge started, 40 min timer started". With no timer, the first sentence alone, after "…until NEXT
+    STEP". With no temperature, the timer sentence alone.
+  - The last section's presses again (25 checks): each question's line still turns plain with the right word.
 
 ## Open questions about the drawing
 

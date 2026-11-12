@@ -29,7 +29,7 @@ export const move = (id, direction, callback_susscess = () => {}, callback_faile
         callback_susscess();
       })
       .catch(function (error) {
-        callback_failed();
+        callback_failed(error);
       });
   };
 
