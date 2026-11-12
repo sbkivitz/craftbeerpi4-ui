@@ -377,6 +377,7 @@ function paintFind() {
   $("[data-clear]").hidden = !on;
   $("#groups").innerHTML = G.map(giHTML).join("");
   $("#sr").textContent = on ? (total ? `${total} ${total === 1 ? "setting" : "settings"} found` : "Nothing found") : "";
+  grow();
   spy();
 }
 function render() {
@@ -388,14 +389,16 @@ function render() {
   paintChrome();
   paintFind();
   applyView();
-  grow();
 }
 function refresh() { Object.keys(all()).forEach(paintRow); paintChrome(); }
-function grow() { $$("textarea.fld").forEach(t => { t.style.height = "auto"; t.style.height = t.scrollHeight + 2 + "px"; }); }
+/* each text box as tall as its words. One that isn't drawn (a phone's closed group, a row FIND hides) has no height to go
+   by, so it waits until it shows: applyView and paintFind measure again */
+function grow() { $$("textarea.fld").forEach(t => { if (!t.getClientRects().length) return; t.style.height = "auto"; t.style.height = t.scrollHeight + 2 + "px"; }); }
 function applyView() {
   const main = $("#main");
   main.dataset.view = phone() ? st.view : "index";
   $$(".plate").forEach(p => p.classList.toggle("pick", p.dataset.g === st.pg));
+  grow();
 }
 
 /* ---------- moving about ---------- */
@@ -580,7 +583,7 @@ document.addEventListener("keydown", e => {
 });
 $("#pane").addEventListener("scroll", () => requestAnimationFrame(spy), {passive: true});
 addEventListener("scroll", () => requestAnimationFrame(spy), {passive: true});
-addEventListener("resize", () => { applyView(); grow(); spy(); });
+addEventListener("resize", () => { applyView(); spy(); });
 
 /* ---------- scenes (the strip at the top) ---------- */
 const CH = {ACTOR_INTERLOCK_MODE: "One heating element at a time", BREWDAY_TIMER_NAMES: "Hop stand, Yeast, Vorlauf, Dry hop", MQTTUpdate: "60"};
