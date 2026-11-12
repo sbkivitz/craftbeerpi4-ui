@@ -2216,6 +2216,249 @@ These are the lines the built screen would log, as far as I can tell from `obser
 
 If any of these isn't what the screen logs, tell me and I'll match the screen.
 
+Brett's live run on 12 Nov found two differences: the stand's notice comes first, and Brewing Complete's line stays
+"waiting for you". Both are settled in the next section, with the corrected list.
+
+## A question's line turns "answered": ready to build (12 Nov, afternoon)
+
+Brett ran `#finished` against the live screen (UI cf501e6) and found two differences:
+
+1. **A question's line stays "waiting for you"**, in amber, after it's answered. The screen never changes a line once
+   it's logged; the answer adds a line of its own. My moments show such lines as "answered": the malt, the hop alert,
+   "Ready to boil?", the sparge water, the stand's "Heat and hold?" and Brewing Complete.
+2. **The stand's "Stand over" notice comes before "Whirlpool finished".** CraftBeerPi sends it as the stand stops,
+   before it marks the step done, and the screen logs CraftBeerPi's notices before the steps' changes in each update.
+
+He also read `#hold`'s question and answer from the code, and asked me to choose for 1: moments that say "waiting for
+you", or a line that changes once its question is answered.
+
+### The choice: the question's own line changes
+
+A question's line says "waiting for you", in Prompt Amber, only while CraftBeerPi waits for its answer. When the
+question goes, that same line changes where it is:
+
+- **"answered"**, when someone answers it, on this screen or another one. For the hold before the boil, this screen's
+  START counts too. The question offers Start as an answer ("…until you press Start the boil, or Start on the Brew
+  Steps page"), but CraftBeerPi takes it down as "withdrawn" when the boil is started that way.
+- **"no longer needed"**, when CraftBeerPi takes it down unanswered: its step ends, or Stop, NEXT STEP or a reset.
+- **"no longer waiting"**, on a page opened later, for a line kept from before whose question CraftBeerPi no longer
+  has. That page can't tell which of the other two happened.
+
+The line keeps the time it was asked, its words and its place, and takes the plain colour of the lines around it. The
+answer's own line is logged as now ("Hop Alert answered: Added · confirmed").
+
+Why not make the moments say "waiting for you" instead: amber in the log has to mean "this still needs you". If
+answered questions stay amber, a brew day leaves a column of amber lines that need nothing, and the one that really is
+waiting no longer stands out. A thing only catches the eye when nothing near it looks the same, and a state that has
+ended must never look current (my checklist: F15 and H3, F9 and H21).
+
+### In `screen.js`, live
+
+**1. `logEvent` keeps the question's id**, at index 7. Index 6 is the shared flag, so it becomes 0 when there's an id
+and the line isn't shared; `onStorage` already skips a 0:
+
+```js
+// q: the CraftBeerPi notification a "waiting for you" line is about, so the line can say what became of it (questionGone)
+function logEvent(what, res, tone, cav = "", shared = false, q = null) {
+  if (DEMO_MODE) { st.events.unshift([hhmmss(st.t), what, res, tone, cav]); return; }
+  st.t = daySeconds();
+  st.events.unshift([hhmmss(st.t), what, res, tone, cav, Date.now(), ...(q != null ? [shared ? 1 : 0, String(q)] : shared ? [1] : [])]);
+  if (st.events.length > 50) st.events.length = 50;
+  saveEvents();
+}
+```
+
+**2. `observe` passes it** for both kinds of question it logs:
+
+```js
+    if (tm) { logEvent(`${tm.name} finished`, "waiting for you", "wait", "", false, id); say(`${tm.name}: time's up.`, true); }
+    else if (Array.isArray(a.action) && a.action.length) { logEvent(line, "waiting for you", "wait", "", false, id); say(`${title}. ${msg}`, true); }
+```
+
+Anything else that logs one of CraftBeerPi's questions as "waiting for you" passes the id too.
+
+**3. `questionGone` changes the line:**
+
+```js
+/* a question's line says "waiting for you", in Prompt Amber, only while CraftBeerPi waits for its answer. Once the
+   question goes, the same line says what became of it, in the plain colour, and keeps the time it was asked (the
+   design, 12 Nov: amber in the log always means something still needs you). False if this tab has no line for it */
+function questionGone(id, res) {
+  const e = st.events.find(x => x[2] === "waiting for you" && x[7] === String(id));
+  if (!e) return false;
+  e[2] = res; e[3] = "";
+  saveEvents();
+  return true;
+}
+```
+
+Each tab keeps its own list and sees the question go itself, so each changes its own line, as each logged it.
+
+**4. The loop for questions that have gone.** Today it adds a line for each question that went without an answer
+from here. Now it changes the question's own line. It still adds a line when someone answered on another screen,
+which is news with a time of its own, and when this tab has no line for the question (it opened after the question
+was asked). It no longer adds a "no longer needed" copy under a line that now says so itself; what took the question
+down (Stop, NEXT STEP, the step finishing) is logged already.
+
+```js
+  // a question gone: its own line says so (questionGone). A line of its own only when it was answered on another
+  // screen, or when this tab never logged it
+  for (const [id, a] of before) {
+    if (now.has(id) || !Array.isArray(a.action) || !a.action.length) continue;
+    const why = typeof snap.retired === "function" ? snap.retired(a.id) : null;
+    const here = answered.delete(id) || startedHere(a);
+    const found = questionGone(id, here || why === "answered" ? "answered" : "no longer needed");
+    if (here || (found && why !== "answered")) continue;
+    logEvent(`${ut(a.title)}: ${ut(a.message)}`, why === "answered" ? "answered on another screen" : "no longer needed", "");
+  }
+```
+
+```js
+/* the hold before the boil, started with this screen's START: its question offers Start as an answer, but CraftBeerPi
+   takes it down as "withdrawn" when the boil starts that way, so the screen counts it as answered (the design, 12 Nov) */
+const startedHere = a => !!(own.start && Date.now() - own.start.at < 10000
+  && M.RECIPE.steps.some(s => own.start.ids.includes(s.id) && s.n === ut(a.title)));
+```
+
+`liveStart` puts the current step in `own.start.ids`. While the boil waits I expect that to be the boil step, whose
+name is the question's title. If it isn't, put the held step's id there as well.
+
+**5. A page opened later.** The list kept on the device can hold a line that still said "waiting for you" when the
+page closed. Once the screen has CraftBeerPi's waiting questions (they come as it connects, `notification_waiting`),
+each such line whose question isn't among them says "no longer waiting", in the plain colour; a line whose question is
+still waiting keeps its amber. Match by id. A line kept from before this change has none, so match it by its words
+(`title: message`, or `name finished` for a timer). Don't do it before the waiting questions have arrived, or a
+question that is still waiting would lose its amber for a moment.
+
+**6. The Whirlpool's start line.** `stepStartLine` gives every step but a SpargeStep "started, <vessel> target <temp>".
+A WhirlpoolStep (a WaitStep) sets no target as it starts: it only holds after "Heat and hold". So the screen logs
+"Whirlpool started, boil kettle target 170.0 °F", which isn't so. `#hold` has it as "Whirlpool started, 20 min":
+
+```js
+  if (s && s.type === "WhirlpoolStep") return `${m.n} ${resumed ? "resumed" : "started"}${m.min ? `, ${m.min} min` : ""}`;
+```
+
+### In your demo
+
+Mirror the mockup's `questionGone(title, res = "answered")`. Demo lines have no ids, so it finds the newest line still
+"waiting for you" whose words are the title, or start with `title:` or `title finished`. The calls are where the
+mockup has them (search `questionGone(` in `brew-day.js`):
+
+- `endPause`: the paused-heat warning, "no longer needed".
+- `setMode` to MANUAL, and a target set: the no-target warning, "no longer needed".
+- `stepStart`: a SpargeStep's question as the step moves on, and a NotificationStep's when the recipe's NEXT STEP moves
+  past it, "no longer needed".
+- `boilStart`: the hold's question, "answered", from START THE BOIL or a held START.
+- `cmdStop`: the sparge question, "no longer needed".
+- `cmdBanner`: ADDED, SPARGE STARTED, a NotificationStep's NEXT STEP, and OK, "answered".
+- `tAnswered`: a run-out timer's OK and +5 MIN, "answered"; removed, or saved while it's done, "no longer needed".
+
+A NotificationStep now asks as the screen as built does. The title bar's button is NEXT STEP (it was DONE). Its
+question is logged a moment after the step starts ("Whirlpool Hop: Cool down to 170 °F. Then add 1.50 oz Calypso."),
+and NEXT STEP logs "Whirlpool Hop answered: Next Step".
+
+### The moments' words, now CraftBeerPi's
+
+Going through your list, I found more question and answer lines in my own words rather than CraftBeerPi's. They're
+now what the screen as built logs, read from the core: a question is "title: message", and its answer "title
+answered: button".
+
+- **The malt** (`MASH_EVENTS`, in every mash moment's LOG): "MashIn: Target temperature reached. Please add malt.",
+  an imported recipe's MashIn Notification (`upload_controller`), then "MashIn answered: Next Step". They were
+  "MashIn: 126 °F reached. Please add malt." and "MashIn: malt added".
+- **The hop alert** (`#hop`, `#boilpower`, `#keepboil`, the moments built on them, and ADDED): "Hop Alert: Please add
+  3.00 oz Centennial (1)", from BoilStep's `check_hop_timer`, then "Hop Alert answered: Added". They were "Hop alert:
+  add 3.00 oz Centennial (1)" and "Hop alert answered: 3.00 oz Centennial added". The title bar's title is "Hop Alert"
+  too; it's drawn in capitals, so it looks the same.
+- **The sparge water** (`#sparge-ready`, `#sparge-run`, `#sparge-batch`, `#boil-hold`, and the step's own press flow):
+  the whole question, "Sparge: The sparge water is ready at 168 °F, and both pumps are off. Set the hoses or valves
+  for a fly or a batch sparge, start the pumps by hand, then press Sparge started, which switches the HLT's AUTO off."
+  It was "Sparge: the sparge water is ready at 168 °F". In `#sparge-ready` it's the event line, cut off with "…" where
+  it's too long for the line, as `#boil-hold`'s is. The mockup builds it from the title bar's words (`SPARGE_ASKED`).
+- **The boil's answer** (START THE BOIL, and `#heatup`): "Boil answered: Start the boil". It was "Ready to boil? Start
+  the boil". `#heatup` now has the question too, "answered", at 14:58:30 above "Sparge finished", as `#boil-hold`
+  orders them.
+- **`#hold`**, newest first. The first line is only with the new BoilPower (`?bk=power`):
+  - 17:14:32 "Boil Kettle: Holding 170.0, its target, instead of boiling. Below it, it heats at 100% while the wort is
+    more than 7.2 below, easing to 30% as it reaches the hold; then it rests until the wort is 3.6 below. To boil, set
+    its target to 206.6 or above.", from CraftBeerPi (BoilPower's `_tell` as the hold starts).
+  - 17:14:31 "Whirlpool answered: Heat and hold", confirmed.
+  - 17:14:20 "Whirlpool: The wort in Boil Kettle has cooled to 166.3 °F, below the 170 °F whirlpool, with 14 minutes
+    of the stand left. Heat it back to 170 °F and hold it there until the stand ends?", answered.
+  - 17:08:10 "Whirlpool started, 20 min", by recipe.
+  - 17:08:10 "Whirlpool Hop finished", by recipe.
+  - 17:08:10 "Whirlpool Hop answered: Next Step", confirmed.
+  - 17:00:06 "Whirlpool Hop: Cool down to 170 °F. Then add 1.50 oz Calypso.", answered.
+  - 17:00:04 "Whirlpool Hop started", by recipe.
+  - 17:00:04 "Boil finished", by recipe. The Boil's "Boiling completed" is a routine notice, so it isn't logged.
+- **`#whirlpool`**: `#hold`'s lines, with "WORT PUMP started" at 17:08:16 in its place by time.
+- **`#finished`**, newest first:
+  - 17:28:52 "Brewing Complete answered: OK", confirmed.
+  - 17:28:10 "Brewing Complete: Now the yeast will take over", answered.
+  - 17:28:10 "Recipe finished", by recipe.
+  - 17:28:10 "Whirlpool finished", by recipe.
+  - 17:28:10 "Whirlpool: Stand over: Boil Kettle is off and no longer holding 170 °F.", from CraftBeerPi.
+  
+  Its boil kettle's SV is now "– –" with today's BoilPower (`?bk=today`): the Boil step leaves the target at 0 as it
+  ends, and the stand puts it back as it stops. Live shows a target of 0 that way (`applyLive`, `sv > 0`). With the
+  proposed boil kettle the window shows BOIL 45 % there, so nothing changes.
+
+### Not settled by the code: please check in a live run
+
+- **`#boil-hold`'s three 15:45:02 lines**, newest first: the question, "HLT pump: Sparge has ended…", "Sparge
+  finished". The HLT pump's notice comes from the `hltpump` extension's `_end_runoff`, a task that starts once the
+  sparge step has ended and speaks only after the pump has switched off. So live may log it after "Sparge finished",
+  and perhaps after the question, which would then not be the event line. If `test_e2e_sparge_step.py` can print the
+  log there, I'll match `#boil-hold` and `#heatup` to it.
+- **`#hold`'s lines** are from the code, as yours were. The same, if a run reaches the stand.
+
+### Lines in my words that aren't questions, for one later pass
+
+These differ from what the screen as built logs, as far as I can tell from the code. They aren't questions, so this
+change doesn't touch them, and none of them is false. I'd rather align them all at once, from the live log, than one
+by one from the code:
+
+- After Sparge started, the mockup's "HLT AUTO off, so its element won't run as the HLT empties", by recipe. Live logs
+  CraftBeerPi's notice: "Sparge: The HLT's AUTO is off now, so its element won't run as the HLT empties. Sparge timer
+  started. Estimated completion: 15:45", from CraftBeerPi.
+- The boil's start: the mockup's "Boil started, boil kettle AUTO"; live, "Boil started, boil kettle target 210.2 °F".
+
+### Moments whose pictures change
+
+Only in the event line:
+
+- `#hop` ("Hop Alert: Please add 3.00 oz Centennial (1)") and `#boilpower` ("Hop Alert answered: Added").
+- `#sparge-ready` (the whole sparge question; at 1920 px it fits, narrower it's cut off with "…").
+- `#hold` and `#whirlpool` (with the new BoilPower, its hold notice; with today's, "Whirlpool answered: Heat and hold").
+
+`#finished` is new since your identity test's moments; with `?bk=today` its boil kettle's SV is "– –".
+
+### Changed, all in `proposal\brew-day.js`
+
+- `questionGone` and its calls; the NotificationStep's NEXT STEP and its two lines.
+- The ADDED and START THE BOIL presses' lines, and the SpargeStep's question line (`spargeBegin`).
+- `MASH_EVENTS`, `#hop`, `#boilpower`, `#keepboil`, `#heatup`, `#sparge-ready`, `#sparge-run`, `#sparge-batch`,
+  `#hold`, `#whirlpool` and `#finished`; `SPARGE_ASKED`.
+
+### Checked
+
+- **Every old moment's lines**, before and after, as they are and with `?bk=today` and `?timers=today`: once the word
+  changes above are applied to the old lines, the only differences are `#hold`'s and `#whirlpool`'s new lines.
+- **In every moment, each line still "waiting for you"** belongs to the question in the title bar or to a timer that
+  has run out. None is left amber after its answer.
+- **Pictures**, before and after, at 1920×950, 960×1200 and 390×844, with graphs and without, and at 1920×950 with
+  `?bk=today` and `?timers=today`: 217 pictures of the 31 old moments, 182 identical. The other 35 are the five moments
+  above at each of those seven, and they differ only inside the event line.
+- **Fit**: the event line stays one line at every size, cut off with "…" where it's long; the LOG wraps a long line
+  inside its box; nothing is wider than the window. Checked with LOG open in `#finished`, `#hold`, `#heatup`,
+  `#sparge-ready` (1920, 960 and 390 wide), `#hop` (390), `#boilpower` (1180) and `#mash` (701).
+- **Pressed through, at 1920×950**, with no page errors. Each question's line turns plain, saying:
+  - "answered": ADDED in `#hop`; START THE BOIL held, and START held, in `#boil-hold`; SPARGE STARTED in
+    `#sparge-ready`; OK and +5 MIN in `#timer-done`; OK on the rest timer with `?timers=today`; OK in `#notarget` and
+    `#pause-long`; NEXT STEP in the title bar for Whirlpool Hop (reached from `#boiling` with NEXT STEP).
+  - "no longer needed": STOP and NEXT STEP in `#sparge-ready` (the boil's question then waits, amber); MANUAL and a
+    target in `#notarget`; MANUAL in `#pause-long`; the recipe's NEXT STEP past Whirlpool Hop.
+
 ### Moments whose pictures change
 
 - **None of the old ones.**

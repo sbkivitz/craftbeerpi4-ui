@@ -5,8 +5,9 @@ import { useCBPi } from "../data";
 import "./fonts/barlow.css";
 import { createBrewDay } from "./screen";
 
-// CraftBeerPi's state as the screen's frame reads it, for the brew-day screen and the Settings page in its frame
-export const liveSnap = (state, alerts, retired) => ({
+// CraftBeerPi's state as the screen's frame reads it, for the brew-day screen and the Settings page in its frame.
+// waiting: the prompts CraftBeerPi waits on (AlertProvider), with how many times it has sent the list
+export const liveSnap = (state, alerts, retired, waiting = null) => ({
   connected: !!state.connection,
   kettles: state.kettle,
   logic: state.logic,
@@ -19,6 +20,7 @@ export const liveSnap = (state, alerts, retired) => ({
   timers: state.timers,
   alerts,
   retired,
+  waiting,
 });
 
 // The brew-day screen, Scott's fixed screen for brewing (layout B, chosen 9 Nov 2026). It is not drawn by
@@ -38,7 +40,7 @@ const BrewDay = () => {
   const navigate = useNavigate();
   const go = useRef(navigate);
   go.current = navigate;
-  const { remove, hideStack, alerts, retiredReason } = alert;
+  const { remove, hideStack, alerts, retiredReason, waitingNow, waitingN } = alert;
 
   useEffect(() => {
     const qs = new URLSearchParams(window.location.search);
@@ -69,8 +71,8 @@ const BrewDay = () => {
 
   useEffect(() => {
     if (!screen.current) return;
-    screen.current.update(liveSnap(state, alerts, retiredReason));
-  }, [state, alerts, retiredReason]);
+    screen.current.update(liveSnap(state, alerts, retiredReason, waitingN ? { ids: waitingNow, n: waitingN } : null));
+  }, [state, alerts, retiredReason, waitingNow, waitingN]);
 
   return <div ref={ref} className="bd-root" />;
 };

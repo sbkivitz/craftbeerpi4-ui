@@ -1,5 +1,28 @@
 # Direction decision log
 
+## A question's line turns "answered" (12 Nov 2026, afternoon)
+- Brett, after building #finished and running it live: the built screen never changes a line once it's logged. A
+  question's line stays "waiting for you", in amber, after it's answered; the answer adds its own line. My moments
+  showed those lines as "answered". He asked me to choose: moments that say "waiting for you", or a line that changes.
+- Chosen: the line changes where it is, to "answered" (on any screen; the held boil's START counts, because the
+  question offers Start), "no longer needed" (taken down unanswered) or "no longer waiting" (a page opened later can't
+  tell which). Plain colour; it keeps the time it was asked. The Amber Means Waiting Rule.
+- Why: amber has to mean "still needs you". A brew day would otherwise leave a column of amber lines needing nothing,
+  and the one that does would stop standing out (interaction-design checklist F15/H3: pop-out works only when one
+  thing differs; F9/H21: an ended state must not look current). Changing the moments would have designed that in.
+- Not chosen: a second line for each question taken down unanswered (the built screen's "no longer needed" copy). The
+  question's own line now says it, and what took it down is logged already. Kept: the line for a question answered
+  on another screen, which is news with its own time.
+- While checking Brett's list, the question and answer lines took CraftBeerPi's own words from the core (the malt, the
+  hop alert, the sparge water, the boil's answer, the NotificationStep's NEXT STEP), #hold's lines were redone from the
+  code, #finished's order follows the live run, and its boil kettle's SV is "– –" (target 0). Not done here: lines in
+  my words that aren't questions, left for one pass from the live log.
+- Checked: once the word changes are applied, the old moments' lines differ only in #hold and #whirlpool; every line
+  still "waiting for you" belongs to what the title bar or a timer is waiting on; pictures change only in the event
+  line of #hop, #boilpower, #sparge-ready, #hold and #whirlpool; every question's press walked. React UI only
+  (`screen.js`: `logEvent` keeps the question's id, `questionGone`, the loop for questions that have gone, the
+  WhirlpoolStep's start line; the demo mirrors the mockup). Handed to Brett.
+
 ## After the recipe finishes: the wort pump stays at the boil kettle (12 Nov 2026, late morning)
 - Brett, building the chiller loop: once the recipe's last step finishes, the live screen has no recipe, so
   `boilStarted()` was false and the drawing put the wort pump back by the mash tun. That's when Scott chills and moves

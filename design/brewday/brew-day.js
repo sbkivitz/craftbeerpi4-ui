@@ -49,13 +49,16 @@ const BOOK = [ // the simulator's Recipe Book (config/recipes/*.yaml)
   {n: "BrewStart ready-by demo", d: "3 steps · hot strike water by a set time, 152 °F"}
 ];
 
+/* a question's line and its answer's are CraftBeerPi's words, as the screen as built logs them (title: message, then
+   "title answered: button"). The malt question is an imported recipe's MashIn Notification (upload_controller), and its
+   button is MashInStep's Next Step */
 const MASH_EVENTS = [
   ["14:31:52", "HLT PUMP started", "confirmed", "ok"],
   ["14:16:19", "Saccharification: 149 °F reached, 40 min timer started", "by recipe", ""],
   ["14:09:40", "Saccharification started, mash tun target 149.0 °F", "by recipe", ""],
   ["14:09:38", "Protein Rest finished", "by recipe", ""],
-  ["13:27:05", "MashIn: malt added", "confirmed", "ok"],
-  ["13:26:58", "MashIn: 126 °F reached. Please add malt.", "answered", ""]
+  ["13:27:05", "MashIn answered: Next Step", "confirmed", "ok"],
+  ["13:26:58", "MashIn: Target temperature reached. Please add malt.", "answered", ""]
 ];
 const mash = () => ({
   t: 14 * 3600 + 32 * 60 + 31, link: "ok", age: 0, banner: null,
@@ -69,13 +72,14 @@ const SCENES = {
   mash,
   hop: () => Object.assign(mash(), {
     t: 16 * 3600 + 2,
-    banner: {tone: "prompt", title: "Hop alert", text: "Please add 3.00 oz Centennial (1)", act: "ADDED", cmd: "b:added"},
+    /* BoilStep's hop alert, in its words: "Hop Alert", "Please add <hop> (<n>)", one button, Added */
+    banner: {tone: "prompt", title: "Hop Alert", text: "Please add 3.00 oz Centennial (1)", act: "ADDED", cmd: "b:added"},
     v: {hlt: {pv: 165.3, sv: 168.0, own: 168.0, mode: "manual"}, mt: {pv: 151.2, sv: null, mode: "manual"}, bk: {pv: 210.6, sv: 210.2, mode: "auto"}},
     a: {hltEl: {on: false, pct: 0}, hltPump: {on: false}, wortPump: {on: false}, bkEl: {on: true, pct: 45}},
     fill: {mtLiq: false, bk: true},
     recipe: {state: "running", cur: 4, left: 59 * 60 + 58, adds: ["due"]},
     events: [
-      ["16:00:02", "Hop alert: add 3.00 oz Centennial (1)", "waiting for you", "wait"],
+      ["16:00:02", "Hop Alert: Please add 3.00 oz Centennial (1)", "waiting for you", "wait"],
       ["15:30:04", "Boil: 210.2 °F reached, 90 min timer started", "by recipe", ""],
       ["15:01:47", "Boil started, boil kettle AUTO", "by recipe", ""],
       ["14:58:30", "Sparge finished", "by recipe", ""]
@@ -87,8 +91,8 @@ const SCENES = {
     const s = SCENES.hop();
     s.t = 16 * 3600 + 4 * 60 + 12; s.banner = null;
     s.recipe.left = 55 * 60 + 48; s.recipe.adds = ["done"];
-    s.events[0] = ["16:00:02", "Hop alert: add 3.00 oz Centennial (1)", "answered", ""];
-    s.events.unshift(["16:00:31", "Hop alert answered: 3.00 oz Centennial added", "confirmed", "ok"]);
+    s.events[0][2] = "answered"; s.events[0][3] = "";
+    s.events.unshift(["16:00:31", "Hop Alert answered: Added", "confirmed", "ok"]);
     return Object.assign(s, {base: "hop", open: {edit: {v: "bk", kind: "pwr", what: "boil", val: 40}}});
   },
   /* the boil kettle's three phases in AUTO, for boil-kettle.html (Scott, 10 Nov: the power and temperature controls
@@ -101,7 +105,8 @@ const SCENES = {
     recipe: {state: "running", cur: 4, left: 90 * 60, adds: [], wait: true},
     events: [
       ["15:01:47", "Boil started, boil kettle AUTO", "by recipe", ""],
-      ["15:01:45", "Ready to boil? Start the boil", "answered", ""],
+      ["15:01:45", "Boil answered: Start the boil", "confirmed", "ok"],
+      ["14:58:30", `Boil: ${boilHoldBanner(RECIPE.steps[4]).text}`, "answered", ""],
       ["14:58:30", "Sparge finished", "by recipe", ""],
       /* the proposed boil kettle: a recipe started from its first step goes back to the usual boil power, here after a
          brew day that ended at 35 % (in LOG) */
@@ -145,12 +150,21 @@ const SCENES = {
       bk: BK === "power" ? {pv: 169.4, sv: 170.0, mode: "auto"} : {pv: 169.4, sv: 210.2, mode: "auto", hold: 170.0}},
     a: {hltEl: {on: false, pct: 0}, hltPump: {on: false}, wortPump: {on: false}, bkEl: {on: true, pct: 35}},
     recipe: {state: "running", cur: 6, left: 9 * 60 + 30, adds: []},
+    /* as the screen logs them: read from the core, screen.js's observe() and BoilPower (12 Nov; Brett read the stand's
+       question and its answer the same way). The Boil's "Boiling completed" is one of the routine notices the screen
+       leaves out; Whirlpool Hop, a NotificationStep, asks a second after it starts and moves on when NEXT STEP answers it;
+       the stand asks in CraftBeerPi's own words; and Brett's new BoilPower says what it does as it starts to hold (an
+       older one speaks for itself, in words the mockup doesn't have) */
     events: [
-      ["17:14:31", "Whirlpool: heat and hold 170 °F", "confirmed", "ok"],
-      ["17:14:20", "Whirlpool: the wort is down to 166.3 °F. Heat and hold?", "answered", ""],
+      ...(BK === "power" ? [["17:14:32", `${KNAME.bk}: Holding 170.0, its target, instead of boiling. Below it, it heats at 100% while the wort is more than 7.2 below, easing to 30% as it reaches the hold; then it rests until the wort is 3.6 below. To boil, set its target to 206.6 or above.`, "from CraftBeerPi", ""]] : []),
+      ["17:14:31", "Whirlpool answered: Heat and hold", "confirmed", "ok"],
+      ["17:14:20", `Whirlpool: The wort in ${KNAME.bk} has cooled to 166.3 °F, below the 170 °F whirlpool, with 14 minutes of the stand left. Heat it back to 170 °F and hold it there until the stand ends?`, "answered", ""],
       ["17:08:10", "Whirlpool started, 20 min", "by recipe", ""],
-      ["17:07:52", "Whirlpool Hop: 1.50 oz Calypso added", "confirmed", "ok"],
-      ["17:00:04", "Boil finished, boil kettle MANUAL", "by recipe", ""]
+      ["17:08:10", "Whirlpool Hop finished", "by recipe", ""],
+      ["17:08:10", "Whirlpool Hop answered: Next Step", "confirmed", "ok"],
+      ["17:00:06", `Whirlpool Hop: ${RECIPE.steps[5].note}`, "answered", ""],
+      ["17:00:04", "Whirlpool Hop started", "by recipe", ""],
+      ["17:00:04", "Boil finished", "by recipe", ""]
     ]
   }),
   /* the same whirlpool hold with the wort pump running, as Scott whirlpools (Scott, 12 Nov: "whirlpool / hop-stand step
@@ -159,7 +173,7 @@ const SCENES = {
   whirlpool: () => {
     const s = SCENES.hold();
     s.a.wortPump = {on: true};
-    s.events.splice(2, 0, ["17:08:16", "WORT PUMP started", "confirmed", "ok"]);
+    s.events.splice(s.events.findIndex(e => e[0] < "17:08:16"), 0, ["17:08:16", "WORT PUMP started", "confirmed", "ok"]);
     return Object.assign(s, {base: "hold"});
   },
   /* the recipe has finished, and Scott chills the wort (Brett, 12 Nov: with no recipe the drawing put the wort pump back
@@ -169,15 +183,19 @@ const SCENES = {
      (Scott, 12 Nov). The drawing can't show the wort going on to the fermenter */
   finished: () => {
     const s = SCENES.whirlpool();
+    /* the stand's notice comes first: CraftBeerPi sends it as the stand stops, before it marks the step done, and the
+       screen logs CraftBeerPi's notices before the steps' changes in each update (Brett, 12 Nov). Brewing Complete was
+       answered here, so its question's line says so */
     s.events.unshift(
       ["17:28:52", "Brewing Complete answered: OK", "confirmed", "ok"],
       ["17:28:10", "Brewing Complete: Now the yeast will take over", "answered", ""],
       ["17:28:10", "Recipe finished", "by recipe", "ok"],
-      ["17:28:10", `Whirlpool: Stand over: ${KNAME.bk} is off and no longer holding 170 °F.`, "from CraftBeerPi", ""],
-      ["17:28:10", "Whirlpool finished", "by recipe", ""]);
+      ["17:28:10", "Whirlpool finished", "by recipe", ""],
+      ["17:28:10", `Whirlpool: Stand over: ${KNAME.bk} is off and no longer holding 170 °F.`, "from CraftBeerPi", ""]);
+    /* the boil kettle's target is 0 again, as the stand found it: the Boil step leaves it at 0 as it ends */
     return Object.assign(s, {
       t: 17 * 3600 + 41 * 60 + 30, base: "finished",
-      v: {hlt: {pv: 154.9, sv: 168.0, own: 168.0, mode: "manual"}, mt: {pv: 137.2, sv: null, mode: "manual"}, bk: {pv: 88.4, sv: 210.2, mode: "manual"}},
+      v: {hlt: {pv: 154.9, sv: 168.0, own: 168.0, mode: "manual"}, mt: {pv: 137.2, sv: null, mode: "manual"}, bk: {pv: 88.4, sv: null, mode: "manual"}},
       a: {hltEl: {on: false, pct: 0}, hltPump: {on: false}, wortPump: {on: true}, bkEl: {on: false, pct: 0}},
       recipe: null, finished: true,
       timer: {left: 60 * 60, running: false}
@@ -195,8 +213,8 @@ const SCENES = {
     Object.assign(s.v.bk, {pv: 207.9, bp: 2, latched: true});
     s.a.bkEl = {on: true, pct: 2};
     s.recipe.left = 28 * 60 + 54; s.recipe.adds = ["done"];
-    s.events[0] = ["16:00:02", "Hop alert: add 3.00 oz Centennial (1)", "answered", ""];
-    s.events.unshift(["16:10:00", "Boil power 2 % (was 45 %)", "confirmed", "ok"], ["16:00:31", "Hop alert answered: 3.00 oz Centennial added", "confirmed", "ok"]);
+    s.events[0][2] = "answered"; s.events[0][3] = "";
+    s.events.unshift(["16:10:00", "Boil power 2 % (was 45 %)", "confirmed", "ok"], ["16:00:31", "Hop Alert answered: Added", "confirmed", "ok"]);
     return s;
   },
   letfall: () => {
@@ -291,7 +309,7 @@ const SCENES = {
     s.a.hltPump = {on: false};
     s.recipe.wait = WFY;
     s.banner = spargeBanner(168, s.a);
-    s.events.unshift(["15:04:10", "Sparge: the sparge water is ready at 168 °F", "waiting for you", "wait"]);
+    s.events.unshift(["15:04:10", `${s.banner.title}: ${s.banner.text}`, "waiting for you", "wait"]);
     return s;
   },
   /* 15:12:40, a fly sparge: Scott set the hoses, started both pumps and pressed Sparge started at 15:05:02. That
@@ -310,7 +328,7 @@ const SCENES = {
       ["15:05:02", "HLT AUTO off, so its element won't run as the HLT empties", "by recipe", ""],
       ["15:04:58", "WORT PUMP started", "confirmed", "ok"],
       ["15:04:55", "HLT PUMP started", "confirmed", "ok"],
-      ["15:04:10", "Sparge: the sparge water is ready at 168 °F", "answered", ""]);
+      ["15:04:10", SPARGE_ASKED, "answered", ""]);
     return s;
   },
   /* 15:20:30, a batch sparge, with the step's Timer at 0, so it runs until NEXT STEP and says SPARGING. The first
@@ -329,7 +347,7 @@ const SCENES = {
       ["15:05:02", "Sparge: sparge started, until NEXT STEP", "confirmed", "ok"],
       ["15:05:02", "HLT AUTO off, so its element won't run as the HLT empties", "by recipe", ""],
       ["15:04:58", "WORT PUMP started", "confirmed", "ok"],
-      ["15:04:10", "Sparge: the sparge water is ready at 168 °F", "answered", ""],
+      ["15:04:10", SPARGE_ASKED, "answered", ""],
       ["14:56:21", "Sparge: heating the sparge water to 168 °F, mash tun MANUAL", "by recipe", ""]
     ];
     return s;
@@ -482,6 +500,8 @@ function spargeBanner(temp, a = st.a) {
     text: temp ? `The sparge water is ready at ${temp} °F${off ? `, and ${off}` : ""}. Set the hoses or valves for a fly or a batch sparge, start the pumps by hand, then press Sparge started, which switches the HLT's AUTO off.`
       : `${off ? `${off[0].toUpperCase()}${off.slice(1)}. ` : ""}Set the hoses or valves for a fly or a batch sparge, start the pumps by hand, then press Sparge started.`};
 }
+/* its line in the event log, as #sparge-ready asks it with both pumps off, for the moments after it */
+const SPARGE_ASKED = (q => `${q.title}: ${q.text}`)(spargeBanner(168, {hltPump: {on: false}, wortPump: {on: false}}));
 /* a SpargeStep switches a pump off for the brewer to move its hoses, once a run of the step (core 1c08d4c, _hose_off): the
    wort pump as the step starts, the HLT pump as the water gets there. A Stop and Start never stops one the brewer has
    since started. CraftBeerPi says so only in the prompt's words */
@@ -573,6 +593,7 @@ function endPause() {
   const el = st.a.bkEl;
   el.paused = false; el.pauseWarned = false;
   if (st.banner && st.banner.pausegt) st.banner = null;
+  questionGone(pauseBanner().title, "no longer needed");
 }
 /* ---------- helpers ---------- */
 const $ = (s, r = document) => r.querySelector(s);
@@ -1058,6 +1079,15 @@ function renderAll() {
 let toastT;
 function toast(text) { const t = $("#toast"); t.textContent = text; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3800); }
 function logEvent(what, res, tone, cav = "") { st.events.unshift([hhmmss(st.t), what, res, tone, cav]); }
+/* a question's line says "waiting for you", in Prompt Amber, only while CraftBeerPi waits for its answer. Once it goes,
+   answered on any screen or taken down by CraftBeerPi, the same line says so in the plain colour and keeps the time it
+   was asked; the line for the answer itself is logged as before. So amber in the log always means something still
+   needs you (Brett, 12 Nov: the screen as built never changed a line). A question's line starts with its title: "Hop
+   Alert: …", "Stir finished", "No target for the Mash Tun" */
+function questionGone(title, res = "answered") {
+  const e = st.events.find(x => x[2] === "waiting for you" && (x[1] === title || x[1].startsWith(title + ":") || x[1].startsWith(title + " finished")));
+  if (e) { e[2] = res; e[3] = ""; }
+}
 /* what CraftBeerPi says as a command takes effect (its notifications, a step's start, a prompt) reaches the screen just
    after the command's own "confirmed", so it comes out on top */
 function soon(f) { timers.push(setTimeout(() => { f(); renderAll(); }, 300)); }
@@ -1100,6 +1130,7 @@ function setMode(v, m) {
   V.mode = m;
   V.noTgt = 0; V.warned = false;
   if (m === "manual" && st.banner && st.banner.notgt === v) st.banner = null;
+  if (m === "manual") questionGone(`No target for the ${KNAME[v]}`, "no longer needed");
   if (v === "mt") {
     if (m === "auto" && V.sv == null) { st.v.hlt.mode = "manual"; st.v.hlt.sv = null; a.hltEl.on = false; a.hltEl.pct = 0; a.wortPump.on = true; }
     else if (m === "auto") { st.v.hlt.mode = "manual"; st.v.hlt.sv = +(V.sv + HERMS_DELTA).toFixed(1); a.hltEl.on = true; a.hltEl.pct = 62; a.wortPump.on = true; }
@@ -1175,6 +1206,7 @@ function cmdTgtSet() {
     }
     st.v[v].noTgt = 0; st.v[v].warned = false;
     if (st.banner && st.banner.notgt === v) st.banner = null;
+    questionGone(`No target for the ${KNAME[v]}`, "no longer needed");
   });
 }
 /* the proposed boil kettle's TARGET (Brett's new BoilPower): SET BOIL sends the boil point as the target, and anything from
@@ -1301,8 +1333,10 @@ function stepStart(i) {
     if (st.v.hlt.mode === "auto") setMode("hlt", "manual");
     if (was.min && r.left === 0) st.v.hlt.sv = null;
     r.started = false; r.hoses = [];
-    if (st.banner && st.banner.sparge) st.banner = null;
+    if (st.banner && st.banner.sparge) { st.banner = null; questionGone(was.n, "no longer needed"); }
   }
+  /* a NotificationStep's question goes unanswered as its step ends some other way (NEXT): CraftBeerPi takes it down */
+  if (moved && st.banner && st.banner.cmd === "b:done" && st.banner.title === was.n) { st.banner = null; questionGone(was.n, "no longer needed"); }
   /* on to the boil kettle: the mash tun's AUTO, and a mash step's HERMS with it, has done its work */
   if (s.k === "bk") { st.fill.bk = true; if (st.v.mt.mode === "auto") setMode("mt", "manual"); }
   /* the runoff over (core 1c08d4c, the hltpump extension): as the last step named for the runoff ends, by NEXT here or its
@@ -1328,7 +1362,11 @@ function stepStart(i) {
   if (s.k === "bk") st.fill.mtLiq = false;
   if (s.type === "SpargeStep") { r.started = false; spargeBegin(s); return; }
   if (s.temp != null) stepTarget(s);
-  else if (s.note) st.banner = {tone: "prompt", title: s.n, text: s.note, act: "DONE", cmd: "b:done"};
+  /* a NotificationStep asks a second after it starts, in its own words; NEXT STEP, CraftBeerPi's label, answers it */
+  else if (s.note) {
+    st.banner = {tone: "prompt", title: s.n, text: s.note, act: "NEXT STEP", cmd: "b:done"};
+    soon(() => logEvent(`${s.n}: ${s.note}`, "waiting for you", "wait"));
+  }
 }
 /* the brewer starts the held boil, with START THE BOIL or a held START (core 1c08d4c, BoilStep._runoff_over): the runoff
    is over, so CraftBeerPi switches the wort pump and the HLT pump off, whichever run, once a brew, and says so; then the
@@ -1336,6 +1374,9 @@ function stepStart(i) {
 function boilStart() {
   const r = st.recipe, s = RECIPE.steps[r.cur], off = [];
   if (st.banner && st.banner.boilHold) st.banner = null;
+  /* answered, with START THE BOIL or a held START here. CraftBeerPi takes its question down as "withdrawn" when the boil
+     is started some other way than its button, so the screen counts its own START too (BUILD-NOTES) */
+  questionGone(s.n);
   [["wortPump", "the wort pump"], ["hltPump", "the HLT pump"]].forEach(([id, w]) => { if (st.a[id].on) { setActor(id, false); off.push(w); } });
   st.fill.mtLiq = false;
   if (st.v.mt.mode === "auto") setMode("mt", "manual");
@@ -1369,7 +1410,7 @@ function spargeBegin(s) {
     if (st.recipe !== r || r.cur !== i || r.state !== "running" || r.started) return;
     spargeHose("hlt");
     r.wait = WFY; st.banner = spargeBanner(s.temp);
-    logEvent(`${s.n}: the sparge water is ready at ${s.temp} °F`, "waiting for you", "wait");
+    logEvent(`${st.banner.title}: ${st.banner.text}`, "waiting for you", "wait");
     renderAll();
   }, 600));
 }
@@ -1398,7 +1439,7 @@ function cmdStop() {
     st.recipe.state = "stopped";
     if (st.v[k].mode === "auto") setMode(k, "manual");
     /* a SpargeStep's "Sparge started" question is taken down when the step stops, and asked again when it starts */
-    if (st.banner && st.banner.sparge) { st.banner = null; st.recipe.wait = null; }
+    if (st.banner && st.banner.sparge) { st.banner = null; st.recipe.wait = null; questionGone(RECIPE.steps[st.recipe.cur].n, "no longer needed"); }
   });
 }
 function cmdNextYes() {
@@ -1407,15 +1448,19 @@ function cmdNextYes() {
   send("r:next", "next", `Skipped to ${nx.n}`, () => { stepStart(r.cur + 1); if (!r.held) r.state = "running"; });
 }
 function cmdBanner(x) {
-  if (x === "added") send("b", "x", "Hop alert answered: 3.00 oz Centennial added", () => { st.banner = null; if (st.recipe) st.recipe.adds[0] = "done"; });
-  else if (x === "boil") send("b", "x", "Ready to boil? Start the boil", boilStart);
-  else if (x === "done") send("b", "x", `${RECIPE.steps[st.recipe.cur].n} done`, () => { st.banner = null; stepStart(st.recipe.cur + 1); });
+  if (x === "added") send("b", "x", "Hop Alert answered: Added", () => { questionGone("Hop Alert"); st.banner = null; if (st.recipe) st.recipe.adds[0] = "done"; });
+  else if (x === "boil") send("b", "x", `${RECIPE.steps[st.recipe.cur].n} answered: Start the boil`, boilStart);
+  else if (x === "done") {
+    const s = RECIPE.steps[st.recipe.cur];
+    send("b", "x", `${s.n} answered: Next Step`, () => { questionGone(s.n); st.banner = null; stepStart(st.recipe.cur + 1); });
+  }
   /* the SpargeStep's "Sparge started": its timer starts (or it runs until NEXT STEP), the HLT's AUTO goes off, and the
      drawing goes over to the runoff */
   else if (x === "sparge") {
     const s = RECIPE.steps[st.recipe.cur];
     send("b", "x", `${s.n}: sparge started, ${s.min ? `${s.min} min timer started` : "until NEXT STEP"}`, () => {
       const r = st.recipe;
+      questionGone(s.n);
       st.banner = null; r.wait = null; r.started = true;
       if (st.v.hlt.mode === "auto") {
         setMode("hlt", "manual");
@@ -1423,7 +1468,8 @@ function cmdBanner(x) {
       }
     });
   }
-  else { st.banner = null; renderAll(); }
+  /* OK: the rest timer's alarm, or a warning that waits for one (no target, a forgotten pause) */
+  else { if (st.banner) questionGone(st.banner.title); st.banner = null; renderAll(); }
 }
 function cmdLoad(i) {
   if (i !== 0) return toast(`Mockup: only Test Recipe v5 is filled in here. On the real screen, LOAD sends ${BOOK[i].n} to Brew Steps, as the Recipe Book does today.`);
@@ -1490,8 +1536,8 @@ function tBanner(t, list = st.tmrs) {
     acts: [{label: "+5 MIN", cmd: `tm2:plus5:${t.id}`, dir: "plus5", sec: true}, {label: "OK", cmd: `tm2:ok:${t.id}`, dir: "ok"}]};
 }
 /* its alarm is over (answered, or the timer set anew or removed): the prompt goes, and the next one waiting takes the
-   title bar at the next second */
-function tAnswered(t) { delete t.at; if (st.banner && st.banner.timer === t.id) st.banner = null; }
+   title bar at the next second. Set anew or removed, CraftBeerPi takes the alarm down unanswered */
+function tAnswered(t, res = "answered") { delete t.at; questionGone(t.name, res); if (st.banner && st.banner.timer === t.id) st.banner = null; }
 function timersHTML() {
   const off = st.link === "lost" ? PAUSED : "", T = st.tmrs, e = st.tedit, full = T.length >= TMAX;
   const rows = T.map(t => trowHTML(t, off) + (e && e.id === t.id ? teditHTML(off) : "")).join("");
@@ -1578,7 +1624,7 @@ function cmdTe(x, y) {
     /* a timer with time left on it (running or paused) is asked about once, in place, as NEXT STEP is; a stopped one, or
        one that has run out, goes at once, and its alarm with it */
     if ((t.state === "running" || t.state === "paused") && !e.confirm) { e.confirm = true; return renderAll(); }
-    return send("t:" + t.id, "rm", `${t.name} removed`, () => { tAnswered(t); st.tmrs = st.tmrs.filter(z => z !== t); st.tedit = null; });
+    return send("t:" + t.id, "rm", `${t.name} removed`, () => { tAnswered(t, "no longer needed"); st.tmrs = st.tmrs.filter(z => z !== t); st.tedit = null; });
   }
   /* a typed name another timer has is refused as its greyed button is, before anything is sent */
   const twin = (!t || name !== t.name) && tTwin(name, t);
@@ -1597,7 +1643,7 @@ function cmdTe(x, y) {
   }
   const said = name !== t.name ? `${t.name} is now ${name}, ${tfmt(e.set)}` : `${t.name} set to ${tfmt(e.set)}`, set = e.set;
   /* SET on one that has run out answers its alarm too, and stops it at its new time, as CraftBeerPi does */
-  return send("t:" + t.id, "save", said, () => { if (t.state === "done") { tAnswered(t); t.state = "stopped"; } t.name = name; t.set = t.left = t.run = set; st.tedit = null; });
+  return send("t:" + t.id, "save", said, () => { if (t.state === "done") { tAnswered(t, "no longer needed"); t.state = "stopped"; } t.name = name; t.set = t.left = t.run = set; st.tedit = null; });
 }
 function cmdTm2(x, id, y) {
   const t = tById(+id), key = "t:" + id;

@@ -30,6 +30,10 @@
 //   a new list shows at once. A timer's alarm is CraftBeerPi's
 //   kept prompt, which the title bar shows with +5 MIN as the lesser button. SOUND is this browser's own, kept on this
 //   device. Pressing SOUND while it says TAP TO ALLOW allows it and leaves it on; on a phone a finger counts as it lifts.
+// - A question's line in the event log says "waiting for you", in amber, only while CraftBeerPi waits for its answer; then
+//   the same line says "answered", "no longer needed" or, where the page can't tell which (opened later, or after the
+//   connection came back), "no longer waiting" (the dashboard agent's hand-off of 12 Nov, afternoon). Live, the line
+//   keeps the question's CraftBeerPi id to find it by; the mockup's lines have none, so it finds them by their words.
 import { rigSVG, RIG_H } from "./rig";
 import * as DEMO from "./demo";
 import { api, why as failWhy } from "./api";
@@ -369,6 +373,7 @@ function endPause() {
   const el = st.a.bkEl;
   el.paused = false; el.pauseWarned = false;
   if (st.banner && st.banner.pausegt) st.banner = null;
+  questionGone(DEMO.pauseBanner().title, "no longer needed");
 }
 function powerHTML() {
   const V = st.v.bk, el = st.a.bkEl, auto = V.mode === "auto", pend = st.pend["p:bk"];
@@ -835,13 +840,30 @@ function schedule() {
 
 /* ---------- messages ---------- */
 function toast(text) { const t = $("#toast"); t.textContent = text; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3800); }
-// shared: a line for every tab (the Settings page's), marked so another tab open on this device adds it (onStorage)
-function logEvent(what, res, tone, cav = "", shared = false) {
+// shared: a line for every tab (the Settings page's), marked so another tab open on this device adds it (onStorage).
+// q: the CraftBeerPi notification a "waiting for you" line is about, so the line can say what became of it (questionGone)
+function logEvent(what, res, tone, cav = "", shared = false, q = null) {
   if (DEMO_MODE) { st.events.unshift([hhmmss(st.t), what, res, tone, cav]); return; }
   st.t = daySeconds();
-  st.events.unshift([hhmmss(st.t), what, res, tone, cav, Date.now(), ...(shared ? [1] : [])]);
+  st.events.unshift([hhmmss(st.t), what, res, tone, cav, Date.now(), ...(q != null ? [shared ? 1 : 0, String(q)] : shared ? [1] : [])]);
   if (st.events.length > 50) st.events.length = 50;
   saveEvents();
+}
+/* a question's line says "waiting for you", in Prompt Amber, only while CraftBeerPi waits for its answer. Once the
+   question goes, the same line says what became of it, in the plain colour, and keeps the time it was asked (the
+   dashboard agent's hand-off of 12 Nov, afternoon: amber in the log always means something still needs you). Live, q is
+   CraftBeerPi's notification id. The demo's lines have none, so there q is the question's title, as in the mockup: the
+   newest line still waiting whose words are the title, or start with "title:" or "title finished". False if this tab
+   has no line for it */
+function questionGone(q, res = "answered") {
+  const k = String(q);
+  const e = st.events.find(DEMO_MODE
+    ? x => x[2] === "waiting for you" && (x[1] === k || x[1].startsWith(k + ":") || x[1].startsWith(k + " finished"))
+    : x => x[2] === "waiting for you" && x[7] === k);
+  if (!e) return false;
+  e[2] = res; e[3] = "";
+  if (!DEMO_MODE) saveEvents();
+  return true;
 }
 function say(text, urgent) { const el = $(urgent ? "#sr-alert" : "#sr"); el.textContent = ""; const g = gen; setTimeout(() => { if (g === gen && root) el.textContent = text; }, 40); }
 function note(where, text) {
@@ -888,6 +910,7 @@ function setMode(v, m) {
   V.mode = m;
   V.noTgt = 0; V.warned = false;
   if (m === "manual" && st.banner && st.banner.notgt === v) st.banner = null;
+  if (m === "manual") questionGone(`No target for the ${DEMO.KNAME[v]}`, "no longer needed");
   if (v === "mt") {
     if (m === "auto" && V.sv == null) { st.v.hlt.mode = "manual"; st.v.hlt.sv = null; a.hltEl.on = false; a.hltEl.pct = 0; a.wortPump.on = true; }
     else if (m === "auto") { st.v.hlt.mode = "manual"; st.v.hlt.sv = +(V.sv + M.HERMS_DELTA).toFixed(1); a.hltEl.on = true; a.hltEl.pct = 62; a.wortPump.on = true; }
@@ -961,6 +984,7 @@ function cmdTgtSet() {
     }
     st.v[v].noTgt = 0; st.v[v].warned = false;
     if (st.banner && st.banner.notgt === v) st.banner = null;
+    questionGone(`No target for the ${DEMO.KNAME[v]}`, "no longer needed");
   });
 }
 /* the new boil kettle's TARGET: SET BOIL sends the boil point as the target, and anything from the boil point less the
@@ -1101,8 +1125,10 @@ function stepStart(i) {
     if (st.v.hlt.mode === "auto") setMode("hlt", "manual");
     if (was.min && r.left === 0) st.v.hlt.sv = null;
     r.started = false; r.hoses = [];
-    if (st.banner && st.banner.sparge) st.banner = null;
+    if (st.banner && st.banner.sparge) { st.banner = null; questionGone(was.n, "no longer needed"); }
   }
+  /* a NotificationStep's question goes unanswered as its step ends some other way (NEXT): CraftBeerPi takes it down */
+  if (moved && st.banner && st.banner.cmd === "b:done" && st.banner.title === was.n) { st.banner = null; questionGone(was.n, "no longer needed"); }
   /* on to the boil kettle: the mash tun's AUTO, and a mash step's HERMS with it, has done its work */
   if (s.k === "bk") { st.fill.bk = true; if (st.v.mt.mode === "auto") setMode("mt", "manual"); }
   /* the runoff over (core 1c08d4c, the hltpump extension): as the last step named for the runoff ends, by NEXT here or its
@@ -1128,7 +1154,11 @@ function stepStart(i) {
   if (s.k === "bk") st.fill.mtLiq = false;
   if (s.type === "SpargeStep") { r.started = false; spargeBegin(s); return; }
   if (s.temp != null) stepTarget(s);
-  else if (s.note) st.banner = {tone: "prompt", title: s.n, text: s.note, act: "DONE", cmd: "b:done"};
+  /* a NotificationStep asks a moment after it starts, in its own words; NEXT STEP, CraftBeerPi's label, answers it */
+  else if (s.note) {
+    st.banner = {tone: "prompt", title: s.n, text: s.note, act: "NEXT STEP", cmd: "b:done"};
+    soon(() => logEvent(`${s.n}: ${s.note}`, "waiting for you", "wait"));
+  }
 }
 /* the brewer starts the held boil, with START THE BOIL or a held START (core 1c08d4c, BoilStep._runoff_over): the runoff
    is over, so CraftBeerPi switches the wort pump and the HLT pump off, whichever run, once a brew, and says so; then the
@@ -1136,6 +1166,9 @@ function stepStart(i) {
 function boilStart() {
   const r = st.recipe, s = M.RECIPE.steps[r.cur], off = [];
   if (st.banner && st.banner.boilHold) st.banner = null;
+  /* answered, with START THE BOIL or a held START here. CraftBeerPi takes its question down as "withdrawn" when the boil
+     is started some other way than its button, so the screen counts its own START too */
+  questionGone(s.n);
   [["wortPump", "the wort pump"], ["hltPump", "the HLT pump"]].forEach(([id, w]) => { if (st.a[id].on) { setActor(id, false); off.push(w); } });
   st.fill.mtLiq = false;
   if (st.v.mt.mode === "auto") setMode("mt", "manual");
@@ -1182,7 +1215,7 @@ function spargeBegin(s) {
     if (st.recipe !== r || r.cur !== i || r.state !== "running" || r.started) return;
     spargeHose("hlt");
     r.wait = WAITING_FOR_YOU; st.banner = DEMO.spargeBanner(s.temp, st.a);
-    logEvent(`${s.n}: the sparge water is ready at ${s.temp} ${M.U}`, "waiting for you", "wait");
+    logEvent(`${st.banner.title}: ${st.banner.text}`, "waiting for you", "wait");
     renderAll();
   }, 600));
 }
@@ -1211,7 +1244,7 @@ function cmdStop() {
     st.recipe.state = "stopped";
     if (st.v[k].mode === "auto") setMode(k, "manual");
     /* a SpargeStep's "Sparge started" question is taken down when the step stops, and asked again when it starts */
-    if (st.banner && st.banner.sparge) { st.banner = null; st.recipe.wait = null; }
+    if (st.banner && st.banner.sparge) { st.banner = null; st.recipe.wait = null; questionGone(M.RECIPE.steps[st.recipe.cur].n, "no longer needed"); }
   });
 }
 function cmdNextYes() {
@@ -1220,15 +1253,19 @@ function cmdNextYes() {
   send("r:next", "next", `Skipped to ${nx.n}`, () => { stepStart(r.cur + 1); if (!r.held) r.state = "running"; });
 }
 function cmdBanner(x) {
-  if (x === "added") send("b", "x", "Hop alert answered: 3.00 oz Centennial added", () => { st.banner = null; if (st.recipe) st.recipe.adds[0] = "done"; });
-  else if (x === "boil") send("b", "x", "Ready to boil? Start the boil", boilStart);
-  else if (x === "done") send("b", "x", `${M.RECIPE.steps[st.recipe.cur].n} done`, () => { st.banner = null; stepStart(st.recipe.cur + 1); });
+  if (x === "added") send("b", "x", "Hop Alert answered: Added", () => { questionGone("Hop Alert"); st.banner = null; if (st.recipe) st.recipe.adds[0] = "done"; });
+  else if (x === "boil") send("b", "x", `${M.RECIPE.steps[st.recipe.cur].n} answered: Start the boil`, boilStart);
+  else if (x === "done") {
+    const s = M.RECIPE.steps[st.recipe.cur];
+    send("b", "x", `${s.n} answered: Next Step`, () => { questionGone(s.n); st.banner = null; stepStart(st.recipe.cur + 1); });
+  }
   /* the SpargeStep's "Sparge started": its timer starts (or it runs until NEXT STEP), the HLT's AUTO goes off, and the
      drawing goes over to the runoff */
   else if (x === "sparge") {
     const s = M.RECIPE.steps[st.recipe.cur];
     send("b", "x", spargeStartedLine(s), () => {
       const r = st.recipe;
+      questionGone(s.n);
       st.banner = null; r.wait = null; r.started = true;
       if (st.v.hlt.mode === "auto") {
         setMode("hlt", "manual");
@@ -1236,7 +1273,8 @@ function cmdBanner(x) {
       }
     });
   }
-  else { st.banner = null; renderAll(); }
+  /* OK: the rest timer's alarm, or a warning that waits for one (no target, a forgotten pause) */
+  else { if (st.banner) questionGone(st.banner.title); st.banner = null; renderAll(); }
 }
 const spargeStartedLine = s => `${s.n}: sparge started, ${s.min ? `${s.min} min timer started` : "until NEXT STEP"}`;
 function cmdLoad(i) {
@@ -1504,8 +1542,9 @@ function liveTimer(x) {
    CraftBeerPi's alerts (Scott's choice). */
 const tById = id => st.tmrs.find(t => t.id === id);
 /* a timer's alarm is over (answered, or the timer set anew or removed): in the demo its prompt goes, and the next one
-   waiting takes the title bar at the next second. Live, CraftBeerPi withdraws the prompt */
-function tAnswered(t) { delete t.at; if (st.banner && st.banner.timer === t.id) st.banner = null; }
+   waiting takes the title bar at the next second; set anew or removed, CraftBeerPi takes the alarm down unanswered, so
+   its line says "no longer needed". Live, CraftBeerPi withdraws the prompt and observe() changes the line */
+function tAnswered(t, res = "answered") { delete t.at; questionGone(t.name, res); if (st.banner && st.banner.timer === t.id) st.banner = null; }
 const tPct = t => t.run ? Math.round(100 * (1 - t.left / t.run)) : 0;
 // how long ago a timer ran out: on the demo's clock, or CraftBeerPi's brewing clock
 const tUp = t => Math.max(0, DEMO_MODE ? st.t - t.at : t.up);
@@ -1623,7 +1662,7 @@ function cmdTe(x, y) {
     /* a timer with time left on it (running or paused) is asked about once, in place, as NEXT STEP is; a stopped one, or
        one that has run out, goes at once, and its alarm with it */
     if ((t.state === "running" || t.state === "paused") && !e.confirm) { e.confirm = true; return renderAll(); }
-    return tSend("t:" + t.id, "rm", `${t.name} removed`, () => { tAnswered(t); st.tmrs = st.tmrs.filter(z => z !== t); st.tedit = null; }, () => api.timersRemove(t.id), shut);
+    return tSend("t:" + t.id, "rm", `${t.name} removed`, () => { tAnswered(t, "no longer needed"); st.tmrs = st.tmrs.filter(z => z !== t); st.tedit = null; }, () => api.timersRemove(t.id), shut);
   }
   /* a typed name another timer has is refused as its greyed button is, before anything is sent */
   const twin = (!t || name !== t.name) && tTwin(name, t);
@@ -1642,7 +1681,7 @@ function cmdTe(x, y) {
   }
   const said = name !== t.name ? `${t.name} is now ${name}, ${tfmt(e.set)}` : `${t.name} set to ${tfmt(e.set)}`, set = e.set;
   /* SET on one that has run out answers its alarm too, and stops it at its new time, as CraftBeerPi does */
-  return tSend("t:" + t.id, "save", said, () => { if (t.state === "done") { tAnswered(t); t.state = "stopped"; } t.name = name; t.set = t.left = t.run = set; st.tedit = null; },
+  return tSend("t:" + t.id, "save", said, () => { if (t.state === "done") { tAnswered(t, "no longer needed"); t.state = "stopped"; } t.name = name; t.set = t.left = t.run = set; st.tedit = null; },
     () => api.timersChange(t.id, name !== t.name ? {name, seconds: set} : {seconds: set}), shut);
 }
 function cmdTm2(x, id, y) {
@@ -1838,7 +1877,8 @@ function blankMoment() {
   return {t: daySeconds(), link: "lost", age: null, banner: null, v, a, recipe: null, timer: {left: 3600, running: false},
     tmrs: [], names: [], tedit: null, snd: soundInit(),
     events: loadEvents(), pend: {}, notes: {}, edit: null, confirmNext: false, logOpen: false,
-    fail: {}, expect: {}, alarm: null, errors: [], warnings: [], prompts: [], lostAt: null, openedAt: Date.now()};
+    fail: {}, expect: {}, alarm: null, errors: [], warnings: [], prompts: [], lostAt: null, openedAt: Date.now(),
+    waitN: 0, oldAt: 0};
 }
 function expected(key, raw) {
   const x = st.expect[key];
@@ -2013,8 +2053,31 @@ function stepStartLine(m, resumed, s) {
     if (resumed && p._sparge_started) return `${m.n} resumed`;
     if (!resumed) return p.Kettle && m.temp > 0 ? `${m.n}: heating the sparge water to ${m.temp} ${M.U}, mash tun MANUAL` : `${m.n}: mash tun MANUAL, the pumps are yours`;
   }
+  /* a whirlpool sets no target as it starts: it holds its temperature only after "Heat and hold" (the dashboard agent's
+     hand-off of 12 Nov, afternoon) */
+  if (s && s.type === "WhirlpoolStep") return `${m.n} ${resumed ? "resumed" : "started"}${m.min ? `, ${m.min} min` : ""}`;
   return `${m.n} ${resumed ? "resumed" : "started"}${m.temp != null ? `, ${M.VNAME[m.k].toLowerCase()} target ${m.temp.toFixed(1)} ${M.U}` : ""}`;
 }
+/* a question's words in the event line: a timer's alarm as "<name> finished", any other "title: message" */
+function promptWords(a) {
+  const tm = promptTimer(a);
+  return tm ? `${tm.name} finished` : `${ut(a.title)}: ${ut(a.message)}`;
+}
+/* a question this tab has a line for already: CraftBeerPi shows a page the questions it keeps for every page again as the
+   page connects (a reload, the wifi back), and they are the same questions, asked when the line says. A line kept from
+   before the lines had ids is matched by its words, and takes the id */
+function askedBefore(id, words) {
+  const e = st.events.find(x => x[2] === "waiting for you" && (x[7] === id || (x[7] == null && x[1] === words)));
+  if (!e) return false;
+  if (e[7] == null) { e[6] = e[6] || 0; e[7] = id; saveEvents(); }
+  return true;
+}
+/* the hold before the boil, started with this screen's START: its question offers Start as an answer, but CraftBeerPi
+   takes it down as "withdrawn" when the boil starts that way, so the screen counts it as answered (the dashboard agent's
+   hand-off of 12 Nov, afternoon). START puts the current step in own.start; held, that is the boil, whose name is the
+   question's title */
+const startedHere = a => !!(own.start && Date.now() - own.start.at < 10000
+  && M.RECIPE.steps.some(s => own.start.ids.includes(s.id) && s.n === ut(a.title)));
 // What happened since the last update, for the event line: the connection, everything CraftBeerPi says, and the
 // recipe's steps starting, finishing and starting their timers. Commands from this screen log themselves.
 function observe(prev, snap) {
@@ -2032,18 +2095,24 @@ function observe(prev, snap) {
     const id = String(a.id), type = String(a.type || "").toLowerCase(), title = ut(a.title), msg = ut(a.message), line = `${title}: ${msg}`;
     if (before.has(id) || OWN_ALERTS.has(id)) continue;
     const tm = Array.isArray(a.action) && a.action.length ? promptTimer(a) : null;
-    if (tm) { logEvent(`${tm.name} finished`, "waiting for you", "wait"); say(`${tm.name}: time's up.`, true); }
-    else if (Array.isArray(a.action) && a.action.length) { logEvent(line, "waiting for you", "wait"); say(`${title}. ${msg}`, true); }
+    if (tm) { if (!askedBefore(id, `${tm.name} finished`)) logEvent(`${tm.name} finished`, "waiting for you", "wait", "", false, id); say(`${tm.name}: time's up.`, true); }
+    else if (Array.isArray(a.action) && a.action.length) { if (!askedBefore(id, line)) logEvent(line, "waiting for you", "wait", "", false, id); say(`${title}. ${msg}`, true); }
     else if (type === "error") { st.errors.push({id, title: a.title, message: a.message}); logEvent(line, "from CraftBeerPi", "bad"); say(`${title}. ${msg}`, true); }
     else if (type === "warning") { addWarning(id, a.title, a.message); logEvent(line, "from CraftBeerPi", "wait"); say(`${title}. ${msg}`); }
     else if (!ROUTINE.test(String(a.message || "").trim())) logEvent(line, "from CraftBeerPi", "");
   }
-  // a prompt gone without an answer from here: answered on another screen, or CraftBeerPi no longer needs it
+  /* a question gone: its own line says so (questionGone): answered, here or on another screen; taken down by CraftBeerPi,
+     no longer needed; or dropped as this page connected again, with no word of why, no longer waiting, as on a page
+     opened later. A line of its own only when it was answered on another screen, which is news, or when this tab never
+     logged it */
   for (const [id, a] of before) {
     if (now.has(id) || !Array.isArray(a.action) || !a.action.length) continue;
-    if (answered.delete(id)) continue;
     const why = typeof snap.retired === "function" ? snap.retired(a.id) : null;
-    logEvent(`${ut(a.title)}: ${ut(a.message)}`, why === "answered" ? "answered on another screen" : "no longer needed", "");
+    const here = answered.delete(id) || startedHere(a);
+    const res = here || why === "answered" ? "answered" : why ? "no longer needed" : "no longer waiting";
+    const found = questionGone(id, res);
+    if (here || (found && why !== "answered")) continue;
+    logEvent(`${ut(a.title)}: ${ut(a.message)}`, why === "answered" ? "answered on another screen" : res, "");
   }
   const old = new Map((prev.steps || []).filter(Boolean).map(s => [s.id, s]));
   const steps = (snap.steps || []).filter(Boolean);
@@ -2070,6 +2139,37 @@ function observe(prev, snap) {
   if (steps.length && steps.every(s => s.status === "D") && (prev.steps || []).some(s => s && s.status !== "D") && steps.every(s => old.has(s.id))) {
     logEvent("Recipe finished", "by recipe", "ok");
   }
+}
+/* a page opened later: the lines kept on this device can hold a question that still waited as the last page closed. Once
+   CraftBeerPi's list of the questions it waits on has come (it sends it as the page connects: snap.waiting), each such
+   line whose question isn't among them, nor on show, says "no longer waiting", in the plain colour: this page can't tell
+   whether it was answered or taken down (the dashboard agent's hand-off of 12 Nov, afternoon). Again each time the list
+   comes: after the wifi, or a restart. A line kept from before the lines had ids is matched by its words, a moment later
+   (oldLines): the questions CraftBeerPi keeps for every page come just after the list, and one may be the line's */
+function noLongerWaiting(snap) {
+  const w = snap.waiting;
+  if (!w || w.n === st.waitN) return;
+  st.waitN = w.n;
+  const ids = w.ids(), shown = new Set(st.prompts.map(p => String(p.id)));
+  let changed = false;
+  for (const e of st.events) {
+    if (e[2] !== "waiting for you") continue;
+    if (e[7] == null) { st.oldAt = Date.now() + 1500; continue; }
+    if ((ids && ids.has(e[7])) || shown.has(e[7])) continue;
+    e[2] = "no longer waiting"; e[3] = ""; changed = true;
+  }
+  if (changed) saveEvents();
+}
+function oldLines() {
+  st.oldAt = 0;
+  const asked = new Map(st.prompts.map(p => [promptWords(p), String(p.id)])), taken = new Set(st.events.map(x => x[7]).filter(Boolean));
+  for (const e of st.events) {
+    if (e[2] !== "waiting for you" || e[7] != null) continue;
+    const id = asked.get(e[1]);
+    if (id && !taken.has(id)) { e[6] = e[6] || 0; e[7] = id; taken.add(id); } else { e[2] = "no longer waiting"; e[3] = ""; }
+  }
+  saveEvents();
+  renderAll();
 }
 
 /* ---------- the event log is kept on this device ---------- */
@@ -2324,6 +2424,7 @@ function demoTick() {
 function liveTick() {
   st.t = daySeconds();
   setText($("#clock"), hhmm(st.t));
+  if (st.oldAt && Date.now() >= st.oldAt) oldLines();
   if (st.link === "lost") {
     // the graphs go grey, and a dark stretch grows over the time with no readings
     if (H) { H.tick(gRow, false); drawGraphs(); }
@@ -2497,6 +2598,7 @@ export function createBrewDay(el, o = {}) {
         probeBrewScribe();
       }
       observe(prev, snap);
+      noLongerWaiting(snap);
       if (snap.connected) everConnected = true;
       schedule();
     },

@@ -49,13 +49,16 @@ const BOOK = [ // the simulator's Recipe Book (config/recipes/*.yaml)
   {n: "BrewStart ready-by demo", d: "3 steps · hot strike water by a set time, 152 °F"}
 ];
 
+/* a question's line and its answer's are CraftBeerPi's words, as the screen logs them (title: message, then "title
+   answered: button"). The malt question is an imported recipe's MashIn Notification (upload_controller), and its button
+   is MashInStep's Next Step */
 const MASH_EVENTS = [
   ["14:31:52", "HLT PUMP started", "confirmed", "ok"],
   ["14:16:19", "Saccharification: 149 °F reached, 40 min timer started", "by recipe", ""],
   ["14:09:40", "Saccharification started, mash tun target 149.0 °F", "by recipe", ""],
   ["14:09:38", "Protein Rest finished", "by recipe", ""],
-  ["13:27:05", "MashIn: malt added", "confirmed", "ok"],
-  ["13:26:58", "MashIn: 126 °F reached. Please add malt.", "answered", ""]
+  ["13:27:05", "MashIn answered: Next Step", "confirmed", "ok"],
+  ["13:26:58", "MashIn: Target temperature reached. Please add malt.", "answered", ""]
 ];
 const mash = () => ({
   t: 14 * 3600 + 32 * 60 + 31, link: "ok", age: 0, banner: null,
@@ -69,13 +72,14 @@ const SCENES = {
   mash,
   hop: () => Object.assign(mash(), {
     t: 16 * 3600 + 2,
-    banner: {tone: "prompt", title: "Hop alert", text: "Please add 3.00 oz Centennial (1)", act: "ADDED", cmd: "b:added"},
+    /* BoilStep's hop alert, in its words: "Hop Alert", "Please add <hop> (<n>)", one button, Added */
+    banner: {tone: "prompt", title: "Hop Alert", text: "Please add 3.00 oz Centennial (1)", act: "ADDED", cmd: "b:added"},
     v: {hlt: {pv: 165.3, sv: 168.0, own: 168.0, mode: "manual"}, mt: {pv: 151.2, sv: null, mode: "manual"}, bk: {pv: 210.6, sv: 210.2, mode: "auto"}},
     a: {hltEl: {on: false, pct: 0}, hltPump: {on: false}, wortPump: {on: false}, bkEl: {on: true, pct: 45}},
     fill: {mtLiq: false, bk: true},
     recipe: {state: "running", cur: 4, left: 59 * 60 + 58, adds: ["due"]},
     events: [
-      ["16:00:02", "Hop alert: add 3.00 oz Centennial (1)", "waiting for you", "wait"],
+      ["16:00:02", "Hop Alert: Please add 3.00 oz Centennial (1)", "waiting for you", "wait"],
       ["15:30:04", "Boil: 210.2 °F reached, 90 min timer started", "by recipe", ""],
       ["15:01:47", "Boil started, boil kettle AUTO", "by recipe", ""],
       ["14:58:30", "Sparge finished", "by recipe", ""]
@@ -87,8 +91,8 @@ const SCENES = {
     const s = SCENES.hop();
     s.t = 16 * 3600 + 4 * 60 + 12; s.banner = null;
     s.recipe.left = 55 * 60 + 48; s.recipe.adds = ["done"];
-    s.events[0] = ["16:00:02", "Hop alert: add 3.00 oz Centennial (1)", "answered", ""];
-    s.events.unshift(["16:00:31", "Hop alert answered: 3.00 oz Centennial added", "confirmed", "ok"]);
+    s.events[0][2] = "answered"; s.events[0][3] = "";
+    s.events.unshift(["16:00:31", "Hop Alert answered: Added", "confirmed", "ok"]);
     return Object.assign(s, {base: "hop", open: {edit: {v: "bk", kind: "pwr", what: "boil", val: 40}}});
   },
   /* the boil kettle's three phases in AUTO (Scott, 10 Nov: the power and temperature controls were "not intuitive").
@@ -102,7 +106,8 @@ const SCENES = {
     recipe: {state: "running", cur: 4, left: 90 * 60, adds: [], wait: "HEATING"},
     events: [
       ["15:01:47", "Boil started, boil kettle AUTO", "by recipe", ""],
-      ["15:01:45", "Ready to boil? Start the boil", "answered", ""],
+      ["15:01:45", "Boil answered: Start the boil", "confirmed", "ok"],
+      ["14:58:30", `Boil: ${boilHoldBanner(RECIPE.steps[4]).text}`, "answered", ""],
       ["14:58:30", "Sparge finished", "by recipe", ""],
       ["10:02:16", "Boil power back to your usual 45 % (was 35 %)", "by recipe", ""]
     ]
@@ -138,12 +143,20 @@ const SCENES = {
     v: {hlt: {pv: 156.8, sv: 168.0, own: 168.0, mode: "manual"}, mt: {pv: 139.6, sv: null, mode: "manual"}, bk: {pv: 169.4, sv: 170.0, mode: "auto"}},
     a: {hltEl: {on: false, pct: 0}, hltPump: {on: false}, wortPump: {on: false}, bkEl: {on: true, pct: 35}},
     recipe: {state: "running", cur: 6, left: 9 * 60 + 30, adds: []},
+    /* as the screen logs them: read from the core, screen.js's observe() and BoilPower (the dashboard agent's hand-off of
+       12 Nov, afternoon). The Boil's "Boiling completed" is one of the routine notices the screen leaves out; Whirlpool
+       Hop, a NotificationStep, asks a moment after it starts and moves on when NEXT STEP answers it; the stand asks in
+       CraftBeerPi's own words; and the new BoilPower says what it does as it starts to hold */
     events: [
-      ["17:14:31", "Whirlpool: heat and hold 170 °F", "confirmed", "ok"],
-      ["17:14:20", "Whirlpool: the wort is down to 166.3 °F. Heat and hold?", "answered", ""],
+      ["17:14:32", `${KNAME.bk}: Holding 170.0, its target, instead of boiling. Below it, it heats at 100% while the wort is more than 7.2 below, easing to 30% as it reaches the hold; then it rests until the wort is 3.6 below. To boil, set its target to 206.6 or above.`, "from CraftBeerPi", ""],
+      ["17:14:31", "Whirlpool answered: Heat and hold", "confirmed", "ok"],
+      ["17:14:20", `Whirlpool: The wort in ${KNAME.bk} has cooled to 166.3 °F, below the 170 °F whirlpool, with 14 minutes of the stand left. Heat it back to 170 °F and hold it there until the stand ends?`, "answered", ""],
       ["17:08:10", "Whirlpool started, 20 min", "by recipe", ""],
-      ["17:07:52", "Whirlpool Hop: 1.50 oz Calypso added", "confirmed", "ok"],
-      ["17:00:04", "Boil finished, boil kettle MANUAL", "by recipe", ""]
+      ["17:08:10", "Whirlpool Hop finished", "by recipe", ""],
+      ["17:08:10", "Whirlpool Hop answered: Next Step", "confirmed", "ok"],
+      ["17:00:06", `Whirlpool Hop: ${RECIPE.steps[5].note}`, "answered", ""],
+      ["17:00:04", "Whirlpool Hop started", "by recipe", ""],
+      ["17:00:04", "Boil finished", "by recipe", ""]
     ]
   }),
   /* the same whirlpool hold with the wort pump running, as Scott whirlpools (Scott, 12 Nov: "whirlpool / hop-stand step
@@ -152,7 +165,7 @@ const SCENES = {
   whirlpool: () => {
     const s = SCENES.hold();
     s.a.wortPump = {on: true};
-    s.events.splice(2, 0, ["17:08:16", "WORT PUMP started", "confirmed", "ok"]);
+    s.events.splice(s.events.findIndex(e => e[0] < "17:08:16"), 0, ["17:08:16", "WORT PUMP started", "confirmed", "ok"]);
     return Object.assign(s, {base: "hold"});
   },
   /* the recipe has finished, and Scott chills the wort. The #whirlpool day: the stand ended at 17:28:10 and switched the
@@ -161,15 +174,19 @@ const SCENES = {
      The drawing can't show the wort going on to the fermenter */
   finished: () => {
     const s = SCENES.whirlpool();
+    /* the stand's notice comes first: CraftBeerPi sends it as the stand stops, before it marks the step done, and the
+       screen logs CraftBeerPi's notices before the steps' changes in each update. Brewing Complete was answered here, so
+       its question's line says so */
     s.events.unshift(
       ["17:28:52", "Brewing Complete answered: OK", "confirmed", "ok"],
       ["17:28:10", "Brewing Complete: Now the yeast will take over", "answered", ""],
       ["17:28:10", "Recipe finished", "by recipe", "ok"],
-      ["17:28:10", `Whirlpool: Stand over: ${KNAME.bk} is off and no longer holding 170 °F.`, "from CraftBeerPi", ""],
-      ["17:28:10", "Whirlpool finished", "by recipe", ""]);
+      ["17:28:10", "Whirlpool finished", "by recipe", ""],
+      ["17:28:10", `Whirlpool: Stand over: ${KNAME.bk} is off and no longer holding 170 °F.`, "from CraftBeerPi", ""]);
+    /* the boil kettle's target is 0 again, as the stand found it: the Boil step leaves it at 0 as it ends */
     return Object.assign(s, {
       t: 17 * 3600 + 41 * 60 + 30, base: "finished",
-      v: {hlt: {pv: 154.9, sv: 168.0, own: 168.0, mode: "manual"}, mt: {pv: 137.2, sv: null, mode: "manual"}, bk: {pv: 88.4, sv: 210.2, mode: "manual"}},
+      v: {hlt: {pv: 154.9, sv: 168.0, own: 168.0, mode: "manual"}, mt: {pv: 137.2, sv: null, mode: "manual"}, bk: {pv: 88.4, sv: null, mode: "manual"}},
       a: {hltEl: {on: false, pct: 0}, hltPump: {on: false}, wortPump: {on: true}, bkEl: {on: false, pct: 0}},
       recipe: null, finished: true,
       timer: {left: 60 * 60, running: false}
@@ -187,8 +204,8 @@ const SCENES = {
     Object.assign(s.v.bk, {pv: 207.9, bp: 2, latched: true});
     s.a.bkEl = {on: true, pct: 2};
     s.recipe.left = 28 * 60 + 54; s.recipe.adds = ["done"];
-    s.events[0] = ["16:00:02", "Hop alert: add 3.00 oz Centennial (1)", "answered", ""];
-    s.events.unshift(["16:10:00", "Boil power 2 % (was 45 %)", "confirmed", "ok"], ["16:00:31", "Hop alert answered: 3.00 oz Centennial added", "confirmed", "ok"]);
+    s.events[0][2] = "answered"; s.events[0][3] = "";
+    s.events.unshift(["16:10:00", "Boil power 2 % (was 45 %)", "confirmed", "ok"], ["16:00:31", "Hop Alert answered: Added", "confirmed", "ok"]);
     return s;
   },
   letfall: () => {
@@ -277,7 +294,7 @@ const SCENES = {
     s.a.hltPump = {on: false};
     s.recipe.wait = WFY;
     s.banner = spargeBanner(168, s.a);
-    s.events.unshift(["15:04:10", "Sparge: the sparge water is ready at 168 °F", "waiting for you", "wait"]);
+    s.events.unshift(["15:04:10", `${s.banner.title}: ${s.banner.text}`, "waiting for you", "wait"]);
     return s;
   },
   /* 15:12:40, a fly sparge: Scott set the hoses, started both pumps and pressed Sparge started at 15:05:02. That
@@ -296,7 +313,7 @@ const SCENES = {
       ["15:05:02", "HLT AUTO off, so its element won't run as the HLT empties", "by recipe", ""],
       ["15:04:58", "WORT PUMP started", "confirmed", "ok"],
       ["15:04:55", "HLT PUMP started", "confirmed", "ok"],
-      ["15:04:10", "Sparge: the sparge water is ready at 168 °F", "answered", ""]);
+      ["15:04:10", SPARGE_ASKED, "answered", ""]);
     return s;
   },
   /* 15:20:30, a batch sparge, with the step's Timer at 0, so it runs until NEXT STEP and says SPARGING. The first
@@ -315,7 +332,7 @@ const SCENES = {
       ["15:05:02", "Sparge: sparge started, until NEXT STEP", "confirmed", "ok"],
       ["15:05:02", "HLT AUTO off, so its element won't run as the HLT empties", "by recipe", ""],
       ["15:04:58", "WORT PUMP started", "confirmed", "ok"],
-      ["15:04:10", "Sparge: the sparge water is ready at 168 °F", "answered", ""],
+      ["15:04:10", SPARGE_ASKED, "answered", ""],
       ["14:56:21", "Sparge: heating the sparge water to 168 °F, mash tun MANUAL", "by recipe", ""]
     ];
     return s;
@@ -459,6 +476,8 @@ function spargeBanner(temp, a) {
     text: temp ? `The sparge water is ready at ${temp} °F${off ? `, and ${off}` : ""}. Set the hoses or valves for a fly or a batch sparge, start the pumps by hand, then press Sparge started, which switches the HLT's AUTO off.`
       : `${off ? `${off[0].toUpperCase()}${off.slice(1)}. ` : ""}Set the hoses or valves for a fly or a batch sparge, start the pumps by hand, then press Sparge started.`};
 }
+/* its line in the event log, as #sparge-ready asks it with both pumps off, for the moments after it */
+const SPARGE_ASKED = (q => `${q.title}: ${q.text}`)(spargeBanner(168, {hltPump: {on: false}, wortPump: {on: false}}));
 /* the hold before the boil (CraftBeerPi's StepController, with CONFIRM_BEFORE_BOIL Yes, as on Scott's rig): the boil waits,
    with nothing active, until the brewer starts it. Its words are BoilStep.wait_for_brewer's in core 1c08d4c. Starting the
    boil switches heat on, so here, as with START, it takes a held press (the Held Heat Rule) */

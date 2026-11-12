@@ -74,6 +74,13 @@ export const AlertProvider = ({ children }) => {
   // The ids on show, known at once - the state above is updated later.
   const shown = useRef(new Set());
   const reasons = useRef(new Map());
+  // The prompts CraftBeerPi waits on, as far as this page knows: the list it
+  // sends as the page connects, then those shown and taken down since. Null
+  // until the list first comes. waitingN counts the lists, so the brew-day
+  // screen knows when one has come: a line it kept on this device for a
+  // question that isn't among them no longer waits.
+  const waiting = useRef(null);
+  const [waitingN, setWaitingN] = useState(0);
   // Hidden while the brew-day screen is open: its title bar shows the prompts
   // and errors, and the stack would cover its buttons. A count, so two
   // screens asking for it never undo each other.
@@ -85,6 +92,7 @@ export const AlertProvider = ({ children }) => {
 
   const remove = useCallback((id, reason) => {
     shown.current.delete(id);
+    if (waiting.current) waiting.current.delete(id);
     // Why the server took it down ("answered" or "withdrawn"), for a page that
     // did not answer it itself: the brew-day screen's event line says which.
     if (reason) {
@@ -98,14 +106,17 @@ export const AlertProvider = ({ children }) => {
     });
   }, []);
   const retiredReason = useCallback((id) => reasons.current.get(id), []);
+  const waitingNow = useCallback(() => waiting.current, []);
 
   // Drop every prompt - a notification with buttons - but those the server
   // still waits on. After a restart a page kept the prompts from before it,
   // whose buttons no longer did anything, beside the server's new ones.
   const keepWaiting = useCallback((ids) => {
-    const waiting = new Set(Array.isArray(ids) ? ids : []);
+    const still = new Set(Array.isArray(ids) ? ids : []);
+    waiting.current = new Set(still);
+    setWaitingN((n) => n + 1);
     setAlerts((value) => value.filter((a) => {
-      const keep = !(a?.action?.length > 0) || waiting.has(a.id);
+      const keep = !(a?.action?.length > 0) || still.has(a.id);
       if (!keep) {
         shown.current.delete(a.id);
       }
@@ -122,6 +133,7 @@ export const AlertProvider = ({ children }) => {
       action,
     };
 
+    if (action?.length > 0 && waiting.current) waiting.current.add(id);
     // Shown once. A prompt the server keeps for every page is sent again each
     // time this page connects - after a reload, or a moment without wifi -
     // and must not pile up, or sound the buzzer again.
@@ -157,6 +169,8 @@ export const AlertProvider = ({ children }) => {
     remove,
     retiredReason,
     keepWaiting,
+    waitingNow,
+    waitingN,
     hideStack,
   };
 
