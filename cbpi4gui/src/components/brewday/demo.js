@@ -1,9 +1,9 @@
 // The approved mockup's demo data (design/brewday/brew-day.js, and graphs.js for the graphs' history), unchanged: the
 // moments of a brew day it shows, with its proposed boil kettle (?bk=power), which the screen builds. The screen's demo
 // mode (?demo=mash, sparge, sparge-heat, sparge-ready, sparge-run, sparge-batch, boil-hold, hop, boilpower, heatup, pause,
-// pause-long, boiling, hold, keepboil, letfall, bktarget, handhold, fail, manual, offline, notarget, notarget-hlt, timers,
-// timer-done, timer-new, timer-names, timer-nonames, timers-hand or sound-allow) runs on this, so it can be compared with
-// the mockup pixel for pixel.
+// pause-long, boiling, hold, whirlpool, keepboil, letfall, bktarget, handhold, fail, manual, offline, notarget,
+// notarget-hlt, timers, timer-done, timer-new, timer-names, timer-nonames, timers-hand or sound-allow) runs on this, so it
+// can be compared with the mockup pixel for pixel.
 
 const RECIPE = {
   name: "Craftbeerpi Test Recipe v5",
@@ -146,6 +146,15 @@ const SCENES = {
       ["17:00:04", "Boil finished, boil kettle MANUAL", "by recipe", ""]
     ]
   }),
+  /* the same whirlpool hold with the wort pump running, as Scott whirlpools (Scott, 12 Nov: "whirlpool / hop-stand step
+     pump symbol shows it going through the HERMS coil"). From the boil's start the drawing has the pump at the boil
+     kettle, on a short loop through the chiller (he chose it on 12 Nov), lit here */
+  whirlpool: () => {
+    const s = SCENES.hold();
+    s.a.wortPump = {on: true};
+    s.events.splice(2, 0, ["17:08:16", "WORT PUMP started", "confirmed", "ok"]);
+    return Object.assign(s, {base: "hold"});
+  },
   /* Scott on 8012, 10 Nov: he set the boil power to 2 % and asked why the kettle held about 210 °F. At 2 % the kettle can't
      hold a boil; BoilPower lets go 3.6 °F below its boil point and heats at full power until it boils again, so it cycles
      between about 206 and 211 °F. keepboil: KEEP BOILING ticked, 3¾ min into a fall at 2 %, its line saying what comes

@@ -399,6 +399,14 @@ html.bare .mock{display:none}
 .rig-line .p-base{fill:none;stroke:#b9c6d2;stroke-width:2.5}
 .rig-line .pump.on.liq .p-ring{fill:#173544;stroke:var(--liquor)}.rig-line .pump.on.wrt .p-ring{fill:#3a2e12;stroke:var(--wort)}
 .rig-line .pump.on.liq .p-tri{fill:var(--liquor)}.rig-line .pump.on.wrt .p-tri{fill:var(--wort)}
+/* after the boil (?wp=): the wort pump's loop at the boil kettle, its chiller, or the wort turning in the kettle (a flow
+   mark, so only while the pump runs) */
+.rig-line .gone{display:none}
+.rig-line .chiller rect{fill:#1b2833;stroke:#b9c6d2;stroke-width:2.5}
+.rig-line .chiller text{font:600 18px var(--cond);letter-spacing:.06em;fill:#c3cfda;text-anchor:middle}
+.rig-line #ln-swirl:not(.on){display:none}
+.rig-line #ln-swirl .pf{stroke-width:3.5}
+.rig-line #ln-swirl .ch{transform-box:view-box}
 
 /* HLT while the mash tun's HERMS runs it */
 .moderow .herms{grid-column:1/-1;border-style:dashed;background:transparent;color:var(--text-2)!important}
@@ -553,6 +561,8 @@ html.bare .mock{display:none}
   [data-graphs=face] .gspans span{padding:4px}
 }
 [data-graphs=face] .rig-line .tag,[data-graphs=face] .rig-line .p-st{font-size:calc(18px * var(--rs,1))}
+/* the chiller's word sits in its box: it grows no more than the vessels' names do */
+[data-graphs=face] .rig-line .chiller text{font-size:calc(18px * min(var(--rs,1),1.15))}
 [data-graphs=face] .rig-line .p-name{font-size:calc(21px * var(--rs,1))}
 [data-graphs=face] .rig-line .v-name{font-size:calc(24px * min(var(--rs,1),1.15))}
 .graph{grid-column:1/-1;display:grid;grid-template-columns:subgrid;align-items:stretch;margin-top:clamp(6px,calc(2.5 * var(--pu)),10px);padding-top:clamp(6px,calc(2.5 * var(--pu)),10px);border-top:1px solid #1a2530}

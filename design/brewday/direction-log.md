@@ -1,5 +1,30 @@
 # Direction decision log
 
+## The wort pump after the boil: three options (12 Nov 2026, morning); Scott chose 2, with the chiller
+- Scott: "whirlpool / hop-stand step pump symbol shows it going through the HERMS coil. What are some alternatives?",
+  then "I don't want the symbols to become too chaotic. Maybe another representation of the wort pump instead of
+  trying to connect the pipe/valves over there from where it currently is?" As built, the drawing goes back to
+  recirculating once the boil starts, so a running wort pump is drawn round the HERMS coil into the mash tun.
+- Reading (Scott's standing list): NN/g heuristic 2, match the real world and natural mapping; GT CS 6750 lesson
+  2.6.9, good representations make relationships explicit, bring objects and relationships together, exclude
+  extraneous details and expose natural constraints; Norman's conceptual models (the drawing should match what Scott
+  does: one pump, its hoses moved to the kettle); W3C WAI complex images (the drawing's description must say where
+  the pump is). Digests: H5 draw plumbing flat and plain with few crossings, H3 keep normal quiet, F14 connection is
+  the strongest grouping.
+- Proposed, from the boil's start (when CraftBeerPi tells him to move the pump's hoses): 1, the pump drawn under the
+  boil kettle on a short loop that reuses the runoff's riser and inlet; 2, the same with the chiller on the loop;
+  3, the pump left by the mash tun, named WORT PUMP → BOIL KETTLE (an off-page connector), with a turning arrow lit in
+  the kettle. In all three nothing on the mash side lights, and the valves stay as the sparge left them.
+- My lean: 1. It shows a whole, true path in the drawing's own language (pipe, chevrons, lit while pumping) with two
+  short pipes and no crossing, and it matches the hose move. 2 if he wants the chiller seen. 3 is the quietest, but the
+  pump still looks piped to the mash tun, and the link to the kettle is only words and colour.
+- Comparison page: `proposal/whirlpool.html`. React UI only (`rig.js`, `screen.js`).
+- Scott chose "2. The pump moves, with the chiller drawn on its loop" the same morning; the mockup's default since. One
+  change before the hand-off: the valves are drawn as before the boil (for recirculating) instead of as the sparge left
+  them, since the HLT pump is also the HLT's stirrer, and the sparge positions would have sent its water over to the
+  mash tun. Checked: before the boil and on a phone nothing changes; after it, only the drawing on a monitor and at
+  half of it. Handed to Brett. Known limit: the WORT PUMP button stays on the mash tun's panel.
+
 ## SOUND switches on silently (12 Nov 2026, morning)
 - Scott: "I don't want to hear a sound when I click the "SOUND" box for the timer. ONly when timer expires". Since
   11 Nov a press that switched SOUND on, or allowed it while it said TAP TO ALLOW, played the alarm (the mockup two
@@ -15,7 +40,8 @@
   what lets the page play sound later. `audioOK()` now starts a silent one-sample sound in the press instead.
 - Checked: a SOUND press 0 beeps (2 before) and 1 silent sound; alerts still 2 beeps; a run-out timer still 3 every
   3 s; pictures identical at 1920, 1180 and 390 px. Handed to Brett (`screen.js` cmdSnd and audioOK, `alarm.js`'s
-  header).
+  header). Built the same morning (web UI 9faf75d, build 007e146; identity 451/451; his alarm sound test 32/32, and
+  the build before fails exactly the five silent-press checks).
 
 ## OUT back on the boil kettle's window (11 Nov 2026, night)
 - Scott, via Brett: "BoilPower's display has lost its current 'out' element power number? Please put it back". The

@@ -14,6 +14,8 @@
 // - The boil kettle is the mockup's proposed one (?bk=power) while it runs the new BoilPower (M.BKNEW: it declares
 //   set_boil_at, from 0.0.3.post7), and the mockup's today's one (?bk=today) with an older BoilPower, whose target
 //   is where its boil starts. The demo always shows the proposed one.
+// - From the boil's start the drawing is the mockup's ?wp=chill, which Scott chose on 12 Nov: the wort pump at the
+//   boil kettle, on a short loop through the chiller. The mockup's other options for it aren't offered.
 // - A command says at its own button whether it worked. One that fails, or gets no answer in 5 s, turns its
 //   button red and raises an alarm in the title bar; it is never silently dropped (DEFECTS U1).
 // - The regions are patched in place, not rewritten (morph), so readings that change every second do not
@@ -641,8 +643,16 @@ function runoffStep() {
   const ro = S.findIndex(s => collectsWort(s)), bo = S.findIndex((s, i) => i > ro && s.boil);
   return ro >= 0 && stepStatus(ro) !== "I" && (bo < 0 || stepStatus(bo) === "I") ? ro : -1;
 }
-function rigDesc(ro, held, setNow) {
+/* the boil has started (its step running, stopped, failed or done; held for "Ready to boil?" it is still I). From then
+   on the wort pump's hoses are on the boil kettle: Scott moves them in that hold, as CraftBeerPi's notification says
+   ("The wort pump is off, so you can move its hoses", core 1c08d4c) */
+function boilStarted() {
+  const bo = M.RECIPE.steps.findIndex(s => s.boil);
+  return !!st.recipe && bo >= 0 && stepStatus(bo) !== "I";
+}
+function rigDesc(ro, held, setNow, post) {
   const spLine = !!$("#ln-sparge"), head = "Hot liquor tank, mash tun and boil kettle. ";
+  if (post) return head + "The boil has started, so the wort pump's hoses are on the boil kettle. The wort pump is drawn under the boil kettle: it takes wort from the bottom of the kettle and sends it through the chiller and back in at the top. The mash tun and the HERMS coil are out of use. The HLT pump circulates hot water around the hot liquor tank. The valves are set by hand and CraftBeerPi can't see them: they are shown for recirculating.";
   if (ro < 0 || held) return head + "The HLT pump circulates hot water around the hot liquor tank. The wort pump moves wort from the mash tun, through the coil inside the hot liquor tank, and back into the mash tun. The valves are set by hand and CraftBeerPi can't see them: they are shown for recirculating, with the lines to the boil kettle"
     + (spLine ? " and to the top of the mash tun" : "") + " closed."
     + (setNow ? ` Step ${ro + 1}, ${M.RECIPE.steps[ro].n}, is waiting for you to set them for the sparge: close the coil line${spLine ? " and the HLT return" : ""}, and open the line to the boil kettle${spLine ? " and the sparge line to the top of the mash tun" : ""}.` : "");
@@ -670,10 +680,11 @@ function renderRig() {
   if (!st || !$("#rigsvg")) return;
   const a = st.a, on = (sel, x) => { const n = $(sel); if (n) n.classList.toggle("on", !!x); };
   const live = st.link !== "lost";
-  [["hlt", "hltPump"], ["wort", "wortPump"]].forEach(([id, k]) => {
-    const p = a[k];
+  [["hlt", "hltPump"], ["wort", "wortPump"], ["wort-bk", "wortPump"]].forEach(([id, k]) => {
+    const p = a[k], word = $(`#pump-${id} .p-st`);
+    if (!word) return;
     on("#pump-" + id, live && p.on);
-    setText($(`#pump-${id} .p-st`), (live ? "" : "LAST: ") + (p.on ? "RUNNING" : "OFF"));
+    setText(word, (live ? "" : "LAST: ") + (p.on ? "RUNNING" : "OFF"));
     setText($(`#pump-${id} .p-ovr`), M.ACT[k].override && !p.on ? "UNLESS OVERRIDE SWITCH IS ON" : "");
   });
   /* layout A's drawing has no sparge line: its HLT pump always goes back round the hot liquor tank. A SpargeStep keeps
@@ -683,14 +694,21 @@ function renderRig() {
   const ro = runoffStep(), r = st.recipe, held = ro >= 0 && M.RECIPE.steps[ro].type === "SpargeStep" && r.cur === ro && !r.started;
   const setNow = held && r.wait === WAITING_FOR_YOU && live, hasSp = !!$("#ln-sparge");
   const out = ro >= 0 && !held, sp = out && hasSp;
-  const wp = live && a.wortPump.on, hp = live && a.hltPump.on;
-  on("#ln-wort-in", wp); on("#ln-wort-out", wp); on("#ln-wort-coil", wp && !out); on("#ln-xfer", wp && out); on("#coil", wp && !out);
+  /* after the boil starts, the wort pump serves the boil kettle (Scott chose it on 12 Nov: drawn there, on a short loop
+     through the chiller), so nothing on the mash tun's side lights. The valves are drawn as before: for recirculating, so
+     a running HLT pump (the HLT's stirrer too) still goes round the hot liquor tank */
+  const post = LAYOUT === "b" && boilStarted();
+  const wp = live && a.wortPump.on, hp = live && a.hltPump.on, mtw = wp && !post;
+  on("#ln-wort-in", mtw); on("#ln-wort-out", mtw); on("#ln-wort-coil", mtw && !out); on("#ln-xfer", mtw && out); on("#coil", mtw && !out);
+  on("#ln-bk-loop", wp && post);
+  ["#pump-wort-bk", "#ln-bk-loop", "#chiller"].forEach(s => { const n = $(s); if (n) n.classList.toggle("gone", !post); });
+  $("#pump-wort").classList.toggle("gone", post && !!$("#pump-wort-bk"));
   on("#ln-hlt-in", hp); on("#ln-hlt-up", hp); on("#ln-hlt-ret", hp && !sp); on("#ln-sparge", hp && sp);
-  setValve("coil", !out, wp, setNow); setValve("bk", out, wp, setNow); setValve("ret", !sp, hp, setNow && hasSp); setValve("sp", sp, hp, setNow);
+  setValve("coil", !out, mtw, setNow); setValve("bk", out, mtw, setNow); setValve("ret", !sp, hp, setNow && hasSp); setValve("sp", sp, hp, setNow);
   const vn = $("#vnote-2");
   setText(vn, setNow ? `SET THEM FOR STEP ${ro + 1} (${M.RECIPE.steps[ro].n.toUpperCase()})` : out ? `SHOWN FOR STEP ${ro + 1} (${M.RECIPE.steps[ro].n.toUpperCase()})` : "SHOWN FOR RECIRCULATING");
   vn.classList.toggle("set", setNow);
-  setText($("#rig-d"), rigDesc(ro, held, setNow));
+  setText($("#rig-d"), rigDesc(ro, held, setNow, post));
   on("#el-hlt", live && a.hltEl.on); on("#el-bk", live && a.bkEl.on);
   ["hlt", "mt", "bk"].forEach(v => { const n = $("#needle-" + v); if (n && st.v[v].pv != null) n.setAttribute("transform", `rotate(${needleAngle(st.v[v].pv).toFixed(1)})`); });
 }
@@ -703,7 +721,8 @@ function drawRig() {
   const rs = GRAPHS === "face" ? Math.round(Math.min(1.3, Math.max(1, 0.68 / Math.min(h / RIG_H, w / 1200))) * 100) / 100 : 1;
   if (Math.abs(W - rigW) < 4 && rs === rigRs && $("#rigsvg")) return;
   rigW = W; rigRs = rs;
-  box.innerHTML = rigSVG(LAYOUT === "b" ? "line" : "kettle", W, rs);
+  // after the boil, the wort pump at the boil kettle on its loop through the chiller (Scott, 12 Nov: the mockup's ?wp=chill)
+  box.innerHTML = rigSVG(LAYOUT === "b" ? "line" : "kettle", W, rs, "chill");
   renderRig();
 }
 function renderAll() {

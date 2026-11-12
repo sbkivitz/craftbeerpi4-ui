@@ -153,6 +153,15 @@ const SCENES = {
       ["17:00:04", "Boil finished, boil kettle MANUAL", "by recipe", ""]
     ]
   }),
+  /* the same whirlpool hold with the wort pump running, as Scott whirlpools (Scott, 12 Nov: "whirlpool / hop-stand step
+     pump symbol shows it going through the HERMS coil"). As built, the drawing shows it going round the HERMS coil into
+     the mash tun; ?wp= shows the options for it. The same goes for the hop stand (Whirlpool Hop) and the boil */
+  whirlpool: () => {
+    const s = SCENES.hold();
+    s.a.wortPump = {on: true};
+    s.events.splice(2, 0, ["17:08:16", "WORT PUMP started", "confirmed", "ok"]);
+    return Object.assign(s, {base: "hold"});
+  },
   /* Scott on 8012, 10 Nov: he set the boil power to 2 % and asked why the kettle held about 210 °F. At 2 % the kettle can't
      hold a boil; BoilPower lets go 3.6 °F below its threshold and heats at full power until it boils again, so it cycles
      between about 206 and 211 °F (Brett: ~3 min at 100 %, then 5½ min at 2 %). keepboil: the proposed boil kettle with
@@ -894,8 +903,21 @@ function runoffStep() {
   const ro = S.findIndex(s => collectsWort(s)), bo = S.findIndex((s, i) => i > ro && s.boil);
   return ro >= 0 && stepStatus(ro) !== "I" && (bo < 0 || stepStatus(bo) === "I") ? ro : -1;
 }
-function rigDesc(ro, held, setNow) {
+/* the boil has started (its step is running, stopped or done; held for "Ready to boil?" it is still I). From then on the
+   wort pump's hoses are on the boil kettle: Scott moves them in that hold, as CraftBeerPi's notification says ("The wort
+   pump is off, so you can move its hoses", core 1c08d4c) */
+function boilStarted() {
+  const bo = RECIPE.steps.findIndex(s => s.boil);
+  return !!st.recipe && bo >= 0 && stepStatus(bo) !== "I";
+}
+function rigDesc(ro, held, setNow, post) {
   const spLine = !!$("#ln-sparge"), head = "Hot liquor tank, mash tun and boil kettle. ";
+  if (post) {
+    return head + "The boil has started, so the wort pump's hoses are on the boil kettle. "
+      + (WP === "swirl" ? "The wort pump is still drawn by the mash tun; while it runs, the wort turns in the boil kettle. "
+        : `The wort pump is drawn under the boil kettle: it takes wort from the bottom of the kettle and sends it${WP === "chill" ? " through the chiller and" : ""} back in at the top. `)
+      + "The mash tun and the HERMS coil are out of use. The HLT pump circulates hot water around the hot liquor tank. The valves are set by hand and CraftBeerPi can't see them: they are shown for recirculating.";
+  }
   if (ro < 0 || held) return head + "The HLT pump circulates hot water around the hot liquor tank. The wort pump moves wort from the mash tun, through the coil inside the hot liquor tank, and back into the mash tun. The valves are set by hand and CraftBeerPi can't see them: they are shown for recirculating, with the lines to the boil kettle"
     + (spLine ? " and to the top of the mash tun" : "") + " closed."
     + (setNow ? ` Step ${ro + 1}, ${RECIPE.steps[ro].n}, is waiting for you to set them for the sparge: close the coil line${spLine ? " and the HLT return" : ""}, and open the line to the boil kettle${spLine ? " and the sparge line to the top of the mash tun" : ""}.` : "");
@@ -922,10 +944,11 @@ function renderRig() {
   if (!st || !$("#rigsvg")) return;
   const a = st.a, on = (sel, x) => { const n = $(sel); if (n) n.classList.toggle("on", !!x); };
   const live = st.link !== "lost";
-  [["hlt", "hltPump"], ["wort", "wortPump"]].forEach(([id, k]) => {
-    const p = a[k];
+  [["hlt", "hltPump"], ["wort", "wortPump"], ["wort-bk", "wortPump"]].forEach(([id, k]) => {
+    const p = a[k], word = $(`#pump-${id} .p-st`);
+    if (!word) return;
     on("#pump-" + id, live && p.on);
-    $(`#pump-${id} .p-st`).textContent = (live ? "" : "LAST: ") + (p.on ? "RUNNING" : "OFF");
+    word.textContent = (live ? "" : "LAST: ") + (p.on ? "RUNNING" : "OFF");
     $(`#pump-${id} .p-ovr`).textContent = ACT[k].override && !p.on ? "UNLESS OVERRIDE SWITCH IS ON" : "";
   });
   /* layout A's drawing has no sparge line: its HLT pump always goes back round the hot liquor tank. A SpargeStep keeps
@@ -934,14 +957,25 @@ function renderRig() {
   const ro = runoffStep(), r = st.recipe, held = ro >= 0 && RECIPE.steps[ro].type === "SpargeStep" && r.cur === ro && !r.started;
   const setNow = held && r.wait === WFY && live, hasSp = !!$("#ln-sparge");
   const out = ro >= 0 && !held, sp = out && hasSp;
-  const wp = live && a.wortPump.on, hp = live && a.hltPump.on;
-  on("#ln-wort-in", wp); on("#ln-wort-out", wp); on("#ln-wort-coil", wp && !out); on("#ln-xfer", wp && out); on("#coil", wp && !out);
+  /* after the boil starts, the wort pump serves the boil kettle (Scott chose ?wp=chill on 12 Nov: drawn there, on a
+     short loop through the chiller), so nothing on the mash tun's side lights. The valves are drawn as before: for
+     recirculating, so a running HLT pump (the HLT's stirrer too) still goes round the hot liquor tank */
+  const post = WP !== "today" && LAYOUT === "b" && boilStarted();
+  const wp = live && a.wortPump.on, hp = live && a.hltPump.on, mtw = wp && !post;
+  on("#ln-wort-in", mtw); on("#ln-wort-out", mtw); on("#ln-wort-coil", mtw && !out); on("#ln-xfer", mtw && out); on("#coil", mtw && !out);
+  on("#ln-bk-loop", wp && post); on("#ln-swirl", wp && post);
+  if ($("#pump-wort-bk")) ["#pump-wort-bk", "#ln-bk-loop", "#chiller"].forEach(s => { const n = $(s); if (n) n.classList.toggle("gone", !post); });
+  $("#pump-wort").classList.toggle("gone", post && !!$("#pump-wort-bk"));
+  /* swirl: the pump stays, and its name says where its hoses go, as a drawing's off-page connector does. On its own line
+     (the third) it would sit on the runoff's pipe along the bottom */
+  const wn = $("#pump-wort .p-name"), wName = post && WP === "swirl" ? "WORT PUMP → BOIL KETTLE" : "WORT PUMP";
+  if (wn && wn.textContent !== wName) wn.textContent = wName;
   on("#ln-hlt-in", hp); on("#ln-hlt-up", hp); on("#ln-hlt-ret", hp && !sp); on("#ln-sparge", hp && sp);
-  setValve("coil", !out, wp, setNow); setValve("bk", out, wp, setNow); setValve("ret", !sp, hp, setNow && hasSp); setValve("sp", sp, hp, setNow);
+  setValve("coil", !out, mtw, setNow); setValve("bk", out, mtw, setNow); setValve("ret", !sp, hp, setNow && hasSp); setValve("sp", sp, hp, setNow);
   const vn = $("#vnote-2");
   vn.textContent = setNow ? `SET THEM FOR STEP ${ro + 1} (${RECIPE.steps[ro].n.toUpperCase()})` : out ? `SHOWN FOR STEP ${ro + 1} (${RECIPE.steps[ro].n.toUpperCase()})` : "SHOWN FOR RECIRCULATING";
   vn.classList.toggle("set", setNow);
-  $("#rig-d").textContent = rigDesc(ro, held, setNow);
+  $("#rig-d").textContent = rigDesc(ro, held, setNow, post);
   on("#el-hlt", live && a.hltEl.on); on("#el-bk", live && a.bkEl.on);
   ["hlt", "mt", "bk"].forEach(v => { const n = $("#needle-" + v); if (n) n.setAttribute("transform", `rotate(${needleAngle(st.v[v].pv).toFixed(1)})`); });
 }
@@ -954,7 +988,7 @@ function drawRig() {
   const rs = GRAPHS === "face" ? Math.round(Math.min(1.3, Math.max(1, 0.68 / Math.min(h / RIG_H, w / 1200))) * 100) / 100 : 1;
   if (Math.abs(W - rigW) < 4 && rs === rigRs && $("#rigsvg")) return;
   rigW = W; rigRs = rs;
-  box.innerHTML = rigSVG(LAYOUT === "b" ? "line" : "kettle", W, rs);
+  box.innerHTML = rigSVG(LAYOUT === "b" ? "line" : "kettle", W, rs, WP);
   renderRig();
 }
 function renderAll() {
@@ -1857,6 +1891,12 @@ function load(name) {
     a.href = `?${q}#${key}`;
     a.setAttribute("aria-current", a.dataset.tm === TIMERS ? "true" : "false");
   });
+  document.querySelectorAll(".mock a[data-wp]").forEach(a => {
+    const q = new URLSearchParams(location.search);
+    if (a.dataset.wp === "chill") q.delete("wp"); else q.set("wp", a.dataset.wp);
+    a.href = `?${q}#${key}`;
+    a.setAttribute("aria-current", a.dataset.wp === WP ? "true" : "false");
+  });
   document.querySelectorAll(".mock a[data-nm]").forEach(a => {
     const q = new URLSearchParams(location.search);
     if (a.dataset.nm) q.set("name", a.dataset.nm); else q.delete("name");
@@ -1890,6 +1930,14 @@ document.documentElement.dataset.bk = BK;
    CraftBeerPi without the timers */
 const TIMERS = QS.get("timers") === "today" ? "today" : "new";
 document.documentElement.dataset.timers = TIMERS;
+/* the drawing after the boil (Scott, 12 Nov: "whirlpool / hop-stand step pump symbol shows it going through the HERMS
+   coil", then "I don't want the symbols to become too chaotic. Maybe another representation of the wort pump instead
+   of trying to connect the pipe/valves over there from where it currently is?"). From the boil's start, layout B: he
+   chose ?wp=chill on 12 Nov, the default since: the wort pump drawn at the boil kettle on a short loop through the
+   chiller. ?wp=move is the same loop without the chiller and ?wp=swirl keeps the pump where it is and draws the wort
+   turning in the kettle, both options he didn't take; ?wp=today is the screen as built before, when the drawing went
+   back to recirculating after the boil, through the coil. whirlpool.html compares them */
+const WP = ["today", "move", "swirl"].includes(QS.get("wp")) ? QS.get("wp") : "chill";
 /* the title bar's name: the BREWERY_NAME setting, at every width, so the rig and a simulator can't be taken for each
    other. ?name=… tries another; blank shows CraftBeerPi. Two lines at most, then an ellipsis. A name of more than
    LONG_NAME characters is drawn smaller (0.7 of the size), so two lines fit the title bar's height on a monitor and a
@@ -1904,10 +1952,10 @@ document.title = `${BREWERY} · Brew day (mockup)`;
 /* BREWSCRIBE: the screen shows it where BrewScribe is installed; ?brewscribe=none shows the screen without it */
 if (QS.get("brewscribe") === "none") $('.tabs a[data-tab="BrewScribe"]').remove();
 /* ?focus=bk (boil-kettle.html): keep that vessel's faceplate in view and tell the page around this one where it is,
-   so the page can show just that faceplate */
+   so the page can show just that faceplate. ?focus=rig (whirlpool.html) does the same for the drawing */
 const FOCUS = QS.get("focus");
 function reportFocus() {
-  const el = FOCUS && parent !== window && document.getElementById("pl-" + FOCUS);
+  const el = FOCUS && parent !== window && (FOCUS === "rig" ? $("#rig") : document.getElementById("pl-" + FOCUS));
   if (!el) return;
   let r = el.getBoundingClientRect();
   if (r.top < 0 || r.bottom > innerHeight) { scrollBy(0, r.top - Math.max(0, (innerHeight - r.height) / 2)); r = el.getBoundingClientRect(); }

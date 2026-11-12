@@ -354,6 +354,12 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .rig-line .pump.on.wrt .p-ring{fill:#3a2e12;stroke:var(--wort)}
 :where(html.bd-page) .rig-line .pump.on.liq .p-tri{fill:var(--liquor)}
 :where(html.bd-page) .rig-line .pump.on.wrt .p-tri{fill:var(--wort)}
+:where(html.bd-page) .rig-line .gone{display:none}
+:where(html.bd-page) .rig-line .chiller rect{fill:#1b2833;stroke:#b9c6d2;stroke-width:2.5}
+:where(html.bd-page) .rig-line .chiller text{font:600 18px var(--cond);letter-spacing:.06em;fill:#c3cfda;text-anchor:middle}
+:where(html.bd-page) .rig-line #ln-swirl:not(.on){display:none}
+:where(html.bd-page) .rig-line #ln-swirl .pf{stroke-width:3.5}
+:where(html.bd-page) .rig-line #ln-swirl .ch{transform-box:view-box}
 :where(html.bd-page) .moderow .herms{grid-column:1/-1;border-style:dashed;background:transparent;color:var(--text-2)!important}
 :where(html.bd-page) .moderow .herms small{color:var(--text-3)}
 :where(html.bd-page) .book{display:grid;grid-template-rows:auto minmax(0,1fr);gap:8px;min-height:0}
@@ -485,6 +491,7 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page)[data-graphs=face] .gspans span{padding:4px}
 }
 :where(html.bd-page)[data-graphs=face] .rig-line .tag,:where(html.bd-page)[data-graphs=face] .rig-line .p-st{font-size:calc(18px * var(--rs,1))}
+:where(html.bd-page)[data-graphs=face] .rig-line .chiller text{font-size:calc(18px * min(var(--rs,1),1.15))}
 :where(html.bd-page)[data-graphs=face] .rig-line .p-name{font-size:calc(21px * var(--rs,1))}
 :where(html.bd-page)[data-graphs=face] .rig-line .v-name{font-size:calc(24px * min(var(--rs,1),1.15))}
 :where(html.bd-page) .graph{grid-column:1/-1;display:grid;grid-template-columns:subgrid;align-items:stretch;margin-top:clamp(6px,calc(2.5 * var(--pu)),10px);padding-top:clamp(6px,calc(2.5 * var(--pu)),10px);border-top:1px solid #1a2530}

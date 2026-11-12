@@ -42,6 +42,11 @@ Title bar: the BREWERY_NAME setting at every width (11 Nov), so a rig and a simu
 characters is drawn smaller (0.7 of the size) on a monitor and a phone; from 701 to 1023 px wide it keeps the full size.
 Tabs: BREWSCRIBE, last, opens BrewScribe in a browser tab of its own (11 Nov); ?brewscribe=none shows the screen
 where BrewScribe isn't installed.
+The wort pump after the boil (12 Nov): Scott chose ?wp=chill, the default since: from the boil's start the wort pump is
+drawn at the boil kettle, on a short loop through the chiller (#whirlpool shows it running). ?wp=today is the drawing
+as built before (after the boil it went back to recirculating, through the HERMS coil); ?wp=move (no chiller) and
+?wp=swirl (the pump stays, the kettle swirls) are options he didn't take. whirlpool.html shows them side by side;
+?focus=rig is for that page.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -65,6 +70,7 @@ where BrewScribe isn't installed.
   <a href="#pause-long">Pause forgotten</a>
   <a href="#boiling">Boiling</a>
   <a href="#hold">Whirlpool hold</a>
+  <a href="#whirlpool">Whirlpool, pump running</a>
   <a href="#keepboil">Boil at 2 %, keep boiling</a>
   <a href="#letfall">Boil at 2 %, let it fall</a>
   <a href="#bktarget">Setting a hop stand by hand</a>
@@ -82,6 +88,7 @@ where BrewScribe isn't installed.
   <a href="#timers-hand">Timers by hand</a>
   <a href="#sound-allow">Sound waiting for a tap</a>
   <span class="lay">Brewery name: <a data-nm="" href="?">default</a> <a data-nm="EBrews - Simulator" href="?name=EBrews - Simulator">Scott's</a> <a data-nm="Simulator 8012" href="?name=Simulator 8012">a simulator</a> <a data-nm="EBrews - A CraftBeerPi Brewery" href="?name=EBrews - A CraftBeerPi Brewery">30 characters</a> <a data-nm="Old Mill Lane Garage Brewing Company" href="?name=Old Mill Lane Garage Brewing Company">36 characters</a></span>
+  <span class="lay">Wort pump after the boil: <a data-wp="chill" href="?">chosen: moves, with chiller</a> <a data-wp="today" href="?wp=today">as built before</a> <a data-wp="move" href="?wp=move">moves, no chiller</a> <a data-wp="swirl" href="?wp=swirl">stays, kettle swirls</a> <a href="whirlpool.html">side by side</a></span>
   <span class="lay">Timers: <a data-tm="new" href="?">as built</a> <a data-tm="today" href="?timers=today">older CraftBeerPi</a></span>
   <span class="lay">Boil kettle: <a data-bk="power" href="?bk=power">as built</a> <a data-bk="today" href="?bk=today">older BoilPower</a></span>
   <span class="lay">Layout: <a data-layout="a" href="?layout=a">A · recipe right</a> <a data-layout="b" href="?layout=b">B · recipe left</a></span>

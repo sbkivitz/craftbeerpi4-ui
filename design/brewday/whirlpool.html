@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The wort pump after the boil: today and three options · CraftBeerPi brew-day screen (proposal)</title>
+<!--
+Scott, 12 Nov 2026: "whirlpool / hop-stand step pump symbol shows it going through the HERMS coil. What are some
+alternatives?", then "I don't want the symbols to become too chaotic. Maybe another representation of the wort pump
+instead of trying to connect the pipe/valves over there from where it currently is?"
+This page shows the brew-day screen's drawing as built beside three options (brew-day.html?wp=move, chill, swirl), cut
+out of the live mockup (&focus=rig), at four moments. "Whole screen" shows the pages uncut. On a phone the screen
+doesn't show the drawing, so nothing there changes.
+Scott chose option 2 (?wp=chill) the same morning, so this page is now a record of that choice: brew-day.html shows it
+by default, and ?wp=today is the drawing as built before it.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;display:grid;grid-template-rows:auto auto minmax(0,1fr);background:#080c10;color:#e8eef3;font:500 15px/1.35 "Barlow","Segoe UI",system-ui,sans-serif}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 22px;padding:10px 16px;background:#f2efe6;color:#1d232a;border-bottom:2px dashed #1d232a}
+.bar h1{margin:0 6px 0 0;font:700 19px/1 "Barlow",sans-serif}
+.grp{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.grp>span{font-weight:600;margin-right:2px}
+.grp button{min-height:36px;padding:0 12px;border:1px solid #1d232a;border-radius:6px;background:#fff;color:#1d232a;font:600 14px/1 "Barlow",sans-serif;cursor:pointer}
+.grp button:hover{background:#e6e1d4}
+.grp button[aria-pressed=true]{background:#1d232a;color:#f2efe6}
+:focus-visible{outline:3px solid #2a6fc0;outline-offset:2px}
+.hint{margin:0;padding:10px 16px;background:#11181f;color:#c9d6e2;border-bottom:1px solid #2a3b4b;font-size:16px}
+.hint b{color:#fff}
+.stage{display:grid;align-content:start;gap:26px;padding:18px 22px;min-height:0;overflow:auto}
+.frame{margin:0;display:grid;grid-template-columns:300px auto;justify-content:start;align-items:start;gap:20px}
+.frame h2{margin:0 0 6px;font:700 22px/1.1 "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#fff}
+.frame h2 small{display:block;margin-top:4px;font:600 15px/1.2 "Barlow",sans-serif;letter-spacing:0;text-transform:none;color:#8b9cad}
+figcaption{font:500 15px/1.4 "Barlow",sans-serif;color:#c9d6e2}
+figcaption p{margin:0 0 6px}
+figcaption a{color:#9fd0ff}
+.cut{position:relative;overflow:hidden;border-radius:8px;background:#0f161d;box-shadow:0 0 0 1px #2a3b4b,0 24px 60px rgb(0 0 0/.55)}
+.cut iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0;background:#0f161d}
+</style>
+</head>
+<body>
+<header class="bar">
+  <h1>The wort pump after the boil</h1>
+  <div class="grp" role="group" aria-label="Moment in the brew day">
+    <span>Moment:</span>
+    <button type="button" data-scene="whirlpool">Whirlpool, pump running</button><button type="button" data-scene="hold">Whirlpool, pump off</button><button type="button" data-scene="boiling">The boil</button><button type="button" data-scene="boil-hold">Ready to boil? (before it)</button>
+  </div>
+  <div class="grp" role="group" aria-label="Screen">
+    <span>Screen:</span>
+    <button type="button" data-size="window">Monitor, 1920×950</button><button type="button" data-size="half">Half the monitor, 960×950</button>
+  </div>
+  <div class="grp" role="group" aria-label="How much to show">
+    <span>Show:</span>
+    <button type="button" data-cut="rig">Drawing only</button><button type="button" data-cut="whole">Whole screen</button>
+  </div>
+</header>
+<p class="hint" id="hint"></p>
+<main class="stage" id="stage">
+  <figure class="frame" data-k="today"><figcaption><h2>Today<small>as built before</small></h2>
+    <p>After the boil the drawing goes back to recirculating, so a running wort pump lights the path through the HERMS coil into the mash tun. That's what you saw.</p><a target="_blank" rel="noopener">Open full size</a></figcaption>
+    <div class="cut"><iframe title="The drawing as built"></iframe></div></figure>
+  <figure class="frame" data-k="move"><figcaption><h2>1. The pump moves<small>to the boil kettle</small></h2>
+    <p>From the start of the boil the wort pump is drawn under the boil kettle, on a short loop: out of the kettle's bottom and back in at its top, through the inlet the runoff used. Its old place by the mash tun is left empty, as its hoses are. Nothing new runs across the screen.</p><a target="_blank" rel="noopener">Open full size</a></figcaption>
+    <div class="cut"><iframe title="Option 1: the pump moves to the boil kettle"></iframe></div></figure>
+  <figure class="frame" data-k="chill"><figcaption><h2>2. The pump moves<small>with the chiller on its loop · your choice, 12 Nov</small></h2>
+    <p>The same, with your chiller on the way back, since the whirlpool goes through it. One more box. CraftBeerPi can't see the chiller's water, so the box itself is never lit; the pipe through it is.</p><a target="_blank" rel="noopener">Open full size</a></figcaption>
+    <div class="cut"><iframe title="Option 2: the pump moves, with the chiller"></iframe></div></figure>
+  <figure class="frame" data-k="swirl"><figcaption><h2>3. The pump stays<small>and the kettle swirls</small></h2>
+    <p>The pump stays by the mash tun, and its name says where its hoses go: WORT PUMP → BOIL KETTLE. While it runs, a turning arrow lights in the boil kettle, as the coil lights in the HLT. No new pipes, but the pump still looks piped to the mash tun.</p><a target="_blank" rel="noopener">Open full size</a></figcaption>
+    <div class="cut"><iframe title="Option 3: the pump stays and the kettle swirls"></iframe></div></figure>
+</main>
+<script>
+"use strict";
+const SIZES = {window: [1920, 950], half: [960, 950]};
+const HINT = {
+  whirlpool: "<b>17:18, the whirlpool, with the wort pump running.</b> This is what you asked about. The hop stand (Whirlpool Hop), the boil and anything after it are drawn the same way. On a phone the screen has no drawing, so nothing changes there.",
+  hold: "<b>17:18, the same whirlpool hold, with the wort pump off.</b> The drawing still shows where the pump's hoses are, ready for when you switch it on.",
+  boiling: "<b>15:52, the boil.</b> As the boil started, CraftBeerPi switched the wort pump off so you could move its hoses (\"The wort pump is off, so you can move its hoses\"). From then on the options draw the pump on the boil kettle.",
+  "boil-hold": "<b>15:53, Ready to boil?, before the boil starts.</b> The wort pump is still draining the mash tun into the boil kettle, so all four are the same here, and so is everything earlier in the day."
+};
+const S = {};
+function readHash() {
+  const q = new URLSearchParams(location.hash.slice(1));
+  S.scene = HINT[q.get("scene")] ? q.get("scene") : "whirlpool";
+  S.size = SIZES[q.get("size")] ? q.get("size") : "window";
+  S.cut = q.get("cut") === "whole" ? "whole" : "rig";
+}
+readHash();
+const stage = document.getElementById("stage"), frames = [...document.querySelectorAll(".frame")];
+const rect = new Map();
+const src = (k, full) => `brew-day.html?${full ? "" : "bare&focus=rig&"}wp=${k}#${S.scene}`;
+/* each page tells this one where its drawing is (brew-day.js reportFocus); all four are shown at one scale */
+addEventListener("message", e => {
+  const f = frames.find(f => f.querySelector("iframe").contentWindow === e.source);
+  if (!f || !e.data || e.data.type !== "plate") return;
+  rect.set(f.dataset.k, e.data);
+  fit();
+});
+function fit() {
+  const [w, h] = SIZES[S.size], whole = S.cut === "whole", m = 6;
+  const aw = stage.clientWidth - 44 - 300 - 20;
+  /* all four show the same moment at the same size, so their drawings sit in the same place: a frame the browser hasn't
+     run yet (off-screen, below the others) borrows another's */
+  const any = [...rect.values()][0];
+  const rs = frames.map(f => rect.get(f.dataset.k) || any || {x: 0, y: 0, w, h});
+  const s = whole ? Math.min(1, aw / w) : Math.min(1, ...rs.map(x => aw / (x.w + 2 * m)));
+  frames.forEach((f, i) => {
+    const cut = f.querySelector(".cut"), fr = f.querySelector("iframe"), x = rs[i];
+    fr.style.width = w + "px"; fr.style.height = h + "px";
+    if (whole) {
+      cut.style.width = (w * s) + "px"; cut.style.height = (h * s) + "px";
+      fr.style.transform = `scale(${s})`;
+    } else {
+      cut.style.width = ((x.w + 2 * m) * s) + "px"; cut.style.height = ((x.h + 2 * m) * s) + "px";
+      fr.style.transform = `translate(${(-x.x + m) * s}px, ${(-x.y + m) * s}px) scale(${s})`;
+    }
+  });
+}
+function apply() {
+  document.querySelectorAll("[data-scene]").forEach(b => b.setAttribute("aria-pressed", b.dataset.scene === S.scene));
+  document.querySelectorAll("[data-size]").forEach(b => b.setAttribute("aria-pressed", b.dataset.size === S.size));
+  document.querySelectorAll("[data-cut]").forEach(b => b.setAttribute("aria-pressed", b.dataset.cut === S.cut));
+  document.getElementById("hint").innerHTML = HINT[S.scene];
+  frames.forEach(f => {
+    const fr = f.querySelector("iframe"), want = src(f.dataset.k);
+    if (fr.getAttribute("src") !== want) { rect.delete(f.dataset.k); fr.setAttribute("src", want); }
+    f.querySelector("figcaption a").href = src(f.dataset.k, true);
+  });
+  history.replaceState(null, "", `#scene=${S.scene}&size=${S.size}&cut=${S.cut}`);
+  fit();
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  if (b.dataset.scene) S.scene = b.dataset.scene;
+  if (b.dataset.size) { S.size = b.dataset.size; rect.clear(); frames.forEach(f => f.querySelector("iframe").removeAttribute("src")); }
+  if (b.dataset.cut) S.cut = b.dataset.cut;
+  apply();
+});
+addEventListener("resize", fit);
+apply();
+</script>
+</body>
+</html>

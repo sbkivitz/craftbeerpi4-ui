@@ -27,6 +27,7 @@ The dashboard drives real hardware, kilowatt heating elements and two pumps in a
 - Phone: Scott may use his phone at times in the future. If he does, it must be able to do everything the desktop can, including switching heaters and the pump.
 - Garage temperature roughly 45-75 °F, with steam and wet hands on brew day.
 - Two pumps (Scott, 7 Nov): one mainly recirculates the HLT; the other moves the wort around (recirculating the mash through the HERMS coil, and transfers). The simulator models only one of them (`Mash Pump`).
+- After the boil (Scott, 10 Nov): the wort pump doesn't run during the boil. Afterwards its hoses go on the boil kettle: it runs the wort round through the chiller and back into the kettle (an optional whirlpool), then through the chiller to the fermenter. He moves hoses on quick-disconnects but wants the drawing to keep valves ("professional looking process control"). Since 12 Nov the drawing shows the wort pump at the boil kettle, on its chiller loop, once the boil starts.
 - Brewing style: sometimes entirely by hand (set targets, switch the pump and heaters, time rests himself; on 2 Oct he described using his phone as the rest timer), sometimes running a recipe that automates parts of the day.
 - Practices: doughs in "Kal's way" (strike water heated only to the mash temperature; the HERMS recovers the drop). Whirlpool stands are at 170 °F.
 - Hop, lid and mash-in prompts stay on screen until acknowledged (defect S2, fixed).

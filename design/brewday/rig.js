@@ -27,7 +27,8 @@ function rigGeom(W) {
     hltPump: a - 60, wortPump: m - 70, hltValve: a + 10, mtValve: m - 10,
     hltRiser: a - 160, coilRiser: a + 160, coilTopRiser: a + 186, tee: m - 120, xferRiser: k - 165,
     hltRet: a - 70, mtRet: m - 75, bkRet: k - 95, spargeIn: m,
-    vCoil: (a + 160 + m - 120) / 2, vBk: (m - 120 + k - 165) / 2, vRet: a - 115, vSp: a + 60};
+    vCoil: (a + 160 + m - 120) / 2, vBk: (m - 120 + k - 165) / 2, vRet: a - 115, vSp: a + 60,
+    bkPump: k - 10, bkOut: k + 34};
 }
 function zigzag(y) {
   let d = `M-84 ${y} H-70 l7 -9`;
@@ -84,12 +85,14 @@ ${v.el ? `<path class="element" id="el-${v.id}" d="${zigzag(268)}"/>` : ""}
 </g>`;
 }
 
-/* rs: how much bigger to set the labels when the drawing is drawn small (the faceplate-graphs proposal); 1 = as designed */
-function rigPump(id, x, y, med, name, rs = 1) {
-  const y1 = r1(68 - 33 * (rs - 1)), y2 = r1(y1 + 22 * rs), y3 = r1(y2 + 22 * rs);
+/* rs: how much bigger to set the labels when the drawing is drawn small (the faceplate-graphs proposal); 1 = as designed.
+   lx: put the labels beside the pump, starting lx to its right, instead of under it (the wort pump at the boil kettle,
+   whose underside the valve note already uses) */
+function rigPump(id, x, y, med, name, rs = 1, lx = 0) {
+  const y1 = lx ? r1(-3 - 9 * (rs - 1)) : r1(68 - 33 * (rs - 1)), y2 = r1(y1 + 22 * rs), y3 = r1(y2 + 22 * rs), tx = lx ? r1(lx) : -24;
   return `<g class="pump ${med}" id="pump-${id}" transform="translate(${r1(x)} ${y})">
 <path class="p-base" d="M-20 24 L-14 15 H14 L20 24 Z"/><circle class="p-ring" r="22"/><path class="p-tri" d="M8 -11 L-11 0 L8 11 Z"/>
-<text class="p-name" x="-24" y="${y1}">${name}</text><text class="p-st" x="-24" y="${y2}">OFF</text><text class="tag p-ovr" x="-24" y="${y3}"></text></g>`;
+<text class="p-name" x="${tx}" y="${y1}">${name}</text><text class="p-st" x="${tx}" y="${y2}">OFF</text><text class="tag p-ovr" x="${tx}" y="${y3}"></text></g>`;
 }
 function rigLine(id, med, paths, chev) {
   const layer = c => paths.map(d => `<path class="${c}" d="${d}"/>`).join("");
@@ -108,7 +111,7 @@ function rigValve(id, x, y, med, tx, ty, anchor, alt) {
   return `<g class="valve ${med}" id="vl-${id}" transform="translate(${r1(x)} ${y})"><path d="M-13 -9 L13 9 V-9 L-13 9 Z"/></g><text class="tag vtag" id="vt-${id}" x="${r1(tx)}" y="${ty}"${anchor ? ` text-anchor="${anchor}"` : ""}${at}></text>`;
 }
 
-function rigSVG(style, W, rs = 1) {
+function rigSVG(style, W, rs = 1, wpo = "today") {
   const S = RIG_ST[style], g = rigGeom(W), A = style === "kettle";
   const {a, m, k, yTop, ySp, yPump, yLow} = g, n = r1;
   const hRet = S.lidY(g.hltRet - a) + 1, mRet = S.lidY(g.mtRet - m) + 1, bRet = S.lidY(g.bkRet - k) + 1;
@@ -134,6 +137,26 @@ function rigSVG(style, W, rs = 1) {
   const chCoil = [[g.coilRiser, (242 + yPump) / 2, -90], [g.coilTopRiser, (164 + yTop) / 2, -90], [(g.coilTopRiser + g.mtRet) / 2, yTop, 0]];
   const chX = [[g.tee, (yPump + yLow) / 2, 90], [(g.vBk + g.xferRiser) / 2, yLow, 0], [g.xferRiser, (yTop + yLow) / 2, -90], [(g.xferRiser + g.bkRet) / 2, yTop, 0]];
   const nx = g.xferRiser + 26;
+  /* after the boil (wpo, from ?wp=; layout B): the wort pump's hoses are on the boil kettle (Scott moves them in the
+     hold before the boil). "move" and "chill" draw the pump there, on a short loop out of the kettle's bottom and back
+     in at its top through the runoff's own inlet, with its labels beside it, as the valve note has the space under
+     it; "chill" puts the chiller on the way back. "swirl" leaves the pump where it is and draws the wort turning in
+     the kettle. brew-day.js shows them only once the boil has started */
+  let whirl = "", bkPumpSVG = "";
+  if (!A && (wpo === "move" || wpo === "chill")) {
+    const bp = g.bkPump, bo = g.bkOut, oY = S.outY(bo - k), cx = (bp - 22 + g.xferRiser) / 2, cs = Math.min(rs, 1.15), cw = 64 * cs + 20, chh = 30 * cs;
+    const loop = [`M${n(bo)} ${n(oY)} V${yPump} H${n(bp + 22)}`, `M${n(bp - 22)} ${yPump} H${n(g.xferRiser)} V${yTop} H${n(g.bkRet)} V${n(bRet)}`];
+    const chL = [[bo, (oY + yPump) / 2, 90], [wpo === "chill" ? (bp - 22 + cx + cw / 2) / 2 : cx, yPump, 180], [g.xferRiser, (yTop + yPump) / 2, -90], [(g.xferRiser + g.bkRet) / 2, yTop, 0]];
+    whirl = rigLine("ln-bk-loop", "wrt", loop, chL)
+      + (wpo === "chill" ? `<g class="chiller" id="chiller"><rect x="${n(cx - cw / 2)}" y="${n(yPump - chh / 2)}" width="${n(cw)}" height="${n(chh)}" rx="3"/><text x="${n(cx)}" y="${n(yPump + 6.5 * cs)}">CHILLER</text></g>` : "");
+    bkPumpSVG = rigPump("wort-bk", bp, yPump, "wrt", "WORT PUMP", rs, bo - bp + 16);
+  } else if (!A && wpo === "swirl") {
+    /* three quarters of a turn, open on the left, with an arrowhead bigger than a pipe's, so it reads as the wort turning
+       and not as a coil in the kettle */
+    const cy = 212, rx = 70, ry = 15, at = d => [k + rx * Math.cos(d * Math.PI / 180), cy + ry * Math.sin(d * Math.PI / 180)];
+    const [x1, y1] = at(140), [x2, y2] = at(230), t2 = 230 * Math.PI / 180, d = `M${n(x1)} ${n(y1)} A${rx} ${ry} 0 1 0 ${n(x2)} ${n(y2)}`;
+    whirl = `<g class="ln wrt" id="ln-swirl"><path class="pf" d="${d}"/><path class="pd" d="${d}"/><path class="ch" d="M-7.5 -9 L6 0 L-7.5 9" transform="translate(${n(x2)} ${n(y2)}) rotate(${n(Math.atan2(-ry * Math.cos(t2), rx * Math.sin(t2)) * 180 / Math.PI)})"/></g>`;
+  }
   const legs = [10, W / 3 - 8, W * 2 / 3 - 8, W - 26];
   const defs = `<defs><filter id="glow" x="-20%" y="-80%" width="140%" height="260%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>${A ? `
 <linearGradient id="g-body">${bands("#5d6e81 0 .05|#9cacbd .05 .15|#8596a8 .15 .74|#78899c .74 .92|#637487 .92 1")}</linearGradient>
@@ -158,12 +181,13 @@ ${rigLine("ln-xfer", "wrt", xfer, chX)}
 ${rigLine("ln-wort-coil", "wrt", coil, chCoil)}
 ${rigLine("ln-wort-in", "wrt", wortIn, chWin)}
 ${rigLine("ln-wort-out", "wrt", wortOut, [])}
+${whirl}
 ${A ? "" : rigValve("sp", g.vSp, ySp, "liq", g.vSp, n(ySp + 10 + 20 * rs), "middle")}
 ${rigValve("ret", g.vRet, yTop, "liq", g.vRet, n(yTop + 19 + 13 * rs), "middle", A ? null : [g.hltRiser - 14, yTop + 8, "end"])}
 ${rigValve("coil", g.vCoil, yPump, "wrt", g.vCoil, yPump + 36, "middle")}
 ${rigValve("bk", g.vBk, yLow, "wrt", g.vBk + 22, yLow - 13, "")}
 ${fits}
-${rigPump("hlt", hp, yPump, "liq", "HLT PUMP", rs)}${rigPump("wort", wp, yPump, "wrt", "WORT PUMP", rs)}
+${rigPump("hlt", hp, yPump, "liq", "HLT PUMP", rs)}${rigPump("wort", wp, yPump, "wrt", "WORT PUMP", rs)}${bkPumpSVG}
 <text class="tag vnote" x="${n(nx)}" y="${yPump + 68}">VALVES ARE SET BY HAND<tspan id="vnote-2" x="${n(nx)}" dy="${n(22 * rs)}"></tspan></text>
 </svg>`;
 }

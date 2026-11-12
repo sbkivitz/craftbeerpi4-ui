@@ -1921,17 +1921,191 @@ Beeps counted as the sound's oscillators start, and the silent sound as its buff
 - Pictures before and after at 1920×950, 1180×820 and 390×844: `#timers` after 0, 1 and 2 presses on SOUND,
   `#sound-allow` after 0 and 1, `#timer-done` after 2. All identical. No page errors.
 
+### Built (12 Nov, morning)
+
+- Brett built it the same morning (web UI 9faf75d, build 007e146), live on 8012: `cmdSnd()` and `audioOK()` as above,
+  with the comment quoting Scott, and `alarm.js`'s header changed. He also changed the core's description of
+  BREWDAY_ALARM_SOUND, which said switching SOUND on plays it (core 3000cbd).
+- Checks: identity 451/451, so no picture changes. His alarm sound test went from 22 to 32 checks, all passing: a
+  press on SOUND plays nothing and starts the one silent sound; a real warning from CraftBeerPi (the interlock refusing
+  a second heating element) plays each of the four sounds' first two pulses; a run-out timer still plays its whole
+  burst every 3 s; with TAP TO ALLOW, a press on SOUND or a tap elsewhere is silent and the next warning is heard. The
+  build before fails exactly the five silent-press checks. Timers 56/56, brew day 99/99.
+
+## The wort pump after the boil, with the chiller: ready to build (Scott, 12 Nov)
+
+Scott, 12 Nov: "whirlpool / hop-stand step pump symbol shows it going through the HERMS coil. What are some
+alternatives?", then "I don't want the symbols to become too chaotic. Maybe another representation of the wort pump
+instead of trying to connect the pipe/valves over there from where it currently is?" I showed him three options
+(`whirlpool.html`), and he chose "2. The pump moves, with the chiller drawn on its loop". This answers the second open
+question below ("After the boil").
+
+### What the drawing shows
+
+From the moment the boil starts (its step running, stopped, failed or done, not held for "Ready to boil?"). That's when
+CraftBeerPi switches the wort pump off and says "The wort pump is off, so you can move its hoses". Before it, nothing
+changes.
+
+- **The wort pump is drawn under the boil kettle**, on a short loop: out of the kettle's bottom, through the pump,
+  left through a CHILLER box, then up into the kettle's top through the runoff's own riser and inlet. Only the stub
+  out of the kettle and the run from the pump to the riser are new; from the pump's row up, the loop is drawn over
+  the runoff's line.
+- **Its labels go beside it** (WORT PUMP, then RUNNING or OFF), since the valve note already has the space under the
+  kettle.
+- **The CHILLER box** has the vessels' fill, a 2.5 px outline like a valve's, and its name inside. It is never lit
+  itself, because CraftBeerPi can't see the chiller's water. The pipe through it lights as every pipe does.
+- **The pump's old place by the mash tun is left empty**, as its hoses are. Nothing on the mash tun's side lights:
+  not the coil, its line, the line to the boil kettle, or their valves.
+- **The valves are drawn as before** ("SHOWN FOR RECIRCULATING"), so a running HLT pump, which is also the HLT's
+  stirrer, still goes round the hot liquor tank. (The options I showed Scott kept every valve as the sparge left
+  them; I dropped that, as it would send a stirring HLT pump's water over to the mash tun.)
+- **While the pump runs**, the loop is wort gold with the flowing dashes and arrow-heads. While it's off, or the
+  connection is lost, the loop is grey and the pump says OFF or "LAST: RUNNING", as the other pumps do.
+
+### In `rig.js`
+
+`rigGeom`: two more positions, under the boil kettle.
+
+```js
+    bkPump: k - 10, bkOut: k + 34};
+```
+
+`rigPump`: a seventh argument, `lx`, to put the labels beside the pump instead of under it.
+
+```js
+function rigPump(id, x, y, med, name, rs = 1, lx = 0) {
+  const y1 = lx ? r1(-3 - 9 * (rs - 1)) : r1(68 - 33 * (rs - 1)), y2 = r1(y1 + 22 * rs), y3 = r1(y2 + 22 * rs), tx = lx ? r1(lx) : -24;
+  ...the three texts take x="${tx}" instead of x="-24"
+```
+
+`rigSVG`, layout B only (not `A`): the loop, the chiller and the second place for the pump.
+
+```js
+  const bp = g.bkPump, bo = g.bkOut, oY = S.outY(bo - k), cx = (bp - 22 + g.xferRiser) / 2, cs = Math.min(rs, 1.15), cw = 64 * cs + 20, chh = 30 * cs;
+  const loop = [`M${n(bo)} ${n(oY)} V${yPump} H${n(bp + 22)}`, `M${n(bp - 22)} ${yPump} H${n(g.xferRiser)} V${yTop} H${n(g.bkRet)} V${n(bRet)}`];
+  const chL = [[bo, (oY + yPump) / 2, 90], [(bp - 22 + cx + cw / 2) / 2, yPump, 180], [g.xferRiser, (yTop + yPump) / 2, -90], [(g.xferRiser + g.bkRet) / 2, yTop, 0]];
+  const whirl = A ? "" : rigLine("ln-bk-loop", "wrt", loop, chL)
+    + `<g class="chiller" id="chiller"><rect x="${n(cx - cw / 2)}" y="${n(yPump - chh / 2)}" width="${n(cw)}" height="${n(chh)}" rx="3"/><text x="${n(cx)}" y="${n(yPump + 6.5 * cs)}">CHILLER</text></g>`;
+  const bkPumpSVG = A ? "" : rigPump("wort-bk", bp, yPump, "wrt", "WORT PUMP", rs, bo - bp + 16);
+```
+
+`${whirl}` goes straight after `ln-wort-out`'s line (so the loop is drawn over the runoff's riser, and the chiller
+over the loop), and `${bkPumpSVG}` straight after the two pumps. In the mockup they sit behind a fourth argument,
+`wpo`, for the options Scott didn't take; the screen needs only the chiller's.
+
+### In `screen.js`
+
+Beside `runoffStep()`:
+
+```js
+/* the boil has started (its step running, stopped, failed or done; held for "Ready to boil?" it is still I). From then
+   on the wort pump's hoses are on the boil kettle: Scott moves them in that hold, as CraftBeerPi's notification says
+   ("The wort pump is off, so you can move its hoses", core 1c08d4c) */
+function boilStarted() {
+  const bo = M.RECIPE.steps.findIndex(s => s.boil);
+  return !!st.recipe && bo >= 0 && stepStatus(bo) !== "I";
+}
+```
+
+`renderRig`:
+
+```js
+  [["hlt", "hltPump"], ["wort", "wortPump"], ["wort-bk", "wortPump"]].forEach(([id, k]) => {
+    const p = a[k], word = $(`#pump-${id} .p-st`);
+    if (!word) return;
+    ...as now, with word for the state
+  });
+  ...
+  const out = ro >= 0 && !held, sp = out && hasSp, post = boilStarted();
+  const wp = live && a.wortPump.on, hp = live && a.hltPump.on, mtw = wp && !post;
+  on("#ln-wort-in", mtw); on("#ln-wort-out", mtw); on("#ln-wort-coil", mtw && !out); on("#ln-xfer", mtw && out); on("#coil", mtw && !out);
+  on("#ln-bk-loop", wp && post);
+  ["#pump-wort-bk", "#ln-bk-loop", "#chiller"].forEach(s => { const n = $(s); if (n) n.classList.toggle("gone", !post); });
+  $("#pump-wort").classList.toggle("gone", post && !!$("#pump-wort-bk"));
+  ...the HLT lines as now
+  setValve("coil", !out, mtw, setNow); setValve("bk", out, mtw, setNow); ...ret and sp as now
+  ...
+  setText($("#rig-d"), rigDesc(ro, held, setNow, post));
+```
+
+`rigDesc(ro, held, setNow, post)`, first:
+
+```js
+  if (post) return head + "The boil has started, so the wort pump's hoses are on the boil kettle. The wort pump is drawn under the boil kettle: it takes wort from the bottom of the kettle and sends it through the chiller and back in at the top. The mash tun and the HERMS coil are out of use. The HLT pump circulates hot water around the hot liquor tank. The valves are set by hand and CraftBeerPi can't see them: they are shown for recirculating.";
+```
+
+### In the stylesheet
+
+```css
+.rig-line .gone{display:none}
+.rig-line .chiller rect{fill:#1b2833;stroke:#b9c6d2;stroke-width:2.5}
+.rig-line .chiller text{font:600 18px var(--cond);letter-spacing:.06em;fill:#c3cfda;text-anchor:middle}
+/* the chiller's word sits in its box: it grows no more than the vessels' names do */
+[data-graphs=face] .rig-line .chiller text{font-size:calc(18px * min(var(--rs,1),1.15))}
+```
+
+(`#ln-swirl` and its two rules are only for an option Scott didn't take.)
+
+### Moments whose pictures change
+
+- **The drawing only, on a monitor and at half of it**, in the nine moments after the boil starts: `#hop`,
+  `#boilpower`, `#heatup`, `#boiling`, `#pause`, `#pause-long`, `#hold`, `#keepboil` and `#letfall`. The pump is under
+  the boil kettle with its chiller loop, OFF in all of them.
+- **New: `#whirlpool`**, the whirlpool hold (`#hold`) with the wort pump running, as Scott whirlpools: the loop lit.
+  It's the moment his question was about; a `?demo=whirlpool` for your identity test, if you'd like one.
+- **Nothing on a phone** (the phone has no drawing) and nothing before the boil, `#boil-hold` included.
+
+### What it doesn't do
+
+- **The WORT PUMP button stays on the mash tun's panel**, where its HERMS logic is, while the drawing shows the pump
+  at the boil kettle. Both say WORT PUMP. Moving the button between panels would be a much bigger change, and Scott
+  hasn't asked for it.
+- **With no recipe loaded** (brewing by hand), the screen can't tell the boil has happened, so the drawing shows
+  recirculating, as now.
+- **The transfer to the fermenter** isn't drawn.
+
+### Changed, all in `proposal\`
+
+- `rig.js`: `rigGeom` (`bkPump`, `bkOut`), `rigPump` (`lx`), `rigSVG` (the option `wpo`; the loop, the chiller, the
+  second place for the pump; and the options not taken).
+- `brew-day.js`: `WP` (default `chill`; `?wp=today` is the drawing as built before; `move` and `swirl` are the options
+  not taken), `boilStarted()`, `rigDesc`, `renderRig`, `drawRig`, the `#whirlpool` moment, the strip's `data-wp`
+  links, and `reportFocus` (`?focus=rig`, for `whirlpool.html` only; don't port it).
+- `brew-day.css`: `.gone`, `.chiller`, `#ln-swirl`.
+- `brew-day.html`: the strip and the header comment.
+- New: `whirlpool.html`, now a record of the choice.
+
+### Checked
+
+- **The drawing as built before** (`?wp=today`) against the mockup before this change: all 30 moments at 1920×950,
+  960×1200 and 390×844, 90 of 90 identical.
+- **The new default** against the mockup before: 72 identical, and 18 differ only inside the drawing. Those 18 are the
+  nine moments after the boil, on a monitor and at half of it. The phone is identical in every moment.
+- **Fit**, at 11 sizes from 701 to 1920 px wide, in eight moments after the boil (`#whirlpool`, `#hold`, `#boiling`,
+  `#hop`, `#heatup`, `#pause`, `#keepboil`, `#boilpower`): no word touches another word, a pump, a valve, a pipe or a
+  vessel's outline, except CHILLER over the loop that runs behind its box. The pump's labels keep 14 px or more from
+  the drawing's edge (701 px), and the CHILLER box 7 px or more from the pump, except in `#boilpower` on a monitor
+  (4 px), where the open editor squeezes the whole drawing into a thin strip, as it does today. Below 701 px the screen
+  shows no drawing.
+- **Pressed through:** in `#hold`, WORT PUMP on lights the loop and says RUNNING at the boil kettle; off again greys it.
+  Losing the connection in `#whirlpool` greys the loop and says "LAST: RUNNING". A recipe stopped mid-boil keeps the
+  pump at the kettle. With no recipe, and in `#boil-hold` and `#mash`, the drawing is as now. No page errors.
+- **Found and fixed while checking:** the first swirl (option 3) was a closed ring that could pass for a chiller coil in
+  the kettle; option 3's "→ BOIL KETTLE" on its own line sat on the runoff's pipe; the CHILLER box was tight round its
+  word on big screens; and the valves rule above.
+
 ## Open questions about the drawing
 
-Both were answered by Scott on 10 Nov; the drawing hasn't been changed for them yet, and the change will come
-to Brett separately, after boil power:
+Both were answered by Scott on 10 Nov. The valves have been in the drawing since then; the path after the boil was
+designed on 12 Nov, once he asked about it (above):
 
 - Valves or hoses: he moves hoses between ports on quick-disconnects, but wants the drawing to keep the
   valves: "I like the valve representation - it is professional looking process control".
 - After the boil: the wort pump does not run during the boil. Once the boil is over it runs the boil kettle
   round through the chiller and back into the kettle (an optional whirlpool), and then sends the wort through
   the chiller to the fermenter. Until the drawing has that path, running the wort pump then still shows wort
-  going round the HERMS coil into the mash tun, which is wrong.
+  going round the HERMS coil into the mash tun, which is wrong. Answered on 12 Nov: see "The wort pump after the
+  boil, with the chiller" above.
 
 ## Temperature graphs: Scott chose option A on 10 Nov, to be built
 
