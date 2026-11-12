@@ -1,7 +1,7 @@
 // The brew-day screen's alarm sounds. Scott, 11 Nov, after testing the timers: "The alert sound is kinda weak", then
 // "Make the alarm timer sound configurable like I had asked". Settings, BREWDAY_ALARM_SOUND, chooses one. A timer that has
 // run out plays the whole burst every 3 s until it is answered; a new message in the title bar plays its first two pulses;
-// switching SOUND on plays the whole burst, so it is heard as it will be.
+// switching SOUND on is silent (Scott, 12 Nov); Settings' Try plays the sound on purpose.
 //
 // The pulses follow Patterson's guidelines for auditory warnings (CAA Paper 82017, 1982): 100-150 ms long, with 10-30 ms
 // rises and falls; the kitchen timer and the alarm have four or more harmonics between 1 and 4 kHz, which are harder to

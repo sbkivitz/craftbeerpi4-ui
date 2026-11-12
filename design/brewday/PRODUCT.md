@@ -39,12 +39,12 @@ The dashboard drives real hardware, kilowatt heating elements and two pumps in a
 - Simulator rig (dashboard 1): kettle HLT (logic `PIDBoil`, actor `HLT Heater`); kettle Mash Tun (logic `PID_HERMS`, actors `HLT Heater` and `Mash Pump`, also reads the HLT sensor); kettle Boil Kettle (logic `BoilPower`, actor `Boil Heater`, boil power 45%, threshold 210.2 °F). Sensors: HLT Temp, Mash Temp, Boil Temp.
 - Simulator recipe ("Craftbeerpi Test Recipe v5"): mash in at 126 °F, protein rest 126 °F for 20 min, saccharification 149 °F for 40 min, mash out ("Sparge") 168 °F for 40 min, 90-minute boil with additions at 60, 15, 15 and 5 min and a lid alert, a whirlpool hop prompt, and a 20-minute whirlpool at 170 °F.
 - Open problems in today's dashboard (`C:\src\personal\cbpi-testbench\DEFECTS.md`): U1 failed commands are invisible; U2 controls are small (about 55×32 px), next to each other and act on the first click; U3 on/off is shown weakly and mainly by colour; U4 nothing adapts to phones; U5 in the editor a widget is deleted on pointer-down with no undo; U6 misspelled saved fields (`heigth`, `pathes`).
-- Boundaries: recording the brew day (measurements, notes, saved brew days) belongs to the BrewScribe plugin. Fermentation is paused and out of scope.
+- Boundaries: recording the brew day (measurements, notes, saved brew days) belongs to the BrewScribe plugin. The brew-day screen only links to it: its last tab, BREWSCRIBE, opens BrewScribe in a browser tab of its own (Scott's choice, 11 Nov). Fermentation is paused and out of scope.
 - Every proposed change must say whether it needs only a dashboard layout file, changes to the React UI, or server changes.
 
 ## Brand Commitments
 
-- Name: CraftBeerPi. The header shows the configured brewery name ("CraftBeerPi Brewery" on the simulator).
+- Name: CraftBeerPi. The header shows the configured brewery name (BREWERY_NAME) at every width, phone included, because it tells Scott's rig from his simulators. Scott's on 8012 is "EBrews - Simulator" (from the night of 11 Nov; it was "EBrews - A CraftBeerPi Brewery" when the title bar was designed, then "EBrews"); CraftBeerPi's default is "CraftBeerPi Brewery".
 - Big actual and target temperature numbers for each vessel stay, in the style of a hardware PID controller (Scott's September request). On 7 Nov he set the details: the actual temperature (PV) is bigger than the target (SV), PV is red and SV is green.
 - The recipe must be visible on the main brew-day screen (7 Nov).
 - Scott likes the dark brewhouse touch-panel look (7 Nov). His stated preference decides dark over light, even though the garage is lit.

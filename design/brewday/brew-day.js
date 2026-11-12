@@ -1553,12 +1553,16 @@ function cmdTm2(x, id, y) {
   if (x === "ok") return send(key, "ok", `${t.name}: alarm answered`, () => { answer(); t.state = "stopped"; t.left = t.run = t.set; });
   if (x === "plus5") return send(key, "plus5", `${t.name}: 5 more minutes`, () => { answer(); t.state = "running"; t.left = t.run = 300; });
 }
-/* the alarm sound: a piezo-style beep, as a panel controller's buzzer, softened (a sine at 1760 Hz, 120 ms each).
-   One sound for now; choosing between presets modelled on real controllers is Scott's later todo */
+/* the mockup's alarm sound: a piezo-style beep, as a panel controller's buzzer, softened (a sine at 1760 Hz, 120 ms each).
+   The screen plays the sound chosen in Settings, BREWDAY_ALARM_SOUND (alarm.js); this is its "Soft ping" */
 function audioOK() {
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
     if (actx.state === "suspended") actx.resume();
+    /* a silent one-sample sound, started inside the press. Some browsers, Safari on an iPhone in particular, have let a
+       page play sound later only once a sound has started inside a press, not just on resume(). The beeps used to do
+       that; this does it unheard */
+    const z = actx.createBufferSource(); z.buffer = actx.createBuffer(1, 1, 22050); z.connect(actx.destination); z.start(0);
     return true;
   } catch (_) { return false; }
 }
@@ -1572,12 +1576,16 @@ function ring(n) {
     o.connect(g).connect(actx.destination); o.start(s); o.stop(s + 0.13);
   }
 }
+/* SOUND is silent: switching it on, or allowing it while it says TAP TO ALLOW, plays nothing. Sound means a timer that
+   has run out, or a new alert or question, never a press (Scott, 12 Nov: "I don't want to hear a sound when I click the
+   "SOUND" box for the timer. ONly when timer expires"). The lit box says it's on; Settings' Try plays the sound on
+   purpose. The press still lets the page play sound later (audioOK) */
 function cmdSnd() {
   const s = st.snd;
-  /* pressed while it says TAP TO ALLOW: the press allows it and leaves it on, and the two beeps say it can be heard */
-  if (s.on && !s.ok) { s.ok = audioOK(); ring(2); return renderAll(); }
+  /* pressed while it says TAP TO ALLOW: the press allows it and leaves it on */
+  if (s.on && !s.ok) { s.ok = audioOK(); return renderAll(); }
   s.on = !s.on;
-  if (s.on) { s.ok = audioOK(); ring(2); } // the tap itself lets the page play sound, and two beeps say what it sounds like
+  if (s.on) s.ok = audioOK();
   renderAll();
 }
 /* the first tap or key on the page lets it play sound; not Escape, which a browser doesn't count. A browser counts a mouse

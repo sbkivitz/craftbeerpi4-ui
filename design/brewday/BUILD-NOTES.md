@@ -923,12 +923,12 @@ more than 3 flashes a second: this is one slow pulse) are met.
 - **SOUND**, at the right of the TIMERS heading: this screen's own switch, KEEP BOILING's lit box with role
   "switch". It covers this screen's timers and CraftBeerPi's alerts: three beeps every 3 s while a timer's alarm
   waits, two beeps once when any other prompt, warning or error appears. Turning it on plays the two beeps, so he
-  hears what it sounds like. It is kept in the browser (localStorage), not in CraftBeerPi, so the phone can be quiet
-  while the monitor beeps.
+  hears what it sounds like. (Until 12 Nov: Scott asked for no sound on the press. See "SOUND switches on silently".)
+  It is kept in the browser (localStorage), not in CraftBeerPi, so the phone can be quiet while the monitor beeps.
 - **A browser plays sound only after a tap on the page.** After a reload with SOUND on, the switch says "SOUND · TAP
   TO ALLOW" in amber, its box unlit amber, until the first tap or key press anywhere, which unlocks it
   (`#sound-allow`). Escape doesn't: a browser doesn't count it. A press on SOUND itself allows it too, leaves it on,
-  and plays the two beeps; it doesn't switch it off. A mouse press counts as it goes down, but a finger counts only as
+  and plays the two beeps (silent since 12 Nov); it doesn't switch it off. A mouse press counts as it goes down, but a finger counts only as
   it lifts (the HTML standard's activation-triggering events: `pointerdown` for a mouse, `pointerup` or `touchend`
   for a finger or pen, `keydown` except Escape), so a touch tries again on `pointerup`.
 - **The sound** (one for now; choosing between presets modelled on real controllers is Scott's later todo): a
@@ -1064,7 +1064,8 @@ strip's switch reads "Timers: as built / older CraftBeerPi".
 
 Brett built four things differently on purpose, and the mockup now does the same:
 
-- **SOUND while it says TAP TO ALLOW.** The press that allows it leaves it on and plays the two beeps. (In the
+- **SOUND while it says TAP TO ALLOW.** The press that allows it leaves it on and plays the two beeps (silent since
+  12 Nov, see "SOUND switches on silently"). (In the
   mockup, the press's `pointerdown` allowed it and its click then switched it off.) A key press allows it too, except
   Escape, which a browser doesn't count, so it works from the keyboard.
 - **The go button while the timer waits.** STARTING… and PAUSING… only for those two commands; for anything else it
@@ -1078,7 +1079,7 @@ Brett built four things differently on purpose, and the mockup now does the same
 Three more, mine, for Brett to take or leave:
 
 - **A press on SOUND is left to SOUND's own click.** `unlockSound()` returns for a target inside `.snd`, and
-  `cmdSnd()` treats a press while TAP TO ALLOW as "allow, keep on, two beeps". This does what the screen's
+  `cmdSnd()` treats a press while TAP TO ALLOW as "allow, keep on, two beeps" (no beeps since 12 Nov). This does what the screen's
   `s.allowed` flag does, without the flag. With the flag, a press that starts on SOUND but never becomes a click (a
   finger that slides off, or a phone's scroll that starts there) leaves `allowed` set. The next press on SOUND, meant
   to switch it off, then only beeps.
@@ -1169,7 +1170,7 @@ Three more, mine, for Brett to take or leave:
 - The default against `?timers=new`: every moment, with and without graphs, at 1920×950 and 390×844: 116 of 116
   screenshots identical. `?timers=today` shows the rest timer, and the strip marks the view it shows.
 - Pressed through: SOUND while TAP TO ALLOW pressed with a mouse, a finger, Enter and Space (allowed, still on, two
-  beeps; the next press switches it off); a key elsewhere allows it, Escape doesn't; a press that slides off SOUND
+  beeps, none since 12 Nov; the next press switches it off); a key elsewhere allows it, Escape doesn't; a press that slides off SOUND
   allows nothing, and the next press on it allows it; a first press on Timer 3's START allows sound and starts the
   timer, with a mouse and with a finger. The go button while Yeast is SET (START, greyed), while Stir gets +1 MIN or
   a new name (PAUSE, greyed), and while each is paused or started (PAUSING…, STARTING…). Enter while START waits:
@@ -1499,8 +1500,9 @@ page titled). The mockup adds "(mockup)".
   lines (44 px) where it said "CRAFTBEERPI"; the title bar keeps its height, as ALL OFF's 46 px is taller.
 - With `?name=`: whatever name you give. For Scott's,
   `?name=EBrews%20-%20A%20CraftBeerPi%20Brewery&brewscribe=none#mash`. The mockup strip has "Brewery name: default ·
-  Scott's · a simulator · 30 characters · 36 characters". Since Scott shortened his name, "Scott's" is "EBrews" and his
-  first name is "30 characters" (mockup only, hidden by `?bare`; nothing to port).
+  Scott's · a simulator · 30 characters · 36 characters". "Scott's" is his current 8012 name, "EBrews - Simulator"
+  (it was "EBrews" for a while), and his first name is "30 characters" (mockup only, hidden by `?bare`; nothing to
+  port).
 
 ### Changed, all in `proposal\`
 
@@ -1543,6 +1545,8 @@ page titled). The mockup adds "(mockup)".
 - Scott has since shortened his 8012 name to "EBrews": one line at full size at every width.
 - Looked at on 8012 at 1920, 960 and 390 px, without pressing anything: "EBREWS" at 34, 22 and 22 px, the title bar
   71, 127 and 121 px tall, the page's title "EBrews · Brew day", all as the mockup with `?name=EBrews`.
+- Later that night Scott renamed 8012 "EBrews - Simulator", and it matched the mockup at five sizes (see "Built" under
+  the boil kettle's step row, below).
 
 ## BREWSCRIBE: a tab that opens BrewScribe in its own browser tab, ready to build (11 Nov, evening)
 
@@ -1812,6 +1816,110 @@ where it has 2 px. So the " %" goes at exactly the three widths where the PV is 
 - Every moment before and after at the same 14 sizes, plus `?bk=today`, layout A and `?timers=today`: the changes above
   and nothing else. Sixteen other differences (the step list's scroll, layout A's drawing, a 3 × 4 px speck at 1440 and
   a 3 px line along the drawing's foot at 1180) were each gone on reload. No page errors.
+
+### Built (11 Nov, night)
+
+- Brett built it the same night (DEFECTS M77; web UI 1b75633, build c616051), live on 8012. Identity 451/451.
+- 1180 px isn't one of his identity sizes, so he added a live check there to his boil power test: HEATING and PAUSED
+  fit, the element is at least twice a step, every step is 24 px or more, the " %" is gone while the spoken names
+  still say "percent", and pausing doesn't move the AUTO / MANUAL row. 95/95. The build before fails those three
+  checks with the numbers above: the element 29 px, the steps 44, and the row moving 15 px (564 to 579) as the heat
+  paused.
+- Looked at on 8012 at 1920, 1180 and 390 px, without pressing anything. Its boil kettle was cold and in MANUAL, so
+  the window read OUT 0 % and MODE MAN, with the PV at 40.6 px at 1180, as in the mockup. The step row shows only
+  while AUTO boils, so it couldn't be seen there without pressing something; Brett's live check covers it.
+- Scott has renamed 8012 "EBrews - Simulator" (18 characters). Live and mockup (`?name=EBrews%20-%20Simulator`)
+  agree at 1920, 1180, 960, 390 and 360 px: the same size, the same number of lines and the same title bar height.
+  One whole line on a monitor; two whole lines, "EBREWS - / SIMULATOR", on a 360 px phone.
+
+## SOUND switches on silently: ready to build (12 Nov)
+
+Scott, 12 Nov, 08:10: "I don't want to hear a sound when I click the "SOUND" box for the timer. ONly when timer
+expires". I asked whether a new hop alert, question or error should keep its two beeps; he chose "Keep the two beeps
+for hop alerts, questions and errors (Recommended)". So only the press on SOUND changes.
+
+### What it does now
+
+- **A press on SOUND makes no sound.** That's switching it on, and the press that allows it while it says "SOUND · TAP
+  TO ALLOW". Switching it off was already silent.
+- **Sound comes only when something needs him**, as before:
+  - a timer that has run out: the whole burst every 3 s until OK or +5 MIN;
+  - a new prompt, warning or error in the title bar: its first two pulses, once.
+- **The lit box says it's on**, and the amber "SOUND · TAP TO ALLOW" turns into "SOUND" once the browser allows it.
+  To hear the sound on purpose, Settings has Try ("plays it here") beside BREWDAY_ALARM_SOUND.
+- If a timer has already run out when he switches SOUND on, he hears its alarm at its next 3-second beat. That's the
+  timer's alarm, not the press.
+
+Why: on a control panel a sound should mean "come and look". If the alarm also plays when he presses a switch, it
+starts to mean less (`interaction-design`: keep a normal screen quiet; needless sounds teach people to ignore alarms).
+A test sound belongs on a control made for it, which is what Settings' Try is.
+
+### One thing the beep was doing
+
+Some browsers, Safari on an iPhone in particular, let a page play sound later only if a sound has started inside a
+press; `resume()` alone hasn't always been enough. The beep on SOUND did that. Now `audioOK()` starts a silent
+one-sample sound inside the press instead. `audioOK()` is called from SOUND's press and from the first tap anywhere
+(`unlockSound`), so both get it.
+
+### In `screen.js`
+
+```js
+function audioOK() {
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === "suspended") actx.resume();
+    /* a silent one-sample sound, started inside the press. Some browsers, Safari on an iPhone in particular, have let a
+       page play sound later only once a sound has started inside a press, not just on resume(). The alarm on SOUND used
+       to do that; this does it unheard */
+    const z = actx.createBufferSource(); z.buffer = actx.createBuffer(1, 1, 22050); z.connect(actx.destination); z.start(0);
+    return true;
+  } catch (_) { return false; }
+}
+```
+
+In `cmdSnd()`, take `ring()` out of both places, and the comments that say the alarm plays:
+
+```js
+  if (s.on && !s.ok) { s.ok = audioOK(); return renderAll(); }
+  ...
+  if (s.on) s.ok = audioOK();
+```
+
+My comment above `cmdSnd()` in the mockup quotes Scott, if you want it. The title bar's `ring(2)` (about line 746)
+and the run-out timer's `ring()` stay as they are.
+
+In `alarm.js`'s header, "switching SOUND on plays the whole burst, so it is heard as it will be" is no longer true.
+Something like: "switching SOUND on is silent (Scott, 12 Nov); Settings' Try plays the sound on purpose."
+
+Not mine, for you or the Settings agent: BREWDAY_ALARM_SOUND's help (`catalog.js:51`) says only "What the brew-day
+screen plays when a timer runs out, every 3 seconds until you answer it." A new hop alert, question or error also
+plays its first two pulses.
+
+### Moments whose pictures change
+
+None. It's sound only.
+
+### Changed, all in `proposal\`
+
+- `brew-day.js`: `audioOK()` (the silent sound and its comment), `cmdSnd()` (no `ring(2)`; the comment quoting
+  Scott), and the comment above `audioOK()` (the mockup plays the Soft ping; the screen plays the Settings choice).
+
+### Checked
+
+Beeps counted as the sound's oscillators start, and the silent sound as its buffer starts, before and after:
+
+| What | Before | After |
+|---|---|---|
+| SOUND off, a press switches it on (`#timers`) | 2 beeps | 0 beeps, 1 silent |
+| Then a hop alert arrives | 2 beeps | 2 beeps |
+| TAP TO ALLOW, a press on SOUND (`#sound-allow`) | 2 beeps | 0 beeps, 1 silent |
+| The next press switches it off | 0 | 0 |
+| TAP TO ALLOW, Space on SOUND | 2 beeps | 0 beeps, 1 silent |
+| TAP TO ALLOW, a tap elsewhere, then a hop alert | 0, then 2 | 0 (1 silent), then 2 |
+| A timer has run out (`#timer-done`), a press switches SOUND on, 4 s later | 2, then 6 more | 0, then 6 |
+
+- Pictures before and after at 1920×950, 1180×820 and 390×844: `#timers` after 0, 1 and 2 presses on SOUND,
+  `#sound-allow` after 0 and 1, `#timer-done` after 2. All identical. No page errors.
 
 ## Open questions about the drawing
 
