@@ -5,8 +5,8 @@ import { useCBPi } from "../data";
 import "./fonts/barlow.css";
 import { createBrewDay } from "./screen";
 
-// The brew-day screen, Scott's fixed screen for brewing (layout B, chosen 9 Nov 2026). It is not drawn by
-// React: screen.js is the approved mockup's own code, so that it looks exactly like the mockup, and this
+// The brew-day screen: a fixed, full-window screen for brewing. It is not drawn by
+// React: screen.js is the brew-day mockup's own code, so that it looks exactly like the mockup, and this
 // component only hands it CraftBeerPi's state. It sits outside the app's menu bar and page frame - it has
 // its own title bar and tabs - and while it is open the corner stack of notifications is hidden: its title
 // bar shows CraftBeerPi's prompts instead.

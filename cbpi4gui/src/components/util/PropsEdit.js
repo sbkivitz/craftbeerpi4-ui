@@ -297,14 +297,14 @@ export default PropsEdit;
 
 // The draft an action dialog should start from.
 //
-// Dialogs used to open with useState({}) and submit whatever was still in it.
-// Two things went wrong with that. A control the brewer never touched
-// contributed nothing to the payload, while still DISPLAYING a value - a
-// bounded slider with no value shows its minimum - so the dialog showed 0 and
-// posted {}. And the draft was never reset, so a cancelled edit leaked into
-// the next time the dialog was opened.
+// A dialog that opened with useState({}) and submitted whatever was still in
+// it would go wrong two ways. A control the brewer never touched would
+// contribute nothing to the payload, while still DISPLAYING a value - a
+// bounded slider with no value shows its minimum - so the dialog would show 0
+// and post {}. And a draft never reset would leak a cancelled edit into the
+// next time the dialog was opened.
 //
-// Seeding fixes the first: what is displayed is what will be submitted.
+// Seeding answers the first: what is displayed is what will be submitted.
 //
 // - A declared default_value is used as-is, including an explicit 0.
 // - A bounded parameter with no default is seeded with the value its slider
@@ -313,8 +313,8 @@ export default PropsEdit;
 // - An unbounded parameter with no default is left absent, because its text
 //   field renders blank. Blank on screen and absent in the payload agree, and
 //   the server is then responsible for rejecting an incomplete command rather
-//   than guessing - inventing a value here is how an empty request became
-//   full power.
+//   than guessing - inventing a value here would let an empty request
+//   become full power.
 export const initialProps = (config) => {
   const draft = {};
   (config || []).forEach((item) => {

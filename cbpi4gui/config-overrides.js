@@ -1,7 +1,7 @@
 /*
  * Webpack tweaks that Create React App does not allow directly.
  *
- * Two things here, and the second one is why the build stopped working.
+ * Two things here.
  * (A third, below, keeps the brew-day screen's stylesheets as they are.)
  *
  * 1. Node core modules. CRA 5 / webpack 5 no longer polyfill them, and parts of
@@ -9,18 +9,17 @@
  *
  * 2. Fully-specified ESM requests. react-router 7 ships real ES modules under
  *    dist/, and inside an ESM context webpack will not guess a file extension -
- *    a request has to name the file exactly. The ProvidePlugin below asked for
- *    'process/browser', which resolves fine from CommonJS and fails from ESM:
+ *    a request has to name the file exactly. A bare 'process/browser' in the
+ *    ProvidePlugin resolves fine from CommonJS and fails from ESM:
  *
  *      Module not found: Can't resolve 'process/browser' in
  *      '...\react-router\dist\development'
  *      Did you mean 'browser.js'?
  *
- *    The package last built in January against an older react-router, so this
- *    surfaced only when the dependency moved. require.resolve() hands webpack an
- *    absolute path, which is unambiguous from either module system, and the
- *    fullySpecified rule stops the same class of failure for every other
- *    dependency that ships ESM - which, over time, is all of them.
+ *    require.resolve() hands webpack an absolute path, which is unambiguous
+ *    from either module system, and the fullySpecified rule stops the same
+ *    class of failure for every other dependency that ships ESM - which, over
+ *    time, is all of them.
  */
 const webpack = require("webpack");
 
@@ -44,9 +43,9 @@ module.exports = function override(config) {
   });
 
   // 3. The brew-day screen's stylesheets, as text, untouched. It must look
-  //    exactly like the approved mockup (Scott, 9 Nov 2026), and the CSS
-  //    pipeline does not leave a stylesheet alone: the minifier rewrote the
-  //    mockup's rgb(0 0 0/.26) as #00000042, an alpha of 66/255 instead of .26,
+  //    exactly like the brew-day mockup, and the CSS pipeline does not leave a
+  //    stylesheet alone: the minifier rewrites the mockup's rgb(0 0 0/.26) as
+  //    #00000042, an alpha of 66/255 instead of .26,
   //    and Chrome draws gradients with the difference. screen.js puts the text
   //    in a <style> element as it is. (Its fonts, fonts/barlow.css, still go
   //    through the pipeline, which bundles the font files.)

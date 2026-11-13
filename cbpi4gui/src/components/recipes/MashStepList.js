@@ -13,10 +13,9 @@ import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 // The steps with the one at `index` moved by `delta` (-1 up, +1 down), or null
 // when it is already at the top or the bottom.
 //
-// Swapped directly. This sorted the two positions with JavaScript's default
-// sort, which compares numbers as text, so [9, 10] became [10, 9]: moving a
-// step across positions 10 and 11 duplicated one step and lost another, and
-// saving made the loss permanent (DEFECTS M42, GPT's G8 on 2 Nov).
+// Swapped directly, not sorted: JavaScript's default sort compares numbers as
+// text, so [9, 10] becomes [10, 9], and moving a step across positions 10 and
+// 11 would duplicate one step and lose another.
 export const moveStep = (array, index, delta) => {
   const newIndex = index + delta;
   if (newIndex < 0 || newIndex >= array.length) {
@@ -32,10 +31,10 @@ export const moveStep = (array, index, delta) => {
 // had kept wherever the new type has the same setting - its kettle, sensor,
 // temperature, time.
 //
-// It started from nothing. A Mash, Mash In or Boil step with AutoMode blank
-// never switches its kettle on, so the brew stalled with nothing heating, and
-// changing a step's type wiped everything entered on it (DEFECTS M41,
-// Gemini's R2 on 2 Nov).
+// Starting from nothing would leave AutoMode blank, and a Mash, Mash In or
+// Boil step with AutoMode blank never switches its kettle on, so the brew
+// would stall with nothing heating; and changing a step's type would wipe
+// everything entered on it.
 export const propsForType = (config, previous) => {
   const props = initialProps(config);
   const kept = previous || {};

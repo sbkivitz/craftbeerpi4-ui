@@ -76,9 +76,9 @@ export function actorRoles(K, actors) {
 // A kettle runs a HERMS when its logic has an HLT sensor among its settings, as
 // PID_HERMS does: it drives the HLT's element and the pump that moves wort
 // through the coil. Not a kettle that only still holds an HLT_Sensor value:
-// CraftBeerPi keeps a kettle's settings when its logic changes, and the rig's
-// HLT kept one from PIDAutoTune when it went to PIDBoil (rig record, 10 Oct),
-// which never runs its pump. `herms` is the set of such logics, from the logic
+// CraftBeerPi keeps a kettle's settings when its logic changes, so an HLT that
+// went from PIDAutoTune to PIDBoil, which never runs its pump, can still hold
+// one. `herms` is the set of logics with an HLT sensor setting, from the logic
 // types CraftBeerPi publishes; until they arrive, a logic's name decides.
 export const hermsLogics = (logic) =>
   new Set((logic || []).filter((t) => t && (t.properties || []).some((p) => p && p.label === "HLT_Sensor")).map((t) => t.name));
@@ -86,7 +86,7 @@ export const isHerms = (k, herms) =>
   !!(k && (herms && herms.size ? herms.has(k.type) : /herms/i.test(String(k.type || ""))));
 
 // Does a kettle's logic declare this action, as BoilPower declares set_boil_power? Read from the logic types
-// CraftBeerPi publishes, as the old dashboard's kettle dialog read them.
+// CraftBeerPi publishes, as the dashboard's kettle dialog reads them.
 export const declares = (logic, type, method) =>
   !!type && (logic || []).some((t) => t && t.name === type && (t.actions || []).some((a) => a && a.method === method));
 
@@ -181,7 +181,7 @@ export function model(snap) {
     HERMS: isHerms(K.mt, herms),
     HERMS_LOGICS: herms,
     HERMS_DELTA: num(K.mt && K.mt.props && K.mt.props.DeltaTemp) ?? 0,
-    // the boil power button (Scott, 10 Nov): only for a boil kettle whose logic declares set_boil_power
+    // the boil power button: only for a boil kettle whose logic declares set_boil_power
     BOILPOWER: !!K.bk && declares(snap.logic, K.bk.type, "set_boil_power"),
     BOIL_TH: boilThreshold(K.bk, C),
     RECIPE: { name: (snap.basic && snap.basic.name) || "Brew steps", steps },

@@ -1,4 +1,4 @@
-// The approved mockup's brewhouse drawing (design/brewday/rig.js), unchanged but for this
+// The brew-day mockup's brewhouse drawing (design/brewday/rig.js), unchanged but for this
 // header and the export at the end: the drawing must match the mockup exactly.
 /* Brewhouse drawing. It is drawn to the width of its box, so each vessel lines up with its own faceplate.
    style "kettle" (layout A): flat steel homebrew kettles on a stand.  style "line" (layout B): line drawing. */

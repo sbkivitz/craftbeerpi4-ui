@@ -40,12 +40,9 @@ const MenuItem = ({ onClose, label, path = "/", children }) => {
 
 const Menu = ({onClose}) => {
     const {state} = useCBPi()
-    // Brew Steps, then the Recipe Book that fills them - recipes are imported
-    // from there. Scott, 5 Nov: Recipe Upload was six places below "Mash
-    // Profile", which runs the whole brew day and not only the mash, and the
-    // Recipe Book was not in the menu at all (DEFECTS M55, mockup 08).
-    // Brew Day is the brew-day screen, the first page since 9 Nov; Dashboard is
-    // the free-form dashboard it replaced there.
+    // Brew Steps and the Recipe Book that fills them - recipes are imported
+    // from there - sit side by side, near the top. Brew Day is the brew-day
+    // screen, the first page; Dashboard is the free-form dashboard.
     return <List>
         <MenuItem onClose={onClose} label="Brew Day"><SportsBarIcon /></MenuItem>
         <MenuItem onClose={onClose} label="Dashboard" path="/dashboard"><DashboardIcon /></MenuItem>

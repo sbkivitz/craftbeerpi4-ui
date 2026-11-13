@@ -107,8 +107,8 @@ const Settings = () => {
 
   // Redirect from an effect, never during render.
   //
-  // This was a bare `if (!source) navigate("/settings/All")` in the function
-  // body, which updates the router's state from inside another component's
+  // A bare `if (!source) navigate("/settings/All")` in the function body
+  // would update the router's state from inside another component's
   // render pass. React Router says so out loud - "You should call navigate()
   // in a React.useEffect(), not when your component is first rendered" - but
   // the consequence is worse than the warning suggests: the location changes
@@ -116,9 +116,9 @@ const Settings = () => {
   //
   // What that looks like at the rig is leaving Settings by the menu, watching
   // the address change to the page you asked for, and still being on Settings.
-  // Measured: Settings -> Plugins landed on #/plugins with the Settings page
-  // still rendered, character for character, and only a manual reload cleared
-  // it. Nothing threw, so there was no error to find.
+  // Settings -> Plugins, for one, would land on #/plugins with the Settings
+  // page still rendered, character for character, until a manual reload.
+  // Nothing throws, so there is no error to find.
   //
   // `replace` because this is a default being filled in, not somewhere the
   // brewer chose to go - it should not sit in the history and swallow Back.

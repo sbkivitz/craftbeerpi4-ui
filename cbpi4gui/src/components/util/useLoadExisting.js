@@ -3,15 +3,15 @@ import { useEffect, useState } from "react";
 // Fill an edit form from an existing record exactly once, as soon as the
 // record is actually available - not merely when the form mounts.
 //
-// Every edit form used to load its record in a mount-only effect:
+// A mount-only effect is not enough:
 //
 //   useEffect(() => { const item = list.find(...); if (item) {...} }, []);
 //
 // Inside the running app the list is already in state by the time a form
-// mounts, so that worked and nobody noticed. Land on the page directly - a
-// browser reload, a bookmark, a tablet waking from sleep - and the list has not
-// arrived from the server yet: find() returns undefined, nothing is set, and the
-// empty dependency array means the effect never runs again. The form sits blank.
+// mounts, so that would work. Land on the page directly - a browser reload, a
+// bookmark, a tablet waking from sleep - and the list has not arrived from the
+// server yet: find() returns undefined, nothing is set, and the empty
+// dependency array means the effect never runs again. The form sits blank.
 //
 // Blank is not cosmetic. Save posts what the form holds, and the server's
 // update() replaces the record wholesale and writes it to disk, so Save on a

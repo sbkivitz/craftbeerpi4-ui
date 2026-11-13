@@ -85,10 +85,10 @@ const Upload = () => {
 
 
   // One import at a time from this page, and only of a chosen recipe. Create
-  // clicked twice imported the recipe twice - 12 steps, every rest and the boil
-  // doubled - and Create with nothing chosen failed on the server (DEFECTS
-  // M39). The server runs one import at a time as well; this stops the second
-  // click being sent at all.
+  // clicked twice would import the recipe twice - every rest and the boil
+  // doubled - and Create with nothing chosen would fail on the server. The
+  // server runs one import at a time as well; this stops the second click
+  // being sent at all.
   const [creating, setCreating] = useState(false);
   // Read and set synchronously, so a second click arriving before the page has
   // redrawn the button as disabled is turned away too.
@@ -224,7 +224,7 @@ const Upload = () => {
         </Grid>
         <Grid item></Grid>
       </Grid>
-      {/* Opened from the Recipe Book, which keeps every import (DEFECTS M55). */}
+      {/* Opened from the Recipe Book, which keeps every import. */}
       <Breadcrumbs aria-label="breadcrumb">
         <Link color="inherit" onClick={() => navigate("/mashprofile")}>
           Brew Steps

@@ -149,7 +149,7 @@ const MashProfile = () => {
                         Type
                       </TableCell>
                       {/* What the step is doing now - its settings are under
-                          its name, so this is not called Summary any more. */}
+                          its name. */}
                       <TableCell align="right" className="hidden-xs">
                         Now
                       </TableCell>

@@ -174,25 +174,24 @@ const drawerWidth = 240;
 
 // Defined at module scope, deliberately.
 //
-// This lived inside CraftBeerPiApp, which makes it a brand new component type
-// on every render of the app. React compares element types by identity, so a
-// fresh function each render is a different type - it does not update the
-// subtree, it unmounts the old one and mounts a new one. Everything below the
-// Outlet, including the router's matched route element, was torn down and
+// Inside CraftBeerPiApp it would be a brand new component type on every
+// render of the app. React compares element types by identity, so a fresh
+// function each render is a different type - it does not update the subtree,
+// it unmounts the old one and mounts a new one. Everything below the Outlet,
+// including the router's matched route element, would be torn down and
 // rebuilt on every app render.
 //
-// The symptom was navigation that changed the address and left the previous
+// The symptom is navigation that changes the address and leaves the previous
 // page on screen: click Settings, then Analytics, and the hash reads
 // #/charting while Settings is still rendered, until a manual reload. Nothing
 // throws, so there is no error anywhere to find it by.
 //
-// appBarHeight is a prop now rather than a closure variable, which is the only
-// thing the inner definition was buying.
+// appBarHeight is a prop rather than a closure variable for the same reason.
 //
 // CssBaseline and the page colour belong to these pages, not the whole app:
 // the brew-day screen at / sits outside this frame and is styled only by its
 // own stylesheet, which must not have MUI's body font, line height or bold
-// weights under it (it has to look exactly like the approved mockup).
+// weights under it (it has to look exactly like the brew-day mockup).
 const AppLayout = ({ appBarHeight }) => (
   <>
     <CssBaseline />
@@ -237,7 +236,7 @@ const CraftBeerPiApp = () => {
     <div className={classes.root}>
       <Router>
         <Routes>
-          {/* The brew-day screen (Scott, 9 Nov 2026): the first page, with its own title bar and tabs. */}
+          {/* The brew-day screen: the first page, with its own title bar and tabs. */}
           <Route path="/" element={<BrewDay />} />
           <Route element={<AppLayout appBarHeight={appBarHeight} /> } >
                   <Route path="dashboard" element={<Dashboard2 />}/>   
