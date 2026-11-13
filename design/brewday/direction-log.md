@@ -25,6 +25,17 @@
   leave a reloaded page an amber line with nothing to press.
 - Checked: only 11 moments' lines change; 224 pictures, 210 identical, 14 differ only in the event line (#heatup,
   #sparge-run); fit with LOG open at five widths; every press walked. Handed to Brett.
+- Built the same afternoon (M82). Live, CraftBeerPi's notices can come a few milliseconds before the step change that
+  caused them (the HLT pump's, 1-18 ms), so Brett's screen moves a step's line above the words logged in the second
+  before it. Agreed: the same rule, for lines a moment apart. CraftBeerPi now keeps "Heating is not working", and the
+  refusal to change a running step is a warning with its own OK.
+- Found in his live lines: an answer given on another screen logged the whole question again, "answered on another
+  screen", under the question's own line, which now says "answered". My doing in M81, and against my own Don't.
+  Chosen: one short line in the words an answer here logs, with "from another screen" ("Hop Alert answered"); none for
+  the sparge, whose "sparge started · from another screen" is its answer. Not chosen: no line at all, which loses when
+  and where it was answered, and that matters with a monitor and a phone; or the copy, which takes 166 px of LOG on a
+  phone for the boil's question against 37 for a short line. A page that never logged the question still logs it
+  whole. Live only; handed to Brett.
 
 ## A question's line turns "answered" (12 Nov 2026, afternoon)
 - Brett, after building #finished and running it live: the built screen never changes a line once it's logged. A

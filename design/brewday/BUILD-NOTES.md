@@ -2713,6 +2713,123 @@ The other changes are in LOG only.
     STEP". With no temperature, the timer sentence alone.
   - The last section's presses again (25 checks): each question's line still turns plain with the right word.
 
+### Built (12 Nov, late afternoon)
+
+Brett built all of it (M82: UI 8623f57, build 9288b45, main.5506e3a5.js; core 6272e9b), live on 8012 after its
+restart. His live runs give the order above, word for word: the sparge's end (`#boil-hold`), START THE BOIL
+(`#heatup`), and the whirlpool to the end (`#hold`, `#finished`).
+
+- **Lines a moment apart.** CraftBeerPi doesn't promise the sparge's end comes in one update. The HLT pump's notice is
+  sent from a task of its own, and it reached the screen 18, 2 and 1 ms before "Batch Sparge finished" in three runs.
+  So the screen moves a step's line, and "Recipe finished", above CraftBeerPi's words and questions logged in the
+  second before it. It stops at another step's line, an answer, anything older, or the step's own last words
+  (`logStep`). The boil's pump notice came 2 and 19 ms after the boil's start, so it needed nothing. Agreed: it's the
+  same rule, for lines that arrive a moment apart.
+- **Part 5.** CraftBeerPi now keeps "Heating is not working" for pages opened later. It comes down when the wort warms
+  again or nears its target, when the step stops, resets or starts again, or when a newer report replaces it. The
+  refusal to change a running step is now a warning without buttons, so the screen gives it its own OK and it's amber
+  until then. The Brew Steps page's step form shows CraftBeerPi's sentence beside Save and keeps it after the 5-second
+  pop-up goes. Sensor plugins' prompts are unchanged: changing `notify()`'s default would change every plugin's prompts
+  at once.
+- **Tests:** identity 503/503, now also comparing LOG's lines as text in all 32 moments; sparge 123/123; recipe pumps
+  94/94; timers 71/71; brew day 99/99; kept prompts 54/54; heat stall 36/36; and a new warnings test, 10/10 (amber,
+  plain after OK, plain after a reload). The build before fails the new checks.
+
+## An answer from another screen: one short line, not the question again: ready to build (12 Nov, late afternoon)
+
+Found in Brett's live lines for M82. Sparge started, pressed on another screen, logged three lines in the same second,
+oldest first:
+
+- Batch Sparge: The sparge water is ready at 168 °F. Set the hoses or valves for a fly or a batch sparge, start the
+  pumps by hand, then press Sparge started, which switches the HLT's AUTO off. · answered on another screen
+- Batch Sparge: sparge started, 15 min timer started · from another screen
+- Batch Sparge: The HLT's AUTO is off now, so its element won't run as the HLT empties. Sparge timer started.
+  Estimated completion: 15:17 · from CraftBeerPi
+
+The question's own line, from when it was asked, now says "answered" as well, so LOG holds the whole question twice.
+That's my doing. When a question's line started to turn "answered" (M81), the extra line that said "answered on another
+screen" became a copy of it. It breaks my own rule: "don't log a second copy of it to say so".
+
+It happens with every question answered on the other device, and Scott brews with a monitor and a phone. Measured in
+LOG, the copy of the boil's question (302 characters) is 166 px tall on a phone and 102 px on the monitor; the
+sparge's (184 characters) is 123 and 81 px. A short line is 37 px. LOG keeps eight lines, so each copy also pushes one
+out. A timer's alarm answered elsewhere gets a copy in CraftBeerPi's words, "Mash rest: The 60:00 timer has run out.",
+under the screen's own "Mash rest finished".
+
+**The rule:** an answer given on another screen is one line, in the words an answer here would log, with "from another
+screen" in the plain colour where an answer here has "confirmed". The question's own line says "answered", where it
+is, as now.
+
+- **A question:** "Hop Alert answered · from another screen". Here it's "Hop Alert answered: Added · confirmed", but
+  this screen doesn't know which button was pressed elsewhere (see the core, below).
+- **A timer's alarm:** "Mash rest: alarm answered · from another screen", as OK pressed here. Its row shows which it
+  was: stopped at its own time (OK) or running again (+5 MIN).
+- **The sparge's question:** no line of its own. Its step's "Batch Sparge: sparge started, 15 min timer started · from
+  another screen" is the answer, as "… · confirmed" is when it's pressed here. Recognise the question as `livePrompt`
+  does: titled with a SpargeStep's name, with a "Sparge started" button. That works whichever of the question going
+  and the step's flag arrives first.
+- **A question this tab never logged** (asked before it opened, and not kept by CraftBeerPi): as now, the question in
+  full, "answered on another screen". With no line of its own, the page has to say what was asked.
+
+In `observe`, the loop for questions that have gone:
+
+```js
+  for (const [id, a] of before) {
+    if (now.has(id) || !Array.isArray(a.action) || !a.action.length) continue;
+    const why = typeof snap.retired === "function" ? snap.retired(a.id) : null;
+    const here = answered.delete(id) || startedHere(a);
+    const res = here || why === "answered" ? "answered" : why ? "no longer needed" : "no longer waiting";
+    const found = questionGone(id, res);
+    if (here || (found && why !== "answered")) continue;
+    /* answered on another screen. With a line here, which now says so: one line, as an answer here reads, not the
+       question again (the design, 12 Nov, late afternoon). Never logged here: the question whole, to say what was asked */
+    if (found) { const line = elsewhereLine(a); if (line) logEvent(line, "from another screen", ""); continue; }
+    logEvent(`${ut(a.title)}: ${ut(a.message)}`, why === "answered" ? "answered on another screen" : res, "");
+  }
+```
+
+```js
+/* an answer given on another screen, in the words an answer here logs. A timer's alarm, OK or +5 MIN (its row shows
+   which); a SpargeStep's question, none: its step's "sparge started" line is its answer; any other, "Title answered" */
+function elsewhereLine(a) {
+  if (M.TIMERS && TIMER_RAN_OUT.test(String(a.message || "").trim())) return `${ut(a.title)}: alarm answered`;
+  if (spargeQuestion(a)) return null;
+  return `${ut(a.title)} answered`;
+}
+/* a SpargeStep's question: titled with the step's name, with a Sparge started button (livePrompt asks the same) */
+const spargeQuestion = p => M.RECIPE.steps.some(s => s.type === "SpargeStep" && String(p.title || "") === s.n)
+  && (p.action || []).some(b => /^sparge started$/i.test(String(b.label || "").trim()));
+```
+
+`logStep` already stops at "from another screen", so a step's line stays after the answer that set it going.
+
+**The core, if you want the button's name.** CraftBeerPi knows it: `notify_callback` has the `action`, and the timers'
+`ok` and `plus5` know theirs. Sent with the retirement (`retire(id, reason="answered", answer=action.label)`), the line
+could read exactly as an answer here: "Hop Alert answered: Added · from another screen", "Mash rest: 5 more minutes ·
+from another screen". It isn't needed. Most questions have one button, and for the rest what the answer did shows in
+the lines after it or on the screen: the stand's "Holding 170.0…", a step "stopped · from another screen", the timer's
+row. Your call.
+
+### Moments whose pictures change
+
+None. The mockup has no other screen, so this is live only.
+
+### Changed
+
+- `proposal\BUILD-NOTES.md`: this section, and Built for the last.
+- `proposal\brew-day.js`: a comment only, in `#finished`. The stand's notice comes before "Whirlpool finished" because
+  it's the step's last words, not because CraftBeerPi's words went first.
+- `DESIGN.md` ("Last event") and `.impeccable\design.json` (the Don't about a second copy).
+
+### Checked
+
+- The heights above: the copies and a short line added to `#sparge-run`'s LOG by hand, at 390×844 and 1920×950.
+- `brew-day.js` passes `node --check`, and its moments are unchanged.
+- For your live tests: Sparge started on another page (two lines: "sparge started … · from another screen" and
+  CraftBeerPi's message, with the question's own line "answered"); a hop alert and a timer's alarm answered on another
+  page (one short line each); and a prompt CraftBeerPi doesn't keep, asked before the page opened and answered on
+  another (still logged whole).
+
 ## Open questions about the drawing
 
 Both were answered by Scott on 10 Nov. The valves have been in the drawing since then; the path after the boil was

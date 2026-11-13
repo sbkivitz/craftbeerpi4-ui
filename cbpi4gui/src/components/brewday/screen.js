@@ -39,6 +39,10 @@
 //   warning waits in the title bar for OK (the dashboard agent's hand-off of 12 Nov, late afternoon). The mockup has
 //   neither: its presses log in that order themselves, and it has no warnings without buttons. Live, what a step's
 //   change set going can also reach the screen just before the change itself; its line goes before that (logStep).
+// - A question answered on another screen gets one short line, in the words an answer here logs, "from another
+//   screen", as its own line says "answered": the question isn't logged again (the dashboard agent's hand-off of 12 Nov,
+//   late afternoon). It names the button pressed when CraftBeerPi says which (core M83); a SpargeStep's question gets
+//   none, as its step's "sparge started" line is its answer. The mockup has no other screen, so this is live only.
 import { rigSVG, RIG_H } from "./rig";
 import * as DEMO from "./demo";
 import { api, why as failWhy } from "./api";
@@ -1495,15 +1499,23 @@ function livePrompt(nid, aid) {
   const p = st.prompts.find(q => String(q.id) === nid);
   if (!p) return renderAll();
   const a = (p.action || []).find(q => String(q.id) === aid);
-  const done = () => { answered.add(nid); if (opts.removeAlert) opts.removeAlert(p.id); };
+  // answered here already counts from the press (below), so taking it down here is all that's left
+  const done = () => { if (opts.removeAlert) opts.removeAlert(p.id); };
   // a SpargeStep's Sparge started says what it starts, and its flag turning true isn't logged a second time (observe)
   const r = st.recipe, s = r && M.RECIPE.steps[r.cur];
   const sparge = !!(s && s.type === "SpargeStep" && String(p.title || "") === s.n && a && /^sparge started$/i.test(String(a.label || "").trim()));
   if (sparge) own.sparge = {at: Date.now(), id: s.id};
+  /* answered here from the press, as a timer's alarm is: CraftBeerPi takes the question down on every page, this one
+     too, and that can come before its answer to the press, when observe() would log it as answered on another screen */
+  if (!st.pend.b) answered.add(nid);
   exec("b", `p:${nid}:${aid}`, sparge ? spargeStartedLine(s) : `${p.title} answered: ${a ? a.label : "OK"}`, () => api.answer(nid, aid), {
     ok: done,
     // 400: CraftBeerPi no longer waits for it (answered elsewhere, or withdrawn)
-    fail: res => res.status === 400 ? done() : alarm(`${p.title}: your answer did not reach CraftBeerPi.`, "TRY AGAIN", `p:${nid}:${aid}`)
+    fail: res => {
+      if (res.status === 400) return done();
+      answered.delete(nid);
+      alarm(`${p.title}: your answer did not reach CraftBeerPi.`, "TRY AGAIN", `p:${nid}:${aid}`);
+    }
   });
 }
 function liveLoad(i) {
@@ -2123,6 +2135,20 @@ function askedBefore(id, words) {
    question's title */
 const startedHere = a => !!(own.start && Date.now() - own.start.at < 10000
   && M.RECIPE.steps.some(s => own.start.ids.includes(s.id) && s.n === ut(a.title)));
+/* an answer given on another screen, in the words an answer here logs (the dashboard agent's hand-off of 12 Nov, late
+   afternoon), naming the button pressed when CraftBeerPi says which (said, core M83). A timer's alarm: "alarm answered",
+   or "5 more minutes" for +5 MIN (told neither, its row shows which); a SpargeStep's question: none, as its step's
+   "sparge started" line is its answer; any other: "<title> answered", with ": <button>" */
+function elsewhereLine(a, said) {
+  const title = ut(a.title), b = said == null ? "" : String(said).trim();
+  if (M.TIMERS && TIMER_RAN_OUT.test(String(a.message || "").trim())) return `${title}: ${/^\+\s*5\s*min$/i.test(b) ? "5 more minutes" : "alarm answered"}`;
+  if (spargeQuestion(a)) return null;
+  return b ? `${title} answered: ${b}` : `${title} answered`;
+}
+/* a SpargeStep's question: titled with the step's name, with a Sparge started button (livePrompt asks the same). Any of
+   the recipe's, so it doesn't matter which of the question going and the step's flag arrives first */
+const spargeQuestion = p => M.RECIPE.steps.some(s => s.type === "SpargeStep" && String(p.title || "") === s.n)
+  && (p.action || []).some(b => /^sparge started$/i.test(String(b.label || "").trim()));
 // What happened since the last update, for the event line: the connection, everything CraftBeerPi says, and the
 // recipe's steps starting, finishing and starting their timers. Commands from this screen log themselves.
 function observe(prev, snap) {
@@ -2142,8 +2168,9 @@ function observe(prev, snap) {
   const now = new Set((snap.alerts || []).map(a => String(a.id)));
   /* a question gone: its own line says so (questionGone): answered, here or on another screen; taken down by CraftBeerPi,
      no longer needed; or dropped as this page connected again, with no word of why, no longer waiting, as on a page
-     opened later. A line of its own only when it was answered on another screen, which is news, or when this tab never
-     logged it */
+     opened later. Answered on another screen, which is news: one short line, as an answer here reads, not the question
+     again (the dashboard agent's hand-off of 12 Nov, late afternoon). Never logged here: the question whole, to say what
+     was asked */
   for (const [id, a] of before) {
     if (now.has(id) || !Array.isArray(a.action) || !a.action.length) continue;
     const why = typeof snap.retired === "function" ? snap.retired(a.id) : null;
@@ -2151,6 +2178,11 @@ function observe(prev, snap) {
     const res = here || why === "answered" ? "answered" : why ? "no longer needed" : "no longer waiting";
     const found = questionGone(id, res);
     if (here || (found && why !== "answered")) continue;
+    if (found) {
+      const line = elsewhereLine(a, typeof snap.answer === "function" ? snap.answer(a.id) : null);
+      if (line) logEvent(line, "from another screen", "");
+      continue;
+    }
     logEvent(`${ut(a.title)}: ${ut(a.message)}`, why === "answered" ? "answered on another screen" : res, "");
   }
   const old = new Map((prev.steps || []).filter(Boolean).map(s => [s.id, s]));

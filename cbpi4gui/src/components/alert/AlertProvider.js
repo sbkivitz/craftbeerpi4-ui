@@ -74,6 +74,9 @@ export const AlertProvider = ({ children }) => {
   // The ids on show, known at once - the state above is updated later.
   const shown = useRef(new Set());
   const reasons = useRef(new Map());
+  // The button it was answered with, when the server says ("Skip this step"):
+  // the brew-day screen's line for an answer given on another page names it.
+  const answers = useRef(new Map());
   // The prompts CraftBeerPi waits on, as far as this page knows: the list it
   // sends as the page connects, then those shown and taken down since. Null
   // until the list first comes. waitingN counts the lists, so the brew-day
@@ -90,7 +93,7 @@ export const AlertProvider = ({ children }) => {
   }, []);
   const audio = new Audio(buzzer);
 
-  const remove = useCallback((id, reason) => {
+  const remove = useCallback((id, reason, answer) => {
     shown.current.delete(id);
     if (waiting.current) waiting.current.delete(id);
     // Why the server took it down ("answered" or "withdrawn"), for a page that
@@ -101,11 +104,18 @@ export const AlertProvider = ({ children }) => {
         reasons.current.delete(reasons.current.keys().next().value);
       }
     }
+    if (answer != null) {
+      answers.current.set(id, String(answer));
+      if (answers.current.size > 100) {
+        answers.current.delete(answers.current.keys().next().value);
+      }
+    }
     setAlerts((value) => {
       return value.filter((a) => a.id !== id);
     });
   }, []);
   const retiredReason = useCallback((id) => reasons.current.get(id), []);
+  const retiredAnswer = useCallback((id) => answers.current.get(id), []);
   const waitingNow = useCallback(() => waiting.current, []);
 
   // Drop every prompt - a notification with buttons - but those the server
@@ -168,6 +178,7 @@ export const AlertProvider = ({ children }) => {
     show,
     remove,
     retiredReason,
+    retiredAnswer,
     keepWaiting,
     waitingNow,
     waitingN,

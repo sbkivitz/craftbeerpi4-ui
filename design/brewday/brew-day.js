@@ -193,9 +193,9 @@ const SCENES = {
      (Scott, 12 Nov). The drawing can't show the wort going on to the fermenter */
   finished: () => {
     const s = SCENES.whirlpool();
-    /* the stand's notice comes first: CraftBeerPi sends it as the stand stops, before it marks the step done, and the
-       screen logs CraftBeerPi's notices before the steps' changes in each update (Brett, 12 Nov). Brewing Complete was
-       answered here, so its question's line says so */
+    /* the stand's notice comes first: CraftBeerPi sends it as the stand stops, before it marks the step done, so it's
+       the step's last words, logged just before its "finished" line (the design, 12 Nov, late afternoon). Brewing
+       Complete was answered here, so its question's line says so */
     s.events.unshift(
       ["17:28:52", "Brewing Complete answered: OK", "confirmed", "ok"],
       ["17:28:10", "Brewing Complete: Now the yeast will take over", "answered", ""],

@@ -6,8 +6,9 @@ import "./fonts/barlow.css";
 import { createBrewDay } from "./screen";
 
 // CraftBeerPi's state as the screen's frame reads it, for the brew-day screen and the Settings page in its frame.
-// waiting: the prompts CraftBeerPi waits on (AlertProvider), with how many times it has sent the list
-export const liveSnap = (state, alerts, retired, waiting = null) => ({
+// waiting: the prompts CraftBeerPi waits on (AlertProvider), with how many times it has sent the list. retired and
+// answer: why a prompt was taken down, and the button it was answered with when CraftBeerPi says
+export const liveSnap = (state, alerts, retired, waiting = null, answer = null) => ({
   connected: !!state.connection,
   kettles: state.kettle,
   logic: state.logic,
@@ -20,6 +21,7 @@ export const liveSnap = (state, alerts, retired, waiting = null) => ({
   timers: state.timers,
   alerts,
   retired,
+  answer,
   waiting,
 });
 
@@ -40,7 +42,7 @@ const BrewDay = () => {
   const navigate = useNavigate();
   const go = useRef(navigate);
   go.current = navigate;
-  const { remove, hideStack, alerts, retiredReason, waitingNow, waitingN } = alert;
+  const { remove, hideStack, alerts, retiredReason, retiredAnswer, waitingNow, waitingN } = alert;
 
   useEffect(() => {
     const qs = new URLSearchParams(window.location.search);
@@ -71,8 +73,8 @@ const BrewDay = () => {
 
   useEffect(() => {
     if (!screen.current) return;
-    screen.current.update(liveSnap(state, alerts, retiredReason, waitingN ? { ids: waitingNow, n: waitingN } : null));
-  }, [state, alerts, retiredReason, waitingNow, waitingN]);
+    screen.current.update(liveSnap(state, alerts, retiredReason, waitingN ? { ids: waitingNow, n: waitingN } : null, retiredAnswer));
+  }, [state, alerts, retiredReason, retiredAnswer, waitingNow, waitingN]);
 
   return <div ref={ref} className="bd-root" />;
 };
