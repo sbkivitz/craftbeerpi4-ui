@@ -895,7 +895,8 @@ function logStep(what, res, tone, name, ending = false) {
     if (ending && String(e[1]).startsWith(title)) break;
   }
   if (i === 1) return;
-  st.events.splice(i, 0, st.events.shift());
+  // just newer than the line it stops at, which the shift leaves at i - 1
+  st.events.splice(i - 1, 0, st.events.shift());
   saveEvents();
 }
 /* a question's line says "waiting for you", in Prompt Amber, only while CraftBeerPi waits for its answer. Once the
