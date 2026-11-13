@@ -1,14 +1,13 @@
 // The brew-day screen.
 //
-// Scott, 9 Nov 2026: "It is imperitive that the actual dashboard look identical to your proposal here. I
-// don't want a crude representation of what I currently see". So this is the approved mockup's own code
+// It must look identical to the brew-day mockup, not a rough likeness, so this is the mockup's own code
 // (design/brewday/brew-day.js, layout B): the same functions write the same markup, styled by the mockup's
 // own stylesheet (brewday.css, generated from it) and drawn by its own rig drawing (rig.js). The bench's
 // test_ui_brewday_identity.py compares the two pictures, moment by moment and screen size by size.
 //
 // What is different from the mockup:
 // - The drawing code reads M (what stays put through a brew day: the recipe, which switch is which) and st
-//   (this moment) where the mockup read its globals. With ?demo=<moment> (demo.js lists them) both come from the
+//   (this moment) where the mockup reads its globals. With ?demo=<moment> (demo.js lists them) both come from the
 //   mockup's demo data (demo.js) and commands are simulated exactly as in the mockup. Otherwise they come from
 //   CraftBeerPi (live.js), and commands go to it (api.js).
 // - The boil kettle is the mockup's proposed one (?bk=power) while it runs the new BoilPower (M.BKNEW: it declares
@@ -17,7 +16,7 @@
 // - From the boil's start the drawing is the mockup's ?wp=chill, which Scott chose on 12 Nov: the wort pump at the
 //   boil kettle, on a short loop through the chiller. The mockup's other options for it aren't offered.
 // - A command says at its own button whether it worked. One that fails, or gets no answer in 5 s, turns its
-//   button red and raises an alarm in the title bar; it is never silently dropped (DEFECTS U1).
+//   button red and raises an alarm in the title bar; it is never silently dropped.
 // - The regions are patched in place, not rewritten (morph), so readings that change every second do not
 //   take a button's focus, a held press or a half-typed target with them.
 // - Text from CraftBeerPi (step, hop and recipe names, prompts) is escaped, and the degree sign follows
@@ -95,7 +94,7 @@ const ICON = {
   warn: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 1.8 23 21.5H1z"/><path d="M12 8.5v6M12 17.5v.5" stroke="#6e1414" stroke-width="2.6" stroke-linecap="round"/></svg>',
   wait: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-dasharray="4.2 3.2"/></svg>'
 };
-const LAYOUT = "b"; // Scott chose layout B (D3) on 9 Nov 2026
+const LAYOUT = "b"; // the mockup's layout B (D3)
 const ACTS = ["hltEl", "hltPump", "wortPump", "bkEl"];
 const daySeconds = (d = new Date()) => d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
 const pctOf = (left, min) => Math.max(0, Math.min(100, Math.round(100 * (1 - left / (min * 60)))));
@@ -307,10 +306,10 @@ function tgtHTML(v) {
   return b(none ? "tgtbtn notgt" : "tgtbtn", "TARGET", by ? "set by mash tun" : pend ? "sending…" : none ? "set SV" : bkNew(v) ? "change" : "change SV", {cmd: `tgt:${v}`, why});
 }
 const noTarget = v => st.v[v].mode === "auto" && st.v[v].sv == null;
-/* The boil power button (Scott, 10 Nov: "I need to be able to adjust boil element power even while running a recipe").
-   Only for a boil kettle whose logic declares set_boil_power (live.js BOILPOWER; on Scott's rig, the boil kettle). It
+/* The boil power button: the boil element's power can be changed at any time, even while a recipe runs.
+   Only for a boil kettle whose logic declares set_boil_power (live.js BOILPOWER; on the rig, the boil kettle). It
    sits beside the element it governs and works at any time: no step locks it. In AUTO it sets the logic's Boil_Power,
-   used from the boil threshold up; in MANUAL it sets the element's own level, used when it is on by hand (M61).
+   used from the boil threshold up; in MANUAL it sets the element's own level, used when it is on by hand.
    Changing it is a tap on SET, like a target: it changes a level, it never switches heat on. */
 // Where BoilPower starts using the boil power. The new BoilPower (0.0.3.post7 on; M.BKNEW, as it declares set_boil_at) keeps
 // it apart, in its Boil_Threshold setting (BOIL AT; st.v.bk.boilAt), and the kettle's target is an ordinary target, BOIL or
@@ -679,7 +678,7 @@ const needleAngle = pv => -120 + 240 * (Math.min(220, Math.max(50, pv)) - 50) / 
    CraftBeerPi can't see the valves, so the drawing goes by the recipe. It finds the runoff the way the core finds
    it for the first-wort reminder (StepController._collects_wort): from the start of the step named for the runoff
    until the boil starts, the wort pump sends wort to the boil kettle and the HLT pump sends sparge water to the top
-   of the mash tun (Scott, 9 Nov: "I fly sparge"). At any other time, and with no recipe, it shows recirculating. */
+   of the mash tun, for a fly sparge. At any other time, and with no recipe, it shows recirculating. */
 const RUNOFF_NAME = /^(?:step \d+ )?(?:(?:start|begin) )?(?:(?:fly|batch|continuous) )?(?:sparge|sparging|lauter|lautering|run ?off)(?: |$)/;
 const NOT_RUNOFF = /\b(?:water|heat|heating|prepare|preparation|salts|treatment)\b/;
 function collectsWort(s) {
@@ -1375,7 +1374,7 @@ function cmdLoad(i) {
   if (i !== 0) return toast(`Mockup: only Test Recipe v5 is filled in here. On the real screen, LOAD sends ${M.BOOK[i].n} to Brew Steps, as the Recipe Book does today.`);
   send("r:load", "load", `${M.BOOK[0].n} loaded`, () => { st.recipe = {state: "ready", cur: 0, left: 0, adds: []}; st.finished = false; });
 }
-/* ALL OFF (Scott, 9 Nov): stop the recipe first so it can't switch a kettle back on, then every vessel to MANUAL,
+/* ALL OFF: stop the recipe first so it can't switch a kettle back on, then every vessel to MANUAL,
    then both elements and both pumps off */
 function cmdAllOff() {
   const running = st.recipe && st.recipe.state === "running";
@@ -1388,7 +1387,7 @@ function cmdAllOff() {
     if (st.banner && /^act:/.test(st.banner.cmd || "")) st.banner = null;
   }, cav);
 }
-/* one rest timer, kept by CraftBeerPi, so the monitor and the phone show the same one (Scott, 9 Nov) */
+/* one rest timer, kept by CraftBeerPi, so the monitor and the phone show the same one */
 function cmdTimer(x) {
   const t = st.timer;
   if (x === "go") {
@@ -1583,7 +1582,7 @@ function liveLoad(i) {
   if (!x) return;
   exec("r:load", "load", `${x.n} loaded`, () => api.brew(x.file), {fail: () => alarm(`${x.n} did not load.`, "OK", "b:ok")});
 }
-/* ALL OFF (Scott, 9 Nov): the recipe stops first so it can't switch a kettle back on, then every kettle to
+/* ALL OFF: the recipe stops first so it can't switch a kettle back on, then every kettle to
    MANUAL, then both elements and both pumps. Kettle /off always answers 204, so what counts is the state
    CraftBeerPi reports a moment later. */
 async function liveAllOff() {
@@ -2020,7 +2019,7 @@ function applyLive(snap) {
     st.a[id] = {on, pct: on ? Math.round(pw == null ? 100 : pw) : 0, failed: st.fail[id] || null};
   }
   // The boil power button's two levels: BoilPower's Boil_Power, 85 % when it has none (BoilPower's default), and the boil
-  // element's own level, which it comes on at by hand (manual_power since M61; power from a CraftBeerPi before it).
+  // element's own level, which it comes on at by hand (manual_power; power from an older CraftBeerPi without it).
   const bkp = M.K.bk && M.K.bk.props, be = M.A.bkEl;
   st.v.bk.bp = Math.round(num(bkp && bkp.Boil_Power) ?? 85);
   st.a.bkEl.lvl = Math.round(num(be && (be.manual_power ?? be.power)) ?? 100);
@@ -2452,7 +2451,7 @@ async function loadBook() {
 /* ---------- press and hold (pointer and keyboard): heat only starts on a held press ---------- */
 const HOLD_MS = 1000;
 // The button a pointer hold has just fired from. Letting go of it makes a click, and this screen keeps the
-// button between updates (the mockup drew a new one), so the click would land on it as a tap - by then a
+// button between updates (the mockup draws a new one), so the click would land on it as a tap - by then a
 // heater's "tap to turn off". The click is the end of the hold, not a tap.
 let afterHold = null;
 function holdStart(el, pointer) {
@@ -2510,7 +2509,7 @@ const handlers = {
     unlockSound(e.target);
     const el = e.target.closest && e.target.closest("[data-hold]");
     if (!el || !root.contains(el) || e.button !== 0) return;
-    // not focused, as in the mockup, where the button was drawn anew: a pointer hold leaves no focus ring
+    // not focused, as in the mockup, where the button is drawn anew: a pointer hold leaves no focus ring
     e.preventDefault();
     try { el.setPointerCapture(e.pointerId); } catch (_) {}
     holdStart(el, true);

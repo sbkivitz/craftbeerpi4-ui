@@ -1,8 +1,8 @@
 // Commands from the brew-day screen to CraftBeerPi.
 //
 // The rest of the web UI sends a command and forgets it: its API wrappers drop
-// every error, so a heater that did not switch looks exactly like one that did
-// (DEFECTS U1). Here each call says how it ended, and gives up after five
+// every error, so a heater that did not switch looks exactly like one that did.
+// Here each call says how it ended, and gives up after five
 // seconds, so the button that sent it can say "did not stop" instead of
 // nothing.
 
@@ -57,7 +57,7 @@ export const api = {
   // An action the kettle's logic declares, e.g. BoilPower's set_boil_power {Boil_Power: 60}. CraftBeerPi hands it
   // to the running logic, or keeps it for the next run when the logic allows that.
   kettleAction: (kettleId, action, parameter) => post(`/kettle/${id(kettleId)}/action`, { action, parameter }),
-  // The level a switch runs at: the brewer's own, which it comes on at by hand (M61).
+  // The level a switch runs at: the brewer's own, which it comes on at by hand.
   power: (actorId, power) => post(`/actor/${id(actorId)}/set_power`, { power }),
   start: () => post("/step2/start"),
   stop: () => post("/step2/stop"),

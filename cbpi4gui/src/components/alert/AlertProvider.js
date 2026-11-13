@@ -11,18 +11,16 @@ import { notificationapi } from "../data/notificationapi";
 // Notifications wait in a stack in the bottom right corner, and never cover
 // the page.
 //
-// One with a button used to be a modal dialog: the whole interface stopped
-// answering until it was answered. On 1 Nov, at the boil's "Is the wort in the
-// boil kettle?", Scott could not reach the wort pump on the dashboard - the
-// very thing the question was waiting for: "I need to be able to use the
-// dashboard to operate the pump. Right now, my only option is this dialog
-// box." A prompt is still held until its button is pressed, as before; it just
-// no longer takes the rest of the screen hostage while it waits. The same
-// went for "add malt" at dough-in and the whirlpool's "cool down", both of
-// which wait for work done with the dashboard.
+// A prompt - a notification with a button - is held until its button is
+// pressed, but beside the page, not over it: the work a prompt waits for is
+// often done on the page itself. "Is the wort in the boil kettle?" waits for
+// the wort pump on the dashboard, and "add malt" at dough-in and the
+// whirlpool's "cool down" wait for work done with the dashboard. A modal
+// dialog would stop the whole interface answering until the prompt was
+// answered.
 //
-// Messages are shown as text. They were set as HTML, and they carry names
-// from recipe files that come from anywhere - hop names among them.
+// Messages are shown as text, not HTML: they carry names from recipe files
+// that come from anywhere - hop names among them.
 
 // MUI knows four severities; the server sends its notification type.
 const severity = (type) => {
@@ -154,8 +152,9 @@ export const AlertProvider = ({ children }) => {
   }, [addSeen]);
 
   // Drop every prompt - a notification with buttons - but those the server
-  // still waits on. After a restart a page kept the prompts from before it,
-  // whose buttons no longer did anything, beside the server's new ones.
+  // still waits on. After a restart a page would otherwise keep the prompts
+  // from before it, whose buttons no longer do anything, beside the server's
+  // new ones.
   const keepWaiting = useCallback((ids) => {
     const still = new Set(Array.isArray(ids) ? ids : []);
     waiting.current = new Set(still);

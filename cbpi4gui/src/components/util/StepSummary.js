@@ -5,8 +5,7 @@ import { useCBPi } from "../data";
 import { isShown, shownLabel } from "./PropsEdit";
 
 // What a step will do, in one line, so a profile can be read without opening
-// each step. Scott, 1 Nov: "when looking at the mash profile page, it would be
-// nice to see the steps without needing to click into each one".
+// each step.
 //
 // Built from the step's settings and its type's own declarations, so it works
 // for any step, a plugin's included. The settings the core steps share are put

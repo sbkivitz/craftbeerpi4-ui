@@ -12,8 +12,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 // OneWire probe on a Fahrenheit rig steps by about 0.11. Fitted to a flat
 // stretch - a hold, a vessel at room temperature - the axis spans a handful of
 // those steps and each one is drawn tens of pixels tall, and the spline that
-// joined the points swung above and below each step: a staircase (DEFECTS U8,
-// Scott 23 Oct). So the axis spans at least MIN_STEPS of the data's own
+// joins the points swings above and below each step: a staircase. So the
+// axis spans at least MIN_STEPS of the data's own
 // rounding step, centred on the data. Never more than a tenth of the readings'
 // size, so a signal that only moves between two values - on and off, 0 and
 // 100 - is not squashed flat; and nothing changes when the data already spans

@@ -78,7 +78,7 @@ const Recipes = () => {
 
   }
 
-  // Every import is kept here (DEFECTS M55), and says where it came from -
+  // Every import is kept here, and says where it came from -
   // unless the recipe has a description of its own.
   const secondary = (item) =>
     item.desc || (item.imported_from ? "Imported from " + item.imported_from : "");

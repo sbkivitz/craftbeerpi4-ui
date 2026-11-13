@@ -97,10 +97,10 @@ const StepProps = ({ config, data }) => {
 
 const StepActionDialog = ({ action, config, open, onClose, onSubmit }) => {
   // Seeded from the action's own parameter declarations, and reset whenever the
-  // dialog opens. It used to be useState({}) and was never reset: an untouched
-  // control displayed its minimum while contributing nothing to the payload, so
-  // the dialog showed a value and posted {}, and a cancelled edit leaked into
-  // the next open. See initialProps in PropsEdit.
+  // dialog opens. With a bare useState({}) never reset, an untouched control
+  // would display its minimum while contributing nothing to the payload, so
+  // the dialog would show a value and post {}, and a cancelled edit would leak
+  // into the next open. See initialProps in PropsEdit.
   const [props, setProps] = useState(() => initialProps(action?.parameters));
 
   useEffect(() => {

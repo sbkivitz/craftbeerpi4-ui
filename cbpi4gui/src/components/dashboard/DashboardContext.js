@@ -97,20 +97,20 @@ export const DashboardProvider = ({ children }) => {
       dashboardapi.getmeminfo((data) => {
         // Reload only on a measurement we actually have.
         //
-        // This read `availmem < minmem` directly, with no check that either
-        // value was measured. Not every unmeasured value compares as low -
+        // A bare `availmem < minmem`, with no check that either value was
+        // measured, is not enough. Not every unmeasured value compares as low -
         // which is exactly what makes this easy to get wrong:
         //
         //   undefined < 200   ->  false   (NaN comparison)
         //   null      < 200   ->  true    (null coerces to 0)
         //   0         < 200   ->  true
         //
-        // So an absent field happened to be harmless, while a null or a
-        // substituted 0 was read as critically low. The server used to answer a
-        // failed memory read with availmem = 0, and the page reloaded every
-        // five minutes for as long as the fault lasted - discarding whatever
-        // was on screen, which on a brew day can be an unanswered notification
-        // or a prompt waiting on the brewer.
+        // So an absent field is harmless, while a null or a substituted 0
+        // reads as critically low: a failed memory read answered with
+        // availmem = 0 would reload the page every five minutes for as long
+        // as the fault lasted - discarding whatever was on screen, which on a
+        // brew day can be an unanswered notification or a prompt waiting on
+        // the brewer.
         //
         // Number.isFinite is deliberate over a truthiness check: it rejects
         // undefined and NaN, and still accepts a genuine 0, which is a real and
@@ -118,7 +118,7 @@ export const DashboardProvider = ({ children }) => {
         //
         // But it is not sufficient on its own. Number(null) is 0, and
         // Number.isFinite(0) is true, so an explicit null would pass the finite
-        // check and then satisfy 0 < minmem - the original bug, reached by a
+        // check and then satisfy 0 < minmem - the same fault, reached by a
         // different route. null and undefined are therefore rejected before any
         // coercion happens.
         const meminfo = data?.meminfo;

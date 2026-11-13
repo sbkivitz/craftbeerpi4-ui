@@ -35,7 +35,7 @@ export const Charting = () => {
           line: {
             width: 2,
             // Straight between readings, as on the dashboard: a spline
-            // overshoots each rounding step (DEFECTS U8).
+            // overshoots each rounding step.
 			shape: 'linear'
           },
         });

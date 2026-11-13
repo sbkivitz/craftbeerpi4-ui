@@ -133,10 +133,10 @@ const KettleForm = () => {
 
   // Each logic keeps its own settings. Two logics can declare a setting of the
   // same name that means something else: P, I and D are the mash loop under
-  // PID_HERMS and the element under PIDBoil. This form used to change only
-  // which fields it showed, so the old values filled the new logic's fields -
-  // and on 25 Oct 2026 an HLT ran PID_HERMS's mash-loop gains as PIDBoil's
-  // and overshot 152 F. Now the old logic's settings are put aside, and the
+  // PID_HERMS and the element under PIDBoil. Carried over, the old values
+  // would fill the new logic's fields, and an HLT would run PID_HERMS's
+  // mash-loop gains as PIDBoil's and overshoot. So the old logic's settings
+  // are put aside, and the
   // new logic gets the settings it last had here, or none: blank, exactly as
   // a new kettle starts, because each logic turns a blank into its own default
   // in the brewery's units while a pre-filled default would be taken as typed.
