@@ -1019,7 +1019,11 @@
       },
       {
         "name": "The One Pulse Rule",
-        "body": "With the timers, approved by Scott and built on 11 Nov 2026 (the mockup's default). Only an alarm nobody has answered pulses, as on a process-control display: a timer that has run out. Its row, its prompt in the title bar and a frame round the whole screen (a 4px Prompt Amber edge with a soft glow inside) fade together from 0.15 to full and back, 1 s each way, until OK or +5 MIN on any screen; with reduced motion they stay lit and still. One slow pulse is far under WCAG's three flashes a second, and OK is the way to stop it. With SOUND on, the same alarm beeps three times every 3 s; other alerts beep twice, once (Scott kept those two beeps on 12 Nov). Nothing else makes a sound: not a press on SOUND, nor any other button."
+        "body": "With the timers, approved by Scott and built on 11 Nov 2026 (the mockup's default). Only an alarm nobody has answered pulses, as on a process-control display: a timer that has run out. Its row, its prompt in the title bar and a frame round the whole screen (a 4px Prompt Amber edge with a soft glow inside) fade together from 0.15 to full and back, 1 s each way, until OK or +5 MIN on any screen; with reduced motion they stay lit and still. One slow pulse is far under WCAG's three flashes a second, and OK is the way to stop it. With SOUND on, the same alarm beeps three times every 3 s; other alerts beep twice, once, as they arrive and take the title bar (Scott kept those two beeps on 12 Nov). Nothing else makes a sound: not a press on SOUND, nor any other button, nor the next question coming up after an answer."
+      },
+      {
+        "name": "The Most Urgent First Rule",
+        "body": "When several things wait, the title bar shows the most urgent, then \"· N more waiting\"; their lines are amber in LOG. In order: no connection, a command that failed and CraftBeerPi's errors; a timer that has run out; what the brew needs from the brewer (a question CraftBeerPi sends as a warning or an error, such as a hop to add, Heating is not working or the hold before the boil, or the current step's own question, which the recipe column calls WAITING FOR YOU); CraftBeerPi's warnings without buttons; then everything else, which holds nothing up (BrewScribe's reminders, Check mash pH, Brewing Complete, other plugins' questions). Oldest first within each. The screen goes by what CraftBeerPi says each one is, never by guessing from its words. So the title bar always agrees with the recipe column, and a reminder never has to be OK'd, done or not, to reach the question the brew waits on. A reminder asked alongside a long step question waits behind it: that's the cost. Something that has just arrived beeps twice when it takes the title bar; one that comes up because the one in front was answered makes no sound (12 Nov 2026, evening)."
       },
       {
         "name": "The Mode Tells The Truth Rule",
@@ -1101,12 +1105,13 @@
       "Don't remove controls on a phone; the phone drops only the drawing.",
       "Don't use blue for equipment state; blue is for where you are and what you are choosing.",
       "Don't pulse anything but an unanswered alarm, and don't make sound the only signal: SOUND is optional and each screen's own (timers, approved 11 Nov 2026).",
-      "Don't play a sound as feedback for a press, SOUND included: a sound means a timer has run out or a new alert, question or error has come; Settings' Try plays it on purpose (Scott, 12 Nov 2026: \"I don't want to hear a sound when I click the \"SOUND\" box for the timer. ONly when timer expires\").",
+      "Don't play a sound as feedback for a press, SOUND included: a sound means a timer has run out or a new alert, question or error has come; answering one question doesn't make the next one beep as it comes up; Settings' Try plays it on purpose (Scott, 12 Nov 2026: \"I don't want to hear a sound when I click the \"SOUND\" box for the timer. ONly when timer expires\").",
       "Don't draw the wort pump through the HERMS coil or on the mash tun's side after the boil has started, and don't run new pipes across the drawing to reach the boil kettle (Scott, 12 Nov 2026: \"I don't want the symbols to become too chaotic\").",
       "Don't let a long prompt squeeze ALL OFF or the clock in the title bar: the banner wraps instead.",
       "Don't pre-fill a timer's name, and don't let two timers share one: their alarms are titled with it. Grey a name another timer has and say why (timers, approved 11 Nov 2026).",
       "Don't squeeze a long question into a column beside its button: on a phone its buttons go under its words, and up to 1023px wide the banner has the title bar's second row to itself (11 Nov 2026).",
-      "Don't leave a question's line amber after it has been answered or taken down, and don't log a second copy of it to say so, even when it was answered on another screen: change the line where it is, and give an answer from elsewhere one short line of its own, in the words an answer here would log (12 Nov 2026)."
+      "Don't leave a question's line amber after it has been answered or taken down, and don't log a second copy of it to say so, even when it was answered on another screen: change the line where it is, and give an answer from elsewhere one short line of its own, in the words an answer here would log (12 Nov 2026).",
+      "Don't let anything that holds nothing up (a reminder, a plugin's question) stand in the title bar in front of what the brew waits on, a hop to add or a timer that has run out (12 Nov 2026, evening)."
     ]
   }
 }

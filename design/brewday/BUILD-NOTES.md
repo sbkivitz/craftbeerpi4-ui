@@ -2830,6 +2830,191 @@ None. The mockup has no other screen, so this is live only.
   page (one short line each); and a prompt CraftBeerPi doesn't keep, asked before the page opened and answered on
   another (still logged whole).
 
+### Built (12 Nov, evening)
+
+Brett built it (M83: UI 62b70b9, build ca2074c, main.2117d396.js; core 12213a2; tests 135ebf1), live on 8012. He took
+the optional part too: CraftBeerPi now sends the label of the button that was pressed when it takes a question down as
+answered. So the line names it, as an answer here does: "MashIn answered: Next Step", "Hop Alert answered: Added",
+"Resume brew? answered: Resume", each "· from another screen". With an older core it's "Hop Alert answered". A timer's
+alarm says "Mash rest: alarm answered", or "Mash rest: 5 more minutes" for +5 MIN. The sparge's question has no line,
+and a question the tab never logged is logged whole.
+
+- **His fix.** A question answered in this screen's title bar could be logged as answered on another screen:
+  CraftBeerPi's word that the question has gone can reach the page before its reply to the press. The screen now
+  counts it as answered from the press, as it already did for a timer's alarm. A new test holds the reply back to make
+  it happen.
+- **Tests:** answers 29/29 (new), timers 72/72, sparge 124/124, recipe 95/95, brew day 99/99, warnings 10/10, identity
+  503/503, Settings 104/104. M82's build fails 3 checks in the answers walk and 3 in the timers walk.
+- **Noted by Brett, not changed:** a question already waiting when the screen opens inside the app gets no line. See
+  the next section.
+
+## Which question the title bar shows first, and when it beeps: ready to build (12 Nov, evening)
+
+BrewScribe logger.13, on both simulators since this afternoon (logger.14 is the same), asks seven questions of its own
+through CraftBeerPi, each with only an OK button: Record strike water, Check mash pH before mash-out, Check first
+runnings, Check last runnings, Record before-boil readings, Record after-boil readings, and Review the finished brew.
+It has also switched on the core's own Check mash pH, 15 minutes after mash-in. The title bar shows the oldest question
+first, so Brett saw these stand in front of the step's own question:
+
+- at the sparge: "BrewScribe: Check mash pH before mash-out · 3 more waiting", while the step waits for SPARGE STARTED;
+- in the hold before the boil, in front of START THE BOIL;
+- "Record after-boil readings", a second before Whirlpool Hop's question;
+- at the end, in front of Brewing Complete.
+
+Three things go wrong once several questions wait:
+
+1. **The title bar and the recipe column disagree.** The recipe says WAITING FOR YOU, and the title bar shows a reminder
+   that holds nothing up. To reach the question the brew waits on, Scott has to press OK on every reminder in front of
+   it, whether or not he has done what it asks. That teaches him to press OK without reading, which is the one thing a
+   reminder mustn't teach. "Check first runnings" is asked as the sparge step starts, before any wort flows, so it has
+   to be OK'd before SPARGE STARTED can even be pressed.
+2. **The question the brew waits on arrives in silence.** The screen beeps when the title bar changes. A question that
+   arrives behind another doesn't change it, so the sparge's question, behind a reminder, makes no sound.
+3. **Every OK beeps.** When an answer brings the next question up, the title bar changes, so the screen beeps twice
+   right after Scott's own press. At the sparge, with three reminders waiting, that's three pairs of beeps, each after a
+   press. Scott's rule is that a press makes no sound.
+
+### The rule: the most urgent first, then a count
+
+As on an operator's alarm banner, the title bar shows the most urgent thing waiting, then "· N more waiting". The
+screen doesn't judge urgency from the words. It goes by what CraftBeerPi says each one is (a warning, or information)
+and by the recipe. In this order:
+
+1. **No connection, a command that failed, and CraftBeerPi's errors.** As now.
+2. **A timer that has run out.** It rings every 3 s until it's answered, and its row and the screen's frame pulse with
+   the title bar (The One Pulse Rule), so the title bar shows it.
+3. **What the brew needs from Scott.** A question CraftBeerPi sends as a warning or an error: a hop to add (first wort
+   too), Heating is not working, Resume brew?, Carried on after a restart, the hold before the boil, and the stand's
+   Heat and hold. Or the current step's own question, the one the recipe column means by WAITING FOR YOU: the sparge's,
+   and a NotificationStep's (MashIn's malt, Whirlpool Hop). **New:** these now go before warnings without buttons.
+4. **CraftBeerPi's warnings without buttons**, with their OK (the refusal to change a running step, say). **New:**
+   after 3. A refusal left unanswered on the monitor would otherwise stand in front of a hop alert, and the hop alert,
+   arriving behind it, would make no sound.
+5. **Everything else, which holds nothing up:** BrewScribe's reminders, Check mash pH, Brewing Complete, and other
+   plugins' questions. **New:** after everything above.
+
+Within each, oldest first.
+
+What Scott sees, in the cases Brett saw:
+
+- **At the sparge:** "Batch Sparge · 3 more waiting", with SPARGE STARTED. After the press, the reminders come up
+  oldest first: Check mash pH before mash-out, Check mash pH, then Check first runnings, now as the wort flows, which
+  is what its words say ("Once wort is flowing into the boil kettle…").
+- **In the hold before the boil:** "Boil Step · 1 more waiting", with START THE BOIL held. Then "Record before-boil
+  readings", while the kettle heats, which its words allow ("Before a rolling boil…").
+- **Whirlpool Hop:** its question comes first. "Record after-boil readings" waits behind it until NEXT STEP, through
+  the cool-down. That's the one cost of this rule. Meanwhile the reminder is in the count, its line is amber in LOG,
+  and BrewScribe's own tab shows it.
+- **At the end:** "Review the finished brew", then Brewing Complete. Both only need an OK and hold nothing up, so they
+  keep their order.
+
+Not chosen:
+
+- **Oldest first, as now:** the three problems above.
+- **Newest first:** a hop alert would be buried by anything that came after it.
+- **Two questions at once in the title bar:** there's no room on a phone, and it's a bigger change to the screen Scott
+  approved. If the reminders behind the recipe's question turn out to be missed, that's the next thing to try, and I'd
+  show it to Scott first.
+
+### When it beeps
+
+Scott's rule (DESIGN.md) is that a sound means something new needs him, and a press makes no sound. With several
+questions waiting, that means:
+
+- **Two beeps** when something that has just arrived takes the title bar.
+- **None** when one moves up because the one in front went, answered here or on another screen. It was already
+  waiting, and the sound would follow a press.
+- **None** for one that arrives behind another. It's in the count, and its line is amber in LOG.
+- A timer that has run out keeps its own sound, as now.
+
+The sparge with BrewScribe, then: two beeps for "Check first runnings" as it arrives alone, two for the sparge's
+question as it takes the title bar in front of it, and nothing for each OK after that. Today it's two for the reminder,
+none for the sparge's question, and two after every OK.
+
+Nothing beeps as a page opens, since nothing has arrived yet; the demo already works this way ("the moment's own alert
+was there as it opened: it doesn't beep"). After the connection comes back, the questions that were already waiting
+don't beep again. One that arrived meanwhile does, if it takes the title bar.
+
+### In `screen.js`
+
+In `liveBanner`, after the errors, as now:
+
+```js
+  /* the most urgent first, then a count (the design, 12 Nov, evening). Oldest first within each:
+     0 a timer that has run out: it rings until answered, and its row and the frame pulse with the title bar;
+     1 what the brew needs from you: a question CraftBeerPi sends as a warning or an error (a hop to add, Heating is
+       not working, Resume brew?, the hold before the boil, the stand's), or the current step's own (the sparge's, a
+       NotificationStep's), which the recipe column calls WAITING FOR YOU;
+     then CraftBeerPi's warnings without buttons;
+     3 everything else, which holds nothing up: BrewScribe's reminders, Check mash pH, Brewing Complete, other
+       plugins' questions */
+  const cur = st.recipe ? M.RECIPE.steps[st.recipe.cur] : null;
+  const rank = p => promptTimer(p) ? 0
+    : /^(warning|error)$/i.test(String(p.type || "")) || (cur && String(p.title || "") === cur.n) ? 1 : 3;
+  const asks = st.prompts.map((p, i) => [rank(p), i, p]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  asks.filter(a => a[0] < 2).forEach(a => queue.push(ask(a[2])));
+  st.warnings.forEach(w => queue.push({tone: "warning", title: ut(w.title || "Warning"), text: ut(w.message || ""), act: "OK", cmd: `w:${w.id}`}));
+  asks.filter(a => a[0] > 2).forEach(a => queue.push(ask(a[2])));
+```
+
+Here `ask(p)` is today's body of `st.prompts.forEach`, from `const t = promptTimer(p)` on, returning the item instead
+of pushing it.
+
+In `renderAll`:
+
+```js
+  if (key !== lastBannerKey) {
+    /* two beeps when something that has just arrived takes the title bar (the design, 12 Nov, evening). Not when one
+       moves up because the one in front went: it was waiting already, and the sound would follow a press. Not for
+       one arriving behind another: it's in the count, amber in LOG */
+    if (key && st.banner.timer == null && st.banner.tone !== "connecting" && st.banner.fresh) ring(2);
+    lastBannerKey = key;
+  }
+```
+
+`fresh` marks something new since the last update: an alert in `observe`'s `fresh`, a command that has just failed
+(`st.alarm`, as it's set), or the connection just lost. One way: keep the ids `observe()` found new until the next
+render, and let `liveBanner` mark its item with them. Your call how.
+
+### A question already waiting when the screen opens inside the app
+
+Yes, please change it. With this rule, LOG's amber lines are where Scott sees the questions behind the first one, so
+every question that waits needs its line. In the first update, give each question already waiting a "waiting for you"
+line if this tab has none (`askedBefore`), as a fresh page does, without a beep. Warnings stay as they are.
+
+### For Porter (please pass this on)
+
+- **Nothing to change for the order.** BrewScribe's reminders wait behind what the brew waits on, oldest first among
+  themselves. "Check first runnings" now comes up after SPARGE STARTED, as the wort flows; "Record before-boil
+  readings" after START THE BOIL; and "Record after-boil readings" after Whirlpool Hop's NEXT STEP.
+- **STOP and START.** BrewScribe takes its reminders down on STOP and asks them again on START as new questions. Each
+  time, every screen gets a "no longer needed" line and a new amber line for each, and two beeps if one takes the title
+  bar. A paused brew doesn't change which readings are due. Keeping a reminder up through STOP and START, and
+  cancelling only the timed ones still to come, would make it one question per reading.
+
+### Moments whose pictures change
+
+None. The mockup's moments have one question at a time, and the demo doesn't use `liveBanner`'s queue, so this is live
+only. I haven't added BrewScribe's reminders to the moments: they're Porter's, and still changing.
+
+### Changed
+
+- `proposal\BUILD-NOTES.md`: this section, and Built for the last one.
+- `DESIGN.md`: The Most Urgent First Rule (new), The One Pulse Rule's sentence about sound, and the Don't about sound.
+- `.impeccable\design.json`: the same.
+
+### Checked
+
+- **The order**, as written above, against twelve cases with the types and titles CraftBeerPi and BrewScribe send: the
+  sparge with three reminders asked first; the hold before the boil; Whirlpool Hop; the end; a refusal left unanswered
+  and then a hop alert, or the sparge's question; the held boil and a timer that runs out; strike water and then
+  Heating is not working; Resume brew? after a restart; two hop alerts; an error; and reminders alone. All twelve come
+  out as described.
+- **The beeps**, over a sparge and the start of a boil with BrewScribe (11 updates): four pairs, each for something that
+  had just arrived and took the title bar, and none after a press.
+- **For your walks**, with BrewScribe running again (`CBPI_WITH_BREWSCRIBE=1`): the failures you saw, each a BrewScribe
+  question in front, should go. A press that brings the next question up should play nothing.
+
 ## Open questions about the drawing
 
 Both were answered by Scott on 10 Nov. The valves have been in the drawing since then; the path after the boil was

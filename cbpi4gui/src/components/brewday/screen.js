@@ -43,6 +43,14 @@
 //   screen", as its own line says "answered": the question isn't logged again (the dashboard agent's hand-off of 12 Nov,
 //   late afternoon). It names the button pressed when CraftBeerPi says which (core M83); a SpargeStep's question gets
 //   none, as its step's "sparge started" line is its answer. The mockup has no other screen, so this is live only.
+// - The title bar shows the most urgent thing waiting, then "· N more waiting" (the dashboard agent's hand-off of 12 Nov,
+//   evening): no connection, a command that failed and CraftBeerPi's errors; a timer that has run out; what the brew
+//   needs (a question CraftBeerPi sends as a warning or an error, or the current step's own); warnings without buttons;
+//   then everything else, which holds nothing up (BrewScribe's reminders, Check mash pH, Brewing Complete). Oldest first
+//   within each. It beeps twice only when something that has just arrived takes the title bar: not when one moves up
+//   after an answer, nor for one arriving behind another, nor for the questions already waiting as a page opens. A
+//   question already waiting as the screen opens inside the app gets its line, as on a page loaded afresh. The demo's
+//   moments have one alert at a time and beep as the mockup does, so this is live only.
 import { rigSVG, RIG_H } from "./rig";
 import * as DEMO from "./demo";
 import { api, why as failWhy } from "./api";
@@ -201,6 +209,10 @@ let last = null, everConnected = false, book = [], bookBusy = false, bookShown =
    screen counts from; lastBannerKey, the title bar's last alert, so a new one beeps once; actx, the page's sound; rangAt,
    when a timer's alarm last played (Date.now()) */
 let tAns = null, tMsg = null, lastBannerKey = null, actx = null, rangAt = 0;
+/* the title bar's beep (the dashboard agent's hand-off of 12 Nov, evening): newIds, CraftBeerPi's messages that have just
+   arrived, until the next render; openIds, the questions it was waiting on as this page first connected, which it sends
+   the page then (kept for every page) and which haven't just arrived */
+let newIds = new Set(), openIds = null;
 /* the temperature graphs in the faceplates (Scott, 10 Nov: option A, "graphs always showing"); ?graphs=none leaves
    them out, as the screen was first built. gSpan: the span the three show, kept on each device. H: the live history. */
 let GRAPHS = "face", gSpan = "30", H = null;
@@ -785,9 +797,16 @@ function renderAll() {
   bn.toggleAttribute("data-ring", !!(M.TIMERS && st.banner && st.banner.timer != null));
   const key = bannerKey(st.banner);
   if (key !== lastBannerKey) {
-    if (key && st.banner.timer == null && st.banner.tone !== "connecting") ring(2);
+    /* two beeps when something that has just arrived takes the title bar (the dashboard agent's hand-off of 12 Nov,
+       evening). Not when one moves up because the one in front went: it was waiting already, and the sound would follow
+       a press. Not for one arriving behind another: it's in the count, amber in LOG. The demo beeps at each new alert,
+       as its mockup does */
+    if (key && st.banner.timer == null && st.banner.tone !== "connecting" && (DEMO_MODE || st.banner.fresh)) ring(2);
     lastBannerKey = key;
   }
+  // what had just arrived has had its chance at the title bar
+  newIds.clear();
+  if (st.alarm) st.alarm.fresh = false;
   // the Settings page's frame has no brewhouse to draw
   if (PAGE) return;
   if (M.TIMERS) keepStepInView();
@@ -1368,7 +1387,7 @@ async function exec(key, dir, label, request, o = {}) {
   return res;
 }
 const expect = (key, value) => { st.expect[key] = {value, until: Date.now() + EXPECT_MS}; };
-const alarm = (text, act, cmd) => { st.alarm = {tone: "alarm", title: "Command failed", text, act, cmd}; };
+const alarm = (text, act, cmd) => { st.alarm = {tone: "alarm", title: "Command failed", text, act, cmd, fresh: true}; };
 function liveAct(id) {
   const A = M.ACT[id], a = st.a[id];
   if (!A.id) return;
@@ -1556,7 +1575,7 @@ async function liveAllOff() {
     say(label + ": confirmed" + (cav ? `. ${cav[0].toUpperCase()}${cav.slice(1)}.` : ""));
   } else {
     logEvent("ALL OFF", `failed: still on: ${failed.join(", ")}`, "bad");
-    st.alarm = {tone: "alarm", title: "ALL OFF incomplete", text: `Still on: ${failed.join(", ")}.`, act: "TRY AGAIN", cmd: "alloff"};
+    st.alarm = {tone: "alarm", title: "ALL OFF incomplete", text: `Still on: ${failed.join(", ")}.`, act: "TRY AGAIN", cmd: "alloff", fresh: true};
     say(`ALL OFF failed. Still on: ${failed.join(", ")}.`, true);
   }
   if (last) applyLive(last);
@@ -2055,29 +2074,44 @@ function liveRecipe(snap) {
   const held = state === "ready" && !!s.boil && S.some(x => x.status === "D") && st.prompts.some(q => String(q.title || "") === s.n);
   return {state, cur, left: left ?? (s.min ? s.min * 60 : 0), wait, adds, held, started: s.type === "SpargeStep" && !!props._sparge_started};
 }
-// The title bar: no connection first, then a command that failed, then CraftBeerPi's errors, its warnings, then
-// its prompts. For its first few seconds a page that has not connected yet says so calmly.
+// The title bar: no connection first, then a command that failed, then CraftBeerPi's errors, then the rest by how urgent
+// (rank, below). For its first few seconds a page that has not connected yet says so calmly. fresh: it has just arrived,
+// and beeps if it takes the title bar (renderAll)
 function liveBanner() {
   if (st.link === "lost") {
     st.banner = everConnected
-      ? {tone: "alarm", title: "No connection", text: "Readings are {age} s old. Trying again every 5 s. Controls are paused until CraftBeerPi answers."}
+      ? {tone: "alarm", title: "No connection", text: "Readings are {age} s old. Trying again every 5 s. Controls are paused until CraftBeerPi answers.", fresh: true}
       : connecting()
       ? {tone: "connecting", title: "Connecting", text: "Waiting for CraftBeerPi to answer."}
-      : {tone: "alarm", title: "Connecting", text: "Waiting for CraftBeerPi to answer. Controls are paused until it does."};
+      : {tone: "alarm", title: "Connecting", text: "Waiting for CraftBeerPi to answer. Controls are paused until it does.", fresh: true};
     return;
   }
-  const queue = [];
+  const queue = [], isNew = id => newIds.has(String(id));
   if (st.alarm) queue.push(st.alarm);
-  st.errors.forEach(e => queue.push({tone: "alarm", title: ut(e.title || "Error"), text: ut(e.message || ""), act: "OK", cmd: `e:${e.id}`}));
-  st.warnings.forEach(w => queue.push({tone: "warning", title: ut(w.title || "Warning"), text: ut(w.message || ""), act: "OK", cmd: `w:${w.id}`}));
+  st.errors.forEach(e => queue.push({tone: "alarm", title: ut(e.title || "Error"), text: ut(e.message || ""), act: "OK", cmd: `e:${e.id}`, fresh: isNew(e.id)}));
   // the held boil's question (liveRecipe, held): its button puts heat on, so it takes a held press, as START does
   const hs = st.recipe && st.recipe.held ? M.RECIPE.steps[st.recipe.cur] : null;
-  st.prompts.forEach(p => {
+  const ask = p => {
     const t = promptTimer(p), hold = !!hs && String(p.title || "") === hs.n;
-    queue.push(t ? {tone: "prompt", title: ut(p.title || t.name), text: ut(p.message || ""), timer: t.id,
+    return t ? {tone: "prompt", title: ut(p.title || t.name), text: ut(p.message || ""), timer: t.id, fresh: isNew(p.id),
       acts: [{label: "+5 MIN", cmd: `tm2:plus5:${t.id}`, dir: "plus5", sec: true}, {label: "OK", cmd: `tm2:ok:${t.id}`, dir: "ok"}]}
-      : {tone: "prompt", title: ut(p.title || "CraftBeerPi"), text: ut(p.message || ""), acts: p.action.map(a => ({label: String(a.label || "OK").toUpperCase(), cmd: `p:${p.id}:${a.id}`, hold}))});
-  });
+      : {tone: "prompt", title: ut(p.title || "CraftBeerPi"), text: ut(p.message || ""), fresh: isNew(p.id), acts: p.action.map(a => ({label: String(a.label || "OK").toUpperCase(), cmd: `p:${p.id}:${a.id}`, hold}))};
+  };
+  /* the most urgent first, then a count (the dashboard agent's hand-off of 12 Nov, evening). Oldest first within each:
+     0 a timer that has run out: it rings until answered, and its row and the frame pulse with the title bar;
+     1 what the brew needs from you: a question CraftBeerPi sends as a warning or an error (a hop to add, Heating is
+       not working, Resume brew?, the hold before the boil, the stand's), or the current step's own (the sparge's, a
+       NotificationStep's), which the recipe column calls WAITING FOR YOU;
+     then CraftBeerPi's warnings without buttons;
+     3 everything else, which holds nothing up: BrewScribe's reminders, Check mash pH, Brewing Complete, other
+       plugins' questions */
+  const cur = st.recipe ? M.RECIPE.steps[st.recipe.cur] : null;
+  const rank = p => promptTimer(p) ? 0
+    : /^(warning|error)$/i.test(String(p.type || "")) || (cur && String(p.title || "") === cur.n) ? 1 : 3;
+  const asks = st.prompts.map((p, i) => [rank(p), i, p]).sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  asks.filter(a => a[0] < 2).forEach(a => queue.push(ask(a[2])));
+  st.warnings.forEach(w => queue.push({tone: "warning", title: ut(w.title || "Warning"), text: ut(w.message || ""), act: "OK", cmd: `w:${w.id}`, fresh: isNew(w.id)}));
+  asks.filter(a => a[0] > 2).forEach(a => queue.push(ask(a[2])));
   st.banner = queue.length ? {...queue[0], more: queue.length - 1} : null;
 }
 /* a warning stays in the title bar until OK; the same one again is not shown twice. Ten at most: a newer one pushes the
@@ -2152,7 +2186,7 @@ const spargeQuestion = p => M.RECIPE.steps.some(s => s.type === "SpargeStep" && 
 // What happened since the last update, for the event line: the connection, everything CraftBeerPi says, and the
 // recipe's steps starting, finishing and starting their timers. Commands from this screen log themselves.
 function observe(prev, snap) {
-  if (!prev) return;
+  if (!prev) return firstLines(snap);
   if (prev.connected && !snap.connected) logEvent(LOST, "trying again", "bad");
   if (!prev.connected && snap.connected && everConnected) {
     logEvent("Connection to CraftBeerPi back", "", "");
@@ -2192,6 +2226,10 @@ function observe(prev, snap) {
      goes after the steps' lines, because their changes set it going: the runoff's pump off and the held boil's question
      after "Sparge finished", a step's own words after its start, Brewing Complete after "Recipe finished" */
   const fresh = (snap.alerts || []).filter(a => !before.has(String(a.id)) && !OWN_ALERTS.has(String(a.id)));
+  /* for the title bar's beep: what has just arrived, but not the questions CraftBeerPi sends a page as it first connects,
+     which were waiting already (openIds). One that arrived while the connection was down is news, and beeps if it takes
+     the title bar */
+  fresh.forEach(a => { if (!(openIds && openIds.has(String(a.id)))) newIds.add(String(a.id)); });
   const ending = new Set(steps.filter(s => { const o = old.get(s.id); return o && o.status === "A" && s.status !== "A"; }).map(s => String(s.name)));
   const lastWords = a => ending.has(String(a.title));
   fresh.filter(lastWords).forEach(logAlert);
@@ -2223,6 +2261,18 @@ function observe(prev, snap) {
     logStep("Recipe finished", "by recipe", "ok", steps[steps.length - 1].name, true);
   }
   fresh.filter(a => !lastWords(a)).forEach(logAlert);
+}
+/* the screen opened inside the app (back from Brew Steps, say) with questions already waiting: each gets its "waiting for
+   you" line if this tab has none, as on a page loaded afresh, where CraftBeerPi sends them again as it connects. LOG's
+   amber lines are where the questions behind the title bar's first one are seen (the dashboard agent's hand-off of 12
+   Nov, evening). They haven't just arrived: no beep, and nothing said. Warnings stay as they are */
+function firstLines(snap) {
+  for (const a of snap.alerts || []) {
+    const id = String(a.id);
+    if (OWN_ALERTS.has(id) || !Array.isArray(a.action) || !a.action.length) continue;
+    const words = promptWords(a);
+    if (!askedBefore(id, words)) logEvent(words, "waiting for you", "wait", "", false, id);
+  }
 }
 /* one of CraftBeerPi's new messages, for the event line, and for the title bar when it waits there: a question (a timer's
    alarm, by its name) waits for you, in amber, until it goes (questionGone); an error stays red; a warning is amber while
@@ -2558,7 +2608,7 @@ export function createBrewDay(el, o = {}) {
      (Porter, 11 Nov) */
   if (!DEMO_MODE) { try { window.name = "craftbeerpi"; } catch (_) { /* a sandboxed frame: no name */ } }
   timers = []; noteTimers = {}; hold = null; afterHold = null; rigW = 0; last = null; everConnected = false; book = []; bookBusy = false; bookShown = false;
-  tAns = null; tMsg = null; lastBannerKey = null; rangAt = 0;
+  tAns = null; tMsg = null; lastBannerKey = null; rangAt = 0; newIds = new Set(); openIds = null;
   answered.clear(); Object.keys(own).forEach(k => delete own[k]);
   const html = document.documentElement;
   // The stylesheets go in once and stay: every rule is scoped to html.bd-page, so they rest while it is off.
@@ -2695,6 +2745,9 @@ export function createBrewDay(el, o = {}) {
         if (!PAGE && !st.recipe) loadBook();
         probeBrewScribe();
       }
+      /* the questions CraftBeerPi was waiting on as this page first connected: it sends them again then, and they haven't
+         just arrived (observe). Taken before observe, as they can come in the same update as its list */
+      if (openIds == null && snap.waiting && snap.waiting.n === 1) openIds = new Set(snap.waiting.ids() || []);
       observe(prev, snap);
       noLongerWaiting(snap);
       if (snap.connected) everConnected = true;

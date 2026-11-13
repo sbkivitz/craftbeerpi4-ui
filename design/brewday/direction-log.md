@@ -1,5 +1,35 @@
 # Direction decision log
 
+## Which question the title bar shows first, and when it beeps (12 Nov 2026, evening)
+- Brett built the short "answered on another screen" line (M83), naming the button now that CraftBeerPi sends its label.
+  He then found BrewScribe logger.13 asking seven reminders of its own through CraftBeerPi, each with only OK, and the
+  title bar showing the oldest question first: so they stood in front of the sparge's question, START THE BOIL,
+  Whirlpool Hop and Brewing Complete. He left the order to me, with Scott if I wanted him.
+- Read first: my notes on alarm banners ("title bar: top priority plus a count"; ISA-18.2 priorities by consequence and
+  time; McFarlane on interruptions; alarm fatigue; Apple's "don't repeat notifications") and how CraftBeerPi and
+  BrewScribe send each question. CraftBeerPi already sends what can't wait as a warning (hop alerts, timers, Heating is
+  not working, Resume brew?, the hold before the boil, the stand's question) and titles a step's own question with the
+  step's name. BrewScribe's reminders, Check mash pH and Brewing Complete come as information.
+- Found while reading: the screen beeps whenever the title bar changes. So a question arriving behind another made no
+  sound (the sparge's, behind a reminder), and every OK that brought the next one up beeped, after a press.
+- Chosen (The Most Urgent First Rule): errors; a timer that has run out; what the brew needs (questions sent as
+  warnings, and the step's own); warnings without buttons; everything else. Oldest first within each. Two beeps when
+  something that has just arrived takes the title bar, and none otherwise. Why: the title bar agrees with the recipe
+  column's WAITING FOR YOU; a reminder in front had to be OK'd, done or not, to reach the recipe's question, which
+  teaches pressing OK unread; a stale warning in front of a hop alert silenced it. The screen goes by what CraftBeerPi
+  says each one is, not by guessing from words.
+- Not chosen: oldest first (the above); newest first (buries a hop alert); two questions at once in the title bar (no
+  room on a phone, and a bigger change for Scott to approve; the next thing to try if reminders get missed). Not asked
+  of Scott: the order was delegated to me, and the beeps follow his own rule.
+- The cost, accepted: "Record after-boil readings" waits behind Whirlpool Hop's question through the cool-down. It's in
+  the count, amber in LOG and on BrewScribe's tab.
+- Agreed with Brett: a question already waiting when the screen opens inside the app gets its line, as on a fresh page,
+  because LOG's amber lines are now where the questions behind the first are seen.
+- For Porter, through Brett: nothing to change for the order; keep reminders up through STOP and START rather than
+  asking them again as new questions.
+- Checked: the ranking against twelve cases with the real types and titles; the beeps over a sparge and a boil's start
+  with BrewScribe (four pairs, none after a press). Live only, so no pictures change. Handed to Brett.
+
 ## The event log's order, warnings, and CraftBeerPi's own words (12 Nov 2026, late afternoon)
 - Brett built "a question's line turns answered" (M81) and ran it live. Lines that arrive in one update were logged
   CraftBeerPi's messages first, steps after: "HLT pump: Batch Sparge has ended…" and the boil's question before "Batch
