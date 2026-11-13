@@ -127,22 +127,39 @@ function gDemo(scene) {
     const a = scene === "notarget", s0 = a ? hms(13, 0) : hms(8, 40);
     return {start: s0, steps: [], hlt: {pv: [[s0, a ? 68.0 : 66.2]], out: [[s0, E, 0]]}, mt: {pv: [[s0, a ? 67.6 : 65.8]]}, bk: {pv: [[s0, 66.9]], out: [[s0, E, 0]]}};
   }
+  /* heating by hand (#byhand at 08:52:40, #byhand-past at 09:03:30): the HLT's element on by hand at 100 % from 08:18, in
+     MANUAL, so it climbs about 2 °F a minute through its 150 °F target. No green SV line: MANUAL holds nothing */
+  if (scene === "byhand") return {
+    start: hms(8, 0), steps: [],
+    hlt: {pv: [[hms(8, 0), 62.0], [hms(8, 18), 62.0, "h"], [hms(8, 52, 40), 131.6, "l"], [hms(9, 3, 30), 153.3, "l"]], out: [[hms(8, 0), hms(8, 18), 0], [hms(8, 18), E, 100]]},
+    mt: {pv: [[hms(8, 0), 64.4]]},
+    bk: {pv: [[hms(8, 0), 64.9]], out: [[hms(8, 0), E, 0]]}
+  };
   /* boiling and hold: the #hop day, carried on. The simulator boils at 212 °F, so the boil kettle settles there. At
      17:00:04 the boil ends; the wort is chilled to 170 °F for the whirlpool and cools to 166.3 °F in the stand, and from
      17:14:31 BoilPower holds 170 °F: today a separate Hold_Target, which only the words design draws; with Brett's new
-     BoilPower (?bk=power) the kettle's own target. finished: the stand ends at 17:28:10, switching the boil kettle off,
-     and the chiller takes the wort down to 88.4 °F by 17:41:30 */
+     BoilPower (?bk=power) the kettle's own target, held from 0.0.3.post8 by a PID. Its readings and powers are the
+     plugin's own on the simulators' kettle, as its test models it: 52-59 % in the first minute, easing as the brake on
+     the rise comes in, 37 % at 168.4 °F at 17:18:40, 170 °F at about 17:25:30, then 26 %. finished: the stand ends at
+     17:28:10, switching the boil kettle off, and the chiller takes the wort down to 88.4 °F by 17:41:30 */
   if (scene === "boiling" || scene === "hold" || scene === "finished") {
-    const d = gDemo("hop"), bk = d.bk, fin = scene === "finished", OFF = fin ? hms(17, 28, 10) : E;
+    const d = gDemo("hop"), bk = d.bk, fin = scene === "finished", OFF = fin ? hms(17, 28, 10) : E, pid = BK === "power";
     bk.pv = bk.pv.filter(k => k[0] <= hms(15, 30, 4)).concat([[hms(15, 36), 212.0, "s"], [hms(17, 0, 4), 212.0, "h"]]);
     if (scene === "boiling") return d;
     d.steps.push([hms(17, 0, 4), 6], [hms(17, 8, 10), 7]);
-    bk.pv.push([hms(17, 1, 30), 209.8, "s"], [hms(17, 7, 30), 170.6, "e"], [hms(17, 8, 10), 170.4, "s"], [hms(17, 14, 20), 166.3, "s"], [hms(17, 18, 40), 169.4, "e"]);
-    if (fin) bk.pv.push([hms(17, 22), 170.0, "s"], [OFF, 170.0, "h"], [hms(17, 29, 10), 169.2, "s"], [hms(17, 41, 30), 88.4, "e"]);
-    bk.sv = [[hms(15, 1, 47), hms(17, 0, 4), 210.2], [hms(17, 14, 31), OFF, BK === "power" ? 170.0 : 210.2]];
-    if (BK !== "power") bk.hold = [[hms(17, 14, 31), OFF, 170.0]];
+    bk.pv.push([hms(17, 1, 30), 209.8, "s"], [hms(17, 7, 30), 170.6, "e"], [hms(17, 8, 10), 170.4, "s"], [hms(17, 14, 20), 166.3, "s"],
+      ...(pid ? [[hms(17, 15, 31), 166.4, "s"], [hms(17, 16, 31), 167.2, "l"], [hms(17, 17, 31), 167.9, "l"], [hms(17, 18, 40), 168.4, "l"]] : [[hms(17, 18, 40), 169.4, "e"]]));
+    if (fin) bk.pv.push(...(pid ? [[hms(17, 20, 31), 169.1, "l"], [hms(17, 22, 31), 169.6, "s"], [hms(17, 25, 31), 170.0, "s"], [OFF, 170.1, "s"]] : [[hms(17, 22), 170.0, "s"], [OFF, 170.0, "h"]]),
+      [hms(17, 29, 10), 169.2, "s"], [hms(17, 41, 30), 88.4, "e"]);
+    bk.sv = [[hms(15, 1, 47), hms(17, 0, 4), 210.2], [hms(17, 14, 31), OFF, pid ? 170.0 : 210.2]];
+    if (!pid) bk.hold = [[hms(17, 14, 31), OFF, 170.0]];
+    const held = pid
+      ? [[hms(17, 14, 31), hms(17, 15, 31), 56], [hms(17, 15, 31), hms(17, 16, 1), 54], [hms(17, 16, 1), hms(17, 16, 31), 45], [hms(17, 16, 31), hms(17, 17, 31), 38],
+        [hms(17, 17, 31), hms(17, 19, 1), 37], [hms(17, 19, 1), hms(17, 20, 1), 35], [hms(17, 20, 1), hms(17, 21, 1), 33], [hms(17, 21, 1), hms(17, 22, 16), 31],
+        [hms(17, 22, 16), hms(17, 23, 1), 30], [hms(17, 23, 1), hms(17, 24, 1), 29], [hms(17, 24, 1), hms(17, 25, 1), 28], [hms(17, 25, 1), hms(17, 27, 1), 27], [hms(17, 27, 1), OFF, 26]]
+      : [[hms(17, 14, 31), hms(17, 15, 40), 64], [hms(17, 15, 40), hms(17, 16, 50), 54], [hms(17, 16, 50), hms(17, 17, 50), 44], [hms(17, 17, 50), OFF, 35]];
     bk.out = [[hms(11, 58), hms(15, 1, 47), 0], [hms(15, 1, 47), hms(15, 29, 30), 100], [hms(15, 29, 30), hms(17, 0, 4), 45], [hms(17, 0, 4), hms(17, 14, 31), 0],
-      [hms(17, 14, 31), hms(17, 15, 40), 64], [hms(17, 15, 40), hms(17, 16, 50), 54], [hms(17, 16, 50), hms(17, 17, 50), 44], [hms(17, 17, 50), OFF, 35], [OFF, E, 0]];
+      ...held, [OFF, E, 0]];
     d.hlt.pv.push([hms(17, 18, 40), 156.8, "s"]);
     d.mt.pv.push([hms(17, 18, 40), 139.6, "s"]);
     if (fin) { d.hlt.pv.push([hms(17, 41, 30), 154.9, "s"]); d.mt.pv.push([hms(17, 41, 30), 137.2, "s"]); }

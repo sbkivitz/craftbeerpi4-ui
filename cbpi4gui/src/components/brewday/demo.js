@@ -147,19 +147,22 @@ const SCENES = {
     return s;
   },
   /* the whirlpool hold: the stand cooled to 166.3 °F, Scott answered "Heat and hold?", and the step set the kettle's target
-     to 170 °F, which BoilPower holds at a power that eases from full to Hold_Power (30 %) as the wort closes in: 35 % at
-     0.6 °F below. The boil power isn't used. */
+     to 170 °F, which BoilPower holds. The boil power isn't used. From 0.0.3.post8 a PID holds it (Scott, 13 Nov: "I think
+     the boilPower should also be able to do PID control"). On the simulators' kettle, as the plugin's own test models it,
+     it climbs slowly so as not to pass 170 °F: 52 % at once, 59 % a minute on as the integral builds, then easing as the
+     brake on the rise comes in. At 17:18:40, 4 minutes in, the wort is at 168.4 °F with the element at 37 %; it reaches
+     170 °F at about 17:25:30 and holds it at 26 % (the dashboard agent's hand-off of 13 Nov). */
   hold: () => Object.assign(SCENES.hop(), {
     t: 17 * 3600 + 18 * 60 + 40, banner: null,
-    v: {hlt: {pv: 156.8, sv: 168.0, own: 168.0, mode: "manual"}, mt: {pv: 139.6, sv: null, mode: "manual"}, bk: {pv: 169.4, sv: 170.0, mode: "auto"}},
-    a: {hltEl: {on: false, pct: 0}, hltPump: {on: false}, wortPump: {on: false}, bkEl: {on: true, pct: 35}},
+    v: {hlt: {pv: 156.8, sv: 168.0, own: 168.0, mode: "manual"}, mt: {pv: 139.6, sv: null, mode: "manual"}, bk: {pv: 168.4, sv: 170.0, mode: "auto"}},
+    a: {hltEl: {on: false, pct: 0}, hltPump: {on: false}, wortPump: {on: false}, bkEl: {on: true, pct: 37}},
     recipe: {state: "running", cur: 6, left: 9 * 60 + 30, adds: []},
     /* as the screen logs them: read from the core, screen.js's observe() and BoilPower (the dashboard agent's hand-off of
        12 Nov, afternoon). The Boil's "Boiling completed" is one of the routine notices the screen leaves out; Whirlpool
        Hop, a NotificationStep, asks a moment after it starts and moves on when NEXT STEP answers it; the stand asks in
-       CraftBeerPi's own words; and the new BoilPower says what it does as it starts to hold */
+       CraftBeerPi's own words; and the new BoilPower says what it does as it starts to hold, in 0.0.3.post8's words */
     events: [
-      ["17:14:32", `${KNAME.bk}: Holding 170.0, its target, instead of boiling. Below it, it heats at 100% while the wort is more than 7.2 below, easing to 30% as it reaches the hold; then it rests until the wort is 3.6 below. To boil, set its target to 206.6 or above.`, "from CraftBeerPi", ""],
+      ["17:14:32", `${KNAME.bk}: Holding 170.0, its target, instead of boiling: a PID sets the element's power, up to 100%. To boil, set its target to 206.6 or above.`, "from CraftBeerPi", ""],
       ["17:14:31", "Whirlpool answered: Heat and hold", "confirmed", "ok"],
       ["17:14:20", `Whirlpool: The wort in ${KNAME.bk} has cooled to 166.3 °F, below the 170 °F whirlpool, with 14 minutes of the stand left. Heat it back to 170 °F and hold it there until the stand ends?`, "answered", ""],
       ["17:08:10", "Whirlpool started, 20 min", "by recipe", ""],
@@ -470,8 +473,41 @@ const SCENES = {
       ["09:11:10", "No target for the HLT", "waiting for you", "wait"],
       ["09:11:05", "Hot liquor tank AUTO", "confirmed", "ok"]
     ]
-  })
+  }),
+  /* heating by hand (Scott on 8012, 13 Nov: "Oh! I turned the HLT element on without using 'Auto'... that is dangerous",
+     then "same issue with HLT, I see. Maybe a warning?"). Brewing by hand, no recipe: at 08:17:31 he set the HLT's target
+     to 150 °F and at 08:18 held its element on, in MANUAL. In MANUAL nothing compares the temperature with the target,
+     so the element runs until someone turns it off. #byhand at 08:52:40: heating, 18.4 °F short of the target;
+     #byhand-past at 09:03:30: 3.3 °F past it, with CraftBeerPi's alarm, raised at 09:03:22, 30 s after it was 2 °F past */
+  byhand: () => Object.assign(SCENES.manual(), {
+    t: 8 * 3600 + 52 * 60 + 40,
+    v: {hlt: {pv: 131.6, sv: 150.0, own: 150.0, mode: "manual"}, mt: {pv: 64.4, sv: null, mode: "manual"}, bk: {pv: 64.9, sv: null, mode: "manual"}},
+    a: {hltEl: {on: true, pct: 100}, hltPump: {on: false}, wortPump: {on: false}, bkEl: {on: false, pct: 0}},
+    fill: {mtLiq: false, bk: false},
+    events: [
+      ["08:18:00", "HLT ELEMENT on", "confirmed", "ok"],
+      ["08:17:31", "Hot liquor tank target 150.0 °F", "confirmed", "ok"]
+    ]
+  }),
+  "byhand-past": () => {
+    const s = SCENES.byhand();
+    s.t = 9 * 3600 + 3 * 60 + 30;
+    Object.assign(s.v.hlt, {pv: 153.3, byT: 150.0, byRaised: ["target"]});
+    s.banner = byHandBanner("hlt", {t: 150.0, over: "target"});
+    s.events.unshift(["09:03:22", `${KNAME.hlt}: ${s.banner.text}`, "from CraftBeerPi", "bad"]);
+    return Object.assign(s, {base: "byhand"});
+  }
 };
+/* CraftBeerPi's alarm for an element left on by hand (core M87): past its target (w.over "target"), or near the boil
+   (w.over "boil"), whatever its target. An error, not a warning, so the title bar puts it first, before a timer or a
+   step's question, and its line stays red: it is the one time heat goes in with nothing watching the temperature. cbpi:
+   CraftBeerPi's own warning or error, one without buttons, which OK marks "seen" */
+function byHandBanner(v, w) {
+  const n = KNAME[v], T = w.t == null ? "" : `${+w.t.toFixed(1)} °F`;
+  return {tone: "alarm", cbpi: true, title: n, act: "OK", cmd: "b:ok", text: w.over === "target"
+    ? `Above its ${T} target and still heating: its element is on by hand, and in MANUAL nothing stops it at the target. Turn the element off, or put the ${n} in AUTO to hold ${T}.`
+    : "Near the boil and still heating: its element is on by hand, and in MANUAL nothing stops it before it boils. Turn the element off."};
+}
 /* CraftBeerPi's kept warning when a kettle's AUTO has run 5 s with no target (unset, 0 or below), taken down by itself once
    the kettle has a target or leaves AUTO (M64). BoilPower never raises it: it puts its boil point in as the target. */
 function noTargetBanner(v) {
@@ -625,20 +661,35 @@ function gDemo(scene) {
     const a = scene === "notarget", s0 = a ? hms(13, 0) : hms(8, 40);
     return {start: s0, steps: [], hlt: {pv: [[s0, a ? 68.0 : 66.2]], out: [[s0, E, 0]]}, mt: {pv: [[s0, a ? 67.6 : 65.8]]}, bk: {pv: [[s0, 66.9]], out: [[s0, E, 0]]}};
   }
+  /* heating by hand (#byhand at 08:52:40, #byhand-past at 09:03:30): the HLT's element on by hand at 100 % from 08:18, in
+     MANUAL, so it climbs about 2 °F a minute through its 150 °F target. No green SV line: MANUAL holds nothing */
+  if (scene === "byhand") return {
+    start: hms(8, 0), steps: [],
+    hlt: {pv: [[hms(8, 0), 62.0], [hms(8, 18), 62.0, "h"], [hms(8, 52, 40), 131.6, "l"], [hms(9, 3, 30), 153.3, "l"]], out: [[hms(8, 0), hms(8, 18), 0], [hms(8, 18), E, 100]]},
+    mt: {pv: [[hms(8, 0), 64.4]]},
+    bk: {pv: [[hms(8, 0), 64.9]], out: [[hms(8, 0), E, 0]]}
+  };
   /* boiling and hold: the #hop day, carried on. The simulator boils at 212 °F, so the boil kettle settles there. At 17:00:04
      the boil ends; the wort is chilled to 170 °F for the whirlpool and cools to 166.3 °F in the stand, and from 17:14:31
-     BoilPower holds 170 °F, the kettle's own target. finished: the stand ends at 17:28:10, switching the boil kettle off,
-     and the chiller takes the wort down to 88.4 °F by 17:41:30 */
+     BoilPower holds 170 °F, the kettle's own target, held from 0.0.3.post8 by a PID. Its readings and powers are the
+     plugin's own on the simulators' kettle, as its test models it: 52-59 % in the first minute, easing as the brake on the
+     rise comes in, 37 % at 168.4 °F at 17:18:40, 170 °F at about 17:25:30, then 26 %. finished: the stand ends at
+     17:28:10, switching the boil kettle off, and the chiller takes the wort down to 88.4 °F by 17:41:30 */
   if (scene === "boiling" || scene === "hold" || scene === "finished") {
     const d = gDemo("hop"), bk = d.bk, fin = scene === "finished", OFF = fin ? hms(17, 28, 10) : E;
     bk.pv = bk.pv.filter(k => k[0] <= hms(15, 30, 4)).concat([[hms(15, 36), 212.0, "s"], [hms(17, 0, 4), 212.0, "h"]]);
     if (scene === "boiling") return d;
     d.steps.push([hms(17, 0, 4), 6], [hms(17, 8, 10), 7]);
-    bk.pv.push([hms(17, 1, 30), 209.8, "s"], [hms(17, 7, 30), 170.6, "e"], [hms(17, 8, 10), 170.4, "s"], [hms(17, 14, 20), 166.3, "s"], [hms(17, 18, 40), 169.4, "e"]);
-    if (fin) bk.pv.push([hms(17, 22), 170.0, "s"], [OFF, 170.0, "h"], [hms(17, 29, 10), 169.2, "s"], [hms(17, 41, 30), 88.4, "e"]);
+    bk.pv.push([hms(17, 1, 30), 209.8, "s"], [hms(17, 7, 30), 170.6, "e"], [hms(17, 8, 10), 170.4, "s"], [hms(17, 14, 20), 166.3, "s"],
+      [hms(17, 15, 31), 166.4, "s"], [hms(17, 16, 31), 167.2, "l"], [hms(17, 17, 31), 167.9, "l"], [hms(17, 18, 40), 168.4, "l"]);
+    if (fin) bk.pv.push([hms(17, 20, 31), 169.1, "l"], [hms(17, 22, 31), 169.6, "s"], [hms(17, 25, 31), 170.0, "s"], [OFF, 170.1, "s"],
+      [hms(17, 29, 10), 169.2, "s"], [hms(17, 41, 30), 88.4, "e"]);
     bk.sv = [[hms(15, 1, 47), hms(17, 0, 4), 210.2], [hms(17, 14, 31), OFF, 170.0]];
     bk.out = [[hms(11, 58), hms(15, 1, 47), 0], [hms(15, 1, 47), hms(15, 29, 30), 100], [hms(15, 29, 30), hms(17, 0, 4), 45], [hms(17, 0, 4), hms(17, 14, 31), 0],
-      [hms(17, 14, 31), hms(17, 15, 40), 64], [hms(17, 15, 40), hms(17, 16, 50), 54], [hms(17, 16, 50), hms(17, 17, 50), 44], [hms(17, 17, 50), OFF, 35], [OFF, E, 0]];
+      [hms(17, 14, 31), hms(17, 15, 31), 56], [hms(17, 15, 31), hms(17, 16, 1), 54], [hms(17, 16, 1), hms(17, 16, 31), 45], [hms(17, 16, 31), hms(17, 17, 31), 38],
+      [hms(17, 17, 31), hms(17, 19, 1), 37], [hms(17, 19, 1), hms(17, 20, 1), 35], [hms(17, 20, 1), hms(17, 21, 1), 33], [hms(17, 21, 1), hms(17, 22, 16), 31],
+      [hms(17, 22, 16), hms(17, 23, 1), 30], [hms(17, 23, 1), hms(17, 24, 1), 29], [hms(17, 24, 1), hms(17, 25, 1), 28], [hms(17, 25, 1), hms(17, 27, 1), 27],
+      [hms(17, 27, 1), OFF, 26], [OFF, E, 0]];
     d.hlt.pv.push([hms(17, 18, 40), 156.8, "s"]);
     d.mt.pv.push([hms(17, 18, 40), 139.6, "s"]);
     if (fin) { d.hlt.pv.push([hms(17, 41, 30), 154.9, "s"]); d.mt.pv.push([hms(17, 41, 30), 137.2, "s"]); }
@@ -700,7 +751,7 @@ function history(scene, now) {
   return h;
 }
 
-export { RECIPE, SPARGE_STEP, VNAME, KNAME, VACT, ACT, HERMS_DELTA, BOIL_TH, BOOK, SCENES, history, noTargetBanner, pauseBanner, spargeBanner, boilHoldBanner, boilStartLine, tfmt, tBanner };
+export { RECIPE, SPARGE_STEP, VNAME, KNAME, VACT, ACT, HERMS_DELTA, BOIL_TH, BOOK, SCENES, history, noTargetBanner, pauseBanner, spargeBanner, boilHoldBanner, boilStartLine, tfmt, tBanner, byHandBanner };
 
 // Not the mockup's: two moments of the screen's own, for checking how the title bar holds what CraftBeerPi
 // really asks (the dashboard agent's review, 9 Nov). Not compared with the mockup.

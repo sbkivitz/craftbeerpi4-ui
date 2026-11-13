@@ -89,6 +89,7 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .dev{margin:0;font:500 clamp(15px,calc(4.8 * var(--pu)),19px)/1.2 var(--cond);letter-spacing:.03em;color:var(--text-2)}
 :where(html.bd-page) .dev .age{color:#ffc9c4}
 :where(html.bd-page) .dev .warn{color:var(--prompt);font-weight:600}
+:where(html.bd-page) .dev .alarm{color:#ff9b93;font-weight:600}
 :where(html.bd-page) .tgtbtn.notgt small{color:var(--prompt)}
 :where(html.bd-page) .ctrls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 :where(html.bd-page) .ctrls>:only-child{grid-column:1/-1}

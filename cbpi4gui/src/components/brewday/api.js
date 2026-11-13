@@ -63,6 +63,8 @@ export const api = {
   stop: () => post("/step2/stop"),
   next: () => post("/step2/next"),
   answer: (notificationId, actionId) => post(`/notification/${id(notificationId)}/action/${id(actionId)}`),
+  // OK on a warning or an error without buttons: CraftBeerPi takes it down from every page, and BrewScribe's (core M88)
+  seen: (notificationId) => post(`/notification/${id(notificationId)}/seen`),
   recipes: () => get("/recipe/"),
   recipe: (file) => get(`/recipe/${id(file)}`),
   brew: (file) => post(`/recipe/${id(file)}/brew`),

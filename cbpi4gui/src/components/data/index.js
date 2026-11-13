@@ -117,6 +117,11 @@ export const CBPiProvider = ({ children }) => {
         // Any other this page shows is left from before a server restart.
         a.keepWaiting(data.data);
         break;
+      case "notification_seen":
+        // Sent on connecting: the warnings and errors OK'd so far, on any page
+        // or in BrewScribe (core M88).
+        a.markSeen(data.data);
+        break;
       case "notificationupdate":
           setAllNotifiactions(() => data.data);
           break;

@@ -454,6 +454,9 @@ number itself is the button for it. While the target is a temperature, the facep
 | Controls, AUTO | −5 % · HEATING · +5 % (from 11 Nov −5 % −1 % · HEATING · +1 % +5 %) | HEATING, or OFF while it rests, alone; a tap pauses here too |
 | Beside AUTO/MANUAL | TARGET · change | TARGET · change |
 
+Since BoilPower 0.0.3.post8 (13 Nov) a PID holds the hold, so it no longer rests and the line no longer says where it
+heats again: see "A hold held by a PID", near the end.
+
 In MANUAL the line says "MANUAL · element by hand", there are no one-tap steps, and the readout follows the
 target: BOIL [45 % change], or SV 170.0 °F. Paused, in either kind of target: "Heat paused for 2:15" in Prompt
 Amber, as before.
@@ -486,7 +489,8 @@ The readout's kind comes from T and B alone: a hold when 0 < T < B − 3.6 °F, 
 - BOIL POWER, in the third row, swaps this box for the power box.
 - Setting a target in AUTO takes effect as BoilPower would: BOIL is full power until B, then the boil power
   (at once if the wort is already at B); a hold eases in, or rests while the wort is above it (an element that
-  was heating carries on, as in `_hold_climb_power`).
+  was heating carries on, as in `_hold_climb_power`). Since 0.0.3.post8 a PID sets a hold's power: see "A hold held
+  by a PID", near the end.
 
 ### The boil power's button, in the window
 
@@ -3014,6 +3018,362 @@ only. I haven't added BrewScribe's reminders to the moments: they're Porter's, a
   had just arrived and took the title bar, and none after a press.
 - **For your walks**, with BrewScribe running again (`CBPI_WITH_BREWSCRIBE=1`): the failures you saw, each a BrewScribe
   question in front, should go. A press that brings the next question up should play nothing.
+
+### Built (12 Nov, evening)
+
+Brett built it (M84: UI cd249f3, build 4c61a03), with a fix of his own (M85: UI 919cd90, build 63bde9d,
+main.5a5e11a6.js). 8012 runs both, with BrewScribe logger.16.
+
+His calls, all agreed:
+
+- A question already waiting as the screen opens inside the app gets its line, and nothing more: no beep, and nothing
+  said to a screen reader, as on a page loaded afresh.
+- "Just arrived" means the ids new in an update, less the questions CraftBeerPi was waiting on as the page first
+  connected (it sends those again then). After the connection comes back, what still waits is silent; one that came
+  meanwhile beeps if it takes the title bar.
+- No connection, and Connecting once it turns to the alarm colour, beep each time they take the title bar, as before.
+- The demo beeps at each new alert, as the mockup does. No picture changes.
+
+**M85, his fix.** Since M82, a step's line went one place too far back in LOG whenever another line came between it and
+the line where it should stop. With BrewScribe, "Whirlpool finished" and "Recipe finished" went before "Whirlpool: Stand
+over…". It now lands just newer than that line, as part 1 of the order section says. Live only.
+
+**Porter:** logger.15 keeps BrewScribe's reminders up through STOP and START, and logger.16 uses this order in
+BrewScribe's own alarm line.
+
+**Tests:** a new walk, test_e2e_brewday_order, 51/51. A reminder alone beeps. START puts Gypsum's question in front of
+it, with WAITING FOR YOU, and beeps. A second reminder is silent, amber in LOG. A timer goes first with its own alarm, and
+its OK brings Gypsum's question back silently. Back from Brew Steps, a reminder that came meanwhile gets its line,
+silently. NEXT STEP beeps once for Whirlfloc's question. A dropped connection beeps as it goes, is silent coming back with
+nothing new, and beeps for a hop alert that came meanwhile. M83's build fails 28 of these checks. With the real
+BrewScribe, every brew-day walk now passes; before, its reminders broke three. Identity 503/503, Settings 104/104.
+
+## Heating by hand: the faceplate says nothing will stop it, and CraftBeerPi raises an alarm: ready to build (13 Nov)
+
+Scott on 8012, this morning. First he tried the boil kettle in MANUAL for a brew in a bag: target 150 °F, element held
+on, and it boiled at 212 °F. Then: "Oh! I turned the HLT element on without using 'Auto'... that is dangerous", and
+"same issue with HLT, I see. Maybe a warning?"
+
+What went wrong, on the screen: in MANUAL nothing compares the temperature with the target, so an element switched on
+by hand runs until someone turns it off. That's CraftBeerPi's behaviour on every page, and its own docs warn of it. But
+the window still showed SV 150.0 in green, as though it would be held. The line under it said "MANUAL · element by
+hand" in Soft Steel, which says what MANUAL is, not what it means for the target. And nothing changed as the water
+passed 150 °F.
+
+Two parts, and one thing that stays:
+
+1. **The line under the window** (the screen): while an element heats by hand, it says nothing will stop it, in Prompt
+   Amber. Past the target, it turns light red.
+2. **CraftBeerPi's alarm** (the core): once the vessel is 2 °F past its target, or near the boil.
+3. **MANUAL stays MANUAL.** Agreed with you: it doesn't switch the element off at the target. That would make it a second
+   AUTO that nobody can see, and taking over by hand is what MANUAL is for. The held press stays the only friction at the
+   start, with no "Are you sure?": confirmations for something you can stop with one tap get pressed without reading.
+
+### "By hand"
+
+The element is on, its vessel is in MANUAL, and no AUTO runs it: not its own, and for the HLT not the mash tun's HERMS
+(the dashed button, `by` set). That's `byHand(v)` in the mockup. It applies to:
+
+- **the HLT**, with or without a target;
+- **the proposed boil kettle, with a target below BOIL** (a temperature to hold, `bkHoldT()`), which is Scott's brew in a
+  bag.
+
+Not to the boil kettle at BOIL or with no target: boiling by hand is what a boil kettle is for, and its line stays
+"MANUAL · element by hand". Not to an older BoilPower (`?bk=today`), and not to the mash tun, which has no element of its
+own.
+
+A target at or above where BOIL starts (`bkLetGo()`, 206.6 °F on the simulators) counts as none: the water boils before
+it gets there, so "past the target" could never come. "Near the boil" covers it instead.
+
+### The line under the window
+
+| While its element heats by hand | The line | Colour |
+| --- | --- | --- |
+| Below its target, or less than 2 °F past it | Heating by hand · won't stop at target | Prompt Amber, 600 (`.warn`) |
+| No target, or one at or past where BOIL starts | Heating by hand · until you turn it off | Prompt Amber, 600 |
+| 2 °F or more past its target | 3.3 °F above target · heating by hand | light red #ff9b93, 600 (`.alarm`, new) |
+| At or past where BOIL starts, whatever its target | Near the boil · heating by hand | light red, 600 |
+
+- **The words** are those of the lines they stand in for ("6.7 °F below target") and of the element's own button ("tap to
+  turn off"). The target's number is right above, in SV.
+- **The light red** is the event line's colour for a failure (`.res.bad`), not Alarm Red, which the PV digits use.
+- **One line at every size.** The narrowest faceplate is 229 px, at 1180 px wide. I first had "won't stop at 150.0 °F"
+  and "· still heating by hand". The first left 1 px with a target like 206.5, and the second wrapped. A line that
+  wraps as the water passes the target would push the buttons under it down just as Scott reaches for the element. Now
+  the amber lines keep 14 and 18 px spare. The red one keeps 11 px up to 86.5 °F past (a target of 120 °F at the boil),
+  and 6 px for a three-digit gap, which needs a target below 107 °F.
+
+In `screen.js`, as in the mockup:
+
+```js
+/* an element on by hand (Scott, 13 Nov: "Oh! I turned the HLT element on without using 'Auto'... that is dangerous" and
+   "Maybe a warning?"): its vessel in MANUAL, and no AUTO running it, neither its own nor the mash tun's HERMS. t: the
+   target it won't stop at, or null (none, or one at or past where BOIL starts). over: "boil", "target" or "" */
+const BY_OVER = 2; // °F; 1 °C
+function byHand(v) {
+  const el = v === "hlt" ? st.a.hltEl : v === "bk" ? st.a.bkEl : null, V = st.v[v];
+  if (!el || !el.on || el.by || V.mode === "auto" || (v === "hlt" && st.v.mt.mode === "auto")) return null;
+  if (v === "bk" && !(M.BKNEW && bkHoldT() != null)) return null;
+  const raw = v === "bk" ? bkHoldT() : V.sv, t = raw != null && raw < bkLetGo() ? raw : null;
+  return {t, over: V.pv >= bkLetGo() ? "boil" : t != null && V.pv >= t + BY_OVER ? "target" : ""};
+}
+function byHandLine(v, w) {
+  if (w.over === "target") return `<span class="alarm">${(st.v[v].pv - w.t).toFixed(1)} ${M.U} above target · heating by hand</span>`;
+  if (w.over === "boil") return `<span class="alarm">Near the boil · heating by hand</span>`;
+  return `<span class="warn">Heating by hand · ${w.t != null ? "won't stop at target" : "until you turn it off"}</span>`;
+}
+```
+
+In `devHTML`, after the no-target line and before the MANUAL one:
+`const w = byHand(v); if (w) return byHandLine(v, w);`. In `bkLine`, the MANUAL line becomes
+`if (V.mode !== "auto") { const w = byHand("bk"); return w ? byHandLine("bk", w) : "MANUAL · element by hand"; }`.
+In the stylesheet, beside `.dev .warn`: `.dev .alarm{color:#ff9b93;font-weight:600}`.
+
+### CraftBeerPi's alarm
+
+- **When:** a kettle's element is on by hand, as above. And for 30 s of the brewing clock (`cbpi.api.clock`, so 60× gives
+  the same results) either:
+  - its temperature has been 2 °F (1 °C) or more past its target; or
+  - it has been at or past where BOIL starts: the boil kettle's Boil_Threshold less 3.6 °F (2 °C).
+
+  The target counts as above: set and above 0, below where BOIL starts, and on the boil kettle only a target below BOIL.
+  The boil kettle at BOIL, or with no target, never raises it.
+- **At most twice in one stretch of heating by hand:** once past the target, once near the boil. A stretch ends when the
+  element goes off, the kettle's AUTO comes on, or its target changes. So if Scott OKs it and walks away, it comes back
+  once, before the water boils, and no more. If he switches the element on by hand when the kettle is already past its
+  target, it comes 30 s later. That's meant: heat is going into something already too hot.
+- **An error (NotificationType.ERROR), with no buttons.** The screen gives it its own OK.
+  - Why an error: the M84 order puts CraftBeerPi's errors first, before a run-out timer and a step's question, and
+    something that arrives first beeps. As a warning without buttons it would wait behind a hop alert or the sparge's
+    question, and, arriving behind one, make no sound. This is the one time heat goes in with nothing watching the
+    temperature. It's the same kind of thing as "No temperature reading - heating suspended", which is an error too.
+  - Its line stays red after OK, with "seen" (next section).
+  - Two beeps as it arrives, as for any alert, and no repeating sound: Scott's rule is that only a run-out timer
+    repeats.
+- **Not kept for a page opened later.** The faceplate's red line shows the same thing there, for as long as it's true.
+- **Title:** the kettle's name. **Words**, with the target as set ("150 °F", "152.5 °F"):
+  - "Above its 150 °F target and still heating: its element is on by hand, and in MANUAL nothing stops it at the target.
+    Turn the element off, or put the HLT in AUTO to hold 150 °F."
+  - "Near the boil and still heating: its element is on by hand, and in MANUAL nothing stops it before it boils. Turn
+    the element off."
+
+  No temperature in the words: it would be out of date while the alarm waits for OK, and the faceplate has the live one.
+  For the boil kettle, "put the Boil Kettle in AUTO to hold 150 °F": with your PID change, its AUTO holds it.
+- **The mash tun** has no element of its own, so no alarm. Heated through the coil by hand (the HLT element on by hand,
+  the wort pump running), it's covered by the HLT's alarm, as long as the HLT's target is one the mash can take.
+
+### In your demo
+
+- **Two new moments** (`?demo=byhand`, `?demo=byhand-past`). Brewing by hand, no recipe: at 08:17:31 Scott sets the HLT's
+  target to 150 °F, and at 08:18 holds its element on, in MANUAL. The HLT climbs about 2 °F a minute.
+  - `#byhand`, at 08:52:40: 131.6 °F, the amber line.
+  - `#byhand-past`, at 09:03:30: 153.3 °F, the red line, and the alarm in the title bar, raised at 09:03:22 and logged in
+    red "from CraftBeerPi".
+  - The graph history is `gDemo("byhand")` in `graphs.js`. There's no green SV line, because MANUAL holds nothing.
+- **The tick** raises the alarm as CraftBeerPi would (`byHandBanner`, and the stretch rule in the 1 s tick). Behind
+  another prompt it waits its turn there, as the mockup's other warnings do.
+- **OK on it** goes through `seenLines()`, next section.
+
+### Moments whose pictures change
+
+None of the 32 there were. The two new ones are added.
+
+### Not designed
+
+- **A hard limit.** A line and an alarm only help someone who sees or hears them. A real limit on an element left on
+  belongs in the rig itself, such as a thermal cut-out, or a low-water switch for the HLT as it empties. The rig is
+  outside my work.
+- **MANUAL with the element off** stays quiet, even with a target set ("MANUAL · element by hand"). The HLT sits like
+  that through and after every sparge, with nothing heating, so a caution there would be noise.
+
+### Changed, all in `proposal\`
+
+- `brew-day.js`:
+  - new: `byHand`, `byHandLine`, `byHandBanner`, `seenLines`, the alarm in the 1 s tick, `#byhand` and `#byhand-past`;
+  - changed: `devHTML`, `bkLine`, and the OK in `cmdBanner`.
+- `brew-day.css`: `.dev .alarm`.
+- `graphs.js`: `gDemo("byhand")`.
+- `brew-day.html`: the two moments in the strip, and the scene list.
+
+### Checked
+
+- **Presses**, 25 checks, with the page's clock run forward:
+  - OK clears the title bar, adds no line, and the line says "seen", still red. The faceplate stays red, and nothing more
+    comes in the same stretch.
+  - The element off brings back "MANUAL · element by hand". Held on again, there's no alarm at 20 s and the alarm at 30
+    s. OK marks both copies "seen".
+  - Near the boil: the red line, and a second alarm 30 s later, then no third.
+  - AUTO: the usual "below target" line. No target, or 212 °F: "until you turn it off". Under the HERMS: not by hand.
+  - The boil kettle: with 150 °F, amber, then red, then the alarm. At BOIL: unchanged, no alarm. `?bk=today`: unchanged.
+  - No page errors.
+- **Fit**: all four lines, on the HLT and the boil kettle, at 12 sizes from 1920×950 to 360×780, with graphs and without
+  (144 states). Each is one line, nothing scrolls sideways, and the buttons under the line never move as it changes.
+- **Pictures and lines**, before and after: all 32 moments at 1920×950, 960×1200 and 390×844 with graphs and without, and
+  at 1920×950 with `?bk=today` and `?timers=today`. 224 pictures, all identical, and every moment's lines are the same.
+
+## OK on a warning or an error, from any screen: ready to build (13 Nov)
+
+Your questions, after Scott chose that an OK in Brew Day clears his warnings in BrewScribe too ("the alerts that I've
+already acknowledged in BrewDay are there waiting for me in BrewScribe.. that's annoying"):
+
+1. **Should one OK'd elsewhere leave this screen's title bar? Yes.** That includes another Brew Day screen and
+   BrewScribe. It's one brewer with a monitor and a phone, and it's what an answer to a question already does.
+2. **Its line: no new line, and no beep.** Something leaving the title bar never beeps.
+   - **A warning's line turns plain, and an error's stays red.**
+   - **New: both add "seen"**, after "from CraftBeerPi", in Soft Steel, as "its override switch can still run it" does
+     (`e[4]`). So the change isn't carried by colour alone (The Say It Twice Rule). In M82 I left the words as they were
+     because "OK tells CraftBeerPi nothing"; now it does. "Seen" is the core's own word for it.
+   - The same goes for an OK on this screen.
+   - A warning that left the title bar without an OK keeps the words it has. That's one pushed out by newer ones (the
+     cap of 10), or one kept from an earlier page. Nobody OK'd it, so it goes plain without "seen", as now.
+3. **One OK clearing every copy with the same words: yes.** Please also show identical errors once in the title bar, as
+   you do warnings. The count then says how many presses are left: one OK clears them all. Each copy keeps its own line
+   in LOG, and each says "seen". A copy that comes after the OK is news: it shows, and beeps if it goes to the front.
+4. **The limits** (a warning from before a restart, or more than 100 ago, clears only where it's OK'd): fine.
+5. **DESIGN.md**: the M82 line is replaced. The Amber Means Waiting Rule now says this.
+
+In `screen.js`, where CraftBeerPi says a warning or error was seen (and on OK here): each line whose words are its
+"Title: message" and whose result is "from CraftBeerPi" gets `e[4] = "seen"`, and if it's amber (`"wait"`) it turns
+plain. Errors keep `"bad"`. Then `saveEvents()`. In the mockup that's `seenLines(words)`, which the OK calls. The mockup's
+only warning or error without buttons is the new heating-by-hand alarm, so `#byhand-past` shows it.
+
+### Checked
+
+In the walk above: OK on the alarm leaves no new line, and every copy with its words says "seen", still red.
+
+## A hold held by a PID: the line, the hold's words and the demo's numbers: ready to build (13 Nov)
+
+You put BoilPower 0.0.3.post8 on both simulators: any target below the boil is held by a PID, with nothing to switch
+on. Scott asked for it: "I think the boilPower should also be able to do PID control", then "I think this behavior
+should be automatic". Three things on the screen were out of date. Here they are, decided:
+
+### 1. The line under the window: it reads exactly like the HLT's
+
+Agreed with you: drop the branch that said "1.2 °F below target · heats again at 166.4 °F". There's no rest band any
+more, so it would say something untrue: the element can be off just below the target while the wort still rises, and
+it comes back on as soon as the rise slows. A hold now reads as the HLT's does under its own PID: "1.6 °F below target ·
+about 3 min at this rate", "At target", "18.4 °F above target". In `bkLine`, the hold branch becomes:
+
+```js
+  /* proposed: a hold is a target like the HLT's, and from BoilPower 0.0.3.post8 a PID holds it as the HLT's PID holds its
+     own, so its line reads exactly like the HLT's (Brett, 13 Nov). The element can be off just below the target while
+     the wort still rises, and comes back on as the rise slows, so the line no longer says where it heats again */
+  if (ho != null && M.BKNEW) {
+    const d = ho - V.pv;
+    if (Math.abs(d) < 0.3) return "At target";
+    const eta = GRAPHS ? graphETA("bk") : "";
+    return (d > 0 ? `${d.toFixed(1)} ${U} below target` : `${(-d).toFixed(1)} ${U} above target`) + (eta ? ` · ${eta}` : "");
+  }
+```
+
+The element's button needs nothing: in a hold it says HEATING or OFF, "tap to pause", whatever the PID does.
+
+### 2. The hold's words, in `#hold`
+
+BoilPower's notice as 0.0.3.post8 sends it, which I checked in its source and saw it log:
+"Boil Kettle: Holding 170.0, its target, instead of boiling: a PID sets the element's power, up to 100%. To boil, set
+its target to 206.6 or above. · from CraftBeerPi". It changes in `#hold`, and in `#whirlpool` and `#finished`, which are
+built on it (your demo.js line 162).
+
+### 3. The demo's numbers, from the plugin itself
+
+Rather than guess, I ran the real plugin with your `test_boilpower_pid_hold.py` model of the simulators' kettle (40 L,
+5.5 kW, losing 25 W/K, probe 20 s behind), from the stand's 166.3 °F with Heat and hold at 17:14:31, as in `#hold`. It
+reads, with the element's power:
+
+| After Heat and hold | Probe (the PV) | Power |
+| --- | --- | --- |
+| 5 s | 166.3 °F | 52 % |
+| 1 min | 166.4 °F | 59 % (the integral building up) |
+| 2 min | 167.2 °F | 41 % (the brake on the rise coming in) |
+| 3 min | 167.9 °F | 37 % |
+| 4 min 9 s, `#hold`'s 17:18:40 | 168.4 °F | 37 % |
+| 7.5 min | 169.5 °F | 31 % |
+| 11 min | 170.0 °F | 27 % |
+| 13 min on | 170.1 °F | 26 % |
+
+It climbs more slowly than the old hold did, and that's the point: it doesn't pass 170 °F. So `#hold` and
+`#whirlpool` now show what 8012 will:
+
+- **PV 168.4 °F** (was 169.4) and **OUT 37 %** (was 35).
+- The line: "1.6 °F below target · about 3 min at this rate", or "1.6 °F below target" without graphs.
+- The graph: the readings above at one-minute steps, and the OUT band from 56 % in the first minute down to 37 %.
+  `#finished` carries on to 170.0 °F at 17:25:30, with 26 % from 17:27, until the stand ends at 17:28:10.
+
+**An older BoilPower (`?bk=today`) keeps the old numbers**: 169.4 °F, 35 %, the eased band. That's what its own hold
+did, and it's the faceplate the screen keeps for one.
+
+### `holdOut`, for the demo's presses
+
+```js
+/* From 0.0.3.post8 a PID sets a hold's power: 14 % for each °F short, up to 100 %, plus what its integral has built up
+   near the target, less a brake on the wort's rise. A hold just begun has built up nothing (52 % at 3.7 °F short, the
+   plugin's first pass); one already running has built up about what the kettle loses where it holds, 21 % at 150 °F and
+   26 % at 170 °F on the simulators' kettle. An older BoilPower keeps _hold_climb_power, as now */
+function holdOut(T, pv, running) {
+  const below = T - pv;
+  if (M.BKNEW) return Math.round(Math.min(100, Math.max(0, 14 * below + (running ? Math.max(0, 21 + (T - 150) / 4) : 0))));
+  // …the older model, as now, with running in place of heating…
+}
+```
+
+`running` means the hold's PID was already going. That matches when the plugin makes a new one: as a hold begins, and
+again whenever the logic starts.
+
+- **AUTO switched on with a hold** (`setMode`): `false`, a new PID.
+- **Carrying on after a pause** (`cmdPause`): `true` with the new BoilPower. The PID keeps what it built up, and only
+  stops building while paused.
+- **A new target while AUTO runs** (`bkRetarget(was)`): `was` is `bkHolding()` taken just before the target changes, in
+  `cmdBkTgtSet` and in `stepTarget`. From one hold to another, the PID carries on; from BOIL, a hold starts a new one.
+  With an older BoilPower, `bkRetarget` keeps passing `el.on`.
+
+In the mockup, carrying on in `#hold` gives 48 % (14 × 1.6 + 26), and a Whirlpool step setting 170 °F from BOIL at
+166.3 °F gives 52 %.
+
+### Also changed
+
+- `boil-kettle.html`, the side-by-side page: `#hold`'s caption says SV 170.0, OUT 37 % and "1.6 °F below target", and
+  that a PID holds it.
+- DESIGN.md: the boil kettle's line no longer mentions resting. The two older sections here that described it ("The
+  boil kettle's target, KEEP BOILING and a forgotten pause") point to this one.
+
+### Moments whose pictures change
+
+- `#hold` and `#whirlpool`: the boil kettle's PV, OUT, line and graph. Also the event line on wider screens, because the
+  hold's notice is their newest line (on a phone its ellipsis comes before the words that changed).
+- `#finished`: the boil kettle's graph, in the 30-minute span.
+- LOG's hold notice in all three.
+- Nothing with `?bk=today`.
+
+### Changed, all in `proposal\`
+
+- `brew-day.js`:
+  - `#hold`: PV, OUT and the notice;
+  - `bkLine`: the rest branch gone;
+  - `holdOut`: the PID for the new BoilPower;
+  - `cmdPause`, `bkRetarget(was)`, and their callers `cmdBkTgtSet` and `stepTarget`.
+- `graphs.js`: `#hold` and `#finished`'s boil kettle history, for the new BoilPower.
+- `boil-kettle.html`: the caption.
+
+### Checked
+
+- **The plugin's own numbers**: 0.0.3.post8's source loaded by path, read-only, with your test's simulators' kettle.
+  Also held from cold to 150 °F (it passes it by 0.3 °F, then 20-21 %) and from 148 °F (28 % at once), which agree with
+  the model above.
+- **Presses**, 15 checks with the clock run forward:
+  - `#hold`: a pause, then carrying on, gives 48 %, and the line still reads like the HLT's. Retargeting to 165 °F,
+    above the wort, turns the element off, and the line says "3.4 °F above target". Back to 169 °F gives 34 %, BOIL 100 %,
+    and 170 °F from BOIL 22 %.
+  - With the element off 1.0 °F below the target, the line says only that, with no "heats again".
+  - AUTO switched off and on again gives a new PID, 14 %.
+  - The Whirlpool step from BOIL gives 52 %.
+  - `#handhold` is unchanged.
+  - `?bk=today` keeps the old model.
+  - No page errors.
+- **Pictures and lines**, before and after: all 32 moments at 1920×950, 960×1200 and 390×844 with graphs and without,
+  and at 1920×950 with `?bk=today` and `?timers=today`. 224 pictures, 208 identical. The other 16 are `#hold`,
+  `#whirlpool` and `#finished`, and checked region by region, each differs only in the boil kettle's faceplate and the
+  event line. Lines differ only in those three moments, and only in the hold's notice.
 
 ## Open questions about the drawing
 

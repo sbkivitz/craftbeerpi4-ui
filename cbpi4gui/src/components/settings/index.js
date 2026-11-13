@@ -25,7 +25,7 @@ const Settings = () => {
   const navigate = useNavigate();
   const go = useRef(navigate);
   go.current = navigate;
-  const { remove, hideStack, alerts, retiredReason, retiredAnswer, waitingNow, waitingN } = alert;
+  const { remove, hideStack, alerts, retiredReason, retiredAnswer, waitingNow, waitingN, seenNow, seenN } = alert;
 
   useEffect(() => {
     const qs = new URLSearchParams(window.location.search);
@@ -60,7 +60,8 @@ const Settings = () => {
   }, [remove, hideStack]);
 
   useEffect(() => {
-    if (frame.current) frame.current.update(liveSnap(state, alerts, retiredReason, waitingN ? { ids: waitingNow, n: waitingN } : null, retiredAnswer));
+    if (frame.current) frame.current.update(liveSnap(state, alerts, retiredReason, waitingN ? { ids: waitingNow, n: waitingN } : null, retiredAnswer,
+      seenN ? { ids: seenNow, n: seenN } : null));
     if (page.current) {
       page.current.update({
         connected: !!state.connection,
@@ -72,7 +73,7 @@ const Settings = () => {
         stepTypes: state.stepTypes,
       });
     }
-  }, [state, alerts, retiredReason, retiredAnswer, waitingNow, waitingN]);
+  }, [state, alerts, retiredReason, retiredAnswer, waitingNow, waitingN, seenNow, seenN]);
 
   return <div ref={ref} className="bd-root" />;
 };

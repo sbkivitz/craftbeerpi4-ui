@@ -84,6 +84,24 @@ export const AlertProvider = ({ children }) => {
   // question that isn't among them no longer waits.
   const waiting = useRef(null);
   const [waitingN, setWaitingN] = useState(0);
+  // The warnings and errors CraftBeerPi says were seen - OK'd on a page, or
+  // in BrewScribe - the last 100: the brew-day screen takes each down from
+  // its title bar. Told one by one as they are OK'd, and as a list when the
+  // page connects. seenN counts the changes, as waitingN counts the lists.
+  const seen = useRef(new Set());
+  const [seenN, setSeenN] = useState(0);
+  const addSeen = useCallback((ids) => {
+    let added = false;
+    for (const id of ids) {
+      if (seen.current.has(id)) continue;
+      seen.current.add(id);
+      added = true;
+      if (seen.current.size > 100) {
+        seen.current.delete(seen.current.values().next().value);
+      }
+    }
+    if (added) setSeenN((n) => n + 1);
+  }, []);
   // Hidden while the brew-day screen is open: its title bar shows the prompts
   // and errors, and the stack would cover its buttons. A count, so two
   // screens asking for it never undo each other.
@@ -110,13 +128,30 @@ export const AlertProvider = ({ children }) => {
         answers.current.delete(answers.current.keys().next().value);
       }
     }
+    if (reason === "seen") addSeen([id]);
     setAlerts((value) => {
       return value.filter((a) => a.id !== id);
     });
-  }, []);
+  }, [addSeen]);
   const retiredReason = useCallback((id) => reasons.current.get(id), []);
   const retiredAnswer = useCallback((id) => answers.current.get(id), []);
   const waitingNow = useCallback(() => waiting.current, []);
+  const seenNow = useCallback(() => seen.current, []);
+
+  // Sent on connecting: the warnings and errors seen so far. A page asleep in
+  // a background tab missed each one's notification_retired (Porter, 13 Nov).
+  const markSeen = useCallback((ids) => {
+    const gone = new Set(Array.isArray(ids) ? ids : []);
+    for (const id of gone) {
+      shown.current.delete(id);
+      reasons.current.set(id, "seen");
+      if (reasons.current.size > 100) {
+        reasons.current.delete(reasons.current.keys().next().value);
+      }
+    }
+    addSeen(gone);
+    setAlerts((value) => value.filter((a) => !gone.has(a.id)));
+  }, [addSeen]);
 
   // Drop every prompt - a notification with buttons - but those the server
   // still waits on. After a restart a page kept the prompts from before it,
@@ -182,6 +217,9 @@ export const AlertProvider = ({ children }) => {
     keepWaiting,
     waitingNow,
     waitingN,
+    markSeen,
+    seenNow,
+    seenN,
     hideStack,
   };
 

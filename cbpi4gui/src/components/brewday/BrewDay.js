@@ -7,8 +7,9 @@ import { createBrewDay } from "./screen";
 
 // CraftBeerPi's state as the screen's frame reads it, for the brew-day screen and the Settings page in its frame.
 // waiting: the prompts CraftBeerPi waits on (AlertProvider), with how many times it has sent the list. retired and
-// answer: why a prompt was taken down, and the button it was answered with when CraftBeerPi says
-export const liveSnap = (state, alerts, retired, waiting = null, answer = null) => ({
+// answer: why a prompt was taken down, and the button it was answered with when CraftBeerPi says. seen: the warnings
+// and errors OK'd on any page or in BrewScribe, with how many times that has changed
+export const liveSnap = (state, alerts, retired, waiting = null, answer = null, seen = null) => ({
   connected: !!state.connection,
   kettles: state.kettle,
   logic: state.logic,
@@ -23,6 +24,7 @@ export const liveSnap = (state, alerts, retired, waiting = null, answer = null) 
   retired,
   answer,
   waiting,
+  seen,
 });
 
 // The brew-day screen, Scott's fixed screen for brewing (layout B, chosen 9 Nov 2026). It is not drawn by
@@ -42,7 +44,7 @@ const BrewDay = () => {
   const navigate = useNavigate();
   const go = useRef(navigate);
   go.current = navigate;
-  const { remove, hideStack, alerts, retiredReason, retiredAnswer, waitingNow, waitingN } = alert;
+  const { remove, hideStack, alerts, retiredReason, retiredAnswer, waitingNow, waitingN, seenNow, seenN } = alert;
 
   useEffect(() => {
     const qs = new URLSearchParams(window.location.search);
@@ -73,8 +75,9 @@ const BrewDay = () => {
 
   useEffect(() => {
     if (!screen.current) return;
-    screen.current.update(liveSnap(state, alerts, retiredReason, waitingN ? { ids: waitingNow, n: waitingN } : null, retiredAnswer));
-  }, [state, alerts, retiredReason, retiredAnswer, waitingNow, waitingN]);
+    screen.current.update(liveSnap(state, alerts, retiredReason, waitingN ? { ids: waitingNow, n: waitingN } : null, retiredAnswer,
+      seenN ? { ids: seenNow, n: seenN } : null));
+  }, [state, alerts, retiredReason, retiredAnswer, waitingNow, waitingN, seenNow, seenN]);
 
   return <div ref={ref} className="bd-root" />;
 };

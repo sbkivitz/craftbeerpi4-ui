@@ -362,15 +362,16 @@ function pausedFor() {
 /* the line under the boil kettle's window */
 function bkLine() {
   const V = st.v.bk, el = st.a.bkEl, ho = bkHoldT(), U = M.U;
-  if (V.mode !== "auto") return "MANUAL · element by hand";
+  if (V.mode !== "auto") { const w = byHand("bk"); return w ? byHandLine("bk", w) : "MANUAL · element by hand"; }
   /* a forgotten pause would quietly stop the boil, so the line counts it, in Prompt Amber like the button */
   if (el.paused) return `<span class="warn">Heat paused for <span id="pz">${mmss(pausedFor())}</span></span>`;
-  /* a hold is a target like the HLT's, so its line reads like the HLT's. Inside the margin below it BoilPower rests rather
-     than heat, so then the line says where it heats again, and an element that's off isn't taken for a fault */
+  /* a hold is a target like the HLT's, and from BoilPower 0.0.3.post8 a PID holds it as the HLT's PID holds its own, so
+     its line reads exactly like the HLT's (core M86; the dashboard agent's hand-off of 13 Nov). The element can be off
+     just below the target while the wort still rises, and comes back on as the rise slows, so the line no longer says
+     where it heats again */
   if (ho != null) {
     const d = ho - V.pv;
     if (Math.abs(d) < 0.3) return "At target";
-    if (d > 0 && !el.on) return `${d.toFixed(1)} ${U} below target · heats again at ${+(ho - margin()).toFixed(1)} ${U}`;
     const eta = GRAPHS ? graphETA(G(), "bk") : "";
     return (d > 0 ? `${d.toFixed(1)} ${U} below target` : `${(-d).toFixed(1)} ${U} above target`) + (eta ? ` · ${eta}` : "");
   }
@@ -381,12 +382,19 @@ function bkLine() {
   const eta = GRAPHS ? graphETA(G(), "bk").replace(" at this rate", "") : "";
   return "Full power until it boils" + (eta ? ` · ${eta}` : "");
 }
-/* BoilPower's output in a hold (_hold_climb_power): full power from 7.2 °F below, easing to Hold_Power (30 %) at the hold,
-   off at or above it; inside 3.6 °F it only carries on heating, so a fresh start there rests. For the demo, in °F. */
-function holdOut(T, pv, heating) {
+/* BoilPower's output in a hold. From 0.0.3.post8 (M.BKNEW) a PID sets it (Scott, 13 Nov: "I think the boilPower should
+   also be able to do PID control"; core M86): 14 % for each °F short, up to 100 %, plus what its integral has built up
+   near the target, less a brake on the wort's rise. For the demo, the first moment: a hold just begun has built up
+   nothing, so it starts at 14 % a °F short (52 % at 3.7 °F, the plugin's first pass on the simulators' kettle). One
+   already running (running) has built up about what the kettle loses where it holds, 21 % at 150 °F and 26 % at 170 °F
+   on the simulators' kettle, so it carries on from that, a little past the target too. An older BoilPower
+   (_hold_climb_power): full power from 7.2 °F below, easing to Hold_Power (30 %) at the hold, off at or above it; inside
+   3.6 °F it only carries on heating (running: it was heating), so a fresh start there rests. For the demo, in °F. */
+function holdOut(T, pv, running) {
   const below = T - pv;
+  if (M.BKNEW) return Math.round(Math.min(100, Math.max(0, 14 * below + (running ? Math.max(0, 21 + (T - 150) / 4) : 0))));
   if (below >= 7.2) return 100;
-  if (below <= 0 || (below <= 3.6 && !heating)) return 0;
+  if (below <= 0 || (below <= 3.6 && !running)) return 0;
   return Math.trunc(30 + 70 * below / 7.2);
 }
 /* ending a pause (carrying on, MANUAL, ALL OFF) also takes CraftBeerPi's forgotten-pause warning down (demo) */
@@ -491,6 +499,30 @@ function editorHTML(v) {
     <button type="button" data-cmd="tstep:0.1" aria-label="Up 0.1 degree">+.1</button><button type="button" data-cmd="tstep:1" aria-label="Up 1 degree">+1</button>
     <button type="button" class="ok" data-cmd="tset">SET <span id="tok">${x}</span> ${M.U}</button><button type="button" class="no" data-cmd="tcancel">CANCEL</button></div>`;
 }
+/* an element on by hand (Scott, 13 Nov: "Oh! I turned the HLT element on without using 'Auto'... that is dangerous" and
+   "Maybe a warning?"): its vessel in MANUAL, and no AUTO running it, neither its own nor the mash tun's HERMS. In MANUAL
+   nothing compares the temperature with the target, so the element runs until someone turns it off. t: the target it
+   won't stop at (the HLT's SV; the proposed boil kettle's, when it is below where BOIL starts), or null: none, or one
+   at or past where BOIL starts, which the wort or water boils before it reaches. over: "boil" from where BOIL starts,
+   else "target" from 2 °F (1 °C) past the target, else "". The boil kettle with its target at BOIL, or none, boils by
+   hand as a boil kettle should: not this. CraftBeerPi raises its alarm for the same (core M87, cbpi/extension/byhand) */
+const byOver = () => M.U === "°C" ? 1 : 2;
+function byHand(v) {
+  const el = v === "hlt" ? st.a.hltEl : v === "bk" ? st.a.bkEl : null, V = st.v[v];
+  if (!el || !el.on || el.by || V.mode === "auto" || (v === "hlt" && st.v.mt.mode === "auto")) return null;
+  if (v === "bk" && !(M.BKNEW && bkHoldT() != null)) return null;
+  const raw = v === "bk" ? bkHoldT() : V.sv, t = raw != null && raw < bkLetGo() ? raw : null;
+  return {t, over: V.pv >= bkLetGo() ? "boil" : t != null && V.pv >= t + byOver() ? "target" : ""};
+}
+/* while it heats by hand, the line under the window says nothing will stop it, in Prompt Amber, in the words of the
+   lines it stands in for ("below target") and of the element's button ("tap to turn off"); past its target, or near the
+   boil, in light red, with CraftBeerPi's alarm in the title bar. Each fits one line at the narrowest faceplate, 229 px at
+   1180 px wide, so the buttons under it don't move as it changes */
+function byHandLine(v, w) {
+  if (w.over === "target") return `<span class="alarm">${(st.v[v].pv - w.t).toFixed(1)} ${M.U} above target · heating by hand</span>`;
+  if (w.over === "boil") return `<span class="alarm">Near the boil · heating by hand</span>`;
+  return `<span class="warn">Heating by hand · ${w.t != null ? "won't stop at target" : "until you turn it off"}</span>`;
+}
 function devHTML(v) {
   const stale = s => `<span class="stale">${s}</span>`;
   if (st.link === "lost") return st.age == null ? stale("No reading yet") : `<span class="age">Last reading ${st.age} s ago</span>`;
@@ -503,6 +535,8 @@ function devHTML(v) {
      Amber, and never calls it MANUAL; CraftBeerPi's own warning follows in the title bar after 5 s (Scott, 10 Nov) */
   if (herms && st.v.mt.sv == null) return `<span class="warn">Not heating: the mash tun has no target</span>`;
   if (noTarget(v)) return `<span class="warn">${v === "mt" && M.HERMS !== false ? "No target, so the HLT won't heat" : "No target, so it won't heat"}</span>`;
+  const w = byHand(v);
+  if (w) return byHandLine(v, w);
   if (!driven || V.sv == null) return v === "mt" ? "MANUAL · wort pump by hand" : "MANUAL · element by hand";
   if (v === "bk" && V.pv >= V.sv - 0.5) return "Boiling";
   const d = V.sv - V.pv;
@@ -1050,7 +1084,7 @@ function cmdBkTgtSet(val) {
   const cav = [!boil && auto && inBoil ? "it holds instead of boiling; the Boil step's timer carries on" : "", auto && el.paused ? "the heat stays paused" : ""].filter(Boolean).join("; ");
   const label = `${M.VNAME.bk} target ${boil ? "BOIL" : `${T.toFixed(1)} ${M.U}`}`;
   if (!DEMO_MODE) return liveTarget("bk", T, label, cav);
-  send("t:bk", "set", label, () => { V.sv = T; bkRetarget(); }, cav);
+  send("t:bk", "set", label, () => { const was = bkHolding(); V.sv = T; bkRetarget(was); }, cav);
 }
 /* BOIL AT: where full power gives way to the boil power (190-212 °F, 88-100 °C, as BoilPower takes it; above the boiling
    point the wort may never get there). A target at BOIL moves with it, so raising the boil point never turns BOIL into a
@@ -1144,28 +1178,30 @@ function cmdPause(on) {
     el.failed = null;
     if (on) { el.paused = true; el.pausedAt = st.t; el.on = false; el.pct = 0; return; }
     endPause();
-    const ho = bkHoldT(), p = ho != null ? holdOut(ho, V.pv, false) : bkLatched() ? V.bp : 100;
+    /* a hold's PID kept what it had built up through the pause (it stops building up while paused) */
+    const ho = bkHoldT(), p = ho != null ? holdOut(ho, V.pv, !!M.BKNEW) : bkLatched() ? V.bp : 100;
     el.on = p > 0; el.pct = p;
   });
 }
 /* the new boil kettle, after its target changes while AUTO runs: BOIL heats at full power until the boil point, then at the
-   boil power; a hold eases in, or rests while the wort is above it. A paused element stays off. (Demo.) */
-function bkRetarget() {
+   boil power; a hold's PID sets the power, none once the wort is well above it. was: it was holding before the change, so
+   its PID carries on with what it had built up; from BOIL a hold starts a new one. A paused element stays off. (Demo.) */
+function bkRetarget(was = false) {
   const V = st.v.bk, el = st.a.bkEl, ho = bkHoldT();
   if (V.mode !== "auto") return;
   V.latched = ho == null && V.pv >= boilFrom();
   if (el.paused) return;
-  const p = ho == null ? (V.latched ? V.bp : 100) : holdOut(ho, V.pv, el.on);
+  const p = ho == null ? (V.latched ? V.bp : 100) : holdOut(ho, V.pv, M.BKNEW ? was : el.on);
   el.on = p > 0; el.pct = p;
 }
 /* a recipe step sets its kettle's target. With the new BoilPower the Boil step sets the boil kettle's target to BOIL (the
    boil point), so a hold left from the day before can't stop a boil. (Demo.) */
 function stepTarget(s) {
-  const pw = bkNew(s.k);
+  const pw = bkNew(s.k), was = pw && bkHolding();
   st.v[s.k].sv = pw && s.boil ? boilFrom() : s.temp;
   if (st.v[s.k].mode !== "auto") setMode(s.k, "auto");
   else if (s.k === "mt") st.v.hlt.sv = +(s.temp + M.HERMS_DELTA).toFixed(1);
-  else if (pw) bkRetarget();
+  else if (pw) bkRetarget(was);
 }
 function stepStart(i) {
   const r = st.recipe, s = M.RECIPE.steps[i], was = M.RECIPE.steps[r.cur], moved = was && i !== r.cur;
@@ -1327,6 +1363,10 @@ function cmdBanner(x) {
       if (said) timers.push(setTimeout(() => { logEvent(`${s.n}: ${said}`, "from CraftBeerPi", ""); renderAll(); }, 300));
     });
   }
+  /* OK on CraftBeerPi's own warning or error, one without buttons (cbpi): it goes from every screen's title bar, and its
+     lines say "seen", a warning's in the plain colour, an error's still red (the dashboard agent's hand-off of 13 Nov).
+     No line of its own. (Demo; live, liveOk.) */
+  else if (st.banner && st.banner.cbpi) { seenLines(`${st.banner.title}: ${st.banner.text}`); st.banner = null; renderAll(); }
   /* OK: the rest timer's alarm, or a warning that waits for one (no target, a forgotten pause) */
   else { if (st.banner) questionGone(st.banner.title); st.banner = null; renderAll(); }
 }
@@ -1915,8 +1955,7 @@ function run(cmd) {
       if (x === "ok") st.alarm = null;
       return renderAll();
     case "p": return livePrompt(x, y);
-    case "e": st.errors = st.errors.filter(e => String(e.id) !== x); return renderAll();
-    case "w": st.warnings = st.warnings.filter(w => String(w.id) !== x); warningsGone(); return renderAll();
+    case "e": case "w": return liveOk(k, x);
     case "alloff": return DEMO_MODE ? cmdAllOff() : liveAllOff();
     case "log": st.logOpen = !st.logOpen; return renderAll();
     case "tm": return DEMO_MODE ? cmdTimer(x) : liveTimer(x);
@@ -1940,7 +1979,7 @@ function blankMoment() {
     tmrs: [], names: [], tedit: null, snd: soundInit(),
     events: loadEvents(), pend: {}, notes: {}, edit: null, confirmNext: false, logOpen: false,
     fail: {}, expect: {}, alarm: null, errors: [], warnings: [], prompts: [], lostAt: null, openedAt: Date.now(),
-    waitN: 0, oldAt: 0};
+    waitN: 0, oldAt: 0, seenN: 0, seenDone: new Set()};
 }
 function expected(key, raw) {
   const x = st.expect[key];
@@ -2089,7 +2128,15 @@ function liveBanner() {
   }
   const queue = [], isNew = id => newIds.has(String(id));
   if (st.alarm) queue.push(st.alarm);
-  st.errors.forEach(e => queue.push({tone: "alarm", title: ut(e.title || "Error"), text: ut(e.message || ""), act: "OK", cmd: `e:${e.id}`, fresh: isNew(e.id)}));
+  /* CraftBeerPi's errors, the same words once, as its warnings are: the count says how many presses are left, and one OK
+     clears every copy (the dashboard agent's hand-off of 13 Nov). Each copy keeps its own line */
+  const errs = new Set();
+  st.errors.forEach(e => {
+    const k = `${e.title}\n${e.message}`;
+    if (errs.has(k)) return;
+    errs.add(k);
+    queue.push({tone: "alarm", title: ut(e.title || "Error"), text: ut(e.message || ""), act: "OK", cmd: `e:${e.id}`, fresh: isNew(e.id)});
+  });
   // the held boil's question (liveRecipe, held): its button puts heat on, so it takes a held press, as START does
   const hs = st.recipe && st.recipe.held ? M.RECIPE.steps[st.recipe.cur] : null;
   const ask = p => {
@@ -2123,14 +2170,63 @@ function addWarning(id, title, message) {
   if (st.warnings.length > 10) { st.warnings.shift(); warningsGone(); }
 }
 /* a warning's line is amber only while the warning waits in this screen's title bar for OK. Once it has gone (OK, or pushed
-   out by newer ones), each line with its words takes the plain colour and keeps "from CraftBeerPi": OK tells CraftBeerPi
-   nothing, so it doesn't say "answered" (the dashboard agent's hand-off of 12 Nov, late afternoon). Lines kept from an
-   earlier page load plain: this page's title bar has no warnings yet. Errors stay red */
+   out by newer ones), each line with its words takes the plain colour and keeps "from CraftBeerPi" (the dashboard agent's
+   hand-off of 12 Nov, late afternoon); one OK'd anywhere also says "seen" (seenLines). Lines kept from an earlier page
+   load plain: this page's title bar has no warnings yet. Errors stay red */
 function warningsGone() {
   const shown = new Set((st.warnings || []).map(w => `${ut(w.title)}: ${ut(w.message)}`));
   let changed = false;
   for (const e of st.events) if (e[2] === "from CraftBeerPi" && e[3] === "wait" && !shown.has(e[1])) { e[3] = ""; changed = true; }
   if (changed) saveEvents();
+}
+/* CraftBeerPi's warning or error OK'd, here or on any screen or in BrewScribe (CraftBeerPi tells every page, with its
+   earlier copies in the same words; core M88): each of its lines says "seen". A warning's turns plain, as it no longer
+   waits; an error's stays red, as it records that something went wrong (The Amber Means Waiting Rule; the dashboard
+   agent's hand-off of 13 Nov). A line already plain, its warning pushed out or kept from an earlier page, is left */
+function seenLines(words) {
+  st.events.forEach(e => {
+    if (e[1] !== words || e[2] !== "from CraftBeerPi" || (e[3] !== "wait" && e[3] !== "bad")) return;
+    e[4] = "seen";
+    if (e[3] === "wait") e[3] = "";
+  });
+}
+/* OK on CraftBeerPi's warning or error, one without buttons: every copy in its words goes from this title bar, and
+   CraftBeerPi is told, so it goes from every screen's title bar and from BrewScribe too (Scott, 13 Nov: "the alerts that
+   I've already acknowledged in BrewDay are there waiting for me in BrewScribe.. that's annoying"). No line of its own.
+   Nothing waits on CraftBeerPi's answer: one from before a restart, or more than 100 ago, it no longer knows, and that
+   one goes from this screen only */
+function liveOk(k, id) {
+  const a = (k === "e" ? st.errors : st.warnings).find(x => String(x.id) === id);
+  if (a) seenHere(`${ut(a.title)}: ${ut(a.message)}`);
+  api.seen(id);
+  renderAll();
+}
+/* a warning or an error seen, by its words: each copy leaves the title bar, and their lines say "seen" */
+function seenHere(words) {
+  const same = x => `${ut(x.title)}: ${ut(x.message)}` === words;
+  st.errors = st.errors.filter(x => !same(x));
+  st.warnings = st.warnings.filter(x => !same(x));
+  seenLines(words);
+  warningsGone();
+  saveEvents();
+}
+/* CraftBeerPi says warnings or errors were seen: OK'd on another screen or in BrewScribe (notification_retired, reason
+   "seen"), or before this page connected (notification_seen). Each leaves the title bar with no line and no beep, and
+   its lines say "seen" (the dashboard agent's hand-off of 13 Nov). Each id once: a copy that comes later is news. A
+   warning shown once for its copies is found by any copy's id, through that copy's own line */
+function seenElsewhere(snap) {
+  const s = snap.seen;
+  if (!s || s.n === st.seenN) return;
+  st.seenN = s.n;
+  const words = new Set();
+  for (const id of s.ids() || []) {
+    if (st.seenDone.has(id)) continue;
+    st.seenDone.add(id);
+    const a = st.errors.find(x => String(x.id) === id) || st.warnings.find(x => String(x.id) === id);
+    if (a) words.add(`${ut(a.title)}: ${ut(a.message)}`);
+    for (const e of st.events) if (e[7] === id && e[2] === "from CraftBeerPi") words.add(e[1]);
+  }
+  words.forEach(seenHere);
 }
 /* a step starting, or resuming after a Stop, for the event line. A SpargeStep says what it does as it starts (the design,
    10 Nov): it heats the sparge water with the mash tun MANUAL, or with no water to heat leaves the pumps to the brewer.
@@ -2283,8 +2379,8 @@ function logAlert(a) {
   const tm = Array.isArray(a.action) && a.action.length ? promptTimer(a) : null;
   if (tm) { if (!askedBefore(id, `${tm.name} finished`)) logEvent(`${tm.name} finished`, "waiting for you", "wait", "", false, id); say(`${tm.name}: time's up.`, true); }
   else if (Array.isArray(a.action) && a.action.length) { if (!askedBefore(id, line)) logEvent(line, "waiting for you", "wait", "", false, id); say(`${title}. ${msg}`, true); }
-  else if (type === "error") { st.errors.push({id, title: a.title, message: a.message}); logEvent(line, "from CraftBeerPi", "bad"); say(`${title}. ${msg}`, true); }
-  else if (type === "warning") { addWarning(id, a.title, a.message); logEvent(line, "from CraftBeerPi", "wait"); say(`${title}. ${msg}`); }
+  else if (type === "error") { st.errors.push({id, title: a.title, message: a.message}); logEvent(line, "from CraftBeerPi", "bad", "", false, id); say(`${title}. ${msg}`, true); }
+  else if (type === "warning") { addWarning(id, a.title, a.message); logEvent(line, "from CraftBeerPi", "wait", "", false, id); say(`${title}. ${msg}`); }
   else if (!ROUTINE.test(String(a.message || "").trim())) logEvent(line, "from CraftBeerPi", "");
 }
 /* a page opened later: the lines kept on this device can hold a question that still waited as the last page closed. Once
@@ -2550,6 +2646,23 @@ function demoTick() {
     say(`${st.banner.title}. ${st.banner.text}`, true);
     renderAll();
   }
+  /* CraftBeerPi's alarm for an element on by hand (core M87; the dashboard agent's hand-off of 13 Nov): 2 °F past its
+     target, or where BOIL starts, for 30 s of the brewing clock. At most twice a stretch of heating by hand: once past the
+     target, once near the boil, so an OK'd alarm left unheeded comes back before the water boils. A stretch ends when the
+     element is off, the vessel in AUTO, or the target changes. Behind another prompt it waits its turn here, as the others
+     do; live, the title bar puts it first, as CraftBeerPi sends it as an error */
+  ["hlt", "bk"].forEach(v => {
+    const V = st.v[v], w = byHand(v);
+    if (!w || w.t !== V.byT) { V.byFor = 0; V.byRaised = []; V.byT = w ? w.t : undefined; }
+    if (!w || !w.over || (V.byRaised || []).includes(w.over)) { V.byFor = 0; return; }
+    V.byFor = (V.byFor || 0) + 1;
+    if (V.byFor < 30 || st.banner) return;
+    V.byRaised = [...(V.byRaised || []), w.over]; V.byFor = 0;
+    st.banner = DEMO.byHandBanner(v, w);
+    logEvent(`${DEMO.KNAME[v]}: ${st.banner.text}`, "from CraftBeerPi", "bad");
+    say(`${DEMO.KNAME[v]}. ${st.banner.text}`, true);
+    renderAll();
+  });
   if (r && r.state === "running" && r.left > 0 && !r.wait) {
     r.left--;
     const s = M.RECIPE.steps[r.cur], pct = s.min ? Math.round(100 * (1 - r.left / (s.min * 60))) + "%" : "0%";
@@ -2751,6 +2864,7 @@ export function createBrewDay(el, o = {}) {
       if (openIds == null && snap.waiting && snap.waiting.n === 1) openIds = new Set(snap.waiting.ids() || []);
       observe(prev, snap);
       noLongerWaiting(snap);
+      seenElsewhere(snap);
       if (snap.connected) everConnected = true;
       schedule();
     },
