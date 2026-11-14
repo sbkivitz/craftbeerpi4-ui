@@ -566,7 +566,7 @@ function onInput(e) {
   const row = f.closest && f.closest(".row");
   if (!row) return;
   if (f.tagName === "TEXTAREA") {
-    // one line, as the page's text boxes are now: a pasted line break becomes a space
+    // the page's text boxes hold one line: a pasted line break becomes a space
     const v = f.value.replace(/^(\r\n|\r|\n)+|(\r\n|\r|\n)+$/g, "").replace(/(\r\n|\r|\n)+/g, " ");
     if (v !== f.value) f.value = v;
     f.style.height = "auto"; f.style.height = f.scrollHeight + 2 + "px";
