@@ -189,7 +189,7 @@ export function model(snap) {
   const roleOf = {};
   for (const v of ROLES) if (K[v]) roleOf[K[v].id] = v;
   const steps = (snap.steps || []).filter(Boolean).map((s) => stepModel(s, roleOf, U));
-  // the new boil kettle (BUILD-NOTES, 10 Nov): a BoilPower whose target is BOIL or a hold, from 0.0.3.post7
+  // the new boil kettle: a BoilPower whose target is BOIL or a hold, from 0.0.3.post7
   const BKNEW = !!K.bk && declares(snap.logic, K.bk.type, "set_boil_at");
   return {
     K, A, VNAME, ACT, VACT, U, C,

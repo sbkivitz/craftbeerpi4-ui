@@ -18,12 +18,11 @@ const RECIPE = {
   ]
 };
 /* step 4 as recipes in the book have it (a MashStep on the mash tun, whose HERMS runs the wort pump), and as a recipe
-   imported on core 4.7.7.post35 or later has it: a SpargeStep on the HLT (Scott, 10 Nov: "sparge step needs to let the
-   HLT get up to mash out temperature before pumping wort over to boil kettle. I also may do a "batch sparge" - it
-   should be flexible to let me do either"). It heats the sparge water on the HLT's own AUTO with the mash tun's AUTO
-   off, switches each pump off for its hose to move (the wort pump as it starts, the HLT pump as the water is ready:
-   core 1c08d4c), asks "Sparge started", then leaves both pumps to the brewer. The sparge-… moments and boil-hold use
-   it (sparge4: the screen's demo recipe then has it as step 4); every other moment keeps the MashStep. */
+   imported on core 4.7.7.post35 or later has it: a SpargeStep on the HLT, which lets the HLT reach mash-out temperature
+   before wort goes over to the boil kettle, for a fly or a batch sparge. It heats the sparge water on the HLT's own AUTO
+   with the mash tun's AUTO off, switches each pump off for its hose to move (the wort pump as it starts, the HLT pump as
+   the water is ready), asks "Sparge started", then leaves both pumps to the brewer. The sparge-… moments and boil-hold
+   use it (sparge4: the screen's demo recipe then has it as step 4); every other moment keeps the MashStep. */
 const SPARGE_STEP = {n: "Sparge", type: "SpargeStep", temp: 168, min: 40, k: "hlt"};
 const WFY = "WAITING FOR YOU";
 const VNAME = {hlt: "Hot liquor tank", mt: "Mash tun", bk: "Boil kettle"};
@@ -39,7 +38,7 @@ const HERMS_DELTA = 5.4; // PID_HERMS DeltaTemp in the simulator
 /* BoilPower, the boil kettle's logic: below its boil point it heats at full power (Max_Output); once the wort reaches it, it
    holds the element at Boil_Power, which the brewer sets with set_boil_power (45 % on the simulators), until the wort falls
    3.6 °F (2 °C) below again. From 0.0.3.post7 the boil point is a setting of its own, Boil_Threshold (BOIL_TH, 210.2 °F on
-   Scott's set-up; set_boil_at), and the kettle's target is an ordinary target, as on the HLT: within 3.6 °F of the boil
+   the rig; set_boil_at), and the kettle's target is an ordinary target, as on the HLT: within 3.6 °F of the boil
    point or above, or none, means BOIL; a lower one is a temperature to hold. */
 const BOIL_TH = 210.2;
 const BOOK = [ // the simulator's Recipe Book (config/recipes/*.yaml)
@@ -65,10 +64,10 @@ const MASH_EVENTS = [
    kettle target BOIL"). `from` is the boil point, so a moment can call it before the screen has state (the mockup's
    boilStartLine, with ?bk=power) */
 const boilStartLine = (s, from = BOIL_TH) => `${s.n} started, boil kettle target ${s.temp >= +(from - 3.6).toFixed(1) ? "BOIL" : `${s.temp.toFixed(1)} °F`}`;
-/* the #hop day from the end of the sparge (the MashStep) to the boil's start, newest first, in the order the screen logs it
-   (the live runs, 12 Nov): a step's line first, then what CraftBeerPi says because of it. The sparge ending switched the HLT
-   pump off, and the boil waited for Scott; he started it with START THE BOIL. The wort pump was already off, so the boil's
-   start had no pump to switch off */
+/* the #hop day from the end of the sparge (the MashStep) to the boil's start, newest first, in the order the screen logs it:
+   a step's line first, then what CraftBeerPi says because of it. The sparge ending switched the HLT pump off, and the boil
+   waited for the brewer, who started it with START THE BOIL. The wort pump was already off, so the boil's start had no
+   pump to switch off */
 const boilDay = () => [
   ["15:01:47", boilStartLine(RECIPE.steps[4]), "by recipe", ""],
   ["15:01:45", "Boil answered: Start the boil", "confirmed", "ok"],
@@ -110,7 +109,7 @@ const SCENES = {
     s.events.unshift(["16:00:31", "Hop Alert answered: Added", "confirmed", "ok"]);
     return Object.assign(s, {base: "hop", open: {edit: {v: "bk", kind: "pwr", what: "boil", val: 40}}});
   },
-  /* the boil kettle's three phases in AUTO (Scott, 10 Nov: the power and temperature controls were "not intuitive").
+  /* the boil kettle's three phases in AUTO.
      Heating up: the Boil step has started and BoilPower runs at full power until 210.2 °F; the step's 90 min timer waits
      for that. Same day and history as #hop, 18 minutes before it boils. A recipe started from its first step went back
      to the usual boil power, here after a brew day that ended at 35 % (in LOG). */
@@ -124,8 +123,8 @@ const SCENES = {
       ["10:02:16", "Boil power back to your usual 45 % (was 35 %)", "by recipe", ""]
     ]
   }),
-  /* boiling hard: the simulator boils at 212 °F, so PV sits above the 210.2 °F boil point (Scott on 8012, 10 Nov: "It
-     pegs at 212 - over SV"). BoilPower holds the element at the boil power. */
+  /* boiling hard: the simulator boils at 212 °F, so PV sits above the 210.2 °F boil point, over SV. BoilPower holds the
+     element at the boil power. */
   boiling: () => Object.assign(SCENES.hop(), {
     t: 15 * 3600 + 52 * 60 + 40, banner: null,
     v: {hlt: {pv: 165.6, sv: 168.0, own: 168.0, mode: "manual"}, mt: {pv: 151.4, sv: null, mode: "manual"}, bk: {pv: 212.0, sv: 210.2, mode: "auto"}},
@@ -135,7 +134,7 @@ const SCENES = {
       ...boilDay()
     ]
   }),
-  /* a boil-over: 76 s into the boil the hot break foams up, and Scott taps the element button at 15:30:55: the heat pauses */
+  /* a boil-over: 76 s into the boil the hot break foams up, and the brewer taps the element button at 15:30:55: the heat pauses */
   pause: () => {
     const s = SCENES.boiling();
     s.t = 15 * 3600 + 31 * 60 + 20;
@@ -146,21 +145,20 @@ const SCENES = {
     s.events.unshift(["15:30:55", "BOIL ELEMENT paused", "confirmed", "ok"]);
     return s;
   },
-  /* the whirlpool hold: the stand cooled to 166.3 °F, Scott answered "Heat and hold?", and the step set the kettle's target
-     to 170 °F, which BoilPower holds. The boil power isn't used. From 0.0.3.post8 a PID holds it (Scott, 13 Nov: "I think
-     the boilPower should also be able to do PID control"). On the simulators' kettle, as the plugin's own test models it,
-     it climbs slowly so as not to pass 170 °F: 52 % at once, 59 % a minute on as the integral builds, then easing as the
-     brake on the rise comes in. At 17:18:40, 4 minutes in, the wort is at 168.4 °F with the element at 37 %; it reaches
-     170 °F at about 17:25:30 and holds it at 26 % (the dashboard agent's hand-off of 13 Nov). */
+  /* the whirlpool hold: the stand cooled to 166.3 °F, the brewer answered "Heat and hold?", and the step set the kettle's
+     target to 170 °F, which BoilPower holds. The boil power isn't used: from 0.0.3.post8 a PID holds it. On the
+     simulators' kettle, as the plugin's own test models it, it climbs slowly so as not to pass 170 °F: 52 % at once,
+     59 % a minute on as the integral builds, then easing as the brake on the rise comes in. At 17:18:40, 4 minutes in,
+     the wort is at 168.4 °F with the element at 37 %; it reaches 170 °F at about 17:25:30 and holds it at 26 %. */
   hold: () => Object.assign(SCENES.hop(), {
     t: 17 * 3600 + 18 * 60 + 40, banner: null,
     v: {hlt: {pv: 156.8, sv: 168.0, own: 168.0, mode: "manual"}, mt: {pv: 139.6, sv: null, mode: "manual"}, bk: {pv: 168.4, sv: 170.0, mode: "auto"}},
     a: {hltEl: {on: false, pct: 0}, hltPump: {on: false}, wortPump: {on: false}, bkEl: {on: true, pct: 37}},
     recipe: {state: "running", cur: 6, left: 9 * 60 + 30, adds: []},
-    /* as the screen logs them: read from the core, screen.js's observe() and BoilPower (the dashboard agent's hand-off of
-       12 Nov, afternoon). The Boil's "Boiling completed" is one of the routine notices the screen leaves out; Whirlpool
-       Hop, a NotificationStep, asks a moment after it starts and moves on when NEXT STEP answers it; the stand asks in
-       CraftBeerPi's own words; and the new BoilPower says what it does as it starts to hold, in 0.0.3.post8's words */
+    /* as the screen logs them: read from the core, screen.js's observe() and BoilPower. The Boil's "Boiling completed" is
+       one of the routine notices the screen leaves out; Whirlpool Hop, a NotificationStep, asks a moment after it starts
+       and moves on when NEXT STEP answers it; the stand asks in CraftBeerPi's own words; and BoilPower 0.0.3.post8 says
+       what it does as it starts to hold */
     events: [
       ["17:14:32", `${KNAME.bk}: Holding 170.0, its target, instead of boiling: a PID sets the element's power, up to 100%. To boil, set its target to 206.6 or above.`, "from CraftBeerPi", ""],
       ["17:14:31", "Whirlpool answered: Heat and hold", "confirmed", "ok"],
@@ -173,18 +171,17 @@ const SCENES = {
       ["17:00:04", "Boil finished", "by recipe", ""]
     ]
   }),
-  /* the same whirlpool hold with the wort pump running, as Scott whirlpools (Scott, 12 Nov: "whirlpool / hop-stand step
-     pump symbol shows it going through the HERMS coil"). From the boil's start the drawing has the pump at the boil
-     kettle, on a short loop through the chiller (he chose it on 12 Nov), lit here */
+  /* the same whirlpool hold with the wort pump running, for a whirlpool. From the boil's start the drawing has the pump at
+     the boil kettle, on a short loop through the chiller, not through the HERMS coil; lit here */
   whirlpool: () => {
     const s = SCENES.hold();
     s.a.wortPump = {on: true};
     s.events.splice(s.events.findIndex(e => e[0] < "17:08:16"), 0, ["17:08:16", "WORT PUMP started", "confirmed", "ok"]);
     return Object.assign(s, {base: "hold"});
   },
-  /* the recipe has finished, and Scott chills the wort. The #whirlpool day: the stand ended at 17:28:10 and switched the
+  /* the recipe has finished, and the brewer chills the wort. The #whirlpool day: the stand ended at 17:28:10 and switched the
      boil kettle off, and the wort pump runs on through the chiller. CraftBeerPi keeps the recipe's steps, all done, so the
-     pump stays drawn at the boil kettle until a recipe is loaded or reset, or the mash tun's AUTO is on (Scott, 12 Nov).
+     pump stays drawn at the boil kettle until a recipe is loaded or reset, or the mash tun's AUTO is on.
      The drawing can't show the wort going on to the fermenter */
   finished: () => {
     const s = SCENES.whirlpool();
@@ -206,11 +203,10 @@ const SCENES = {
       timer: {left: 60 * 60, running: false}
     });
   },
-  /* Scott on 8012, 10 Nov: he set the boil power to 2 % and asked why the kettle held about 210 °F. At 2 % the kettle can't
-     hold a boil; BoilPower lets go 3.6 °F below its boil point and heats at full power until it boils again, so it cycles
-     between about 206 and 211 °F. keepboil: KEEP BOILING ticked, 3¾ min into a fall at 2 %, its line saying what comes
-     next. letfall: unticked at 16:10:21, so BoilPower stays at 2 % and the wort falls below a boil, as Scott chose. Both:
-     the #hop day at 16:31:10. */
+  /* the boil power at 2 %: the kettle can't hold a boil, so BoilPower lets go 3.6 °F below its boil point and heats at
+     full power until it boils again, cycling between about 206 and 211 °F. keepboil: KEEP BOILING ticked, 3¾ min into a
+     fall at 2 %, its line saying what comes next. letfall: unticked at 16:10:21, so BoilPower stays at 2 % and the wort
+     falls below a boil. Both: the #hop day at 16:31:10. */
   keepboil: () => {
     const s = SCENES.hop();
     s.t = 16 * 3600 + 31 * 60 + 10; s.banner = null;
@@ -229,8 +225,8 @@ const SCENES = {
     return s;
   },
   /* a forgotten pause: the #pause boil-over, 2 min 15 s on. After 2 brewing minutes paused, BoilPower raises a kept warning
-     on every page (Scott, 10 Nov), once per pause, taken down when the heat carries on or AUTO stops. The boil's timer has
-     carried on all along, as Scott chose. */
+     on every page, once per pause, taken down when the heat carries on or AUTO stops. The boil's timer has carried on all
+     along. */
   "pause-long": () => {
     const s = SCENES.pause();
     s.t = 15 * 3600 + 33 * 60 + 10;
@@ -241,8 +237,8 @@ const SCENES = {
     s.events.unshift(["15:32:55", pauseBanner().title, "waiting for you", "wait"]);
     return Object.assign(s, {base: "pause-long"});
   },
-  /* a hop stand by hand, with no recipe (Scott, 10 Nov: "Set the boil kettle's target to 170 °F, like the HLT, and it holds
-     there"). He boiled by hand in AUTO from 10:21 and set the target to 170 °F at 12:41:10 with AUTO still on: the element
+  /* a hop stand by hand, with no recipe: the boil kettle's target set to 170 °F, like the HLT's, and it holds there. The
+     brewer boiled by hand in AUTO from 10:21 and set the target to 170 °F at 12:41:10 with AUTO still on: the element
      went off, and the wort is cooling towards 170 °F, where it will hold. */
   handhold: () => Object.assign(mash(), {
     t: 12 * 3600 + 58 * 60 + 40, banner: null,
@@ -299,7 +295,7 @@ const SCENES = {
   }),
   /* 15:04:40: the water reached 168 °F at 15:04:10, and CraftBeerPi asks, on every page, under the step's name. The
      step's 40 min wait for "Sparge started"; the drawing marks the four valves to change. As it asked, CraftBeerPi
-     switched the HLT pump off for its hose to move (core 1c08d4c), so both pumps are off, and the prompt says so */
+     switched the HLT pump off for its hose to move, so both pumps are off, and the prompt says so */
   "sparge-ready": () => {
     const s = SCENES["sparge-heat"]();
     s.t = 15 * 3600 + 4 * 60 + 40;
@@ -311,8 +307,8 @@ const SCENES = {
     s.events.unshift(["15:04:10", `${s.banner.title}: ${s.banner.text}`, "waiting for you", "wait"]);
     return s;
   },
-  /* 15:12:40, a fly sparge: Scott set the hoses, started both pumps and pressed Sparge started at 15:05:02. That
-     switched the HLT's AUTO off (Scott asked for the element off from here) and started the 40 min. Both pumps run: the
+  /* 15:12:40, a fly sparge: the brewer set the hoses, started both pumps and pressed Sparge started at 15:05:02. That
+     switched the HLT's AUTO off (the element stays off from here) and started the 40 min. Both pumps run: the
      HLT pump over to the top of the mash tun, the wort pump down to the boil kettle */
   "sparge-run": () => {
     const s = SCENES["sparge-heat"]();
@@ -354,8 +350,8 @@ const SCENES = {
     return s;
   },
   /* 15:53:12, after the fly sparge (#sparge-run). Its 40 min ran out at 15:45:02. CraftBeerPi switched the HLT pump off
-     and left the wort pump draining the mash tun into the boil kettle (core 1c08d4c), and holds before the boil
-     (CONFIRM_BEFORE_BOIL, as on Scott's rig): nothing heats until Scott starts it. Its question is CraftBeerPi's longest,
+     and left the wort pump draining the mash tun into the boil kettle, and holds before the boil
+     (CONFIRM_BEFORE_BOIL, as on the rig): nothing heats until the brewer starts it. Its question is CraftBeerPi's longest,
      and the screen writes it in the event line word for word. START THE BOIL puts heat on, so it takes a held press, as
      START does; NEXT STEP is greyed (CraftBeerPi would take it as "start the boil") */
   "boil-hold": () => {
@@ -391,7 +387,7 @@ const SCENES = {
       ["09:58:02", "Hot liquor tank AUTO", "confirmed", "ok"]
     ]
   }),
-  /* the timers (Scott, 11 Nov: "add the timers that design agent discussed"). #timers: the #mash day, with Stir counting
+  /* the timers. #timers: the #mash day, with Stir counting
      down (started 14:24:43) and Yeast set up for later; SOUND on */
   timers: () => Object.assign(mash(), {
     tmrs: [{id: 1, name: "Stir", set: 15 * 60, left: 7 * 60 + 12, state: "running"}, {id: 2, name: "Yeast", set: 20 * 60, left: 20 * 60, state: "stopped"}],
@@ -443,9 +439,9 @@ const SCENES = {
     s.events.unshift(["14:32:10", "Connection to CraftBeerPi lost", "trying again", "bad"]);
     return s;
   },
-  /* AUTO with no target (Scott on 8012, 10 Nov: "I have Mash Tun "Auto" on but HLT is off"). The mash tun's target was 0,
-     left from the last recipe, and he held AUTO at 13:26. PID_HERMS takes 0 as a real target: it holds the mash at 0 °F,
-     so it never asks the HLT for heat, though its pump still runs. CraftBeerPi warns after 5 s (M64). */
+  /* AUTO with no target: the mash tun's AUTO is on but the HLT stays off. The mash tun's target was 0, left from the last
+     recipe, and the brewer held AUTO at 13:26. PID_HERMS takes 0 as a real target: it holds the mash at 0 °F, so it never
+     asks the HLT for heat, though its pump still runs. CraftBeerPi warns after 5 s. */
   notarget: () => Object.assign(mash(), {
     t: 13 * 3600 + 47 * 60 + 10,
     banner: noTargetBanner("mt"),
@@ -474,9 +470,8 @@ const SCENES = {
       ["09:11:05", "Hot liquor tank AUTO", "confirmed", "ok"]
     ]
   }),
-  /* heating by hand (Scott on 8012, 13 Nov: "Oh! I turned the HLT element on without using 'Auto'... that is dangerous",
-     then "same issue with HLT, I see. Maybe a warning?"). Brewing by hand, no recipe: at 08:17:31 he set the HLT's target
-     to 150 °F and at 08:18 held its element on, in MANUAL. In MANUAL nothing compares the temperature with the target,
+  /* heating by hand, with no recipe: at 08:17:31 the brewer set the HLT's target to 150 °F and at 08:18 held its element
+     on, in MANUAL. In MANUAL nothing compares the temperature with the target,
      so the element runs until someone turns it off. #byhand at 08:52:40: heating, 18.4 °F short of the target;
      #byhand-past at 09:03:30: 3.3 °F past it, with CraftBeerPi's alarm, raised at 09:03:22, 30 s after it was 2 °F past */
   byhand: () => Object.assign(SCENES.manual(), {
@@ -498,7 +493,7 @@ const SCENES = {
     return Object.assign(s, {base: "byhand"});
   }
 };
-/* CraftBeerPi's alarm for an element left on by hand (core M87): past its target (w.over "target"), or near the boil
+/* CraftBeerPi's alarm for an element left on by hand: past its target (w.over "target"), or near the boil
    (w.over "boil"), whatever its target. An error, not a warning, so the title bar puts it first, before a timer or a
    step's question, and its line stays red: it is the one time heat goes in with nothing watching the temperature. cbpi:
    CraftBeerPi's own warning or error, one without buttons, which OK marks "seen" */
@@ -509,15 +504,14 @@ function byHandBanner(v, w) {
     : "Near the boil and still heating: its element is on by hand, and in MANUAL nothing stops it before it boils. Turn the element off."};
 }
 /* CraftBeerPi's kept warning when a kettle's AUTO has run 5 s with no target (unset, 0 or below), taken down by itself once
-   the kettle has a target or leaves AUTO (M64). BoilPower never raises it: it puts its boil point in as the target. */
+   the kettle has a target or leaves AUTO. BoilPower never raises it: it puts its boil point in as the target. */
 function noTargetBanner(v) {
   return {tone: "prompt", title: `No target for the ${KNAME[v]}`, notgt: v, act: "OK", cmd: "b:ok",
     text: `AUTO is on with no target temperature, so ${v === "mt" ? "the HLT" : "it"} won't heat. Set a target, or switch to MANUAL.`};
 }
-/* the SpargeStep's kept prompt, titled with the step's name, in core 1c08d4c's words (SPARGE_READY_TEXT, SPARGE_NOW_TEXT).
-   It says which pumps are off for the brewer's hoses (Scott, 11 Nov: "Any time I need to change hoses or "valves" that
-   respective pump should be off"), as CraftBeerPi finds them when it asks: a, the pumps as they are then. Its one button
-   answers it */
+/* the SpargeStep's kept prompt, titled with the step's name, in CraftBeerPi's words (SPARGE_READY_TEXT, SPARGE_NOW_TEXT).
+   It says which pumps are off for the brewer's hoses (a pump is off whenever its hoses or valves change), as CraftBeerPi
+   finds them when it asks: a, the pumps as they are then. Its one button answers it */
 const SPARGE_PUMPS_OFF = {"hlt,wort": "both pumps are off", hlt: "the HLT pump is off", wort: "the wort pump is off"};
 function spargeBanner(temp, a) {
   const off = SPARGE_PUMPS_OFF[[!a.hltPump.on && "hlt", !a.wortPump.on && "wort"].filter(Boolean).join(",")] || "";
@@ -527,14 +521,14 @@ function spargeBanner(temp, a) {
 }
 /* its line in the event log, as #sparge-ready asks it with both pumps off, for the moments after it */
 const SPARGE_ASKED = (q => `${q.title}: ${q.text}`)(spargeBanner(168, {hltPump: {on: false}, wortPump: {on: false}}));
-/* the hold before the boil (CraftBeerPi's StepController, with CONFIRM_BEFORE_BOIL Yes, as on Scott's rig): the boil waits,
-   with nothing active, until the brewer starts it. Its words are BoilStep.wait_for_brewer's in core 1c08d4c. Starting the
+/* the hold before the boil (CraftBeerPi's StepController, with CONFIRM_BEFORE_BOIL Yes, as on the rig): the boil waits,
+   with nothing active, until the brewer starts it. Its words are BoilStep.wait_for_brewer's. Starting the
    boil switches heat on, so here, as with START, it takes a held press (the Held Heat Rule) */
 function boilHoldBanner(s) {
   return {tone: "prompt", title: s.n, boilHold: true, act: "START THE BOIL", cmd: "b:boil", hold: true,
     text: "Ready to boil? Move the wort to the boil kettle first - the dashboard is yours meanwhile. The boil kettle stays off until you press Start the boil, or Start on the Brew Steps page. That also switches the wort pump off, so you can move its hoses. (Set CONFIRM_BEFORE_BOIL to No to go straight on.)"};
 }
-/* BoilPower's warning for a forgotten pause (Scott, 10 Nov): after 2 brewing minutes paused, kept on every page with OK,
+/* BoilPower's warning for a forgotten pause: after 2 brewing minutes paused, kept on every page with OK,
    said once per pause, and taken down when the heat carries on or AUTO stops; in the kettle's name from CraftBeerPi */
 function pauseBanner() {
   return {tone: "prompt", title: `${KNAME.bk} heat still paused`, pausegt: true, act: "OK", cmd: "b:ok",
@@ -756,8 +750,8 @@ export { RECIPE, SPARGE_STEP, VNAME, KNAME, VACT, ACT, HERMS_DELTA, BOIL_TH, BOO
 // Not the mockup's: two moments of the screen's own, for checking how the title bar holds what CraftBeerPi
 // really asks. Not compared with the mockup.
 // ?demo=resume: the server restarted mid-mash and asks, with two buttons.
-// ?demo=longprompt: the hold before the boil, CraftBeerPi's longest question. The mockup has it now, as #boil-hold
-// (11 Nov), so this is that moment, kept for the links that name it.
+// ?demo=longprompt: the hold before the boil, CraftBeerPi's longest question. It is the mockup's #boil-hold moment,
+// kept under this name for the links that use it.
 const EXTRA = {
   resume: () => Object.assign(mash(), {
     banner: {tone: "prompt", title: "Resume brew?", text: "'Saccharification' was interrupted when the server stopped. About 16 min 19 s of it had already run, and that is remembered - resuming continues from there rather than starting the step again. Check your kettle first, then choose.",

@@ -46,7 +46,7 @@ export const CBPiProvider = ({ children }) => {
   // the same one: {remaining, running, scale}, plus when this page heard it,
   // to count down between messages.
   const [resttimer, setRestTimer] = useState(null);
-  // Its timers, up to four, kept the same way (M69): {timers, max, names, now, scale}, plus when this page heard it.
+  // Its timers, up to four, kept the same way: {timers, max, names, now, scale}, plus when this page heard it.
   // null from a CraftBeerPi without them: the screen keeps its one rest timer.
   const [timers, setTimers] = useState(null);
 
@@ -119,7 +119,7 @@ export const CBPiProvider = ({ children }) => {
         break;
       case "notification_seen":
         // Sent on connecting: the warnings and errors OK'd so far, on any page
-        // or in BrewScribe (core M88).
+        // or in BrewScribe.
         a.markSeen(data.data);
         break;
       case "notificationupdate":

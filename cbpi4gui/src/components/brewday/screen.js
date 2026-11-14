@@ -2,7 +2,7 @@
 //
 // It must look identical to the brew-day mockup, not a rough likeness, so this is the mockup's own code
 // (design/brewday/brew-day.js, layout B): the same functions write the same markup, styled by the mockup's
-// own stylesheet (brewday.css, generated from it) and drawn by its own rig drawing (rig.js). The bench's
+// own stylesheet (brewday.css, generated from it) and drawn by its own rig drawing (rig.js). cbpi-testbench's
 // test_ui_brewday_identity.py compares the two pictures, moment by moment and screen size by size.
 //
 // What is different from the mockup:
@@ -13,7 +13,7 @@
 // - The boil kettle is the mockup's proposed one (?bk=power) while it runs the new BoilPower (M.BKNEW: it declares
 //   set_boil_at, from 0.0.3.post7), and the mockup's today's one (?bk=today) with an older BoilPower, whose target
 //   is where its boil starts. The demo always shows the proposed one.
-// - From the boil's start the drawing is the mockup's ?wp=chill, which Scott chose on 12 Nov: the wort pump at the
+// - From the boil's start the drawing is the mockup's ?wp=chill: the wort pump at the
 //   boil kettle, on a short loop through the chiller. The mockup's other options for it aren't offered.
 // - A command says at its own button whether it worked. One that fails, or gets no answer in 5 s, turns its
 //   button red and raises an alarm in the title bar; it is never silently dropped.
@@ -23,7 +23,7 @@
 //   TEMP_UNIT.
 // - Heat still needs a held press when a failed "on" is tried again, and a held press is not sent if the
 //   button changed under the finger.
-// - The timers (M69; Scott, 11 Nov: "add the timers that design agent discussed") are CraftBeerPi's, up to four, kept on
+// - The timers are CraftBeerPi's, up to four, kept on
 //   its brewing clock so every screen shows the same ones (M.TIMERS: it has them; with an older CraftBeerPi the screen
 //   keeps its one rest timer). The names to pick for a timer are its BREWDAY_TIMER_NAMES setting, read from the settings so
 //   a new list shows at once. A timer's alarm is CraftBeerPi's
@@ -31,19 +31,19 @@
 //   device. Pressing SOUND while it says TAP TO ALLOW allows it and leaves it on; on a phone a finger counts as it lifts.
 // - A question's line in the event log says "waiting for you", in amber, only while CraftBeerPi waits for its answer; then
 //   the same line says "answered", "no longer needed" or, where the page can't tell which (opened later, or after the
-//   connection came back), "no longer waiting" (the dashboard agent's hand-off of 12 Nov, afternoon). Live, the line
+//   connection came back), "no longer waiting". Live, the line
 //   keeps the question's CraftBeerPi id to find it by; the mockup's lines have none, so it finds them by their words.
 // - What arrives together is logged in the order it happened: questions gone, a step's last words, the steps' lines, then
 //   the rest of what CraftBeerPi said, so the event line ends on what it led to. A warning's line is amber only while the
-//   warning waits in the title bar for OK (the dashboard agent's hand-off of 12 Nov, late afternoon). The mockup has
+//   warning waits in the title bar for OK. The mockup has
 //   neither: its presses log in that order themselves, and it has no warnings without buttons. Live, what a step's
 //   change set going can also reach the screen just before the change itself; its line goes before that (logStep).
 // - A question answered on another screen gets one short line, in the words an answer here logs, "from another
-//   screen", as its own line says "answered": the question isn't logged again (the dashboard agent's hand-off of 12 Nov,
-//   late afternoon). It names the button pressed when CraftBeerPi says which (core M83); a SpargeStep's question gets
+//   screen", as its own line says "answered": the question isn't logged again. It names the button pressed when
+//   CraftBeerPi says which; a SpargeStep's question gets
 //   none, as its step's "sparge started" line is its answer. The mockup has no other screen, so this is live only.
-// - The title bar shows the most urgent thing waiting, then "· N more waiting" (the dashboard agent's hand-off of 12 Nov,
-//   evening): no connection, a command that failed and CraftBeerPi's errors; a timer that has run out; what the brew
+// - The title bar shows the most urgent thing waiting, then "· N more waiting": no connection, a command that failed
+//   and CraftBeerPi's errors; a timer that has run out; what the brew
 //   needs (a question CraftBeerPi sends as a warning or an error, or the current step's own); warnings without buttons;
 //   then everything else, which holds nothing up (BrewScribe's reminders, Check mash pH, Brewing Complete). Oldest first
 //   within each. It beeps twice only when something that has just arrived takes the title bar: not when one moves up
@@ -74,16 +74,15 @@ const WAIT = "Waiting for CraftBeerPi to answer.";
    put heat on with two taps, so NEXT STEP is greyed and says how to start it */
 const HELD_NEXT = "The boil is waiting for you. To start it, hold START here or START THE BOIL at the top.";
 const LONG_Q = 140; // characters: longer questions are the sparge's (about 200) and the boil's (300); the rest are 125 or under
-/* the title bar's name: the BREWERY_NAME setting, at every width, so the rig and a simulator can't be taken for each other
-   (the dashboard agent's hand-off of 11 Nov, evening; Scott, 11 Nov: "the brewery name does not follow what is in the settings").
+/* the title bar's name: the BREWERY_NAME setting, at every width, so the rig and a simulator can't be taken for each other.
    Blank shows CraftBeerPi. Two lines at most, then an ellipsis (the CSS); a name of more than LONG_NAME characters is drawn
    smaller, with its title giving it whole. The page's title starts with it, as a browser's tab shows the start of it */
 const LONG_NAME = 24;
 const NO_NAME = "CraftBeerPi";
-/* BREWSCRIBE, the last tab (the dashboard agent's hand-off of 11 Nov, evening, for the BrewScribe agent's ask): BrewScribe
+/* BREWSCRIBE, the last tab: BrewScribe
    in a browser tab of its own, named "brewscribe" so every press goes back to that one, at #now so going back doesn't
    reload it and loses nothing typed. Not rel="noopener": with it, every press opens another. Shown only where BrewScribe
-   is installed: CraftBeerPi then has /brewscribe/, which answers a HEAD with anything but 404 (today 405). The screen
+   is installed: CraftBeerPi then has /brewscribe/, which answers a HEAD with anything but 404 (it answers 405). The screen
    asks as it connects and when the connection comes back, and the device remembers the answer, so the tabs don't move
    each time the screen opens */
 const BS_KEY = "cbpi.brewday.brewscribe";
@@ -110,10 +109,9 @@ const CONNECTING_MS = 5000;
 // CraftBeerPi's routine step notices: the event line already says these in its own words.
 const ROUTINE = /^(?:timer started|step finished|boiling completed)$/i;
 const WAITING_FOR_YOU = "WAITING FOR YOU";
-/* the timers (M69): four at most, as the server keeps them. TPRE: the editor's minutes. The names to pick are CraftBeerPi's
-   BREWDAY_TIMER_NAMES, sent with the timers as `names` (Scott, 11 Nov: "an easy config setting to choose the default timer
-   names from the setup", then "multiple choice boxes from preconfigured list"). TNAMES is its default, which the demo
-   offers; TNLEN a name's length; TNMAX how many buttons the editor has room for: two rows of three */
+/* the timers: four at most, as the server keeps them. TPRE: the editor's minutes. The names to pick are CraftBeerPi's
+   BREWDAY_TIMER_NAMES, sent with the timers as `names`. TNAMES is its default, which the demo offers; TNLEN a name's
+   length; TNMAX how many buttons the editor has room for: two rows of three */
 const TMAX = 4, TPRE = [5, 10, 15, 20, 30, 60];
 const TNAMES = ["Hop stand", "Yeast", "Vorlauf"], TNLEN = 24, TNMAX = 6;
 const tfmt = DEMO.tfmt;
@@ -208,12 +206,12 @@ let last = null, everConnected = false, book = [], bookBusy = false, bookShown =
    screen counts from; lastBannerKey, the title bar's last alert, so a new one beeps once; actx, the page's sound; rangAt,
    when a timer's alarm last played (Date.now()) */
 let tAns = null, tMsg = null, lastBannerKey = null, actx = null, rangAt = 0;
-/* the title bar's beep (the dashboard agent's hand-off of 12 Nov, evening): newIds, CraftBeerPi's messages that have just
+/* the title bar's beep: newIds, CraftBeerPi's messages that have just
    arrived, until the next render; openIds, the questions it was waiting on as this page first connected, which it sends
    the page then (kept for every page) and which haven't just arrived */
 let newIds = new Set(), openIds = null;
-/* the temperature graphs in the faceplates (Scott, 10 Nov: option A, "graphs always showing"); ?graphs=none leaves
-   them out, as the screen was first built. gSpan: the span the three show, kept on each device. H: the live history. */
+/* the temperature graphs in the faceplates, always showing (the mockup's option A); ?graphs=none leaves
+   them out. gSpan: the span the three show, kept on each device. H: the live history. */
 let GRAPHS = "face", gSpan = "30", H = null;
 const GSPAN_KEY = "cbpi.brewday.graphspan";
 // the name in the title bar now (LONG_NAME): set again only when the setting changes; null as the screen opens
@@ -277,9 +275,8 @@ function lampHTML(id) {
   if (pend) { s = "pending"; t = pend === "on" ? "SWITCHING ON…" : "SWITCHING OFF…"; n = A.name + " · waiting for CraftBeerPi"; }
   /* trying a failed "on" again is still a held press for heat */
   else if (a.failed) { h = a.failed === "on" && A.kind === "heat"; s = "failed"; t = a.on ? "DID NOT STOP" : "DID NOT START"; n = `${A.name} · still ${a.on ? (A.kind === "pump" ? "running" : "heating") : "off"} · ${h ? "hold" : "tap"} to try again`; }
-  /* HEATING, without the element's power (Scott, 11 Nov: "I'd like the "HEATING xx %" button to only show HEATING since
-     the percentage is shown in the graph and as a number on the right side of the PID display"). Layout A has no OUT and
-     no graphs, so there the button is still the only place the power shows, and it keeps it */
+  /* HEATING, without the element's power, which the graph and the faceplate's OUT already show. Layout A has no OUT and
+     no graphs, so there the button is the only place the power shows, and it keeps it */
   else if (a.on) { s = A.kind === "heat" ? "heating" : "running"; t = A.kind === "heat" ? (LAYOUT === "a" && !(id === "bkEl" && M.BKNEW) ? `HEATING ${a.pct} %` : "HEATING") : "RUNNING"; n = A.name + (locked ? ` · run by ${a.by === "mt" ? "mash tun" : "AUTO"}` : A.kind === "heat" ? " · tap to turn off" : " · tap to stop"); }
   else { s = "off"; t = "OFF"; if (A.kind === "heat" && !locked) { h = true; n = A.name + " · hold to turn on"; } else n = A.name + (locked ? ` · run by ${a.by === "mt" ? "mash tun" : "AUTO"}` : " · tap to start"); }
   const why = lost ? PAUSED : pend ? WAIT : locked ? lockWhy(id) : "";
@@ -317,8 +314,8 @@ const noTarget = v => st.v[v].mode === "auto" && st.v[v].sv == null;
 // (M.BOIL_TH; live.js boilThreshold). The mockup's boilFrom, with BK === "power" for M.BKNEW.
 const boilFrom = () => M.BKNEW ? st.v.bk.boilAt ?? M.BOIL_TH : st.v.bk.sv > 0 ? st.v.bk.sv : M.BOIL_TH;
 const boilTh = () => +boilFrom().toFixed(1);
-/* ---------- the boil kettle with the new BoilPower (the mockup's ?bk=power, which Scott approved on 10 Nov: "Yes, hand it
-   to Brett"; then BUILD-NOTES' "The boil kettle's target, KEEP BOILING and a forgotten pause", the same evening). It works
+/* ---------- the boil kettle with the new BoilPower (the mockup's ?bk=power; design/brewday/BUILD-NOTES.md, "The boil
+   kettle's target, KEEP BOILING and a forgotten pause"). It works
    like the HLT, plus BOIL: TARGET beside AUTO/MANUAL, and its box has a BOIL key. While the target is BOIL the green number
    is the boil power, and the number is its button; a target below the boil is a temperature to hold, and reads like the
    HLT's. In AUTO the element button pauses the heat for a boil-over, −5 % and +5 % sit either side of it, and KEEP
@@ -333,7 +330,7 @@ const bkHoldT = () => { const V = st.v.bk; return M.BKNEW && V.sv > 0 && V.sv < 
 const bkHolding = () => st.v.bk.mode === "auto" && bkHoldT() != null;
 /* BoilPower's boil latch: set when the wort reaches the boil point; from then on the element runs at the boil power. The
    screen can't read it: live, it tells from the element running below full power while the wort is below the boil point
-   (applyLive), as BUILD-NOTES says */
+   (applyLive), as design/brewday/BUILD-NOTES.md says */
 const bkLatched = () => { const V = st.v.bk; return V.mode === "auto" && bkHoldT() == null && (V.latched ?? V.pv >= boilFrom()); };
 /* CraftBeerPi's brewing clock, in its own seconds (the wall clock on the rig, SIM_TIME_SCALE times as fast in a simulation),
    which BoilPower stamps a pause with (Paused_At), so every screen counts the same pause. While the heat is paused, a log
@@ -365,9 +362,8 @@ function bkLine() {
   /* a forgotten pause would quietly stop the boil, so the line counts it, in Prompt Amber like the button */
   if (el.paused) return `<span class="warn">Heat paused for <span id="pz">${mmss(pausedFor())}</span></span>`;
   /* a hold is a target like the HLT's, and from BoilPower 0.0.3.post8 a PID holds it as the HLT's PID holds its own, so
-     its line reads exactly like the HLT's (core M86; the dashboard agent's hand-off of 13 Nov). The element can be off
-     just below the target while the wort still rises, and comes back on as the rise slows, so the line no longer says
-     where it heats again */
+     its line reads exactly like the HLT's. The element can be off just below the target while the wort still rises, and
+     comes back on as the rise slows, so the line doesn't say where it heats again */
   if (ho != null) {
     const d = ho - V.pv;
     if (Math.abs(d) < 0.3) return "At target";
@@ -381,8 +377,8 @@ function bkLine() {
   const eta = GRAPHS ? graphETA(G(), "bk").replace(" at this rate", "") : "";
   return "Full power until it boils" + (eta ? ` · ${eta}` : "");
 }
-/* BoilPower's output in a hold. From 0.0.3.post8 (M.BKNEW) a PID sets it (Scott, 13 Nov: "I think the boilPower should
-   also be able to do PID control"; core M86): 14 % for each °F short, up to 100 %, plus what its integral has built up
+/* BoilPower's output in a hold. From 0.0.3.post8 (M.BKNEW) a PID sets it: 14 % for each °F short, up to 100 %, plus
+   what its integral has built up
    near the target, less a brake on the wort's rise. For the demo, the first moment: a hold just begun has built up
    nothing, so it starts at 14 % a °F short (52 % at 3.7 °F, the plugin's first pass on the simulators' kettle). One
    already running (running) has built up about what the kettle loses where it holds, 21 % at 150 °F and 26 % at 170 °F
@@ -411,14 +407,14 @@ function powerHTML() {
     {cmd: "pwr:bk", why, expanded: !!st.edit && st.edit.kind === "pwr"});
 }
 /* the new boil kettle's boil power, in its window while the target is BOIL: the green number is the setting, so it is the
-   button that opens the power box (TARGET took its place beside AUTO/MANUAL). Framed like the graph's chosen span, with a
+   button that opens the power box (TARGET sits beside AUTO/MANUAL). Framed like the graph's chosen span, with a
    small "change" like every other button's, so it reads as a control. Its tap area is at least 44 px tall. */
 function boilReadHTML() {
   const V = st.v.bk, pend = st.pend["p:bk"], why = st.link === "lost" ? PAUSED : pend ? WAIT : "";
   return `<button type="button" class="svbtn" data-cmd="pwr:bk" aria-expanded="${!!st.edit && st.edit.kind === "pwr"}" aria-label="Boil power ${V.bp} percent: change"${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}><span class="svv">${V.bp}<span class="u">%</span></span><small>${pend === "set" ? "sending…" : "change"}</small></button>`;
 }
-/* the new boil kettle's TARGET box: the HLT's, plus BOIL (Scott: "Set the boil kettle's target to 170 °F, like the HLT, and
-   it holds there"). Anything from the boil point less the margin up is BOIL, so the steps run …205.6, 206.5, BOIL, and a
+/* the new boil kettle's TARGET box: the HLT's, plus BOIL, so a target of 170 °F holds there, as on the HLT. Anything
+   from the boil point less the margin up is BOIL, so the steps run …205.6, 206.5, BOIL, and a
    typed 212 is BOIL too; BOIL is the top, so + is refused there. SET BOIL sends the boil point as the target. The third
    row: BOIL, pressed while the box says BOIL, and BOIL POWER, the second way to the power box. */
 function bkTgtEditorHTML() {
@@ -432,8 +428,7 @@ function bkTgtEditorHTML() {
     <button type="button" class="ok" data-cmd="tset">SET <span id="tok">${boil ? "BOIL" : `${x} ${M.U}`}</span></button><button type="button" class="no" data-cmd="tcancel">CANCEL</button>
     <button type="button" class="tboil" data-cmd="tboil" aria-pressed="${boil}">BOIL<small>full power to ${boilTh()} ${M.U}</small></button><button type="button" class="tpwr" data-cmd="pwr:bk">BOIL POWER<small>change</small></button></div>`;
 }
-/* the boil power's one-tap steps either side of the element button while AUTO boils (Scott chose −5 % and +5 % on 10 Nov,
-   with the pause and the usual power: "All three"; on 11 Nov "I'd like the +/-1 in addition to the +/- 5"), in the power
+/* the boil power's one-tap steps either side of the element button while AUTO boils, in the power
    box's order, −5 −1 … +1 +5. One tap sends set_boil_power; a step that would pass 0 or 100 % stops there, and only at the
    end itself is the button refused. */
 function nudgeHTML(d) {
@@ -441,13 +436,13 @@ function nudgeHTML(d) {
   const why = st.link === "lost" ? PAUSED : pend ? WAIT : d < 0 && V.bp <= 0 ? "The boil power is already 0 %." : d > 0 && V.bp >= 100 ? "The boil power is already 100 %." : "";
   /* waiting for CraftBeerPi, all four are greyed and the one pressed shows the lamps' marching stripes; the wait is kept
      under the step itself, so −5 and −1 can't both look pressed. The " %" is its own span: on the narrowest windows it
-     goes (.nudge .pc), as the steps are too narrow for it there; the spoken name keeps "percent" (the dashboard agent's
-     hand-off of 11 Nov, night: HEATING was clipped to "ATI" at 1180 px) */
+     goes (.nudge .pc): the steps are too narrow for it there, and would squeeze the element button's HEATING to "ATI" at
+     1180 px. The spoken name keeps "percent" */
   return b(`cmdbtn nudge${pend === String(d) ? " sending" : ""}`, `${d < 0 ? "−" : "+"}${Math.abs(d)}<span class="pc"> %</span>`, "",
     {cmd: `pnudge:${d}`, why, label: `Boil power ${d < 0 ? "down" : "up"} ${Math.abs(d)} percent`});
 }
 /* the element button in AUTO: not locked, a tap pauses the heat (set_paused) and keeps AUTO, the recipe and the boil power;
-   PAUSED, in Prompt Amber, heats again with a held press, like any heat. MANUAL is today's button. */
+   PAUSED, in Prompt Amber, heats again with a held press, like any heat. In MANUAL it is the usual element button. */
 function bkLampHTML() {
   const a = st.a.bkEl, V = st.v.bk, pend = st.pend["a:bkEl"], name = M.ACT.bkEl.name;
   if (V.mode !== "auto" || (a.failed && !pend)) return lampHTML("bkEl");
@@ -468,8 +463,8 @@ function bkLampHTML() {
 /* the steps show only while AUTO can use the boil power: not in MANUAL, where they would seem to set the element's own
    level, nor in a hold, nor while the boil kettle's box is open, which has steps of its own */
 const bkNudges = () => !!M.BKNEW && st.v.bk.mode === "auto" && !bkHolding() && !(st.edit && st.edit.v === "bk");
-/* KEEP BOILING (Scott, 10 Nov: "add a small checkbox with LED to choose keep at boil temp or let the boil power fully drive
-   the temp"): at the end of the nameplate row, the box is the LED, lit Setpoint Green with a tick while ticked. One tap
+/* KEEP BOILING, which chooses between keeping the boil and letting the boil power alone drive the temperature: at the end
+   of the nameplate row, the box is the LED, lit Setpoint Green with a tick while ticked. One tap
    sets Keep_Boiling (set_keep_boiling), in any mode. Shown only while the target is BOIL: a hold never uses it. */
 function keepHTML() {
   const V = st.v.bk, on = V.keep !== false, pend = st.pend["k:bk"], lost = st.link === "lost";
@@ -498,13 +493,12 @@ function editorHTML(v) {
     <button type="button" data-cmd="tstep:0.1" aria-label="Up 0.1 degree">+.1</button><button type="button" data-cmd="tstep:1" aria-label="Up 1 degree">+1</button>
     <button type="button" class="ok" data-cmd="tset">SET <span id="tok">${x}</span> ${M.U}</button><button type="button" class="no" data-cmd="tcancel">CANCEL</button></div>`;
 }
-/* an element on by hand (Scott, 13 Nov: "Oh! I turned the HLT element on without using 'Auto'... that is dangerous" and
-   "Maybe a warning?"): its vessel in MANUAL, and no AUTO running it, neither its own nor the mash tun's HERMS. In MANUAL
+/* an element on by hand: its vessel in MANUAL, and no AUTO running it, neither its own nor the mash tun's HERMS. In MANUAL
    nothing compares the temperature with the target, so the element runs until someone turns it off. t: the target it
    won't stop at (the HLT's SV; the proposed boil kettle's, when it is below where BOIL starts), or null: none, or one
    at or past where BOIL starts, which the wort or water boils before it reaches. over: "boil" from where BOIL starts,
    else "target" from 2 °F (1 °C) past the target, else "". The boil kettle with its target at BOIL, or none, boils by
-   hand as a boil kettle should: not this. CraftBeerPi raises its alarm for the same (core M87, cbpi/extension/byhand) */
+   hand as a boil kettle should: not this. CraftBeerPi raises its alarm for the same (cbpi/extension/byhand) */
 const byOver = () => M.U === "°C" ? 1 : 2;
 function byHand(v) {
   const el = v === "hlt" ? st.a.hltEl : v === "bk" ? st.a.bkEl : null, V = st.v[v];
@@ -531,7 +525,7 @@ function devHTML(v) {
   if (bkNew(v)) return bkLine();
   const herms = v === "hlt" && hermsOn(), driven = V.mode === "auto" || herms;
   /* AUTO with no target (unset, 0 or below) runs but holds nothing, so nothing heats. The line says so at once, in Prompt
-     Amber, and never calls it MANUAL; CraftBeerPi's own warning follows in the title bar after 5 s (Scott, 10 Nov) */
+     Amber, and never calls it MANUAL; CraftBeerPi's own warning follows in the title bar after 5 s */
   if (herms && st.v.mt.sv == null) return `<span class="warn">Not heating: the mash tun has no target</span>`;
   if (noTarget(v)) return `<span class="warn">${v === "mt" && M.HERMS !== false ? "No target, so the HLT won't heat" : "No target, so it won't heat"}</span>`;
   const w = byHand(v);
@@ -545,8 +539,7 @@ function devHTML(v) {
 }
 /* layout B's faceplate also shows output and mode, like a hardware PID controller. OUT is the element's power now, on
    every vessel and in every state: on the boil kettle 100 % while it heats to the boil, the boil power once it boils,
-   0 while paused, and the hand level in MANUAL. The green BOIL number is the setting; OUT is what the element is doing
-   (Scott, 11 Nov: "BoilPower's display has lost its current 'out' element power number? Please put it back") */
+   0 while paused, and the hand level in MANUAL. The green BOIL number is the setting; OUT is what the element is doing */
 function auxHTML(v) {
   const e = v === "hlt" ? st.a.hltEl : v === "bk" ? st.a.bkEl : null, el = e && !e.missing ? e : null;
   const mode = v === "hlt" && hermsOn() ? "HERMS" : st.v[v].mode === "auto" ? "AUTO" : "MAN";
@@ -706,10 +699,9 @@ function runoffStep() {
   return ro >= 0 && stepStatus(ro) !== "I" && (bo < 0 || stepStatus(bo) === "I") ? ro : -1;
 }
 /* the boil has started (its step running, stopped, failed or done; held for "Ready to boil?" it is still I). From then
-   on the wort pump's hoses are on the boil kettle: Scott moves them in that hold, as CraftBeerPi's notification says
-   ("The wort pump is off, so you can move its hoses", core 1c08d4c). After the recipe finishes its steps are all D, so
-   the hoses stay there for the chill and the transfer, until a recipe is loaded or reset and its boil is I again
-   (Scott, 12 Nov) */
+   on the wort pump's hoses are on the boil kettle: the brewer moves them in that hold, as CraftBeerPi's notification says
+   ("The wort pump is off, so you can move its hoses"). After the recipe finishes its steps are all D, so the hoses stay
+   there for the chill and the transfer, until a recipe is loaded or reset and its boil is I again */
 function boilStarted() {
   const bo = M.RECIPE.steps.findIndex(s => s.boil);
   return bo >= 0 && stepStatus(bo) !== "I";
@@ -760,11 +752,11 @@ function renderRig() {
   const ro = runoffStep(), r = st.recipe, held = ro >= 0 && M.RECIPE.steps[ro].type === "SpargeStep" && r.cur === ro && !r.started;
   const setNow = held && r.wait === WAITING_FOR_YOU && live, hasSp = !!$("#ln-sparge");
   const out = ro >= 0 && !held, sp = out && hasSp;
-  /* after the boil starts, the wort pump serves the boil kettle (Scott chose it on 12 Nov: drawn there, on a short loop
-     through the chiller), so nothing on the mash tun's side lights. The valves are drawn as before: for recirculating, so
+  /* after the boil starts, the wort pump serves the boil kettle (drawn there, on a short loop through the chiller), so
+     nothing on the mash tun's side lights. The valves are drawn as before: for recirculating, so
      a running HLT pump (the HLT's stirrer too) still goes round the hot liquor tank. While the mash tun's AUTO is on, its
-     HERMS runs the wort pump through the coil, so the hoses are back on the mash tun (#notarget; Scott, 12 Nov: until a
-     recipe is loaded or reset, or the mash tun's AUTO is on) */
+     HERMS runs the wort pump through the coil, so the hoses are back on the mash tun (#notarget), as they are once a
+     recipe is loaded or reset */
   const post = LAYOUT === "b" && boilStarted() && st.v.mt.mode !== "auto";
   const wp = live && a.wortPump.on, hp = live && a.hltPump.on, mtw = wp && !post;
   on("#ln-wort-in", mtw); on("#ln-wort-out", mtw); on("#ln-wort-coil", mtw && !out); on("#ln-xfer", mtw && out); on("#coil", mtw && !out);
@@ -789,7 +781,7 @@ function drawRig() {
   const rs = GRAPHS === "face" ? Math.round(Math.min(1.3, Math.max(1, 0.68 / Math.min(h / RIG_H, w / 1200))) * 100) / 100 : 1;
   if (Math.abs(W - rigW) < 4 && rs === rigRs && $("#rigsvg")) return;
   rigW = W; rigRs = rs;
-  // after the boil, the wort pump at the boil kettle on its loop through the chiller (Scott, 12 Nov: the mockup's ?wp=chill)
+  // after the boil, the wort pump at the boil kettle on its loop through the chiller (the mockup's ?wp=chill)
   box.innerHTML = rigSVG(LAYOUT === "b" ? "line" : "kettle", W, rs, "chill");
   renderRig();
 }
@@ -830,8 +822,8 @@ function renderAll() {
   bn.toggleAttribute("data-ring", !!(M.TIMERS && st.banner && st.banner.timer != null));
   const key = bannerKey(st.banner);
   if (key !== lastBannerKey) {
-    /* two beeps when something that has just arrived takes the title bar (the dashboard agent's hand-off of 12 Nov,
-       evening). Not when one moves up because the one in front went: it was waiting already, and the sound would follow
+    /* two beeps when something that has just arrived takes the title bar. Not when one moves up because the one in
+       front went: it was waiting already, and the sound would follow
        a press. Not for one arriving behind another: it's in the count, amber in LOG. The demo beeps at each new alert,
        as its mockup does */
     if (key && st.banner.timer == null && st.banner.tone !== "connecting" && (DEMO_MODE || st.banner.fresh)) ring(2);
@@ -859,7 +851,7 @@ const ghhmm = t => H && !DEMO_MODE ? hhmm(daySeconds(new Date((H.day() + t) * 10
 // BK: the new boil kettle's boil point, where its targets stop being BOIL, and its hold, for its graph and its line
 const G = () => ({hist: st.hist, t: DEMO_MODE ? st.t : graphNow(), span: gSpan, lost: st.link === "lost", V: st.v, VNAME: M.VNAME, U: M.U, hhmm: ghhmm, scale: H && !DEMO_MODE ? H.scale() : 1,
   BK: M.BKNEW ? {from: boilFrom(), edge: bkLetGo(), hold: bkHoldT()} : null});
-// the logs the live history reads: each vessel's temperature, its kettle's target and AUTO, its element's level (M63)
+// the logs the live history reads: each vessel's temperature, its kettle's target and AUTO, its element's level
 function graphNames() {
   const n = {};
   for (const v of ROLES) {
@@ -912,8 +904,8 @@ function logEvent(what, res, tone, cav = "", shared = false, q = null) {
 }
 /* a step's line, live, goes before what CraftBeerPi said in the second before it, as that followed from the step's change
    but reached the screen first: CraftBeerPi tells a plugin a step has ended before it sends the step's own update, and the
-   HLT pump's "Batch Sparge has ended, so the HLT pump is off" came 18 ms ahead of "Batch Sparge finished" (12 Nov, the
-   sparge test). The event line then ends on the consequence, as it does when they come together (observe). Not before
+   HLT pump's "Batch Sparge has ended, so the HLT pump is off" can come 18 ms ahead of "Batch Sparge finished". The
+   event line then ends on the consequence, as it does when they come together (observe). Not before
    what a step itself said as it stopped (ending: its name's lines), its last words; nor past another step's line, an
    answer, or anything older. name is CraftBeerPi's name for the step, the title of its own messages */
 const BURST = 1000;
@@ -933,8 +925,8 @@ function logStep(what, res, tone, name, ending = false) {
   saveEvents();
 }
 /* a question's line says "waiting for you", in Prompt Amber, only while CraftBeerPi waits for its answer. Once the
-   question goes, the same line says what became of it, in the plain colour, and keeps the time it was asked (the
-   dashboard agent's hand-off of 12 Nov, afternoon: amber in the log always means something still needs you). Live, q is
+   question goes, the same line says what became of it, in the plain colour, and keeps the time it was asked: amber in
+   the log always means something still needs you. Live, q is
    CraftBeerPi's notification id. The demo's lines have none, so there q is the question's title, as in the mockup: the
    newest line still waiting whose words are the title, or start with "title:" or "title finished". False if this tab
    has no line for it */
@@ -1024,8 +1016,8 @@ function powerModeChanged(m) {
   }
 }
 function cmdMode(v, m) { send("m:" + v, m, `${M.VNAME[v]} ${m.toUpperCase()}`, () => setMode(v, m)); }
-/* every box opens with its number selected, so typing replaces it: typing 150 into "168.0" gave "150168.0" (the dashboard
-   agent, 10 Nov; the new boil kettle's boxes did it first, "BOIL" included) */
+/* every box opens with its number selected, so typing replaces it: otherwise typing 150 into "168.0" gives "150168.0".
+   The new boil kettle's boxes do the same, "BOIL" included */
 const focusTin = () => setTimeout(() => { if (!root) return; const i = $("#tin"); if (!i) return; i.focus(); i.select(); }, 0);
 function cmdTgtOpen(v) {
   const V = st.v[v], pw = bkNew(v);
@@ -1216,7 +1208,7 @@ function stepStart(i) {
   if (moved && st.banner && st.banner.cmd === "b:done" && st.banner.title === was.n) { st.banner = null; questionGone(was.n, "no longer needed"); }
   /* on to the boil kettle: the mash tun's AUTO, and a mash step's HERMS with it, has done its work */
   if (s.k === "bk") { st.fill.bk = true; if (st.v.mt.mode === "auto") setMode("mt", "manual"); }
-  /* the runoff over (core 1c08d4c, the hltpump extension): as the last step named for the runoff ends, by NEXT here or its
+  /* the runoff over (the hltpump extension): as the last step named for the runoff ends, by NEXT here or its
      time up, CraftBeerPi switches the HLT pump off and leaves the wort pump to finish draining the mash tun. Its
      information notification goes in the event line word for word, as CraftBeerPi's notifications do on the screen */
   if (moved && collectsWort(was) && !collectsWort(s) && st.a.hltPump.on) {
@@ -1225,7 +1217,7 @@ function stepStart(i) {
     soon(() => logEvent(`HLT pump: ${was.n} has ended, so the HLT pump is off.${wort ? " The wort pump is still running, to finish draining the mash tun." : ""}`, "from CraftBeerPi", ""));
   }
   r.cur = i; r.left = (s.min || 0) * 60; r.adds = []; r.wait = null;
-  /* the boil waits for the brewer (CONFIRM_BEFORE_BOIL, as on Scott's rig): nothing is active, so nothing heats, and the
+  /* the boil waits for the brewer (CONFIRM_BEFORE_BOIL, as on the rig): nothing is active, so nothing heats, and the
      wort pump, if it runs, goes on draining the mash tun. The step says WAITING FOR YOU, as the live screen shows it. Its
      prompt goes in the event line in CraftBeerPi's words, as there */
   if (s.boil) {
@@ -1245,7 +1237,7 @@ function stepStart(i) {
     soon(() => logEvent(`${s.n}: ${s.note}`, "waiting for you", "wait"));
   }
 }
-/* the brewer starts the held boil, with START THE BOIL or a held START (core 1c08d4c, BoilStep._runoff_over): the runoff
+/* the brewer starts the held boil, with START THE BOIL or a held START (BoilStep._runoff_over): the runoff
    is over, so CraftBeerPi switches the wort pump and the HLT pump off, whichever run, once a brew, and says so; then the
    boil kettle's AUTO, heating to the boil before the step's timer starts. (Demo.) */
 function boilStart() {
@@ -1261,7 +1253,7 @@ function boilStart() {
   stepTarget(s);
   Object.assign(r, {held: false, state: "running", wait: st.v.bk.pv < boilFrom()});
   /* the step's line first, then what CraftBeerPi says as it starts: the screen logs a step's change before the words it
-     sets going (observe; the dashboard agent's hand-off of 12 Nov, late afternoon) */
+     sets going (observe) */
   soon(() => {
     logEvent(DEMO.boilStartLine(s, boilFrom()), "by recipe", "");
     if (off.length) {
@@ -1270,7 +1262,7 @@ function boilStart() {
     }
   });
 }
-/* a SpargeStep switches a pump off for the brewer to move its hoses, once a run of the step (core 1c08d4c, _hose_off): the
+/* a SpargeStep switches a pump off for the brewer to move its hoses, once a run of the step (_hose_off): the
    wort pump as the step starts, the HLT pump as the water gets there. A Stop and Start never stops one the brewer has
    since started. CraftBeerPi says so only in the prompt's words. (Demo.) */
 function spargeHose(which) {
@@ -1363,7 +1355,7 @@ function cmdBanner(x) {
     });
   }
   /* OK on CraftBeerPi's own warning or error, one without buttons (cbpi): it goes from every screen's title bar, and its
-     lines say "seen", a warning's in the plain colour, an error's still red (the dashboard agent's hand-off of 13 Nov).
+     lines say "seen", a warning's in the plain colour, an error's still red.
      No line of its own. (Demo; live, liveOk.) */
   else if (st.banner && st.banner.cbpi) { seenLines(`${st.banner.title}: ${st.banner.text}`); st.banner = null; renderAll(); }
   /* OK: the rest timer's alarm, or a warning that waits for one (no target, a forgotten pause) */
@@ -1633,14 +1625,12 @@ function liveTimer(x) {
   exec(s > 0 ? "tm:up" : "tm:down", "add", `Rest timer ${s > 0 ? "plus" : "minus"} ${Math.abs(s) / 60} min`, () => api.timerAdd(s), {quiet: true, fail});
 }
 
-/* ---------- the timers (M69) ----------
-   Scott, 10 Nov 2026, after using the rest timer: "why is it named that? lots of things use a timer during a brew day", an
-   optionally audible alarm, a more attention-grabbing but still elegant alert when one runs out, several at once with a
-   "+", and names; 11 Nov: "add the timers that design agent discussed". The mockup's (?timers=new), modelled on a
-   four-channel kitchen timer (ThermoWorks TimeStack): all four in view, a finished one pulses and counts up until it is
-   answered, and OK puts it back to its own time, ready to start again. CraftBeerPi keeps them on its brewing clock, so
-   every screen shows the same ones, during a recipe as well as by hand. SOUND belongs to each screen: its timers and
-   CraftBeerPi's alerts (Scott's choice). */
+/* ---------- the timers ----------
+   Several timers at once, each with a name, an alarm that can sound and an alert that draws the eye when it runs out.
+   The mockup's (?timers=new), modelled on a four-channel kitchen timer (ThermoWorks TimeStack): all four in view, a
+   finished one pulses and counts up until it is answered, and OK puts it back to its own time, ready to start again.
+   CraftBeerPi keeps them on its brewing clock, so every screen shows the same ones, during a recipe as well as by hand.
+   SOUND belongs to each screen: its timers and CraftBeerPi's alerts. */
 const tById = id => st.tmrs.find(t => t.id === id);
 /* a timer's alarm is over (answered, or the timer set anew or removed): in the demo its prompt goes, and the next one
    waiting takes the title bar at the next second; set anew or removed, CraftBeerPi takes the alarm down unanswered, so
@@ -1675,9 +1665,9 @@ function trowHTML(t, off) {
   const open = !!(st.tedit && st.tedit.id === t.id);
   return `<div class="trow${open ? " editing" : ""}" data-state="${t.state}" id="tr-${t.id}"><button type="button" class="tsel" data-cmd="te:open:${t.id}" aria-expanded="${open}" aria-label="${esc(said)}. Change it"${off ? ` aria-disabled="true" data-why="${off}"` : ""}><span class="tn">${esc(t.name)}</span><span class="ts">${sub}</span><span class="tt" id="tt-${t.id}">${time}</span></button><div class="tbtn">${btn}</div>${live ? `<span class="bar"><i id="tb-${t.id}" style="width:${tPct(t)}%"></i></span>` : ""}</div>`;
 }
-/* the names to pick, under NAME: the names in BREWDAY_TIMER_NAMES as buttons, in Scott's order, three to a row, the first
+/* the names to pick, under NAME: the names in BREWDAY_TIMER_NAMES as buttons, in the setting's order, three to a row, the first
    six (two rows: the editor then still fits a 1920×950 screen). A tap names the timer, a second tap clears it; typing any
-   other name still works. A name another timer has is greyed, and a tap says why. Nothing is filled in for him: a timer
+   other name still works. A name another timer has is greyed, and a tap says why. Nothing is filled in: a timer
    nobody names is "Timer 3", as on the server. The buttons carry their place in the list, not the name, so a name with a
    colon or quote can't break the command */
 function namesHTML(e, t) {
@@ -1806,15 +1796,14 @@ function cmdTm2(x, id, y) {
   if (x === "ok") return tSend(key, "ok", `${t.name}: alarm answered`, () => { answer(); t.state = "stopped"; t.left = t.run = t.set; }, () => api.timersOk(t.id), o);
   return tSend(key, "plus5", `${t.name}: 5 more minutes`, () => { answer(); t.state = "running"; t.left = t.run = 300; }, () => api.timersPlus5(t.id), o);
 }
-/* the alarm sound: the one chosen in Settings, BREWDAY_ALARM_SOUND (alarm.js; Scott, 11 Nov: "The alert sound is kinda
-   weak", then "Make the alarm timer sound configurable"). ring() plays its whole burst, ring(2) its first two pulses */
+/* the alarm sound: the one chosen in Settings, BREWDAY_ALARM_SOUND (alarm.js). ring() plays its whole burst, ring(2) its
+   first two pulses */
 function audioOK() {
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
     if (actx.state === "suspended") actx.resume();
     /* a silent one-sample sound, started inside the press. Some browsers, Safari on an iPhone in particular, have let a
-       page play sound later only once a sound has started inside a press, not just on resume(). The alarm on SOUND used
-       to do that; this does it unheard */
+       page play sound later only once a sound has started inside a press, not just on resume(); this one is silent */
     const z = actx.createBufferSource(); z.buffer = actx.createBuffer(1, 1, 22050); z.connect(actx.destination); z.start(0);
     return true;
   } catch (_) { return false; }
@@ -1832,8 +1821,7 @@ function soundInit() {
   return {on, ok: actx.state === "running"};
 }
 /* SOUND is silent: switching it on, or allowing it while it says TAP TO ALLOW, plays nothing. Sound means a timer that
-   has run out, or a new alert or question, never a press (Scott, 12 Nov: "I don't want to hear a sound when I click the
-   "SOUND" box for the timer. ONly when timer expires"). The lit box says it's on; Settings' Try plays the sound on
+   has run out, or a new alert or question, never a press. The lit box says it's on; Settings' Try plays the sound on
    purpose. The press still lets the page play sound later (audioOK) */
 function cmdSnd() {
   const s = st.snd;
@@ -2025,7 +2013,7 @@ function applyLive(snap) {
   st.a.bkEl.lvl = Math.round(num(be && (be.manual_power ?? be.power)) ?? 100);
   // The new BoilPower's settings: the boil point (BOIL AT), KEEP BOILING, the usual boil power and a pause, which it keeps
   // in the kettle's settings so every page shows them. Its boil latch it doesn't publish: below the boil point in AUTO, an
-  // element on below full power (Max_Output) is running at the boil power (BUILD-NOTES).
+  // element on below full power (Max_Output) is running at the boil power (design/brewday/BUILD-NOTES.md).
   if (M.BKNEW) {
     const V = st.v.bk, el = st.a.bkEl, p = bkp || {}, usual = num(p.Usual_Boil_Power), full = num(p.Max_Output) ?? 100;
     V.boilAt = M.BOIL_TH;
@@ -2128,7 +2116,7 @@ function liveBanner() {
   const queue = [], isNew = id => newIds.has(String(id));
   if (st.alarm) queue.push(st.alarm);
   /* CraftBeerPi's errors, the same words once, as its warnings are: the count says how many presses are left, and one OK
-     clears every copy (the dashboard agent's hand-off of 13 Nov). Each copy keeps its own line */
+     clears every copy. Each copy keeps its own line */
   const errs = new Set();
   st.errors.forEach(e => {
     const k = `${e.title}\n${e.message}`;
@@ -2144,7 +2132,7 @@ function liveBanner() {
       acts: [{label: "+5 MIN", cmd: `tm2:plus5:${t.id}`, dir: "plus5", sec: true}, {label: "OK", cmd: `tm2:ok:${t.id}`, dir: "ok"}]}
       : {tone: "prompt", title: ut(p.title || "CraftBeerPi"), text: ut(p.message || ""), fresh: isNew(p.id), acts: p.action.map(a => ({label: String(a.label || "OK").toUpperCase(), cmd: `p:${p.id}:${a.id}`, hold}))};
   };
-  /* the most urgent first, then a count (the dashboard agent's hand-off of 12 Nov, evening). Oldest first within each:
+  /* the most urgent first, then a count. Oldest first within each:
      0 a timer that has run out: it rings until answered, and its row and the frame pulse with the title bar;
      1 what the brew needs from you: a question CraftBeerPi sends as a warning or an error (a hop to add, Heating is
        not working, Resume brew?, the hold before the boil, the stand's), or the current step's own (the sparge's, a
@@ -2169,8 +2157,8 @@ function addWarning(id, title, message) {
   if (st.warnings.length > 10) { st.warnings.shift(); warningsGone(); }
 }
 /* a warning's line is amber only while the warning waits in this screen's title bar for OK. Once it has gone (OK, or pushed
-   out by newer ones), each line with its words takes the plain colour and keeps "from CraftBeerPi" (the dashboard agent's
-   hand-off of 12 Nov, late afternoon); one OK'd anywhere also says "seen" (seenLines). Lines kept from an earlier page
+   out by newer ones), each line with its words takes the plain colour and keeps "from CraftBeerPi"; one OK'd anywhere
+   also says "seen" (seenLines). Lines kept from an earlier page
    load plain: this page's title bar has no warnings yet. Errors stay red */
 function warningsGone() {
   const shown = new Set((st.warnings || []).map(w => `${ut(w.title)}: ${ut(w.message)}`));
@@ -2179,9 +2167,9 @@ function warningsGone() {
   if (changed) saveEvents();
 }
 /* CraftBeerPi's warning or error OK'd, here or on any screen or in BrewScribe (CraftBeerPi tells every page, with its
-   earlier copies in the same words; core M88): each of its lines says "seen". A warning's turns plain, as it no longer
-   waits; an error's stays red, as it records that something went wrong (The Amber Means Waiting Rule; the dashboard
-   agent's hand-off of 13 Nov). A line already plain, its warning pushed out or kept from an earlier page, is left */
+   earlier copies in the same words): each of its lines says "seen". A warning's turns plain, as it no longer
+   waits; an error's stays red, as it records that something went wrong (The Amber Means Waiting Rule). A line already
+   plain, its warning pushed out or kept from an earlier page, is left */
 function seenLines(words) {
   st.events.forEach(e => {
     if (e[1] !== words || e[2] !== "from CraftBeerPi" || (e[3] !== "wait" && e[3] !== "bad")) return;
@@ -2190,8 +2178,8 @@ function seenLines(words) {
   });
 }
 /* OK on CraftBeerPi's warning or error, one without buttons: every copy in its words goes from this title bar, and
-   CraftBeerPi is told, so it goes from every screen's title bar and from BrewScribe too (Scott, 13 Nov: "the alerts that
-   I've already acknowledged in BrewDay are there waiting for me in BrewScribe.. that's annoying"). No line of its own.
+   CraftBeerPi is told, so it goes from every screen's title bar and from BrewScribe too, rather than waiting there to be
+   acknowledged again. No line of its own.
    Nothing waits on CraftBeerPi's answer: one from before a restart, or more than 100 ago, it no longer knows, and that
    one goes from this screen only */
 function liveOk(k, id) {
@@ -2211,7 +2199,7 @@ function seenHere(words) {
 }
 /* CraftBeerPi says warnings or errors were seen: OK'd on another screen or in BrewScribe (notification_retired, reason
    "seen"), or before this page connected (notification_seen). Each leaves the title bar with no line and no beep, and
-   its lines say "seen" (the dashboard agent's hand-off of 13 Nov). Each id once: a copy that comes later is news. A
+   its lines say "seen". Each id once: a copy that comes later is news. A
    warning shown once for its copies is found by any copy's id, through that copy's own line */
 function seenElsewhere(snap) {
   const s = snap.seen;
@@ -2227,8 +2215,8 @@ function seenElsewhere(snap) {
   }
   words.forEach(seenHere);
 }
-/* a step starting, or resuming after a Stop, for the event line. A SpargeStep says what it does as it starts (the design,
-   10 Nov): it heats the sparge water with the mash tun MANUAL, or with no water to heat leaves the pumps to the brewer.
+/* a step starting, or resuming after a Stop, for the event line. A SpargeStep says what it does as it starts: it heats
+   the sparge water with the mash tun MANUAL, or with no water to heat leaves the pumps to the brewer.
    Resumed after Sparge started, it doesn't heat again, so it names no target */
 function stepStartLine(m, resumed, s) {
   const p = (s && s.props) || {};
@@ -2236,12 +2224,10 @@ function stepStartLine(m, resumed, s) {
     if (resumed && p._sparge_started) return `${m.n} resumed`;
     if (!resumed) return p.Kettle && m.temp > 0 ? `${m.n}: heating the sparge water to ${m.temp} ${M.U}, mash tun MANUAL` : `${m.n}: mash tun MANUAL, the pumps are yours`;
   }
-  /* a whirlpool sets no target as it starts: it holds its temperature only after "Heat and hold" (the dashboard agent's
-     hand-off of 12 Nov, afternoon) */
+  /* a whirlpool sets no target as it starts: it holds its temperature only after "Heat and hold" */
   if (s && s.type === "WhirlpoolStep") return `${m.n} ${resumed ? "resumed" : "started"}${m.min ? `, ${m.min} min` : ""}`;
   /* the proposed boil kettle shows a target at or above where BOIL starts as BOIL, never as a temperature, as its window
-     and TARGET's editor do (the dashboard agent's hand-off of 12 Nov, late afternoon). Today's BoilPower shows the
-     temperature */
+     and TARGET's editor do. An older BoilPower shows the temperature */
   const tgt = m.temp == null ? "" : m.boil && M.BKNEW && m.temp >= bkLetGo() ? "BOIL" : `${m.temp.toFixed(1)} ${M.U}`;
   return `${m.n} ${resumed ? "resumed" : "started"}${tgt ? `, ${M.VNAME[m.k].toLowerCase()} target ${tgt}` : ""}`;
 }
@@ -2260,13 +2246,13 @@ function askedBefore(id, words) {
   return true;
 }
 /* the hold before the boil, started with this screen's START: its question offers Start as an answer, but CraftBeerPi
-   takes it down as "withdrawn" when the boil starts that way, so the screen counts it as answered (the dashboard agent's
-   hand-off of 12 Nov, afternoon). START puts the current step in own.start; held, that is the boil, whose name is the
+   takes it down as "withdrawn" when the boil starts that way, so the screen counts it as answered. START puts the
+   current step in own.start; held, that is the boil, whose name is the
    question's title */
 const startedHere = a => !!(own.start && Date.now() - own.start.at < 10000
   && M.RECIPE.steps.some(s => own.start.ids.includes(s.id) && s.n === ut(a.title)));
-/* an answer given on another screen, in the words an answer here logs (the dashboard agent's hand-off of 12 Nov, late
-   afternoon), naming the button pressed when CraftBeerPi says which (said, core M83). A timer's alarm: "alarm answered",
+/* an answer given on another screen, in the words an answer here logs, naming the button pressed when CraftBeerPi says
+   which (said). A timer's alarm: "alarm answered",
    or "5 more minutes" for +5 MIN (told neither, its row shows which); a SpargeStep's question: none, as its step's
    "sparge started" line is its answer; any other: "<title> answered", with ": <button>" */
 function elsewhereLine(a, said) {
@@ -2290,7 +2276,7 @@ function observe(prev, snap) {
     // a plugin comes or goes with a restart: ask again whether BrewScribe is there
     probeBrewScribe();
   }
-  /* What came in this update is logged in the order it happened (the dashboard agent's hand-off of 12 Nov, late afternoon),
+  /* What came in this update is logged in the order it happened,
      so the event line ends on what it led to: the question that waits, or that the hoses can be moved. First the questions
      that have gone, as an answer comes before what it sets going; then what a step said as it stopped; then the steps'
      lines and "Recipe finished"; then everything else CraftBeerPi said, in the order it came */
@@ -2299,7 +2285,7 @@ function observe(prev, snap) {
   /* a question gone: its own line says so (questionGone): answered, here or on another screen; taken down by CraftBeerPi,
      no longer needed; or dropped as this page connected again, with no word of why, no longer waiting, as on a page
      opened later. Answered on another screen, which is news: one short line, as an answer here reads, not the question
-     again (the dashboard agent's hand-off of 12 Nov, late afternoon). Never logged here: the question whole, to say what
+     again. Never logged here: the question whole, to say what
      was asked */
   for (const [id, a] of before) {
     if (now.has(id) || !Array.isArray(a.action) || !a.action.length) continue;
@@ -2346,8 +2332,7 @@ function observe(prev, snap) {
     else if (o.status === "A" && s.status === "S" && !(Date.now() - (own.stop || 0) < 10000)) logStep(`${m.n} stopped`, "from another screen", "", s.name, true);
     else if (s.status === "E" && o.status !== "E") logStep(`${m.n}: error`, "by recipe", "bad", s.name, true);
     /* a timer that waited for a temperature. Not a SpargeStep's, which starts at the press, nor a whirlpool's, which starts
-       with the step whatever the temperature (WaitStep.on_start): its start line says the minutes (the dashboard agent's
-       hand-off of 12 Nov, late afternoon) */
+       with the step whatever the temperature (WaitStep.on_start): its start line says the minutes */
     else if (o.status === "A" && s.status === "A" && parseLeft(o.state_text) == null && parseLeft(s.state_text) != null
       && m.min && !sparge && s.type !== "WhirlpoolStep") {
       logStep(`${m.n}: ${m.temp != null ? `${m.temp} ${M.U} reached, ` : ""}${m.min} min timer started`, "by recipe", "", s.name);
@@ -2360,8 +2345,8 @@ function observe(prev, snap) {
 }
 /* the screen opened inside the app (back from Brew Steps, say) with questions already waiting: each gets its "waiting for
    you" line if this tab has none, as on a page loaded afresh, where CraftBeerPi sends them again as it connects. LOG's
-   amber lines are where the questions behind the title bar's first one are seen (the dashboard agent's hand-off of 12
-   Nov, evening). They haven't just arrived: no beep, and nothing said. Warnings stay as they are */
+   amber lines are where the questions behind the title bar's first one are seen. They haven't just arrived: no beep,
+   and nothing said. Warnings stay as they are */
 function firstLines(snap) {
   for (const a of snap.alerts || []) {
     const id = String(a.id);
@@ -2385,7 +2370,7 @@ function logAlert(a) {
 /* a page opened later: the lines kept on this device can hold a question that still waited as the last page closed. Once
    CraftBeerPi's list of the questions it waits on has come (it sends it as the page connects: snap.waiting), each such
    line whose question isn't among them, nor on show, says "no longer waiting", in the plain colour: this page can't tell
-   whether it was answered or taken down (the dashboard agent's hand-off of 12 Nov, afternoon). Again each time the list
+   whether it was answered or taken down. Again each time the list
    comes: after the wifi, or a restart. A line kept from before the lines had ids is matched by its words, a moment later
    (oldLines): the questions CraftBeerPi keeps for every page come just after the list, and one may be the line's */
 function noLongerWaiting(snap) {
@@ -2621,7 +2606,7 @@ function demoTick() {
   const r = st.recipe;
   const pz = root.querySelector("#pz");
   if (pz && st.a.bkEl.paused) pz.textContent = mmss(pausedFor());
-  /* CraftBeerPi's warning, 5 s after a kettle's AUTO started with no target (M64). The boil kettle never gets one:
+  /* CraftBeerPi's warning, 5 s after a kettle's AUTO started with no target. The boil kettle never gets one:
      BoilPower puts its boil point in as the target as it starts. Under the HERMS the HLT isn't in AUTO itself; the mash
      tun's warning covers it. Raised once, from 5 s on; the demo shows one prompt at a time, so behind a hop alert it waits
      its turn. */
@@ -2636,7 +2621,7 @@ function demoTick() {
     say(`No target for the ${DEMO.KNAME[v]}. ${st.banner.text}`, true);
     renderAll();
   });
-  /* BoilPower's warning after 2 brewing minutes paused, once per pause (Scott, 10 Nov), waiting its turn as that one does */
+  /* BoilPower's warning after 2 brewing minutes paused, once per pause, waiting its turn as that one does */
   const pe = st.a.bkEl;
   if (M.BKNEW && pe.paused && !pe.pauseWarned && st.t - pe.pausedAt >= 120 && !st.banner) {
     pe.pauseWarned = true;
@@ -2645,7 +2630,7 @@ function demoTick() {
     say(`${st.banner.title}. ${st.banner.text}`, true);
     renderAll();
   }
-  /* CraftBeerPi's alarm for an element on by hand (core M87; the dashboard agent's hand-off of 13 Nov): 2 °F past its
+  /* CraftBeerPi's alarm for an element on by hand: 2 °F past its
      target, or where BOIL starts, for 30 s of the brewing clock. At most twice a stretch of heating by hand: once past the
      target, once near the boil, so an OK'd alarm left unheeded comes back before the water boils. A stretch ends when the
      element is off, the vessel in AUTO, or the target changes. Behind another prompt it waits its turn here, as the others
@@ -2717,8 +2702,8 @@ export function createBrewDay(el, o = {}) {
   if (root) teardown();
   const myGen = ++gen;
   root = el; opts = o; DEMO_MODE = !!o.demo; PAGE = o.page === "settings" ? "settings" : "";
-  /* this tab's name, so BrewScribe's BREW DAY button (target="craftbeerpi") comes back to it rather than opening another
-     (Porter, 11 Nov) */
+  /* this tab's name, so BrewScribe's BREW DAY button (target="craftbeerpi") comes back to it rather than opening
+     another */
   if (!DEMO_MODE) { try { window.name = "craftbeerpi"; } catch (_) { /* a sandboxed frame: no name */ } }
   timers = []; noteTimers = {}; hold = null; afterHold = null; rigW = 0; last = null; everConnected = false; book = []; bookBusy = false; bookShown = false;
   tAns = null; tMsg = null; lastBannerKey = null; rangAt = 0; newIds = new Set(); openIds = null;
@@ -2770,7 +2755,7 @@ export function createBrewDay(el, o = {}) {
     if (st.v.bk.bp == null) st.v.bk.bp = 45; // the boil kettle's Boil_Power setting, read from its props
     if (st.a.bkEl.lvl == null) st.a.bkEl.lvl = 100; // the boil element's own level (its power), used when it is on by hand
     if (st.v.bk.usual === undefined) st.v.bk.usual = 45; // its Usual_Boil_Power setting; null: none set
-    if (st.v.bk.keep == null) st.v.bk.keep = true; // its Keep_Boiling setting, "Yes" unless Scott unticks it
+    if (st.v.bk.keep == null) st.v.bk.keep = true; // its Keep_Boiling setting, "Yes" unless the brewer unticks it
     if (st.v.bk.boilAt == null) st.v.bk.boilAt = DEMO.BOIL_TH; // its boil point, Boil_Threshold (BOIL AT)
     // the timers: the moment's own, or none; SOUND off unless the moment has it on; no editor unless the moment opens one
     st.tmrs = (st.tmrs || []).map(t => ({run: t.set, ...t}));
@@ -2846,14 +2831,14 @@ export function createBrewDay(el, o = {}) {
       const prev = last;
       last = snap;
       applyLive(snap);
-      // the graphs' step marks: when each step started, as CraftBeerPi keeps it (M63)
+      // the graphs' step marks: when each step started, as CraftBeerPi keeps it
       if (H) H.steps(snap.steps);
       if (snap.connected && !everConnected) {
         if (st.events[0] && st.events[0][5] === 0) st.events.shift();
         /* a fresh page says it's connected when nothing is kept, or when the newest line kept is a lost connection. That
            line can come from the page this one replaced, logged as it closed, and nothing else would follow it, as this
-           page never lost its own connection: Scott's tab showed "Connection to CraftBeerPi lost · trying again" while
-           connected (11 Nov, 21:25) */
+           page never lost its own connection, and the tab would show "Connection to CraftBeerPi lost · trying again"
+           while connected */
         if (!st.events.length || st.events[0][1] === LOST) logEvent("Connected to CraftBeerPi", "", "");
         if (!PAGE && !st.recipe) loadBook();
         probeBrewScribe();

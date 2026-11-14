@@ -7,8 +7,8 @@ import { liveSnap } from "../brewday/BrewDay";
 import { createBrewDay } from "../brewday/screen";
 import { createSettings } from "./page";
 
-// The Settings page (Scott, 11 Nov 2026: "I'd like the settings to be intelligently sorted and presented in groups by
-// function"; he approved the Settings design agent's mockup the same day). It sits in the brew-day screen's frame, the
+// The Settings page: the settings sorted and presented in groups by function, as the Settings mockup (design/settings)
+// draws them. It sits in the brew-day screen's frame, the
 // live title bar, last event and tabs with SETTINGS lit (screen.js, page "settings"), and the page itself is page.js, the
 // mockup's own code. Like the brew-day screen it isn't drawn by React and sits outside the app's menu bar and page frame,
 // and while it is open the corner stack of notifications is hidden: the title bar shows CraftBeerPi's prompts instead.

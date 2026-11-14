@@ -136,8 +136,8 @@ export const AlertProvider = ({ children }) => {
   const waitingNow = useCallback(() => waiting.current, []);
   const seenNow = useCallback(() => seen.current, []);
 
-  // Sent on connecting: the warnings and errors seen so far. A page asleep in
-  // a background tab missed each one's notification_retired (Porter, 13 Nov).
+  // Sent on connecting: the warnings and errors seen so far, since a page
+  // asleep in a background tab misses each one's notification_retired.
   const markSeen = useCallback((ids) => {
     const gone = new Set(Array.isArray(ids) ? ids : []);
     for (const id of gone) {

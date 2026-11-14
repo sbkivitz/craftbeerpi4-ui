@@ -78,7 +78,7 @@ const StepForm = () => {
   const [props, setProps] = useState({})
   const [propsConfig, setPropsConfig] = useState(null);
   // Why CraftBeerPi did not save the step, in its words: a running step's
-  // settings are not changed (DEFECTS M33). The other pages are told in a
+  // settings are not changed. The other pages are told in a
   // warning, which this page shows for only 5 s; here it stays by Save.
   const [refused, setRefused] = useState("");
   const { id } = useParams();

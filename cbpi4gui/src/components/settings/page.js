@@ -1,9 +1,9 @@
 // The Settings page.
 //
-// Scott, 11 Nov 2026: "I'd like the settings to be intelligently sorted and presented in groups by function. Right now,
-// they are a confusing long list in no particular order". The Settings design agent's mockup, which he approved that day
-// (design/settings), is this page: this is its settings.js, the same functions writing the same markup, styled by its own
-// stylesheet (settings.css, made from the mockup's by design/settings/port.mjs). The bench's test_ui_settings_identity.py
+// The settings sorted and presented in groups by function, not one long list in no particular order. The Settings
+// mockup (design/settings) is this page: this is its settings.js, the same functions writing the same markup, styled
+// by its own stylesheet (settings.css, made from the mockup's by design/settings/port.mjs). cbpi-testbench's
+// test_ui_settings_identity.py
 // compares the two pictures, scene by scene and screen size by screen size. The catalogue, what the page knows about each
 // setting and the nine groups, is catalog.js, made from the mockup's tables by the same script.
 //
@@ -16,10 +16,10 @@
 //   (demo-data.js), and SAVE only pretends, as in the mockup.
 // - SAVE sends every change at once (PUT /config/{name}/) and waits for every answer, SAVE_MS at most each, without
 //   reloading the page: each row then says SAVED or DIDN'T SAVE, and the last-event line, the brew-day screen's own list,
-//   says what happened. (The old page's SAVE reloaded at once, so it couldn't show a failure: the design agent's finding.)
+//   says what happened: a SAVE that reloaded the page at once couldn't show a failure.
 //   A number setting is sent as a number.
 // - Another screen's save: a change waiting here stays, and its "was" follows the new value; if that screen saved the
-//   same value, the change clears, as there's nothing left to save (11 Nov).
+//   same value, the change clears, as there's nothing left to save.
 // - Leaving by a tab, MORE's list, OPEN SYSTEM or OPEN HARDWARE with changes not saved asks first, in the note at the
 //   top; closing or reloading the browser tab can only get the browser's own question.
 // - TRY plays the brew-day screen's own alarm (brewday/alarm.js).

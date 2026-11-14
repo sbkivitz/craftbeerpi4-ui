@@ -1,8 +1,8 @@
 // The temperature graphs' history on the live screen; graphs.js draws it, as in the mockup.
 //
 // When the screen connects it reads the brew day so far from CraftBeerPi's logs (POST /log/window): each vessel's
-// temperature, and each kettle's target and AUTO and each element's level, which CraftBeerPi logs when they change
-// (M63). From then on it adds a row every 10 s from the readings the screen is sent, as the mockup does. After a lost
+// temperature, and each kettle's target and AUTO and each element's level, which CraftBeerPi logs when they change.
+// From then on it adds a row every 10 s from the readings the screen is sent, as the mockup does. After a lost
 // connection it reads the logs again, which fills in the time it missed.
 //
 // Times are CraftBeerPi's brewing clock, which its logs and steps are stamped in: the wall clock on the rig,
@@ -14,7 +14,7 @@ import { num } from "./live";
 
 const STEP = 10;                // a row every 10 s
 const MAX_BACK = 24 * 3600;     // DAY reaches back a day at most
-const NO_RECIPE = 8 * 3600;     // DAY without a recipe's start times: the last 8 hours (BUILD-NOTES)
+const NO_RECIPE = 8 * 3600;     // DAY without a recipe's start times: the last 8 hours (design/brewday/BUILD-NOTES.md)
 const POINTS = 2000;            // the most readings a log window gives (LogController.WINDOW_POINTS_MAX)
 const FILL = 180;               // at most 30 minutes of rows filled in between two ticks; longer, the logs are read again
 const RETRY_MS = 60000;         // a log window that failed is asked for again after a minute
@@ -51,7 +51,7 @@ export function createHistory() {
   let starts = [], lastT = null, gapped = true, stale = false, from = null, busy = false, failedAt = 0;
   const now = () => epoch() - T0;
 
-  // DAY starts when the recipe's first step started (CraftBeerPi keeps the time, M63), else 8 hours ago
+  // DAY starts when the recipe's first step started (CraftBeerPi keeps the time), else 8 hours ago
   function place() {
     hist.steps = starts.map(([e, n]) => [e - T0, n]);
     const e = epoch(), first = starts.length ? Math.min(...starts.map((s) => s[0])) : null;
@@ -71,7 +71,7 @@ export function createHistory() {
 
   // Where the brewing clock is and how fast it runs, from a log window that reads no logs. Before the first window,
   // so that window is asked for in the brewing clock's time: a simulator's runs ahead of the browser's, and a window
-  // worked out on the browser's reached a day and more back. Then once a minute, because the clock can move while the
+  // worked out on the browser's would reach a day and more back. Then once a minute, because the clock can move while the
   // connection stays up: SIM_TIME_SCALE changed, or a Pi's clock put right by the network after a power cut. Moved
   // by more than a row, or at another speed, the rows are out of step with it, so the logs are read again.
   let syncedAt = 0, syncing = false;

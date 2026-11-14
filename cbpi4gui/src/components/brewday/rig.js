@@ -1,5 +1,5 @@
-// The brew-day mockup's brewhouse drawing (design/brewday/rig.js), unchanged but for this
-// header and the export at the end: the drawing must match the mockup exactly.
+// The brew-day mockup's brewhouse drawing (design/brewday/rig.js): the same code, but for this header and the
+// export at the end, so the drawing matches the mockup exactly.
 /* Brewhouse drawing. It is drawn to the width of its box, so each vessel lines up with its own faceplate.
    style "kettle" (layout A): flat steel homebrew kettles on a stand.  style "line" (layout B): line drawing. */
 const RIG_H = 470;
@@ -138,7 +138,7 @@ function rigSVG(style, W, rs = 1, wpo = "today") {
   const chCoil = [[g.coilRiser, (242 + yPump) / 2, -90], [g.coilTopRiser, (164 + yTop) / 2, -90], [(g.coilTopRiser + g.mtRet) / 2, yTop, 0]];
   const chX = [[g.tee, (yPump + yLow) / 2, 90], [(g.vBk + g.xferRiser) / 2, yLow, 0], [g.xferRiser, (yTop + yLow) / 2, -90], [(g.xferRiser + g.bkRet) / 2, yTop, 0]];
   const nx = g.xferRiser + 26;
-  /* after the boil (wpo, from ?wp=; layout B): the wort pump's hoses are on the boil kettle (Scott moves them in the
+  /* after the boil (wpo, from ?wp=; layout B): the wort pump's hoses are on the boil kettle (the brewer moves them in the
      hold before the boil). "move" and "chill" draw the pump there, on a short loop out of the kettle's bottom and back
      in at its top through the runoff's own inlet, with its labels beside it, as the valve note has the space under
      it; "chill" puts the chiller on the way back. "swirl" leaves the pump where it is and draws the wort turning in

@@ -1,13 +1,13 @@
-// The temperature graphs, one in each faceplate's window (Scott chose option A on 10 Nov 2026: "graphs always
-// showing, with a smaller rig drawing"). The approved mockup's graphs.js (design/brewday/graphs.js), made into
+// The temperature graphs, one in each faceplate's window, always showing, with a smaller rig drawing (the mockup's
+// option A). The brew-day mockup's graphs.js (design/brewday/graphs.js), made into
 // functions of what they draw, so they produce the same pictures:
 //   G = {hist, t, span, lost, V, VNAME, U, hhmm, scale, BK}: the history, now, the span shown, whether the connection is
 //   lost, the vessels as the faceplates show them, their names, the unit's sign, the clock's format, how fast the
-//   brewing clock runs, and for the new BoilPower's boil kettle {from: its boil point, edge: where its targets stop
-//   being BOIL, hold: the temperature it holds or null} (else null).
+//   brewing clock runs, and for the new boil kettle, under BoilPower 0.0.3.post7 or later, {from: its boil point,
+//   edge: where its targets stop being BOIL, hold: the temperature it holds or null} (else null).
 //   hist = {start, steps: [[t, n]], v: {hlt, mt, bk: [[t, PV, SV or null, OUT % or null]]}}, a row every 10 s.
 //   t is seconds since local midnight: the demo's clock, or CraftBeerPi's brewing clock (history.js).
-// Not here: option B's DRAWING / GRAPHS panel, which Scott turned down, and the mockup's demo history, which is
+// Not here: the mockup's option B, a DRAWING / GRAPHS panel, and the mockup's demo history, which is
 // demo data (demo.js history()). Temperatures follow the unit: the mockup's thresholds are in °F.
 
 export const GSPANS = [["10", 600, "10 MIN"], ["30", 1800, "30 MIN"], ["day", 0, "DAY"]];

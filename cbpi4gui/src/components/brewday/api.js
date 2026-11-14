@@ -63,7 +63,7 @@ export const api = {
   stop: () => post("/step2/stop"),
   next: () => post("/step2/next"),
   answer: (notificationId, actionId) => post(`/notification/${id(notificationId)}/action/${id(actionId)}`),
-  // OK on a warning or an error without buttons: CraftBeerPi takes it down from every page, and BrewScribe's (core M88)
+  // OK on a warning or an error without buttons: CraftBeerPi takes it down from every page, and BrewScribe's
   seen: (notificationId) => post(`/notification/${id(notificationId)}/seen`),
   recipes: () => get("/recipe/"),
   recipe: (file) => get(`/recipe/${id(file)}`),
@@ -71,7 +71,7 @@ export const api = {
   timerStart: () => post("/resttimer/start"),
   timerPause: () => post("/resttimer/pause"),
   timerAdd: (seconds) => post("/resttimer/add", { seconds }),
-  // The timers, up to four (M69). Each answers with all of them, as every screen hears them.
+  // The timers, up to four. Each answers with all of them, as every screen hears them.
   timersAdd: (name, seconds, start) => post("/timers/", { name, seconds, start }),
   timersChange: (timerId, change) => call("PUT", `/timers/${id(timerId)}`, change),
   timersRemove: (timerId) => call("DELETE", `/timers/${id(timerId)}`),
