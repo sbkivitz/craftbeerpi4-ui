@@ -20,14 +20,15 @@ const RIG_V = [
   {id: "bk", name: "BOIL KETTLE", el: true, box: 1, vx: 0}
 ];
 
-/* ySp: the sparge line, from the HLT pump over the hot liquor tank to the top of the mash tun.
+/* ySp: the sparge line, from the HLT pump over the hot liquor tank and down into the HERMS coil's inlet, so the sparge
+   water runs through the coil, flushing it, and on into the mash tun along the coil's own line.
    vCoil, vBk, vRet, vSp: the hand valves on the coil line, the boil kettle line, the HLT return and the sparge line. */
 function rigGeom(W) {
   const a = W / 6, m = W / 2, k = W * 5 / 6;
   return {W, a, m, k, x: [a, m, k], yTop: 50, ySp: 22, yPump: 352, yLow: 458,
     hltPump: a - 60, wortPump: m - 70, hltValve: a + 10, mtValve: m - 10,
     hltRiser: a - 160, coilRiser: a + 160, coilTopRiser: a + 186, tee: m - 120, xferRiser: k - 165,
-    hltRet: a - 70, mtRet: m - 75, bkRet: k - 95, spargeIn: m,
+    hltRet: a - 70, mtRet: m - 75, bkRet: k - 95,
     vCoil: (a + 160 + m - 120) / 2, vBk: (m - 120 + k - 165) / 2, vRet: a - 115, vSp: a + 60,
     bkPump: k - 10, bkOut: k + 34};
 }
@@ -86,7 +87,7 @@ ${v.el ? `<path class="element" id="el-${v.id}" d="${zigzag(268)}"/>` : ""}
 </g>`;
 }
 
-/* rs: how much bigger to set the labels when the drawing is drawn small (the faceplate-graphs proposal); 1 = as designed.
+/* rs: how much bigger to set the labels when the drawing is drawn small (with the graphs in the faceplates); 1 = as designed.
    lx: put the labels beside the pump, starting lx to its right, instead of under it (the wort pump at the boil kettle,
    whose underside the valve note already uses) */
 function rigPump(id, x, y, med, name, rs = 1, lx = 0) {
@@ -119,23 +120,29 @@ function rigSVG(style, W, rs = 1, wpo = "today") {
   const hOut = S.outY(g.hltValve - a), mOut = S.outY(g.mtValve - m);
   const hp = g.hltPump, wp = g.wortPump;
   /* each pump's line is split where it branches, so the drawing can show either way:
-     HLT pump: back round the hot liquor tank, or (layout B only) over to the top of the mash tun for the sparge;
-     wort pump: through the HERMS coil and back into the mash tun, or down and across to the boil kettle */
+     HLT pump: back round the hot liquor tank, or (layout B only) along the sparge line into the HERMS coil;
+     wort pump: through the HERMS coil and back into the mash tun, or down and across to the boil kettle.
+     The coil's inlet stub (coilIn) and its line out to the mash tun (coilOut) carry whichever pump feeds the coil: the
+     wort pump's line comes up to the inlet from below (coilUp), the sparge line comes down to it from above. Where the
+     sparge line crosses the coil's outlet stub it hops over it (HOP, the hop's radius), so the two don't read as joined */
+  const HOP = 10, yOut = 164;
   const hltIn = [`M${n(g.hltValve)} ${n(hOut)} V${yPump} H${n(hp + 22)}`];
   const hltUp = [`M${n(hp - 22)} ${yPump} H${n(g.hltRiser)} V${yTop}`];
   const hltRet = [`M${n(g.hltRiser)} ${yTop} H${n(g.hltRet)} V${n(hRet)}`];
-  const sparge = [`M${n(g.hltRiser)} ${yTop} V${ySp} H${n(g.spargeIn)} V70`];
+  const sparge = [`M${n(g.hltRiser)} ${yTop} V${ySp} H${n(g.coilRiser)} V${yOut - HOP} A${HOP} ${HOP} 0 0 0 ${n(g.coilRiser)} ${yOut + HOP} V242`];
   const wortIn = [`M${n(g.mtValve)} ${n(mOut)} V${yPump} H${n(wp + 22)}`];
   const wortOut = [`M${n(wp - 22)} ${yPump} H${n(g.tee)}`];
-  const coil = [`M${n(g.tee)} ${yPump} H${n(g.coilRiser)} V242 H${n(a + 112)}`,
-    `M${n(a + 112)} 164 H${n(g.coilTopRiser)} V${yTop} H${n(g.mtRet)} V${n(mRet)}`];
+  const coilUp = [`M${n(g.tee)} ${yPump} H${n(g.coilRiser)} V242`];
+  const coilIn = [`M${n(g.coilRiser)} 242 H${n(a + 112)}`];
+  const coilOut = [`M${n(a + 112)} ${yOut} H${n(g.coilTopRiser)} V${yTop} H${n(g.mtRet)} V${n(mRet)}`];
   const xfer = [`M${n(g.tee)} ${yPump} V${yLow} H${n(g.xferRiser)} V${yTop} H${n(g.bkRet)} V${n(bRet)}`];
-  const outline = [...(A ? [] : sparge), ...hltRet, ...hltIn, ...hltUp, ...xfer, ...coil, ...wortIn, ...wortOut];
+  const outline = [...(A ? [] : sparge), ...hltRet, ...hltIn, ...hltUp, ...xfer, ...coilUp, ...coilIn, ...coilOut, ...wortIn, ...wortOut];
   const chIn = [[g.hltValve, (hOut + yPump) / 2, 90]], chUp = [[g.hltRiser, (yTop + yPump) / 2, -90]];
   const chRet = [[g.hltRet, (yTop + hRet) / 2, 90]];
-  const chSp = [[(g.hltRiser + g.vSp) / 2, ySp, 0], [(g.vSp + g.spargeIn) / 2, ySp, 0], [g.spargeIn, (ySp + 70) / 2, 90]];
+  const chSp = [[(g.hltRiser + g.vSp) / 2, ySp, 0], [(g.vSp + g.coilRiser) / 2, ySp, 0], [g.coilRiser, (ySp + yOut - HOP) / 2, 90], [g.coilRiser, (yOut + HOP + 242) / 2, 90]];
   const chWin = [[g.mtValve, (mOut + yPump) / 2, 90]];
-  const chCoil = [[g.coilRiser, (242 + yPump) / 2, -90], [g.coilTopRiser, (164 + yTop) / 2, -90], [(g.coilTopRiser + g.mtRet) / 2, yTop, 0]];
+  const chCoilUp = [[g.coilRiser, (242 + yPump) / 2, -90]];
+  const chCoilOut = [[g.coilTopRiser, (yOut + yTop) / 2, -90], [(g.coilTopRiser + g.mtRet) / 2, yTop, 0]];
   const chX = [[g.tee, (yPump + yLow) / 2, 90], [(g.vBk + g.xferRiser) / 2, yLow, 0], [g.xferRiser, (yTop + yLow) / 2, -90], [(g.xferRiser + g.bkRet) / 2, yTop, 0]];
   const nx = g.xferRiser + 26;
   /* after the boil (wpo, from ?wp=; layout B): the wort pump's hoses are on the boil kettle (the brewer moves them in the
@@ -179,7 +186,9 @@ ${rigLine("ln-hlt-ret", "liq", hltRet, chRet)}
 ${rigLine("ln-hlt-in", "liq", hltIn, chIn)}
 ${rigLine("ln-hlt-up", "liq", hltUp, chUp)}
 ${rigLine("ln-xfer", "wrt", xfer, chX)}
-${rigLine("ln-wort-coil", "wrt", coil, chCoil)}
+${rigLine("ln-wort-coil", "wrt", coilUp, chCoilUp)}
+${rigLine("ln-coil-in", "wrt", coilIn, [])}
+${rigLine("ln-coil-out", "wrt", coilOut, chCoilOut)}
 ${rigLine("ln-wort-in", "wrt", wortIn, chWin)}
 ${rigLine("ln-wort-out", "wrt", wortOut, [])}
 ${whirl}

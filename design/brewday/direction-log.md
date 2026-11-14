@@ -1,10 +1,147 @@
 # Direction decision log
 
+## The step list keeps the current step in view, with or without the timers (13 Nov 2026, evening)
+- Brett asked for it for tonight's release: the current step stays in view whether or not CraftBeerPi has the timers.
+  The list followed the current step only with the timers, since it came in with them.
+- Found while checking: without the timers, the versions line cut the current step at 1440×900 in eight moments (the
+  Boil in #hop by 39 px). My check of the versions line had left that size out.
+- Chosen: the list follows the current step on every draw, whatever takes the column's height. The rule itself is
+  unchanged: scroll only when the current step isn't whole, so it sits just below the list's top, or as far as the
+  list goes.
+- Checked in Brett's test set-up (paused clock, local fonts, his Chromium): with the timers nothing moves; without them
+  the current step was cut in 13 of 185 pictures and is now whole in all; his first presses are unchanged.
+- Not changed, for after the release: the page draws once before its fonts arrive, in the mockup and his build alike,
+  so where a step only just fits the list can start lower than it needs to; and in his build each update from
+  CraftBeerPi pulls a hand-scrolled list back to the current step. A gentler rule, scrolling only when the current step
+  or the list's height changes, would leave the brewer's own scrolling alone.
+
+## The sparge through the HERMS coil (13 Nov 2026, late afternoon)
+- The request, on 8012: "on my sparge step, I actually run the HLT water through the HERMS coil and then into the Mash
+  Tun to clean out the coil. It would be great if the drawing could show that." Asked one thing, whether the coil is the
+  only way the sparge water reaches the mash tun, the brewer answered "Always through the coil: the HLT pump feeds the
+  coil, and the straight line over the top can go".
+- Read first: the drawing is the plant as plumbed (the order on screen follows the user's world), so a path the rig
+  doesn't have is a small untruth every sparge; and the brewer's earlier rule for the drawing, "I don't want the symbols
+  to become too chaotic".
+- Chosen: the sparge line still crosses over the hot liquor tank, then drops down the tank's right side into the coil's
+  inlet, on the same upright as the wort pump's line, which comes up from below. The coil and its line to the mash tun
+  carry whichever liquid runs, in its colour. The four valves keep their places and their settings, so the SET OPEN and
+  SET CLOSED marks are unchanged too.
+- One crossing is unavoidable: every route from the HLT pump to the coil's inlet crosses either the coil's outlet, the
+  coil's line to the mash tun, the HLT pump's own suction, or its labels. Chosen: a hop over the coil's outlet stub, the
+  plain convention for pipes that cross without joining, close to the tank, where it explains itself.
+- Not chosen: a drop in the gap between the tanks (it crossed the coil's line to the mash tun, and moved the coil valve
+  so its tag ran into the line to the boil kettle); a route under the HLT pump (through its labels); off-page
+  connectors (less readable than one hop).
+- Checked: what lights in each phase, the hop at twice the scale, and every moment's picture before and after: the
+  drawing is the only thing that changes, and phones not at all. Handed to Brett.
+
+## Reset after STOP, and the versions on the screen (13 Nov 2026, afternoon)
+- The brewer on 8012, relayed by Brett: "Seems to me that there needs to be a way to reset the brewday progress after hitting
+  Stop", then "it woudl be nice if the BrewDay dashboard showed the current version somewhere inconspicuous".
+- Read first: my notes on confirmations (only for rare, serious acts that can't be undone; say what will happen; answers
+  that say what they do; no default Yes; NN/g's eight rules, read again today), slips and modes (keep a dangerous
+  command away from frequent ones; a hidden mode is a slip factory, so show the state twice), and CraftBeerPi's own code:
+  StepController.reset_all (refused while a step runs; every step back to not started, the time run and what steps kept
+  forgotten, the brew's questions taken down, nothing switched) and next() (with nothing running or stopped, NEXT is
+  START).
+- Asked the brewer one thing: after the reset, the same recipe at step 1, or the recipe book. He chose "The same recipe, back
+  at step 1, waiting for START". It also keeps any changes made in Brew Steps; /step2/clear would lose them.
+- Chosen (The Start Over Rule):
+  - RESET takes STOP's place once nothing runs and some step has begun, as a stopwatch's Reset does once it's stopped:
+    where the brewer's eye already is after STOP, and no new button shifting the row. The label changes, and the status line
+    and the step both say STOPPED, so the state shows twice; the press only opens a question.
+  - It asks first, as NEXT STEP's skip does: a reset can't be undone. The question says what CraftBeerPi forgets ("steps
+    1 and 2 are done", "Saccharification has run 16 of its 40 minutes", in minutes, as 16:19 read like a clock time) and
+    what stays ("Kettles, pumps and timers stay as they are."); RESET TO STEP 1 and STAY AT STEP 3, no default.
+  - It switches nothing; ALL OFF does that. Timers are the brewer's own and stay.
+  - Also while the boil waits for the brewer, where STOP is greyed and CraftBeerPi allows a reset, as its Brew Steps page
+    does: otherwise the only road back from there was to start the boil and stop it.
+- Found while designing it: on a recipe not begun (after LOAD, and after every reset), NEXT STEP offered "to Protein
+  Rest" and its question "Skip the rest of MashIn…", but CraftBeerPi would start MashIn: heat with two taps, and a line
+  saying "Skipped to Protein Rest". Now greyed, "not started", as before a held boil. Also: the screen as built closes
+  NEXT STEP's question on a stopped recipe at the next update (screen.js 2042); the mockup keeps it, and so must RESET's.
+- Not chosen:
+  - A fourth button, or RESET beside the status line: the row would shift, or the line would grow to fit a 66 px button.
+  - RESET putting the recipe away (the brewer's other option).
+  - No question at all, as the Brew Steps page's Reset: one slip would lose the brew's progress.
+- The versions: the recipe column's last line, in a new Fine Print (12 px, Dim Steel, 5.8:1): bottom left on a
+  monitor, the end of the page on a phone, where pages keep such things. "Web UI …, built …" then "CraftBeerPi …", each
+  whole; one line where the column allows. Plain text, so it can be copied into a message.
+  - Measured first: one line takes 369 px; the column is 410 px at 1920, 310 px at 1180 and 1366, 306-336 px on phones.
+  - Its cost is the step list's: 26 px at 1920, 41 px at 1180. Where that cut the current step (a timer run out, at
+    1180) or made the timer editor spill, it steps aside on a monitor while the column needs its room: a timer's editor,
+    NEXT STEP's or RESET's question, a timer's alarm, as the step list already does for the editor.
+  - Not chosen: the title bar (precious, and long brewery names), the event line (it's for events), LOG (hidden), the
+    drawing's corner (no room at 1180), Settings (the brewer said the dashboard).
+- Checked: the walk and the presses (the boil hold, Escape, STAY, NEXT, ALL OFF, keyboard, no connection, the greyed
+  NEXT STEP's words); 224 pictures of the 32 older moments with the versions' line hidden, 201 identical, the other 23
+  being #boil-hold's middle button and this morning's PID hold; and the line in all 37 moments at 8 sizes and
+  configurations, never cutting the current step or spilling. Handed to Brett.
+
+## A hold held by a PID (13 Nov 2026, late morning)
+- Brett put BoilPower 0.0.3.post8 on both simulators: any boil kettle target below the boil is held by a PID, with
+  nothing to switch on (the brewer asked for it: "I think the boilPower should also be able to do PID control", then "I think this
+  behavior should be automatic"). He listed three things on the screen it made untrue, and left them to me.
+- Chosen: the line drops "heats again at…", since there's no rest band, and reads exactly like the HLT's (agreeing
+  with Brett). The element can be off just below the target while the wort still rises, so "heats again at" would
+  promise something that isn't so (The Mode Tells The Truth Rule, in spirit). The hold's notice takes the plugin's new
+  words.
+- The demo's numbers come from the plugin, not a guess. I ran 0.0.3.post8 read-only with Brett's test model of the
+  simulators' kettle. From the stand's 166.3 °F it reads 168.4 °F at 37 % at #hold's 17:18:40 (the moment said 169.4
+  and 35 %), reaches 170 °F at about 17:25:30 and holds at 26 %. The moments now show what 8012 will. The older
+  BoilPower (?bk=today) keeps its own, faster hold, as that's what it did.
+- Not chosen: keeping 169.4 °F and only changing OUT. It would have kept more pictures the same, but shown a climb the
+  PID doesn't make.
+- Checked: 15 presses through the new hold model; 224 pictures before and after, 208 identical, the other 16 changed
+  only in the boil kettle's faceplate and the event line of #hold, #whirlpool and #finished. Handed to Brett.
+- Built the same day with the two below (M86-M88: web UI a15d667, build 2e6a9e8, live on 8012). I read his code against
+  the design: the same words, and "seen" only where a line was still amber or red.
+
+## Heating by hand, and OK on a warning from any screen (13 Nov 2026)
+- On 8012 the brewer had the boil kettle in MANUAL for a brew in a bag, target 150 °F, element held on, and it boiled at
+  212 °F. Then "Oh! I turned the HLT element on without using 'Auto'... that is dangerous" and "same issue with HLT, I
+  see. Maybe a warning?" Brett relayed it, with what CraftBeerPi could do, and left the what and when to me.
+- Read first: my notes on modes and automation (show what the automation is doing and its mode; CraftBeerPi's own docs
+  warn a hand-switched heater stays on unregulated), alarms (an alarm needs action soon; red is for a warning that needs
+  it now, amber for caution; acknowledging doesn't clear what's still true), confirmations (they wear out), and that the
+  screen isn't the safety system. Bench PID controllers, which the faceplate copies, light an alarm lamp when the
+  temperature runs past the target.
+- The gap: in MANUAL the window still shows SV 150 in green, as if held, and the line under it said "MANUAL · element by
+  hand", which names the mode but not what it means for the target. Nothing changed as the water passed 150 °F.
+- Chosen (The By Hand Rule):
+  - While an element heats by hand, its line says nothing will stop it, in Prompt Amber: a caution, at the moment and the
+    place of the mistake, right above the element's button.
+  - 2 °F past the target, or near the boil, the line turns light red. CraftBeerPi raises an error: an error so it goes
+    first in the title bar and beeps even behind a step's question, as M84's order would otherwise silence a warning there.
+  - At most twice a stretch: past the target, then near the boil, so an OK'd alarm left unheeded comes back before the
+    water boils.
+- Not chosen:
+  - MANUAL stopping at the target (agreed with Brett): a hidden second AUTO, the surprise that mode research warns of.
+  - An "Are you sure?" at the press: confirmations for things undone with one tap get pressed through, and the held
+    press is already there.
+  - A plain warning: it would wait behind questions, silently.
+  - The target's number in the line ("won't stop at 150.0 °F"): at 1180 px it left 1 px with some targets, and a line
+    that wraps as the water passes the target moves the buttons under the brewer's finger. "won't stop at target" uses
+    the line's own word, and SV sits right above it.
+- Found while measuring: an HLT target at or past the boil could never be passed, so "near the boil" now counts whatever
+  the target.
+- OK on a warning (the brewer chose that an OK in Brew Day clears it in BrewScribe; Brett asked the screen's side). Chosen: an
+  OK anywhere takes it from every title bar, with no line and no beep. Its lines add "seen", which also fixes my M82 design,
+  where a warning's waiting showed in LOG by colour alone. Identical errors show once, so the count says how many presses
+  are left.
+- Checked: 25 presses with the clock run forward; four lines on two vessels at 12 sizes, with and without graphs (144
+  states), each one line, buttons never moving; 224 pictures of the 32 moments before, identical. Handed to Brett.
+- Left out, and said so: a hard limit belongs in the rig; the mash tun heated through the coil by hand has no line of its
+  own.
+- Built the same day (M87, core 47ec4e6; M88, core 165097e). Live, the alarm's 2 °F is 1 °C on a Celsius brewery. In a
+  slow test run the HLT stayed on long enough to near the boil, and the second alarm came as designed.
+
 ## Which question the title bar shows first, and when it beeps (12 Nov 2026, evening)
 - Brett built the short "answered on another screen" line (M83), naming the button now that CraftBeerPi sends its label.
   He then found BrewScribe logger.13 asking seven reminders of its own through CraftBeerPi, each with only OK, and the
   title bar showing the oldest question first: so they stood in front of the sparge's question, START THE BOIL,
-  Whirlpool Hop and Brewing Complete. He left the order to me, with Scott if I wanted him.
+  Whirlpool Hop and Brewing Complete. He left the order to me, with the brewer if I wanted him.
 - Read first: my notes on alarm banners ("title bar: top priority plus a count"; ISA-18.2 priorities by consequence and
   time; McFarlane on interruptions; alarm fatigue; Apple's "don't repeat notifications") and how CraftBeerPi and
   BrewScribe send each question. CraftBeerPi already sends what can't wait as a warning (hop alerts, timers, Heating is
@@ -19,8 +156,8 @@
   teaches pressing OK unread; a stale warning in front of a hop alert silenced it. The screen goes by what CraftBeerPi
   says each one is, not by guessing from words.
 - Not chosen: oldest first (the above); newest first (buries a hop alert); two questions at once in the title bar (no
-  room on a phone, and a bigger change for Scott to approve; the next thing to try if reminders get missed). Not asked
-  of Scott: the order was delegated to me, and the beeps follow his own rule.
+  room on a phone, and a bigger change for the brewer to approve; the next thing to try if reminders get missed). Not asked
+  of the brewer: the order was delegated to me, and the beeps follow his own rule.
 - The cost, accepted: "Record after-boil readings" waits behind Whirlpool Hop's question through the cool-down. It's in
   the count, amber in LOG and on BrewScribe's tab.
 - Agreed with Brett: a question already waiting when the screen opens inside the app gets its line, as on a fresh page,
@@ -29,6 +166,12 @@
   asking them again as new questions.
 - Checked: the ranking against twelve cases with the real types and titles; the beeps over a sparge and a boil's start
   with BrewScribe (four pairs, none after a press). Live only, so no pictures change. Handed to Brett.
+- Built the same evening (M84). His calls agreed: no beep or screen-reader line for what was waiting as the page opened
+  or came back; No connection beeps as before. His M85 fixed a step's line landing one place too far back in LOG. With
+  the real BrewScribe (logger.16) every walk passes, and Porter keeps his reminders up through STOP and START.
+- Checked afterwards, not designed: the software interlock's refusal. Its reason is only in a warning, which this order
+  can put behind a step's question, and a kettle's AUTO repeats it every few seconds. The brewer's rig has a mechanical
+  element selector with the software interlock off, so it can't happen there; noted in the brief for later.
 
 ## The event log's order, warnings, and CraftBeerPi's own words (12 Nov 2026, late afternoon)
 - Brett built "a question's line turns answered" (M81) and ran it live. Lines that arrive in one update were logged
@@ -92,16 +235,16 @@
 
 ## After the recipe finishes: the wort pump stays at the boil kettle (12 Nov 2026, late morning)
 - Brett, building the chiller loop: once the recipe's last step finishes, the live screen has no recipe, so
-  `boilStarted()` was false and the drawing put the wort pump back by the mash tun. That's when Scott chills and moves
+  `boilStarted()` was false and the drawing put the wort pump back by the mash tun. That's when the brewer chills and moves
   the wort to the fermenter, so the drawing lit the HERMS coil again. Brett asked what should tell the screen the
   hoses have gone back.
 - What CraftBeerPi knows: it keeps a finished recipe's steps, all done, until a recipe is loaded, reset or cleared
   (`StepController`). So "the boil has started" stays true after the recipe ends, for every screen and across reloads.
-  The mash tun's AUTO runs the wort pump through the HERMS coil, which only works with the hoses on the mash tun; Scott's
+  The mash tun's AUTO runs the wort pump through the HERMS coil, which only works with the hoses on the mash tun; the brewer's
   10 Nov test on 8012 (#notarget) was exactly that, after a finished recipe.
 - Not chosen: a HOSES switch (one more control, and the phone has no drawing to show it); forgetting after a time
   (surprising); going by the vessels' modes alone (wrong when brewing by hand).
-- Asked Scott, with the catch spelled out (brewing by hand later, with the old recipe still loaded and the mash tun in
+- Asked the brewer, with the catch spelled out (brewing by hand later, with the old recipe still loaded and the mash tun in
   MANUAL, shows the pump at the kettle). He chose "Yes, keep it at the kettle until then": drawn at the boil kettle
   until a recipe is loaded or reset, and by the mash tun while the mash tun's AUTO is on.
 - Mockup: `stepStatus` reads a demo moment's `finished` flag when no recipe runs; `boilStarted()` needs no running
@@ -110,14 +253,14 @@
   pictures of the old moments identical; #finished fits at 11 sizes; pressed through. React UI only (`screen.js`, the
   demo). Handed to Brett.
 
-## The wort pump after the boil: three options (12 Nov 2026, morning); Scott chose 2, with the chiller
-- Scott: "whirlpool / hop-stand step pump symbol shows it going through the HERMS coil. What are some alternatives?",
+## The wort pump after the boil: three options (12 Nov 2026, morning); the brewer chose 2, with the chiller
+- The brewer: "whirlpool / hop-stand step pump symbol shows it going through the HERMS coil. What are some alternatives?",
   then "I don't want the symbols to become too chaotic. Maybe another representation of the wort pump instead of
   trying to connect the pipe/valves over there from where it currently is?" As built, the drawing goes back to
   recirculating once the boil starts, so a running wort pump is drawn round the HERMS coil into the mash tun.
-- Reading (Scott's standing list): NN/g heuristic 2, match the real world and natural mapping; GT CS 6750 lesson
+- Reading (the brewer's standing list): NN/g heuristic 2, match the real world and natural mapping; GT CS 6750 lesson
   2.6.9, good representations make relationships explicit, bring objects and relationships together, exclude
-  extraneous details and expose natural constraints; Norman's conceptual models (the drawing should match what Scott
+  extraneous details and expose natural constraints; Norman's conceptual models (the drawing should match what the brewer
   does: one pump, its hoses moved to the kettle); W3C WAI complex images (the drawing's description must say where
   the pump is). Digests: H5 draw plumbing flat and plain with few crossings, H3 keep normal quiet, F14 connection is
   the strongest grouping.
@@ -129,14 +272,14 @@
   short pipes and no crossing, and it matches the hose move. 2 if he wants the chiller seen. 3 is the quietest, but the
   pump still looks piped to the mash tun, and the link to the kettle is only words and colour.
 - Comparison page: `proposal/whirlpool.html`. React UI only (`rig.js`, `screen.js`).
-- Scott chose "2. The pump moves, with the chiller drawn on its loop" the same morning; the mockup's default since. One
+- The brewer chose "2. The pump moves, with the chiller drawn on its loop" the same morning; the mockup's default since. One
   change before the hand-off: the valves are drawn as before the boil (for recirculating) instead of as the sparge left
   them, since the HLT pump is also the HLT's stirrer, and the sparge positions would have sent its water over to the
   mash tun. Checked: before the boil and on a phone nothing changes; after it, only the drawing on a monitor and at
   half of it. Handed to Brett. Known limit: the WORT PUMP button stays on the mash tun's panel.
 
 ## SOUND switches on silently (12 Nov 2026, morning)
-- Scott: "I don't want to hear a sound when I click the "SOUND" box for the timer. ONly when timer expires". Since
+- The brewer: "I don't want to hear a sound when I click the "SOUND" box for the timer. ONly when timer expires". Since
   11 Nov a press that switched SOUND on, or allowed it while it said TAP TO ALLOW, played the alarm (the mockup two
   beeps, the screen the whole burst) so he'd hear what it sounds like.
 - Asked him (ask_user) whether a new hop alert, question or error should keep its two beeps, since his words could
@@ -154,7 +297,7 @@
   the build before fails exactly the five silent-press checks).
 
 ## OUT back on the boil kettle's window (11 Nov 2026, night)
-- Scott, via Brett: "BoilPower's display has lost its current 'out' element power number? Please put it back". The
+- The brewer, via Brett: "BoilPower's display has lost its current 'out' element power number? Please put it back". The
   10 Nov rule ("I don't need the heating element power echoed so many places") had left the boil kettle's window
   with MODE only while its target was BOIL; the afternoon took the % off HEATING because OUT showed it, which was true
   on the HLT but not here. So nothing showed what the element was doing, and in MANUAL the green BOIL 33 % isn't it.
@@ -169,7 +312,7 @@
 - Also found: below about 1366 px the small words and gaps stop at their smallest sizes while the windows narrow, so
   the boil kettle's "°F" already crossed the divider at 1180 with graphs (−8 px), and would by 12 px with OUT. The PV
   now has a limit worked out from the window's width, the same for all three, keeping it 6 px clear: 40.6 px at 1180,
-  53.5 at 1280, 50.2 at 900; unchanged at Scott's monitor, half of it and his phone. The big number gives way, not
+  53.5 at 1280, 50.2 at 900; unchanged at the brewer's monitor, half of it and his phone. The big number gives way, not
   the small ones: the small words are near their legibility floor, and the PV at 40 px is still twice OUT.
 - Built by Brett the same night (M76; web UI a513fe4, build ad897b3; identity 451/451; his live boil power test reads
   OUT through a pause, MANUAL and back, 92/92).
@@ -182,13 +325,13 @@
   slip on a narrow step costs one step of power or a pause a held press undoes; a boil-over needs the element at once.
   Built by Brett the same night (M77, web UI 1b75633, build c616051; identity 451/451; a live check at 1180 px, which
   his identity sizes don't include, 95/95).
-- Scott renamed 8012 again, to "EBrews - Simulator" (18 characters): so the simulators are now told from the rig by
+- The brewer renamed 8012 again, to "EBrews - Simulator" (18 characters): so the simulators are now told from the rig by
   name, as suggested. It fits as designed: one line on a monitor, two whole lines on a 360 px phone.
 
 ## The brewery's name in the title bar; a BREWSCRIBE tab (11 Nov 2026, evening)
 - Brett asked two things after porting the hold before the boil. The name: PRODUCT.md promised the BREWERY_NAME
   setting in the title bar, but the mockup (and so his port) printed "CraftBeerPi Brewery" on a monitor and
-  "CraftBeerPi" on a phone. Then Scott asked about it himself; his name on 8012 is "EBrews - A CraftBeerPi Brewery",
+  "CraftBeerPi" on a phone. Then the brewer asked about it himself; his name on 8012 is "EBrews - A CraftBeerPi Brewery",
   30 characters. Brett asked for it first, designed on his monitor, half of it and a phone.
 - Decided: the setting at every width, phone included, in one span; blank shows "CraftBeerPi". The name is what tells
   the rig from a simulator (all three are CraftBeerPi), and a phone is where both are likeliest to be open, so a short
@@ -197,31 +340,31 @@
 - Long names (over 24 characters) at 0.7 of the size on a monitor and a phone: two lines then fit the title bar's
   50 px, and 30 characters fit two lines in a phone's corner. Tried first at 0.72: 1 px too tall in layout A. From
   701 to 1023 px the name keeps its full size and takes what is left of its row (flex 1 1 0), as the question has its
-  own row there; at 0.72 it was 15.8 px, the smallest text in the bar, at half Scott's monitor.
-- Scott's name: one line at 23.8 px on his monitor, two whole lines under the sparge question, "EBREWS - A /
+  own row there; at 0.72 it was 15.8 px, the smallest text in the bar, at half the brewer's monitor.
+- The brewer's 8012 name: one line at 23.8 px on his monitor, two whole lines under the sparge question, "EBREWS - A /
   CRAFTBEERPI…" under "Ready to boil?"; one line at 22 px at 960; two lines at 15.4 px on a 360 or 390 phone. The
   title bar is as tall as with the default name in all of them. Left as a trade-off: at 1366 and 1440 two alarms take
   a second line beside his name, since making the name give way first would cut it where it fits whole today.
 - The page's title starts with the name (name · Brew day): a browser tab shows its title's start (WCAG 2.4.2).
-- The BREWSCRIBE tab (for Porter's BrewScribe; Scott chose its own browser tab for now): the last tab, after MORE. The
+- The BREWSCRIBE tab (for Porter's BrewScribe; the brewer chose its own browser tab for now): the last tab, after MORE. The
   tabs are where the screen's places are, the trip happens many times a brew day, and none of CraftBeerPi's seven
   moves. The program's name, a box-and-arrow icon saying before the press that it opens elsewhere (NN/g on new tabs,
   W3C G201) and "(opens in its own tab)" for screen readers. On a phone the bar is four and four. The name breaks
   between Brew and Scribe where its tab is narrow, the icon kept with Scribe.
 - Tried in Edge: `#now` keeps the BrewScribe tab from reloading; `rel="noopener"` opens a new BrewScribe tab on every
   press; a BrewScribe tab opened from a bookmark is never reused, even if it names itself "brewscribe".
-- For Scott and Porter: a browser slows tabs that aren't in front, and a phone may pause them, so alarms on the same
-  phone may wait until Scott switches back from BrewScribe. Suggested for Scott: name the simulators differently.
+- For the brewer and Porter: a browser slows tabs that aren't in front, and a phone may pause them, so alarms on the same
+  phone may wait until the brewer switches back from BrewScribe. Suggested for him: name the simulators differently.
   Porter's answer (his newer build, not yet installed): BrewScribe shows CraftBeerPi's waiting prompts on its own alarm
   line, "Answer in Brew Day ↗", until answered on any screen, and gets them back after a paused tab returns. It plays
-  no sound; whether it should is Scott's call. If he wants it, the two tabs must not both ring on one screen.
+  no sound; whether it should is the brewer's call. If he wants it, the two tabs must not both ring on one screen.
 - Built the same evening by Brett: the name in web UI e3735aa (build 5d3d66b), BREWSCRIBE in 625c63a (build 281129d),
   identity 451/451. The screen shows BREWSCRIBE where CraftBeerPi answers `HEAD /brewscribe/` with anything but 404,
-  remembered per device so the tab row doesn't move as it opens. Scott then shortened his 8012 name to "EBrews".
+  remembered per device so the tab row doesn't move as it opens. The brewer then shortened his 8012 name to "EBrews".
   Checked on 8012 by looking only: as the mockup at 1920, 960 and 390 px.
 
 ## Pumps off for the hoses; the hold before the boil; long questions (11 Nov 2026, late afternoon)
-- Brett's core 1c08d4c (DEFECTS M71), for Scott: "Any time I need to change hoses or "valves" that respective pump
+- Brett's core 1c08d4c (DEFECTS M71), for the brewer: "Any time I need to change hoses or "valves" that respective pump
   should be off", and imported recipes should do it without hand edits. CraftBeerPi now switches a pump off where its
   hose moves: the wort pump as a SpargeStep starts, the HLT pump as the water is ready, the HLT pump as the runoff
   ends (the wort pump runs on to drain the mash tun), and whichever runs as the boil starts. The mockup mirrors it:
@@ -238,7 +381,7 @@
   YOU in the ready state, as the screen already does.
 - Found while measuring: a long question with a wide button (the sparge's, 200 characters; the boil's, 300) was a
   column of 3-4 words a line on a phone, 405 px tall at 390, 513 at 360; and between 701 and 1023 px wide (half of
-  Scott's monitor) layout B left a question 36-175 px between the brand and the clock, 837 px tall at 701, with the
+  the brewer's monitor) layout B left a question 36-175 px between the brand and the clock, 837 px tall at 701, with the
   bar 49 px past the screen. Measured every question first: text length, not width, separates the long ones (the
   rest are 125 characters or fewer). Decided: over 140 characters with a button, on a phone, the buttons go under the
   words at the right; up to 1023 px the banner has the title bar's second row to itself, as on a phone. 267 and 202
@@ -248,7 +391,7 @@
   adding it renumbers every moment and Brett's demo data.
 
 ## ±1 % beside the boil element; HEATING without its % (11 Nov 2026, afternoon)
-- Scott, 13:19: "for BoilPower, I'd like the +/-1 in addition to the +/- 5 you already have." Read as Brett did:
+- The brewer, 13:19: "for BoilPower, I'd like the +/-1 in addition to the +/- 5 you already have." Read as Brett did:
   one-tap −1 % and +1 % on the boil kettle's faceplate as well as −5 % and +5 %, sending set_boil_power as they do.
   No server change.
 - Read first, per his standing rule: NN/g "Preventing User Errors: Avoiding Unconscious Slips" (targets crowded
@@ -268,7 +411,7 @@
   sides are 6 px, not 8, so "tap to pause" fits on one line at 1366 in layout A.
 - No "turn down"/"turn up" under the steps (no room at 44 px). A step waiting shows the lamps' marching stripes along
   its top instead of "sending…", and the wait is kept under the step itself, so −5 and −1 can't both show it.
-- Scott, 13:45: "I'd like the "HEATING xx %" button to only show HEATING since the percentage is shown in the graph
+- The brewer, 13:45: "I'd like the "HEATING xx %" button to only show HEATING since the percentage is shown in the graph
   and as a number on the right side of the PID display. It would be cleaner to remove this duplicate version". Done
   in layout B: the HLT's element and the older boil kettle's (?bk=today) say HEATING; OUT and the graph's OUT band
   keep the number. Layout A keeps HEATING 62 %, because it has no OUT and no graphs, so it would lose the number
@@ -291,15 +434,15 @@
   timer left its alarm pulsing in the title bar with dead buttons. Fixed with tAnswered(). CraftBeerPi itself
   already withdraws the prompt.
 - Brett took all three in web UI 7b0697d (identity 375/375, ?timers=today for a build without the timers). He also
-  made the Settings page's text boxes 360 px wide from 900 px, wrapping a long value (Scott's choice: "wider boxes,
+  made the Settings page's text boxes 360 px wide from 900 px, wrapping a long value (the brewer's choice: "wider boxes,
   and a long value wraps"), so six timer names fit on one line (4641a7f).
 
 ## Timers approved; names from Settings (11 Nov 2026)
-- Scott: "add the timers that design agent discussed. Those default names are fine as long as they're easily
+- The brewer: "add the timers that design agent discussed. Those default names are fine as long as they're easily
   changed on brew day. I'd like to have an easy config setting to choose the default timer names from the setup if
   that's easy enough too". Brett builds it, server first; the setting is BREWDAY_TIMER_NAMES (his key), default
   "Hop stand, Yeast, Vorlauf".
-- Asked Scott what a new timer is called if he doesn't pick a name. He answered "multiple choice boxes from
+- Asked the brewer what a new timer is called if he doesn't pick a name. He answered "multiple choice boxes from
   preconfigured list", then "or freeform in addition to mult choice". So the names are buttons to pick, the box
   takes any name, and nothing is pre-filled: an unnamed timer stays "Timer 3". Read first, per his standing rule:
   NN/g "The Power of Defaults" (pre-fill only what nearly everyone would choose), NN/g on placeholders (a placeholder
@@ -319,7 +462,7 @@
   has the step strip at the top). Every editor case now fits 1920×1080 and 1920×950.
 - Found in Brett's server: CraftBeerPi's config.get() treats a blank setting as missing, so a blank list would still
   offer the default names, and ConfigUpdate would put them back at the next restart. Fix sent to Brett.
-- Scott didn't answer the other two questions, so hop additions stay as they are and four timers is the most.
+- The other two questions went unanswered, so hop additions stay as they are and four timers is the most.
 
 ## After Brett's port: small fixes (10 Nov 2026, late)
 - Brett built the boil kettle's target model, KEEP BOILING, the forgotten pause and the SpargeStep; his identity
@@ -342,8 +485,8 @@
 - Brett ported the tag lines, the title bar rule and the USUAL wording the same evening (UI c864354, build
   66d6de1); identity 281/281 against this folder again.
 
-## Timers, proposed (10 Nov 2026, evening; for Scott to review)
-- Scott, after using the rest timer: "why is it named that? lots of things use a timer during a brew day", an
+## Timers, proposed (10 Nov 2026, evening; for the brewer to review)
+- The brewer, after using the rest timer: "why is it named that? lots of things use a timer during a brew day", an
   optionally audible alarm, "more attention grabbing but still elegant" when one runs out, several with a "+", and
   names. He chose sound for his timers and CraftBeerPi's alerts. Read first, per his standing rule: NN/g on
   indicators and notifications (a finished timer is a notification that needs action, and an indicator on the timer
@@ -360,10 +503,10 @@
   screen; SOUND is each screen's own switch, with the browser's first-tap rule shown honestly. Considered and
   dropped: a modal for a finished timer (it would block the controls mid-brew); a separate timers tab (out of sight);
   six name ideas (two rows made the editor run off a 950 px screen; three fit, or his last three names).
-- Not done: hop additions pulsing like timers (a question for Scott), and alarm-sound presets (his later todo).
+- Not done: hop additions pulsing like timers (a question for the brewer), and alarm-sound presets (his later todo).
 
 ## The SpargeStep (10 Nov 2026, evening)
-- Asked by Brett for core 4.7.7.post35's new step type. Scott, 10 Nov: "sparge step needs to let the HLT get up to
+- Asked by Brett for core 4.7.7.post35's new step type. The brewer, 10 Nov: "sparge step needs to let the HLT get up to
   mash out temperature before pumping wort over to boil kettle. I also may do a "batch sparge" - it should be
   flexible to let me do either", then "I think the wort pump may need to be manual".
 - The drawing had shown the runoff valves from the step's first second. Now a SpargeStep holds them on
@@ -382,7 +525,7 @@
   press, not the temperature. Moments #sparge-heat, #sparge-ready, #sparge-run, #sparge-batch.
 
 ## The boil kettle's target, KEEP BOILING and a forgotten pause (10 Nov 2026, evening)
-- KEEP BOILING. Scott, through Brett: "add a small checkbox with LED to choose keep at boil temp or let the boil
+- KEEP BOILING. The brewer, through Brett: "add a small checkbox with LED to choose keep at boil temp or let the boil
   power fully drive the temp (ok to fall if I set it too low %)". He had set 2 % on 8012 and asked why the kettle
   held about 210 °F: BoilPower latches the boil at the boil point and goes back to full power 3.6 °F below it.
   Brett added Keep_Boiling ("Yes" by default, kept between brew days) and set_keep_boiling. Designed: an LED-style
@@ -391,7 +534,7 @@
   "Below a boil · back to full power at 206.6 °F", or "Not boiling · 10.9 °F below 210.2 °F" unticked. Read as one
   lit box rather than a lamp beside a tick box, so the state shows once; a separate lamp is easy if he wants it.
   Moments #keepboil and #letfall. Found and fixed on the way: −5 % at 2 % was refused; now it gives 0 %.
-- Holding by hand. Asked how, Scott chose "Set the boil kettle's target to 170 °F, like the HLT, and it holds there",
+- Holding by hand. Asked how, the brewer chose "Set the boil kettle's target to 170 °F, like the HLT, and it holds there",
   questioned whether a new button was needed, and asked for "most elegant and practical solution... intuitive,
   elegant, and natural". Brett rebuilt BoilPower around it: the target is BOIL (from the boil point less 3.6 °F
   up, or none) or a temperature to hold; the boil point is a setting of its own (set_boil_at); the separate
@@ -402,16 +545,16 @@
   power in the window is framed with a small "change" and is itself the boil power's button: a third button
   beside AUTO/MANUAL doesn't fit at 1366 or 1440 wide, and the boil power must never be hard to find again ("I
   seem to have lost the critical ability to set the boil power percentage"). Not taken: Brett's HOLD label (SV
-  matches "like the HLT"); making the HLT's and mash tun's readings buttons too (Scott: leave them alone).
+  matches "like the HLT"); making the HLT's and mash tun's readings buttons too (the brewer said to leave them alone).
   Moments #bktarget and #handhold; #hold now uses the target.
-- Pause answers (Scott, through Brett): the boil's timer keeps counting while paused; a forgotten pause gets a kept
+- Pause answers (from the brewer, through Brett): the boil's timer keeps counting while paused; a forgotten pause gets a kept
   warning on every page after 2 brewing minutes, once per pause. My words, sent to Brett for the plugin: "Boil Kettle
   heat still paused" / "The heat has been paused for 2 minutes. To heat again, press and hold PAUSED on the Boil
   Kettle." Moment #pause-long.
 - Handed to Brett 10 Nov evening (BUILD-NOTES, "The boil kettle's target, KEEP BOILING and a forgotten pause").
 
 ## The boil kettle's power and temperature: power first, approved, plus three ideas from boil controllers (10 Nov 2026)
-- Scott, directly: "the design of the boil kettle's power vs temperature setting buttons / functions is not
+- The brewer, directly: "the design of the boil kettle's power vs temperature setting buttons / functions is not
   intuitive and needs analysis/redesign. Explain what is wrong in your own words before beginnign work". Told
   him: the boil kettle has a thermostat's controls, but BoilPower isn't a thermostat. Its green SV (210.2 °F)
   is only where full power gives way to the boil power, so a boil at 212 °F looks 1.8 °F over target, and a
@@ -438,7 +581,7 @@
     gives it the threshold, the boil power and Hold_Target.
 - My pick, if asked: power first. The number on the face is the one he turns during the boil. Today
   (?bk=today) stays the default, and DESIGN.md is unchanged.
-- Shown to Scott as pictures of the three faceplates at five moments. His answer: "I don't understand what you
+- Shown to the brewer as pictures of the three faceplates at five moments. His answer: "I don't understand what you
   are showing me.. Let's leave it alone for now". Set aside. Not to be built; the ?bk= code stays in the
   mockup, unused, in case he comes back to it. If he does, start from what he sees on brew day in plain words,
   not from the panel's labels (SV, TARGET, BOIL AT).
@@ -454,7 +597,7 @@
   and changes the power with its arrow keys during the boil. The Ss Brewtech eController has a heater button
   that cuts the element without changing the power setting, "especially helpful during the occasional
   boil-over". GEA's evaporation control needs sensors CraftBeerPi doesn't have, so nothing was taken from it.
-  Offered three ideas; Scott chose "All three":
+  Offered three ideas; the brewer chose "All three":
   - One-tap −5 % and +5 % either side of the element button while AUTO runs. Each tap sends set_boil_power at
     once. A tap, not a held press: it changes a level, it doesn't start heat from off.
   - Pause the heat for a boil-over: in AUTO, a tap on the element button pauses the heat. The button turns
@@ -467,15 +610,15 @@
 - What CraftBeerPi needs: the ±5 % taps need only the screen. Pausing needs a pause action in the BoilPower
   plugin that keeps the boil latch and the boil power (BoilPower would otherwise turn the element back on at
   its next decision, 2 s later). The usual power needs a plugin setting.
-- Shown to Scott as before/after pictures (boil-over, and the open BOIL POWER box), and asked whether to hand
+- Shown to the brewer as before/after pictures (boil-over, and the open BOIL POWER box), and asked whether to hand
   it to Brett. He answered "Yes, hand it to Brett". Handed over the same day (BUILD-NOTES, "The boil kettle's
   power and temperature: ready to build"); DESIGN.md and design.json now describe it.
 - One change of mine while writing it up: the usual power comes back when a recipe starts from its first step,
-  not when the Boil step starts. Otherwise a power Scott sets during the "Ready to boil?" hold, meant for this
+  not when the Boil step starts. Otherwise a power the brewer sets during the "Ready to boil?" hold, meant for this
   boil, would be thrown away the moment the boil starts. Hence "starts each recipe" in the box.
 
 ## After the build: AUTO with no target (10 Nov 2026)
-- Brett relayed Scott on 8012 at 13:47: "What went wrong? I have Mash Tun "Auto" on but HLT is off. I think a
+- Brett relayed the brewer on 8012 at 13:47: "What went wrong? I have Mash Tun "Auto" on but HLT is off. I think a
   "SV" was not set - but it should pop up a warning in that case". The mash tun's target was 0, left from the
   last recipe; PID_HERMS held the mash at 0 °F and never asked the HLT for heat. The faceplate said "MANUAL ·
   wort pump by hand" while MODE said AUTO, because its line said MANUAL whenever there was no SV.
@@ -485,13 +628,13 @@
   and TARGET's hint says "set SV" in Prompt Amber. Nothing else changes. New rule in DESIGN.md: The Mode Tells
   The Truth Rule. Suggested shorter wording for his warning. Demo moments #notarget and #notarget-hlt.
 
-- From Scott, passed on by Brett: "I seem to have lost the critical ability to set the boil power percentage
+- From the brewer, passed on by Brett: "I seem to have lost the critical ability to set the boil power percentage
   with this redesign. Work with the design agent to add it back. This is next high priority." Then: "I need to
   be able to adjust boil element power even while running a recipe". Brett ships it before the graphs.
 - The old dashboard's boil kettle dialog had "Set boil power" (BoilPower's Boil_Power, 0-100 %), and its
   target widget showed it beside the target ("212 85%"). BoilPower uses it once the wort reaches its
   threshold, BoilPower._threshold: the kettle's target (210.2 °F in the Boil step), else Boil_Threshold (210.2 °F
-  on Scott's set-up). Below that it heats at full power. (Corrected the same day: I first wrote Boil_Threshold
+  on the brewer's set-up). Below that it heats at full power. (Corrected the same day: I first wrote Boil_Threshold
   only; Brett found the target rule in the plugin.)
 - Put it back as a button beside the BOIL ELEMENT lamp, which had its row to itself, so nothing gets taller:
   "BOIL POWER 45 %" over "used from 210.2 °F · change". Tapping it opens an editor in place of the mode row,
@@ -499,15 +642,15 @@
   mid-boil while AUTO has the element's lamp locked. Demo moment #boilpower.
 - In MANUAL the same button sets the element's own level ("POWER 100 % · used by hand"), as Brett suggested
   and as hardware boil controllers do. If the mode changes while the editor is open, it closes without
-  sending. Shown to Scott on 10 Nov; no answer yet. The kettle's mode decides, not the recipe: Brett asked
+  sending. Shown to the brewer on 10 Nov; no answer yet. The kettle's mode decides, not the recipe: Brett asked
   about the "Ready to boil?" hold, where the kettle is in MANUAL, and it stays POWER there, so the button
   always agrees with the lamp and OUT.
 - SET is a tap, not a held press: it changes a level, it doesn't switch heat on, and turning a boil-over down
   has to be quick. Added to the Held Heat Rule. Left out: the hold temperature (set_hold_target), which the
-  Whirlpool step manages; Brett will ask Scott.
+  Whirlpool step manages; Brett will ask the brewer.
 
 ## After the build: temperature graphs in the faceplates (9-10 Nov 2026)
-- Scott, directly: "Can you mock up a way to add temperature graphs to the dashboard?  It should be natural
+- The brewer, directly: "Can you mock up a way to add temperature graphs to the dashboard?  It should be natural
   looking and not like a bolt-on". Asked what a graph should show at a glance (in the last 30 minutes,
   whether a vessel will reach its target; in the last 10, how steadily it holds; or the whole brew day): "I'd
   like the ability to toggle between a,b, and c by clicking the temperature graph".
@@ -527,19 +670,19 @@
   the screen as first built.
 
 ## After the build: the drawing's flow paths and hand valves (9 Nov 2026, evening)
-- From Scott's test of Brett's build on port 8012, passed on by Brett: "before the boil step, I will run the
+- From the brewer's test of Brett's build on port 8012, passed on by Brett: "before the boil step, I will run the
   wort pump to move wort from mash tun to [boil] kettle. Animation should reflect that path." "maybe there
   should be an icon for a valve between the pump and the HERMS coil too?" At the "Ready to boil?" hold: "I
   should be pumping wort from mash tun to boil kettle at this step".
-- Brett asked Scott: when does the wort start going to the boil kettle? "From the start of the Sparge step: I
+- Brett asked the brewer: when does the wort start going to the boil kettle? "From the start of the Sparge step: I
   fly sparge, so wort runs to the boil kettle during the sparge". Does the HLT pump move the sparge water?
   "Yes, the HLT pump moves the sparge water to the mash tun".
 - Built: each pump's line branches, with a hand valve on every branch (coil line, boil kettle line, HLT
   return, a new sparge line to the top of the mash tun). The valves are invisible to CraftBeerPi, so the
   drawing goes by the recipe (the core's runoff-name test) and says so under the boil kettle: "VALVES ARE
   SET BY HAND" and "SHOWN FOR STEP 4 (SPARGE)" or "SHOWN FOR RECIRCULATING". New demo moment: #sparge.
-- My assumption, flagged to Scott: the HLT side is switched with valves too, not by moving a hose.
-## After approval: Scott's answers to the open questions (9 Nov 2026)
+- My assumption, flagged to the brewer: the HLT side is switched with valves too, not by moving a hose.
+## After approval: the brewer's answers to the open questions (9 Nov 2026)
 - On the additions beyond D3: "keep your additions".
 - ALL HEAT OFF, asked whether it should also stop the HLT pump: "Yes, stop the HLT pump too". Asked whether
   to rename it, since it now stops pumps as well as heat: "Yes, call it ALL OFF (Recommended)". It now stops
@@ -552,18 +695,18 @@
   the pump in the drawing while it is off, and on the last-event line when the screen switches it off.
 
 ## Round 5 (8-9 Nov 2026)
-- Scott, on the first coded kettle drawing: "(vomit emoji)", then chose "The kettles as I drew them in the
+- The brewer, on the first coded kettle drawing: "(vomit emoji)", then chose "The kettles as I drew them in the
   mockup. They look crude next to the B and C pictures".
-- Scott, attaching layout D3: "Are we still designing this?" then "Give me an A/B comparison as near to what
+- Attaching layout D3, he asked "Are we still designing this?" then "Give me an A/B comparison as near to what
   the end product would look like as possible".
 - Built both as working pages from one code base (proposal/brew-day.html?layout=a|b, proposal/compare.html):
   A = D1 with redrawn flat homebrew kettles (lid and knob, handles, live thermometer, ball valve, element
   box) on a stand; B = D3 with a line drawing, OUT/MODE on the faceplates, alerts in the title bar, tabs on
   top. Drawings are generated to the box width so each vessel lines up with its own faceplate.
-- Scott chose B: "B: recipe on the left, faceplates on top, line drawing". B is now the default layout;
+- The brewer chose B: "B: recipe on the left, faceplates on top, line drawing". B is now the default layout;
   A stays reachable with ?layout=a for comparison.
-- After the finish review fixes, Scott approved the proposal (9 Nov 2026, 13:31): "Yes - happy". Handed to
-  Brett (owner of the CraftBeerPi UI) with proposal/BUILD-NOTES.md; building is his and Scott's call.
+- After the finish review fixes, the brewer approved the proposal (9 Nov 2026, 13:31): "Yes - happy". Handed to
+  Brett (owner of the CraftBeerPi UI) with proposal/BUILD-NOTES.md; building is his and the brewer's call.
 
 ## Direction contract (final, after round 5; copied into proposal/brew-day.html)
 THESIS: A brewhouse control panel for one rig: a PID faceplate per vessel, the vessels as plumbed, the
@@ -571,7 +714,7 @@ recipe beside them; it refuses the card grid of numbers and toggles.
 OWN-WORLD: Dark slate panel; black PID faces with a big red PV over a smaller green SV, plus OUT and MODE;
 buttons topped by lamp strips that also say their state (orange heating, green running, grey off, red
 failed); a line drawing of the rig with cyan liquor and gold wort pipes that move only while pumped.
-STORY: From across the garage Scott sees what is heating, how close each vessel is, and the step now and
+STORY: From across the garage the brewer sees what is heating, how close each vessel is, and the step now and
 next; heat starts only on a held press; every command answers at its own button.
 FIRST VIEWPORT: Left: recipe with Start, Stop, Next step. Right: three faceplates across the top, the line
 drawing below with each vessel under its own faceplate. Alarms in the title bar; last event and screen tabs
@@ -580,7 +723,7 @@ FORM: Brewhouse touch panel with process-mimic plumbing; layout B (D3); seed fad
 
 ## Round 4 (7 Nov 2026)
 - Layout page answer: D1, recipe down the right (no steer).
-- Scott, verbatim: "give me a few kettle graphic options". Four styles shown: A brewhouse stainless,
+- The brewer, verbatim: "give me a few kettle graphic options". Four styles shown: A brewhouse stainless,
   B homebrew kettles on a stand, C flat HMI symbols, D line-art schematic.
 - Answer: "B's kettles, drawn flat like C (Recommended)".
 
@@ -590,15 +733,15 @@ recipe beside them; it refuses the card grid of numbers and toggles.
 OWN-WORLD: Dark slate panel; black PID faces with a big red PV over a smaller green SV; buttons topped by
 lamp strips that also say their state (orange heating, green running, grey off, red failed); flat steel
 homebrew kettles on a black stand; cyan liquor and gold wort pipes that move only while pumped.
-STORY: From across the garage Scott sees what is heating, how close each vessel is, and the step now and
+STORY: From across the garage the brewer sees what is heating, how close each vessel is, and the step now and
 next; heat starts only on a held press; every command answers at its own button.
 FIRST VIEWPORT: Left two thirds: rig drawing over three faceplates. Right third: recipe with Start, Stop,
 Next step. Alarms and the last event on top; screen tabs along the bottom.
-FORM: Brewhouse touch panel with process-mimic plumbing (Scott's picks, rounds 2-4); layout D1; seed
+FORM: Brewhouse touch panel with process-mimic plumbing (the brewer's picks, rounds 2-4); layout D1; seed
 fad8ffb4.
 
 ## Round 3 (7 Nov 2026)
-- Scott, verbatim (attaching options 1 and 4): "this is a good start.  I WANT to be able to see the recipe
+- The brewer, verbatim (attaching options 1 and 4): "this is a good start.  I WANT to be able to see the recipe
   on the main page though.  I also really like the dark one.  PV should be bigger than SV.  PV should be
   red, SV should be green  - would be my preference.   Let's keep designing some more"
 - Locked world: the dark brewhouse touch panel (option 4) with option 1's correct plumbing (HLT pump loop on
@@ -611,12 +754,12 @@ fad8ffb4.
   list beside PID faceplates with a flat schematic).
 
 ## Round 2 (7 Nov 2026)
-- Scott, verbatim: "I don't think I LIKE the dial or the temperatures all on one plot after all.  Give me
+- The brewer, verbatim: "I don't think I LIKE the dial or the temperatures all on one plot after all.  Give me
   more options modeled on professional brewery control softwre"
-- Scott, verbatim: "note that I use two pumps.  One mainly for HLT recirculation and the other to move the
+- The brewer, verbatim: "note that I use two pumps.  One mainly for HLT recirculation and the other to move the
   wort around"
 - The kettle-dials direction and the shared-scale fusion are retired; the layout round (comps A-C) is moot.
-- The user-pinned reference (professional brewery control software) beats the roll, and Scott asked for
+- The user-pinned reference (professional brewery control software) beats the roll, and the brewer asked for
   several options, so this round shows four options side by side instead of one assigned direction:
   1. Classic brewhouse process mimic (BRAUMAT / WinCC process pictures).
   2. High-performance HMI overview (ISA-101: grey normal, colour only for abnormal, values against ranges).
@@ -627,8 +770,8 @@ fad8ffb4.
 
 ## Round 1 (7 Nov 2026)
 - Decision page answer: Kettle dials (assigned direction), no steer.
-- Visualize: Scott agreed to three layout images ("Yes, render three layout images first").
-- Steer, Scott verbatim: "mix the direction with All three vessels sit on one shared temperature scale.
+- Visualize: the brewer agreed to three layout images ("Yes, render three layout images first").
+- Steer, verbatim from the brewer: "mix the direction with All three vessels sit on one shared temperature scale.
   In parallel, show me what the standard option would look like too"
 
 ## Resolved direction
@@ -645,8 +788,8 @@ and one shared scale lines all three up so the HERMS gap shows; it refuses the c
 and toggles.
 OWN-WORLD: Light brushed-stainless panel, white enamel dials, black DIN-style scales, engraved black
 nameplates, round pilot lamps. Orange-red only for live heat, blue for the running pump, green for
-targets, amber for prompts awaiting Scott, deep red with hatching for faults.
-STORY: From across the garage Scott sees what is heating, how far each vessel has to go, and the step
+targets, amber for prompts awaiting the brewer, deep red with hatching for faults.
+STORY: From across the garage the brewer sees what is heating, how far each vessel has to go, and the step
 now and next; nothing switches on without a held press; every command answers at its control.
-FORM: Kettle dial thermometer (3rd of 7), fused at Scott's request with the shared scale from the
+FORM: Kettle dial thermometer (3rd of 7), fused at the brewer's request with the shared scale from the
 one-temperature-rail alternate; staging: rig-order relay, active vessel leading; seed fad8ffb4 round 1.

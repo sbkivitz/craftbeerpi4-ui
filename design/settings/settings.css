@@ -30,8 +30,8 @@ html.bare .mock{display:none}
 .mock .lay{margin-left:auto}
 
 /* ---------- the frame: the brew-day screen's title bar, last event and tabs, layout B (html[data-layout=b]), copied
-   rule for rule from craftbeerpi4-ui-impeccable/proposal/brew-day.css as it was on 11 Nov at 22:55 (with M74's brewery
-   name and M75's BREWSCRIBE tab). Copy it again when that changes. Only .app is this page's own ---------- */
+   rule for rule from craftbeerpi4-ui-impeccable/proposal/brew-day.css; copy them again whenever its frame changes. Only
+   .app is this page's own ---------- */
 .app{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto minmax(0,1fr);height:max(calc(100dvh - var(--mock-h)),620px)}
 
 /* top bar */
@@ -250,8 +250,8 @@ select.fld option{background:#101a23;color:var(--text)}
 @keyframes land{0%{color:#fff;text-shadow:0 0 18px rgb(155 203 255/.75)}100%{color:var(--text);text-shadow:none}}
 @media (prefers-reduced-motion:reduce){.link i,.row.wait::before,.cmd.busy::before,.row.flash,.plate.land .phd h2{animation:none!important}}
 
-/* when the window is 1000 px tall or less (Scott's usual browser window is about 950), the index tightens so all nine
-   groups fit without scrolling */
+/* when the window is 1000 px tall or less (a browser window on a 1080-line monitor is about 950 px tall), the index
+   tightens so all nine groups fit without scrolling */
 @media (min-width:1180px) and (max-height:1000px){
   .gi{min-height:52px;padding-top:4px;padding-bottom:4px}
   .gi .d{font-size:14px}

@@ -2,11 +2,11 @@
 
 For Brett, from the Settings design agent. The design is in `C:\src\personal\craftbeerpi4-ui-settings` (branch `impeccable-settings`, made from `brewday-graphs` at 091c9a2, nothing committed). The grouping, with every setting's group, plain name, key and control, is in `proposal\GROUPING.md`; this file says how the page looks and behaves, part by part.
 
-## Settings page: approved by Scott on 11 Nov, built by Brett on 12 Nov
+## Settings page: approved by the brewer on 11 Nov, built by Brett on 12 Nov
 
 Built: web UI 75d5b91 (built in 70dc68a), on Brett's test copy at 8012; DEFECTS M78. His identity test, `test_ui_settings_identity.py`, matches this mockup in all 104 pictures: 13 moments at six sizes, a 30-character name, a blank name and no BrewScribe at each size, and seven presses.
 
-Scott's request: "I'd like the settings to be intelligently sorted and presented in groups by function. Right now, they are a confusing long list in no particular order - maybe alphabetical?" (It is alphabetical by key, capitals first, because the server writes `config.json` with `sort_keys`.)
+The brewer's request: "I'd like the settings to be intelligently sorted and presented in groups by function. Right now, they are a confusing long list in no particular order - maybe alphabetical?" (It is alphabetical by key, capitals first, because the server writes `config.json` with `sort_keys`.)
 
 His answers, in order:
 
@@ -22,7 +22,7 @@ His answers, in order:
 
 - `proposal\settings.html`, `settings.css`, `settings.js`: the mockup. Open the HTML file straight from disk.
 - `proposal\settings-data.js`: generated from the simulator's `GET /config/` on 8000 (54 settings), your two new ones as 8012 serves them, and the simulator's kettles, switches, probes and step types. Don't hand-edit it.
-- `proposal\alarm.js`: a copy of your `components\brewday\alarm.js` at 3589ba9 (the same at 17c9eb9), with its exports moved to `window.CBPI_ALARM`, because a page opened from disk can't load a module. In the build, import from `alarm.js` itself.
+- `proposal\alarm.js`: a copy of your `components\brewday\alarm.js` (at 5d3e388, comments included), with its exports moved to `window.CBPI_ALARM`, because a page opened from disk can't load a module. In the build, import from `alarm.js` itself.
 - The strip along the top steps through moments: `#top`, `#boil`, `#find-lid`, `#find-key`, `#find-none`, `#changes`, `#saving`, `#saved`, `#failed`, `#leave`, `#cloud`, `#plugin`, `#offline`. `?bare` hides the strip.
 - Everything on the page comes from two tables at the top of `settings.js`. With option A they are the page's catalogue: port them as they are to `cbpi4gui\src\components\settings\catalog.js`, exporting `M` and `G` (your answer, 11 Nov).
   - `M`, one entry per setting: `n` plain name, `h` what it does, `syn` extra words for FIND, `ctl` control (when its type isn't enough), `order` and `lab` (option order and labels), `blank` (what a blank choice is called), `unit`, `restart` (`"on"`: only turning it on needs a restart; `"next"` and `"any"`: any change does), `dep` (its main switch and the value that makes it count), `adv`, `secret`, `cloud` and `hc` (InfluxDB Cloud's names and wording), `calc` (a worked-out line under it), `keep` (labels keep their case).
@@ -156,7 +156,7 @@ Option A needs no server or plugin change. Your two new settings are in the cata
 
 1. **Today's SAVE doesn't wait.** `save()` in `components\settings\index.js` (lines 165–175) calls `configapi.update` for each change and `navigate(0)` straight away, so the page reloads without CraftBeerPi's answer and can't show a failure.
 2. **The brew-day title bar ignored Brewery name.** It printed "CraftBeerPi Brewery" from `screen.js` line 89; only the older main menu read BREWERY_NAME (`MainMenu\index.js` line 168). Fixed since by Amber's M74: the title bar shows Brewery name at every width, and the mockup's frame now does too. So the page's "your brewery's name, at the top of the screen" is true.
-3. **Two beeps for one alert.** Confirmed by you (12 Nov): with PLAY_BUZZER on Yes, AlertProvider's `show()` plays the buzzer for every new notification, on any page, and the brew-day frame's `ring(2)` plays for the same notification when SOUND is on. You're putting the choice to Scott.
+3. **Two beeps for one alert.** Confirmed by you (12 Nov): with PLAY_BUZZER on Yes, AlertProvider's `show()` plays the buzzer for every new notification, on any page, and the brew-day frame's `ring(2)` plays for the same notification when SOUND is on. You're putting the choice to the brewer.
 4. **A blank Boil kettle** refuses recipe imports on a rig with more than one kettle (`upload_controller.py` `_import_problem`). The page names a blank choice "None chosen" and says so in the row. It stays that way, with no code change (12 Nov).
 5. Impeccable's design checker flags `.cmd.busy::before` and `.row.wait::before` in `settings.css` as "side stripes". They're the 6 px marching stripe along the top edge, the brew-day's waiting signal, kept on purpose.
 
@@ -176,7 +176,7 @@ Your answer (11 Nov): you fix 1 in the build, check 3 then, and take 2 to Amber,
 - The frame against Amber's `brew-day.html?bare#mash` (11 Nov, evening): 13 window sizes (your five, the phone at 3×, and 768×1024, 1000×800, 1180×820, 1179×820, 1023×768, 701×900, 700×900), each with the default name, four `?name=` names, a blank name and `?brewscribe=none`. Every part of the title bar, event line and tabs has the same position and size (exact, not rounded), the same computed styles, words and attributes, and the same pixels, apart from the event's words and the two lit tabs. `#offline` the same, with ALL OFF dimmed in place. The only pixels that ever differed were single edge pixels a few shades apart, which came and went between runs of the same two pages; I counted differences of 24 levels or less as that noise.
 - After the sync: the 13 moments at seven sizes have no script errors and nothing wider than the window. All nine groups still fit on the left at 1366×768, with the frame 8 px taller. BREWSCRIBE with changes doesn't ask; HARDWARE still does. ALL OFF offline answers "No connection. Controls are paused." A saved Brewery name shows in the title bar, and in the browser tab's title.
 
-### Settled with you (11–12 Nov)
+### Settled with you (11–13 Nov)
 
 1. Settings saves go in the last-event line: see "Changing and saving".
 2. The catalogue: `cbpi4gui\src\components\settings\catalog.js`, exporting `M` and `G`.
@@ -184,3 +184,4 @@ Your answer (11 Nov): you fix 1 in the build, check 3 then, and take 2 to Amber,
 4. Your correction: the third sound is High beep (`high`), not Long beep. The mockup, its data and these notes now say so, and TRY plays your sounds.
 5. Your correction (12 Nov): text boxes that aren't drawn are measured once they show. Before, `grow()` measured every box, including those in a phone's closed group or a row FIND hides; those got height "2px", so once shown they were one line tall and a long value lost its end. Now `grow()` skips a box with no client rects, `applyView()` and the end of `paintFind()` call it, and `render()` and the resize handler no longer call it themselves. The mockup's lines are now the same as `page.js` at 75d5b91. With a 63-character `?name=`, the Brewery name box was cut off (46 px for 66 px of words) three ways: a phone opening Brewhouse from the list; the same after going back and resizing; and a monitor after FIND "unit", a resize, and clearing FIND. All three are whole now, and the 13 moments at seven sizes are still clean.
 6. Your note (12 Nov): the Timer alarm sound's help (`M.BREWDAY_ALARM_SOUND.h`) now covers the alerts too: "What the brew-day screen plays when a timer runs out, every 3 seconds until you answer it. For a new hop alert, question or error, the screen plays just the first two beeps, once." That is 3 lines on a monitor and 4 on a phone, shown whole, and FIND finds the row by "hop alert", "question" and "two beeps". `alarm.js` is now a copy of yours at 9faf75d; only its opening comment changed, and the sounds are the same. `settings-data.js` still has the old description, ending "Switching SOUND on at the screen plays it.": 8012 still serves that, and the core rewrites the description only when its version changes. It only shows for a setting `M` doesn't know, so it waits for the next snapshot.
+7. Your note (13 Nov): no file names the brewer, and code comments say what the code does and why, in the present tense: no dates, request quotes, attributions or change tags. The mockup's files follow it, and `alarm.js` is again a copy of yours (at 5d3e388) apart from its exports.

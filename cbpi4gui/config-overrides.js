@@ -2,7 +2,8 @@
  * Webpack tweaks that Create React App does not allow directly.
  *
  * Two things here.
- * (A third, below, keeps the brew-day screen's stylesheets as they are.)
+ * (A third, below, keeps the brew-day screen's stylesheets as they are, and a
+ * fourth stamps the bundle with its versions.)
  *
  * 1. Node core modules. CRA 5 / webpack 5 no longer polyfill them, and parts of
  *    this app still expect them, so they are provided explicitly.
@@ -21,7 +22,34 @@
  *    class of failure for every other dependency that ships ESM - which, over
  *    time, is all of them.
  */
+const fs = require("fs");
+const path = require("path");
+const { execFileSync } = require("child_process");
 const webpack = require("webpack");
+
+// 4. The brew-day screen's versions' line (screen.js versions()): this bundle's
+//    release number, from version.py, the commit it is built from and when, on
+//    this machine's clock, as __CBPI_UI__. A build with no git (none installed,
+//    or no checkout) has the number alone.
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+function uiStamp() {
+  const found = /__version__\s*=\s*["']([^"']+)["']/.exec(fs.readFileSync(path.join(__dirname, "version.py"), "utf8"));
+  let commit = null;
+  try {
+    const head = execFileSync("git", ["rev-parse", "HEAD"], { cwd: __dirname, stdio: ["ignore", "pipe", "ignore"], timeout: 10000 })
+      .toString().trim();
+    if (/^[0-9a-f]{40,64}$/.test(head)) commit = head.slice(0, 7);
+  } catch (e) {
+    // no git, or not a checkout
+  }
+  const d = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return {
+    version: found ? found[1] : "",
+    commit,
+    built: commit ? `${d.getDate()} ${MONTHS[d.getMonth()]} ${pad(d.getHours())}:${pad(d.getMinutes())}` : null,
+  };
+}
 
 module.exports = function override(config) {
   const fallback = config.resolve.fallback || {};
@@ -64,6 +92,7 @@ module.exports = function override(config) {
       process: require.resolve("process/browser"),
       Buffer: ["buffer", "Buffer"],
     }),
+    new webpack.DefinePlugin({ __CBPI_UI__: JSON.stringify(uiStamp()) }),
   ]);
 
   return config;

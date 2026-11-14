@@ -1,5 +1,5 @@
 "use strict";
-/* ---------- demo data (from Scott's simulator config; nothing here talks to CraftBeerPi) ---------- */
+/* ---------- demo data (from the brewer's simulator config; nothing here talks to CraftBeerPi) ---------- */
 const RECIPE = {
   name: "Craftbeerpi Test Recipe v5",
   steps: [
@@ -14,12 +14,11 @@ const RECIPE = {
 };
 const VNAME = {hlt: "Hot liquor tank", mt: "Mash tun", bk: "Boil kettle"};
 /* step 4 as recipes in the book have it (a MashStep on the mash tun, whose HERMS runs the wort pump), and as a recipe
-   imported on core 4.7.7.post35 or later has it: a SpargeStep on the HLT (Scott, 10 Nov: "sparge step needs to let the
-   HLT get up to mash out temperature before pumping wort over to boil kettle. I also may do a "batch sparge" - it
-   should be flexible to let me do either"). It heats the sparge water on the HLT's own AUTO with the mash tun's AUTO
-   off, switches each pump off for its hose to move (the wort pump as it starts, the HLT pump as the water is ready:
-   core 1c08d4c), asks "Sparge started", then leaves both pumps to the brewer. The #sparge-… moments and #boil-hold
-   use it (load()); every other moment keeps the MashStep. */
+   imported on core 4.7.7.post35 or later has it: a SpargeStep on the HLT, which lets the HLT get up to mash-out
+   temperature before any wort is pumped over to the boil kettle, and suits a batch sparge as well as a continuous one.
+   It heats the sparge water on the HLT's own AUTO with the mash tun's AUTO off, switches each pump off for its hose to
+   move (the wort pump as it starts, the HLT pump as the water is ready), asks "Sparge started", then leaves both pumps
+   to the brewer. The #sparge-… moments and #boil-hold use it (load()); every other moment keeps the MashStep. */
 const SPARGE_MASH = RECIPE.steps[3];
 const SPARGE_STEP = {n: "Sparge", type: "SpargeStep", temp: 168, min: 40, k: "hlt"};
 const WFY = "WAITING FOR YOU";
@@ -33,12 +32,13 @@ const ACT = {
 };
 const HERMS_DELTA = 5.4; // PID_HERMS DeltaTemp in the simulator
 /* BoilPower, the boil kettle's logic: below its threshold it heats at full power (Max_Output); once the wort reaches it, it
-   holds the element at Boil_Power, which Scott sets with set_boil_power (45 % on the simulators), until the wort falls
-   3.6 °F (2 °C) below again. Today (as built) the threshold is BoilPower._threshold: the kettle's target when it has one
-   (the Boil step sets 210.2 °F), else its Boil_Threshold setting (BOIL_TH, 210.2 °F on Scott's set-up), else 99 °C.
-   The proposed boil kettle (?bk=power) follows Brett's new BoilPower (10 Nov evening): the boil point is a setting of its
-   own, Boil_Threshold (set_boil_at), and the kettle's target is an ordinary target, as on the HLT. A target within
-   3.6 °F of the boil point or above, or none, means BOIL; a lower one is a temperature to hold (bkHoldT). */
+   holds the element at Boil_Power, which the brewer sets with set_boil_power (45 % on the simulators), until the wort
+   falls 3.6 °F (2 °C) below again. In an older BoilPower, without set_boil_at (?bk=today), the threshold is
+   BoilPower._threshold: the kettle's target when it has one (the Boil step sets 210.2 °F), else its Boil_Threshold
+   setting (BOIL_TH, 210.2 °F on the brewer's set-up), else 99 °C. The new boil kettle (?bk=power) follows the
+   newer BoilPower: the boil point is a setting of its own, Boil_Threshold (set_boil_at), and the kettle's target is an
+   ordinary target, as on the HLT. A target within 3.6 °F of the boil point or above, or none, means BOIL; a lower one
+   is a temperature to hold (bkHoldT). */
 const BOIL_TH = 210.2;
 const boilFrom = () => BK === "power" ? st.v.bk.boilAt ?? BOIL_TH : st.v.bk.sv > 0 ? st.v.bk.sv : BOIL_TH;
 const boilFromText = () => String(+boilFrom().toFixed(1)); // 210.2, or 170 for a 170.0 °F target
@@ -49,7 +49,7 @@ const BOOK = [ // the simulator's Recipe Book (config/recipes/*.yaml)
   {n: "BrewStart ready-by demo", d: "3 steps · hot strike water by a set time, 152 °F"}
 ];
 
-/* a question's line and its answer's are CraftBeerPi's words, as the screen as built logs them (title: message, then
+/* a question's line and its answer's are CraftBeerPi's words, as screen.js logs them (title: message, then
    "title answered: button"). The malt question is an imported recipe's MashIn Notification (upload_controller), and its
    button is MashInStep's Next Step */
 const MASH_EVENTS = [
@@ -60,14 +60,15 @@ const MASH_EVENTS = [
   ["13:27:05", "MashIn answered: Next Step", "confirmed", "ok"],
   ["13:26:58", "MashIn: Target temperature reached. Please add malt.", "answered", ""]
 ];
-/* a boil step's start, as the screen as built logs any step's start: its kettle's target. With the proposed boil kettle a
-   target at or above where BOIL starts is BOIL, as TARGET's editor and the window say ("Boil kettle target BOIL"); today's
-   BoilPower shows it as a temperature. `from` is the boil point, so a moment can call it before the screen has state */
+/* a boil step's start, as screen.js logs any step's start: its kettle's target. With the new boil kettle a target
+   at or above where BOIL starts is BOIL, as TARGET's editor and the window say ("Boil kettle target BOIL"); with an
+   older BoilPower (?bk=today) it shows as a temperature. `from` is the boil point, so a moment can call it before the
+   screen has state */
 const boilStartLine = (s, from = BOIL_TH) => `${s.n} started, boil kettle target ${BK === "power" && s.temp >= +(from - BOIL_MARGIN).toFixed(1) ? "BOIL" : `${s.temp.toFixed(1)} °F`}`;
-/* the #hop day from the end of the sparge (the MashStep) to the boil's start, newest first, in the order the screen as
-   built logs it (Brett's live runs, 12 Nov): a step's line first, then what CraftBeerPi says because of it. The sparge
-   ending switched the HLT pump off, and the boil waited for Scott; he started it with START THE BOIL. The wort pump was
-   already off, so the boil's start had no pump to switch off */
+/* the #hop day from the end of the sparge (the MashStep) to the boil's start, newest first, in the order screen.js logs
+   it: a step's line first, then what CraftBeerPi says because of it. The sparge's end switches the HLT pump off, and the
+   boil waits for the brewer, who starts it with START THE BOIL. The wort pump is already off, so the boil's start has
+   no pump to switch off */
 const boilDay = () => [
   ["15:01:47", boilStartLine(RECIPE.steps[4]), "by recipe", ""],
   ["15:01:45", "Boil answered: Start the boil", "confirmed", "ok"],
@@ -99,8 +100,8 @@ const SCENES = {
       ...boilDay()
     ]
   }),
-  /* boil power mid-recipe (Scott, 10 Nov: "I need to be able to adjust boil element power even while running a recipe"):
-     step 5, the Boil, runs the boil kettle's AUTO; the hop is in, and Scott turns the boil down from 45 to 40 % */
+  /* boil power mid-recipe, which the brewer can set at any time, also while a recipe runs: step 5, the Boil, runs the
+     boil kettle's AUTO; the hop is in, and the brewer turns the boil down from 45 to 40 % */
   boilpower: () => {
     const s = SCENES.hop();
     s.t = 16 * 3600 + 4 * 60 + 12; s.banner = null;
@@ -109,9 +110,9 @@ const SCENES = {
     s.events.unshift(["16:00:31", "Hop Alert answered: Added", "confirmed", "ok"]);
     return Object.assign(s, {base: "hop", open: {edit: {v: "bk", kind: "pwr", what: "boil", val: 40}}});
   },
-  /* the boil kettle's three phases in AUTO, for boil-kettle.html (Scott, 10 Nov: the power and temperature controls
-     are "not intuitive"). Heating up: the Boil step has started and BoilPower runs at full power until 210.2 °F; the
-     step's 90 min timer waits for that. Same day and history as #hop, 18 minutes before it boils. */
+  /* the boil kettle's three phases in AUTO, for boil-kettle.html, which shows how the power and temperature controls
+     read in each. Heating up: the Boil step has started and BoilPower runs at full power until 210.2 °F; the step's
+     90 min timer waits for that. Same day and history as #hop, 18 minutes before it boils. */
   heatup: () => Object.assign(SCENES.hop(), {
     t: 15 * 3600 + 12 * 60, banner: null, base: "hop",
     v: {hlt: {pv: 171.1, sv: 168.0, own: 168.0, mode: "manual"}, mt: {pv: 158.1, sv: null, mode: "manual"}, bk: {pv: 170.8, sv: 210.2, mode: "auto"}},
@@ -119,13 +120,13 @@ const SCENES = {
     recipe: {state: "running", cur: 4, left: 90 * 60, adds: [], wait: true},
     events: [
       ...boilDay(),
-      /* the proposed boil kettle: a recipe started from its first step goes back to the usual boil power, here after a
+      /* the new boil kettle: a recipe started from its first step goes back to the usual boil power, here after a
          brew day that ended at 35 % (in LOG) */
       ...(BK === "power" ? [["10:02:16", "Boil power back to your usual 45 % (was 35 %)", "by recipe", ""]] : [])
     ]
   }),
-  /* boiling hard: the simulator boils at 212 °F, so PV sits above the 210.2 °F threshold (Scott on 8012, 10 Nov:
-     "It pegs at 212 - over SV"). BoilPower holds the element at the boil power. */
+  /* boiling hard: the simulator boils at 212 °F, so PV sits above the 210.2 °F threshold, over SV. BoilPower holds the
+     element at the boil power. */
   boiling: () => Object.assign(SCENES.hop(), {
     t: 15 * 3600 + 52 * 60 + 40, banner: null,
     v: {hlt: {pv: 165.6, sv: 168.0, own: 168.0, mode: "manual"}, mt: {pv: 151.4, sv: null, mode: "manual"}, bk: {pv: 212.0, sv: 210.2, mode: "auto"}},
@@ -135,8 +136,9 @@ const SCENES = {
       ...boilDay()
     ]
   }),
-  /* a boil-over: 76 s into the boil the hot break foams up. With the proposed boil kettle Scott taps the element button
-     at 15:30:55 and the heat pauses; today the element button is locked while AUTO runs, so it keeps heating at 45 % */
+  /* a boil-over: 76 s into the boil the hot break foams up. With the new boil kettle the brewer taps the element
+     button at 15:30:55 and the heat pauses; on the older faceplate (?bk=today) the element button is locked while AUTO
+     runs, so it keeps heating at 45 % */
   pause: () => {
     const s = SCENES.boiling();
     s.t = 15 * 3600 + 31 * 60 + 20;
@@ -149,26 +151,26 @@ const SCENES = {
     }
     return s;
   },
-  /* the whirlpool hold: the stand cooled to 166.3 °F, Scott answered "Heat and hold?", and BoilPower holds 170 °F. The
-     boil power isn't used. With Brett's BoilPower (?bk=power) the step sets the kettle's own target to 170 °F, and from
-     0.0.3.post8 a PID holds it (Scott, 13 Nov: "I think the boilPower should also be able to do PID control"). On the
-     simulators' kettle, as the plugin's own test models it, it climbs slowly so as not to pass 170 °F: 52 % at once,
-     59 % a minute on as the integral builds, then easing as the brake on the rise comes in. At 17:18:40, 4 minutes in,
-     the wort is at 168.4 °F with the element at 37 %; it reaches 170 °F at about 17:25:30 and holds it at 26 %. An older
-     BoilPower (?bk=today) holds a separate Hold_Target at a power that eases from full to Hold_Power (30 %): 35 % at
-     169.4 °F. The Boil step left the kettle's target at 0, so it shows its 210.2 °F threshold as the target: today's
-     faceplate says SV 210.2 and "40.8 °F below target". */
+  /* the whirlpool hold: the stand has cooled to 166.3 °F, the brewer has answered "Heat and hold?", and BoilPower holds
+     170 °F. The boil power isn't used. With the newer BoilPower (?bk=power) the step sets the kettle's own target to
+     170 °F, and from 0.0.3.post8 a PID holds it. On the simulators' kettle, as the plugin's own test models it, it
+     climbs slowly so as not to pass 170 °F: 52 % at once, 59 % a minute on as the integral builds, then easing as the
+     brake on the rise comes in. At 17:18:40, 4 minutes in, the wort is at 168.4 °F with the element at 37 %; it
+     reaches 170 °F at about 17:25:30 and holds it at 26 %. An older BoilPower (?bk=today) holds a separate Hold_Target
+     at a power that eases from full to Hold_Power (30 %): 35 % at 169.4 °F. The Boil step leaves the kettle's target
+     at 0, so it shows its 210.2 °F threshold as the target: the older faceplate says SV 210.2 and
+     "40.8 °F below target". */
   hold: () => Object.assign(SCENES.hop(), {
     t: 17 * 3600 + 18 * 60 + 40, banner: null,
     v: {hlt: {pv: 156.8, sv: 168.0, own: 168.0, mode: "manual"}, mt: {pv: 139.6, sv: null, mode: "manual"},
       bk: BK === "power" ? {pv: 168.4, sv: 170.0, mode: "auto"} : {pv: 169.4, sv: 210.2, mode: "auto", hold: 170.0}},
     a: {hltEl: {on: false, pct: 0}, hltPump: {on: false}, wortPump: {on: false}, bkEl: {on: true, pct: BK === "power" ? 37 : 35}},
     recipe: {state: "running", cur: 6, left: 9 * 60 + 30, adds: []},
-    /* as the screen logs them: read from the core, screen.js's observe() and BoilPower (12 Nov; Brett read the stand's
-       question and its answer the same way). The Boil's "Boiling completed" is one of the routine notices the screen
-       leaves out; Whirlpool Hop, a NotificationStep, asks a second after it starts and moves on when NEXT STEP answers it;
-       the stand asks in CraftBeerPi's own words; and Brett's new BoilPower says what it does as it starts to hold (an
-       older one speaks for itself, in words the mockup doesn't have). Its words are BoilPower 0.0.3.post8's */
+    /* as the screen logs them, read from the core, screen.js's observe() and BoilPower; the stand's question and its
+       answer are read the same way. The Boil's "Boiling completed" is one of the routine notices the screen leaves out;
+       Whirlpool Hop, a NotificationStep, asks a second after it starts and moves on when NEXT STEP answers it; the
+       stand asks in CraftBeerPi's own words; and the newer BoilPower says what it does as it starts to hold (an older
+       one speaks for itself, in words the mockup doesn't have). Its words are BoilPower 0.0.3.post8's */
     events: [
       ...(BK === "power" ? [["17:14:32", `${KNAME.bk}: Holding 170.0, its target, instead of boiling: a PID sets the element's power, up to 100%. To boil, set its target to 206.6 or above.`, "from CraftBeerPi", ""]] : []),
       ["17:14:31", "Whirlpool answered: Heat and hold", "confirmed", "ok"],
@@ -181,25 +183,25 @@ const SCENES = {
       ["17:00:04", "Boil finished", "by recipe", ""]
     ]
   }),
-  /* the same whirlpool hold with the wort pump running, as Scott whirlpools (Scott, 12 Nov: "whirlpool / hop-stand step
-     pump symbol shows it going through the HERMS coil"). As built, the drawing shows it going round the HERMS coil into
-     the mash tun; ?wp= shows the options for it. The same goes for the hop stand (Whirlpool Hop) and the boil */
+  /* the same whirlpool hold with the wort pump running, as the brewer whirlpools. With ?wp=today the drawing shows it
+     going round the HERMS coil into the mash tun, though it serves the boil kettle; ?wp= shows the options for it. The
+     same goes for the hop stand (Whirlpool Hop) and the boil */
   whirlpool: () => {
     const s = SCENES.hold();
     s.a.wortPump = {on: true};
     s.events.splice(s.events.findIndex(e => e[0] < "17:08:16"), 0, ["17:08:16", "WORT PUMP started", "confirmed", "ok"]);
     return Object.assign(s, {base: "hold"});
   },
-  /* the recipe has finished, and Scott chills the wort (Brett, 12 Nov: with no recipe the drawing put the wort pump back
-     by the mash tun, so chilling and the transfer lit the HERMS coil). The #whirlpool day: the stand ended at 17:28:10 and
+  /* the recipe has finished, and the brewer chills the wort. The #whirlpool day: the stand ended at 17:28:10 and
      switched the boil kettle off, and the wort pump runs on through the chiller. CraftBeerPi keeps the recipe's steps,
-     all done, so the pump stays drawn at the boil kettle until a recipe is loaded or reset, or the mash tun's AUTO is on
-     (Scott, 12 Nov). The drawing can't show the wort going on to the fermenter */
+     all done, so the pump stays drawn at the boil kettle until a recipe is loaded or reset, or the mash tun's AUTO is
+     on; if the pump were drawn back by the mash tun, chilling and the transfer would light the HERMS coil. The drawing
+     can't show the wort going on to the fermenter */
   finished: () => {
     const s = SCENES.whirlpool();
     /* the stand's notice comes first: CraftBeerPi sends it as the stand stops, before it marks the step done, so it's
-       the step's last words, logged just before its "finished" line (the design, 12 Nov, late afternoon). Brewing
-       Complete was answered here, so its question's line says so */
+       the step's last words, logged just before its "finished" line. Brewing Complete has been answered here, so its
+       question's line says so */
     s.events.unshift(
       ["17:28:52", "Brewing Complete answered: OK", "confirmed", "ok"],
       ["17:28:10", "Brewing Complete: Now the yeast will take over", "answered", ""],
@@ -215,11 +217,11 @@ const SCENES = {
       timer: {left: 60 * 60, running: false}
     });
   },
-  /* Scott on 8012, 10 Nov: he set the boil power to 2 % and asked why the kettle held about 210 °F. At 2 % the kettle can't
-     hold a boil; BoilPower lets go 3.6 °F below its threshold and heats at full power until it boils again, so it cycles
-     between about 206 and 211 °F (Brett: ~3 min at 100 %, then 5½ min at 2 %). keepboil: the proposed boil kettle with
-     KEEP BOILING ticked, 3¾ min into a fall at 2 %, its line saying what comes next. letfall: unticked at 16:10:21, so
-     BoilPower stays at 2 % and the wort falls below a boil, as Scott chose. Both: the #hop day at 16:31:10. */
+  /* the boil power at 2 %, where the kettle seems to hold about 210 °F. At 2 % the kettle can't hold a boil; BoilPower
+     lets go 3.6 °F below its threshold and heats at full power until it boils again, so it cycles between about 206
+     and 211 °F (about 3 min at 100 %, then 5½ min at 2 %). keepboil: the new boil kettle with KEEP BOILING ticked,
+     3¾ min into a fall at 2 %, its line saying what comes next. letfall: unticked at 16:10:21, so BoilPower stays at
+     2 % and the wort falls below a boil. Both: the #hop day at 16:31:10. */
   keepboil: () => {
     const s = SCENES.hop();
     s.t = 16 * 3600 + 31 * 60 + 10; s.banner = null;
@@ -233,15 +235,16 @@ const SCENES = {
   },
   letfall: () => {
     const s = SCENES.keepboil();
-    /* today's BoilPower can't let it fall: it would be cycling, as in #keepboil */
+    /* an older BoilPower can't let it fall: it would be cycling, as in #keepboil */
     if (BK !== "power") return s;
     Object.assign(s.v.bk, {pv: 199.3, keep: false});
     s.events.unshift(["16:10:21", "Keep boiling off", "confirmed", "ok", "the boil power only, even below a boil"]);
     return s;
   },
   /* a forgotten pause: the #pause boil-over, 2 min 15 s on. After 2 brewing minutes paused, CraftBeerPi raises a kept
-     warning on every page (Scott, 10 Nov), once per pause, taken down when the heat carries on or AUTO stops. The boil's
-     timer has carried on all along, as Scott chose. Today there is no pause: the boil carries on at 45 %. */
+     warning on every page, once per pause, taken down when the heat carries on or AUTO stops. The boil's timer has
+     carried on all along, as a pause stops only the element. With an older BoilPower (?bk=today) there is no pause:
+     the boil carries on at 45 %. */
   "pause-long": () => {
     const s = SCENES.pause();
     s.t = 15 * 3600 + 33 * 60 + 10;
@@ -253,10 +256,11 @@ const SCENES = {
     s.events.unshift(["15:32:55", pauseBanner().title, "waiting for you", "wait"]);
     return Object.assign(s, {base: "pause-long"});
   },
-  /* a hop stand by hand, with no recipe (Brett's new BoilPower: the target is BOIL or a temperature to hold, like the
-     HLT's). Scott boiled by hand in AUTO from 10:21 and set the target to 170 °F at 12:41:10 with AUTO still on: the
-     element went off, and the wort is cooling towards 170 °F, where it will hold. Today the target can't do this (170
-     would boil at 45 % from 170 °F up); the old dashboard's "Hold a temperature" sets Hold_Target instead. */
+  /* a hop stand by hand, with no recipe (the newer BoilPower: the target is BOIL or a temperature to hold, like the
+     HLT's). The brewer has boiled by hand in AUTO from 10:21 and set the target to 170 °F at 12:41:10 with AUTO still
+     on: the element has gone off, and the wort is cooling towards 170 °F, where it will hold. With an older BoilPower
+     (?bk=today) the target can't do this (170 would boil at 45 % from 170 °F up); on CraftBeerPi's own dashboard, "Hold a
+     temperature" sets Hold_Target instead. */
   handhold: () => Object.assign(mash(), {
     t: 12 * 3600 + 58 * 60 + 40, banner: null,
     v: {hlt: {pv: 148.3, sv: 168.0, own: 168.0, mode: "manual"}, mt: {pv: 131.0, sv: null, mode: "manual"},
@@ -271,8 +275,8 @@ const SCENES = {
       ["10:21:31", BK === "power" ? "Boil kettle target BOIL" : "Boil kettle target 210.2 °F", "confirmed", "ok"]
     ]
   }),
-  /* the same day at 12:41:02, setting that hold: TARGET's box is open with 170.0 typed. Today the same box moves where
-     the boil counts from */
+  /* the same day at 12:41:02, setting that hold: TARGET's box is open with 170.0 typed. With an older BoilPower
+     (?bk=today) the same box moves where the boil counts from */
   bktarget: () => {
     const s = SCENES.handhold();
     s.t = 12 * 3600 + 41 * 60 + 2;
@@ -282,7 +286,7 @@ const SCENES = {
     s.events = s.events.slice(1);
     return Object.assign(s, {base: "handhold", open: {edit: {v: "bk", kind: "tgt", val: 170.0}}});
   },
-  /* fly sparge (Scott, 9 Nov): the HLT pump sends sparge water to the top of the mash tun while the wort pump runs
+  /* fly sparge: the HLT pump sends sparge water to the top of the mash tun while the wort pump runs
      the wort off to the boil kettle. The mash tun's AUTO (HERMS) still runs the wort pump and the HLT element. */
   sparge: () => Object.assign(mash(), {
     t: 15 * 3600 + 12 * 60 + 40,
@@ -313,8 +317,8 @@ const SCENES = {
     ]
   }),
   /* 15:04:40: the water reached 168 °F at 15:04:10, and CraftBeerPi asks, on every page, under the step's name. The
-     step's 40 min wait for "Sparge started"; the drawing marks the four valves to change. As it asked, CraftBeerPi
-     switched the HLT pump off for its hose to move (core 1c08d4c), so both pumps are off, and the prompt says so */
+     step's 40 min wait for "Sparge started"; the drawing marks the four valves to change. With its question, CraftBeerPi
+     switched the HLT pump off for its hose to move, so both pumps are off, and the prompt says so */
   "sparge-ready": () => {
     const s = SCENES["sparge-heat"]();
     s.t = 15 * 3600 + 4 * 60 + 40;
@@ -326,9 +330,9 @@ const SCENES = {
     s.events.unshift(["15:04:10", `${s.banner.title}: ${s.banner.text}`, "waiting for you", "wait"]);
     return s;
   },
-  /* 15:12:40, a fly sparge: Scott set the hoses, started both pumps and pressed Sparge started at 15:05:02. That
-     switched the HLT's AUTO off (Scott asked for the element off from here) and started the 40 min. Both pumps run: the
-     HLT pump over to the top of the mash tun, the wort pump down to the boil kettle */
+  /* 15:12:40, a fly sparge: the brewer has set the hoses, started both pumps and pressed Sparge started at 15:05:02.
+     That switched the HLT's AUTO off, so its element won't run as the HLT empties, and started the 40 min. Both pumps
+     run: the HLT pump over to the top of the mash tun, the wort pump down to the boil kettle */
   "sparge-run": () => {
     const s = SCENES["sparge-heat"]();
     s.t = 15 * 3600 + 12 * 60 + 40;
@@ -369,10 +373,10 @@ const SCENES = {
     return s;
   },
   /* 15:53:12, after the fly sparge (#sparge-run). Its 40 min ran out at 15:45:02. CraftBeerPi switched the HLT pump off
-     and left the wort pump draining the mash tun into the boil kettle (core 1c08d4c), and holds before the boil
-     (CONFIRM_BEFORE_BOIL, as on Scott's rig): nothing heats until Scott starts it. Its question is CraftBeerPi's longest,
-     and the screen writes it in the event line word for word. START THE BOIL puts heat on, so it takes a held press, as
-     START does; NEXT STEP is greyed (CraftBeerPi would take it as "start the boil"). The screen's ?demo=longprompt */
+     and left the wort pump draining the mash tun into the boil kettle, and holds before the boil (CONFIRM_BEFORE_BOIL,
+     as on the brewer's rig): nothing heats until the brewer starts it. Its question is CraftBeerPi's longest, and the
+     screen writes it in the event line word for word. START THE BOIL puts heat on, so it takes a held press, as START
+     does; NEXT STEP is greyed (CraftBeerPi would take it as "start the boil"). The screen's ?demo=longprompt */
   "boil-hold": () => {
     const s = SCENES["sparge-run"](), q = boilHoldBanner(RECIPE.steps[4]);
     s.t = 15 * 3600 + 53 * 60 + 12;
@@ -406,9 +410,9 @@ const SCENES = {
       ["09:58:02", "Hot liquor tank AUTO", "confirmed", "ok"]
     ]
   }),
-  /* the timers (approved by Scott and built on 11 Nov 2026; the default). #timers: the #mash day, with Stir counting
-     down (started 14:24:43) and Yeast set up for later; SOUND on. ?timers=today shows these moments with the one rest
-     timer, as the screen keeps it for an older CraftBeerPi */
+  /* the timers (the default). #timers: the #mash day, with Stir counting down (started 14:24:43) and Yeast set up for
+     later; SOUND on. ?timers=today shows these moments with the one rest timer, as the screen keeps it for an older
+     CraftBeerPi */
   timers: () => Object.assign(mash(), {
     tmrs: [{id: 1, name: "Stir", set: 15 * 60, left: 7 * 60 + 12, state: "running"}, {id: 2, name: "Yeast", set: 20 * 60, left: 20 * 60, state: "stopped"}],
     snd: {on: true, ok: true},
@@ -419,7 +423,7 @@ const SCENES = {
   "timer-done": () => {
     const s = SCENES.timers(), t = s.tmrs[0];
     if (TIMERS !== "new") {
-      /* today's screen: its one rest timer has finished */
+      /* the screen for an older CraftBeerPi (?timers=today): its one rest timer has finished */
       s.banner = {tone: "prompt", title: "Rest timer", text: "The rest timer has finished.", act: "OK", cmd: "b:ok"};
       s.events = [["14:32:19", "Rest timer finished", "waiting for you", "wait"], ...MASH_EVENTS.map(e => e.slice())];
       return s;
@@ -465,9 +469,9 @@ const SCENES = {
     s.events.unshift(["14:32:10", "Connection to CraftBeerPi lost", "trying again", "bad"]);
     return s;
   },
-  /* AUTO with no target (Scott on 8012, 10 Nov: "I have Mash Tun "Auto" on but HLT is off"). The mash tun's target was 0,
-     left from the last recipe, and he held AUTO at 13:26. PID_HERMS takes 0 as a real target: it holds the mash at 0 °F,
-     so it never asks the HLT for heat, though its pump still runs. CraftBeerPi now warns after 5 s (Brett's server change). */
+  /* AUTO with no target, where the mash tun's AUTO is on but the HLT stays off. The mash tun's target is 0, left from
+     the last recipe, and the brewer held AUTO at 13:26. PID_HERMS takes 0 as a real target: it holds the mash at 0 °F,
+     so it never asks the HLT for heat, though its pump still runs. CraftBeerPi warns after 5 s (noTargetBanner). */
   notarget: () => Object.assign(mash(), {
     t: 13 * 3600 + 47 * 60 + 10,
     banner: noTargetBanner("mt"),
@@ -496,11 +500,11 @@ const SCENES = {
       ["09:11:05", "Hot liquor tank AUTO", "confirmed", "ok"]
     ]
   }),
-  /* heating by hand (Scott on 8012, 13 Nov: "Oh! I turned the HLT element on without using 'Auto'... that is dangerous",
-     then "same issue with HLT, I see. Maybe a warning?"). Brewing by hand, no recipe: at 08:17:31 he set the HLT's target
-     to 150 °F and at 08:18 held its element on, in MANUAL. In MANUAL nothing compares the temperature with the target,
-     so the element runs until someone turns it off. #byhand at 08:52:40: heating, 18.4 °F short of the target;
-     #byhand-past at 09:03:30: 3.3 °F past it, with CraftBeerPi's alarm, raised at 09:03:22, 30 s after it was 2 °F past */
+  /* heating by hand: an element switched on in MANUAL, without AUTO, which is dangerous. Brewing by hand, no recipe: at
+     08:17:31 the brewer set the HLT's target to 150 °F and at 08:18 held its element on, in MANUAL. In MANUAL nothing
+     compares the temperature with the target, so the element runs until someone turns it off. #byhand at 08:52:40:
+     heating, 18.4 °F short of the target; #byhand-past at 09:03:30: 3.3 °F past it, with CraftBeerPi's alarm, raised at
+     09:03:22, 30 s after it was 2 °F past */
   byhand: () => Object.assign(SCENES.manual(), {
     t: 8 * 3600 + 52 * 60 + 40,
     v: {hlt: {pv: 131.6, sv: 150.0, own: 150.0, mode: "manual"}, mt: {pv: 64.4, sv: null, mode: "manual"}, bk: {pv: 64.9, sv: null, mode: "manual"}},
@@ -518,30 +522,52 @@ const SCENES = {
     s.banner = byHandBanner("hlt", {t: 150.0, over: "target"});
     s.events.unshift(["09:03:22", `${KNAME.hlt}: ${s.banner.text}`, "from CraftBeerPi", "bad"]);
     return Object.assign(s, {base: "byhand"});
+  },
+  /* RESET, a way to reset the brew day's progress after STOP. The #mash day, stopped at 14:32:31 in Saccharification,
+     16 of its 40 minutes run. STOP took the mash tun's AUTO off, as CraftBeerPi's MashStep does (its HERMS stops with
+     it: HLT element and wort pump off, the HLT's own target back); the middle button offers RESET. #reset: RESET
+     pressed, its question open. #reset-done: RESET TO STEP 1 pressed at 14:32:58: the same recipe at step 1, waiting
+     for START; NEXT STEP greyed (NOT_BEGUN) */
+  stopped: () => {
+    const s = mash();
+    s.t = 14 * 3600 + 32 * 60 + 44;
+    s.recipe.state = "stopped";
+    s.v.mt.mode = "manual"; s.v.hlt.sv = s.v.hlt.own;
+    s.a.hltEl = {on: false, pct: 0}; s.a.wortPump = {on: false};
+    s.events.unshift(["14:32:31", "Recipe stopped", "confirmed", "ok"]);
+    return s;
+  },
+  reset: () => Object.assign(SCENES.stopped(), {base: "stopped", open: {confirmReset: true}}),
+  "reset-done": () => {
+    const s = SCENES.stopped();
+    s.t = 14 * 3600 + 33 * 60 + 4;
+    s.recipe = {state: "ready", cur: 0, left: 0, adds: []};
+    s.events.unshift(["14:32:58", "Recipe reset to step 1", "confirmed", "ok"]);
+    return s;
   }
 };
-/* CraftBeerPi's alarm for an element left on by hand (the design, 13 Nov): past its target (w.over "target"), or near
-   the boil (w.over "boil"), whatever its target. An error, not a warning, so the screen as built puts it first in the
-   title bar, before a timer or a step's question, and its line stays red: it is the one time heat goes in with nothing
-   watching the temperature. cbpi: CraftBeerPi's own warning or error, one without buttons, which OK marks "seen" */
+/* CraftBeerPi's alarm for an element left on by hand: past its target (w.over "target"), or near the boil
+   (w.over "boil"), whatever its target. An error, not a warning, so screen.js puts it first in the title bar, before a
+   timer or a step's question, and its line stays red: it is the one time heat goes in with nothing watching the
+   temperature. cbpi: CraftBeerPi's own warning or error, one without buttons, which OK marks "seen" */
 function byHandBanner(v, w) {
   const n = KNAME[v], T = w.t == null ? "" : `${+w.t.toFixed(1)} °F`;
   return {tone: "alarm", cbpi: true, title: n, act: "OK", cmd: "b:ok", text: w.over === "target"
     ? `Above its ${T} target and still heating: its element is on by hand, and in MANUAL nothing stops it at the target. Turn the element off, or put the ${n} in AUTO to hold ${T}.`
     : "Near the boil and still heating: its element is on by hand, and in MANUAL nothing stops it before it boils. Turn the element off."};
 }
-/* CraftBeerPi's kept warning when a kettle's AUTO has run 5 s with no target (unset, 0 or below). It is taken down by
-   itself once the kettle has a target or leaves AUTO (Brett's server change, 10 Nov). BoilPower never raises it: it puts
-   its boil threshold in as the target as it starts. */
+/* CraftBeerPi's kept warning when a kettle's AUTO has run 5 s with no target (unset, 0 or below). CraftBeerPi takes it
+   down by itself once the kettle has a target or leaves AUTO. BoilPower never raises it: it puts its boil threshold in
+   as the target as it starts. */
 function noTargetBanner(v) {
   return {tone: "prompt", title: `No target for the ${KNAME[v]}`, notgt: v, act: "OK", cmd: "b:ok",
     text: `AUTO is on with no target temperature, so ${v === "mt" ? "the HLT" : "it"} won't heat. Set a target, or switch to MANUAL.`};
 }
 const noTarget = v => st.v[v].mode === "auto" && st.v[v].sv == null;
-/* the SpargeStep's kept prompt, titled with the step's name, in core 1c08d4c's words (SPARGE_READY_TEXT, SPARGE_NOW_TEXT).
-   It says which pumps are off for the brewer's hoses (Scott, 11 Nov: "Any time I need to change hoses or "valves" that
-   respective pump should be off"), as CraftBeerPi finds them when it asks: both, after the step has switched the wort
-   pump off as it started and the HLT pump as the water got there. Its one button answers it */
+/* the SpargeStep's kept prompt, titled with the step's name, in CraftBeerPi's words (SPARGE_READY_TEXT,
+   SPARGE_NOW_TEXT). A pump must be off whenever its hoses or valves change, so the prompt says which pumps are off for
+   the brewer's hoses, as CraftBeerPi finds them when it asks: both, after the step has switched the wort pump off as it
+   started and the HLT pump as the water got there. Its one button answers it */
 const SPARGE_PUMPS_OFF = {"hlt,wort": "both pumps are off", hlt: "the HLT pump is off", wort: "the wort pump is off"};
 function spargeBanner(temp, a = st.a) {
   const off = SPARGE_PUMPS_OFF[[!a.hltPump.on && "hlt", !a.wortPump.on && "wort"].filter(Boolean).join(",")] || "";
@@ -551,9 +577,9 @@ function spargeBanner(temp, a = st.a) {
 }
 /* its line in the event log, as #sparge-ready asks it with both pumps off, for the moments after it */
 const SPARGE_ASKED = (q => `${q.title}: ${q.text}`)(spargeBanner(168, {hltPump: {on: false}, wortPump: {on: false}}));
-/* a SpargeStep switches a pump off for the brewer to move its hoses, once a run of the step (core 1c08d4c, _hose_off): the
-   wort pump as the step starts, the HLT pump as the water gets there. A Stop and Start never stops one the brewer has
-   since started. CraftBeerPi says so only in the prompt's words */
+/* a SpargeStep switches a pump off for the brewer to move its hoses, once a run of the step (CraftBeerPi's _hose_off):
+   the wort pump as the step starts, the HLT pump as the water gets there. A Stop and Start never stops one the brewer
+   has since started. CraftBeerPi says so only in the prompt's words */
 function spargeHose(which) {
   const r = st.recipe, id = which === "hlt" ? "hltPump" : "wortPump";
   r.hoses = r.hoses || [];
@@ -561,46 +587,50 @@ function spargeHose(which) {
   r.hoses.push(which);
   if (st.a[id].on) setActor(id, false);
 }
-/* the hold before the boil (CraftBeerPi's StepController, with CONFIRM_BEFORE_BOIL Yes, as on Scott's rig): the boil waits,
-   with nothing active, until the brewer starts it. Its words are BoilStep.wait_for_brewer's in core 1c08d4c. Starting the
+/* the hold before the boil (CraftBeerPi's StepController, with CONFIRM_BEFORE_BOIL Yes, as on the brewer's rig): the
+   boil waits, with nothing active, until the brewer starts it. Its words are BoilStep.wait_for_brewer's. Starting the
    boil switches heat on, so here, as with START, it takes a held press (the Held Heat Rule) */
 function boilHoldBanner(s) {
   return {tone: "prompt", title: s.n, boilHold: true, act: "START THE BOIL", cmd: "b:boil", hold: true,
     text: "Ready to boil? Move the wort to the boil kettle first - the dashboard is yours meanwhile. The boil kettle stays off until you press Start the boil, or Start on the Brew Steps page. That also switches the wort pump off, so you can move its hoses. (Set CONFIRM_BEFORE_BOIL to No to go straight on.)"};
 }
-/* the proposed boil kettle's warning for a forgotten pause (Scott, 10 Nov): after 2 brewing minutes paused, kept on every
-   page with OK, said once per pause, and taken down when the heat carries on or AUTO stops (Brett's server change, which
-   uses the kettle's name from CraftBeerPi, as "No target for the Mash Tun" does) */
+/* the new boil kettle's warning for a forgotten pause: after 2 brewing minutes paused, kept on every page with OK,
+   said once per pause, and taken down when the heat carries on or AUTO stops (a CraftBeerPi warning, which uses the
+   kettle's name from CraftBeerPi, as "No target for the Mash Tun" does) */
 function pauseBanner() {
   return {tone: "prompt", title: `${KNAME.bk} heat still paused`, pausegt: true, act: "OK", cmd: "b:ok",
     text: `The heat has been paused for 2 minutes. To heat again, press and hold PAUSED on the ${KNAME.bk}.`};
 }
-/* ---------- the boil kettle: today's faceplate (?bk=today, the default: what is built) or one of the two redesigns that
-   boil-kettle.html compares (Scott, 10 Nov: its power and temperature controls are "not intuitive"). BoilPower isn't a
-   thermostat. It heats at full power until the wort reaches its threshold (boilFrom), then holds the element at the
-   boil power; in a whirlpool hold it holds Hold_Target instead and never uses the boil power. Both redesigns say so:
-   words: today's layout. The green number is the temperature the boil counts from, labelled BOIL, and the button
-          beside AUTO/MANUAL sets it (BOIL AT, 212 °F at most). BOIL POWER, beside the element, sets the boil power.
+/* ---------- the boil kettle: the default faceplate (?bk=power), the faceplate the screen shows with an older BoilPower
+   (?bk=today), which boil-kettle.html compares with it, or ?bk=words, a words-only alternative kept for comparison. The
+   older faceplate's power and temperature controls are not intuitive. BoilPower isn't a thermostat. It heats at full
+   power until the wort reaches its threshold (boilFrom), then holds the element at the boil power; in a whirlpool hold
+   it holds that temperature instead (the kettle's target, or Hold_Target in an older BoilPower) and never uses the boil
+   power. Both redesigns say so:
+   words: the older faceplate's layout. The green number is the temperature the boil counts from, labelled BOIL, and the
+          button beside AUTO/MANUAL sets it (BOIL AT, 212 °F at most). BOIL POWER, beside the element, sets the boil power.
+          A whirlpool hold shows HOLD and its temperature.
    power: the green number is the boil power, as on a boil controller (Auber's EZboil shows "P 45" in its SV window).
-          The button beside AUTO/MANUAL sets it, and its box also holds BOIL AT and the usual power. Approved by Scott
-          on 10 Nov, with three additions (nudgeHTML below); words was dropped.
-   In both, a whirlpool hold shows HOLD and its temperature, and the power button sets the boil power in either mode:
-   it never changes meaning with the mode. In MANUAL the element runs at its own level, as the HLT's does.
-   Then Brett's new BoilPower (10 Nov evening) gave the boil kettle an ordinary target, BOIL or a temperature to hold
-   (Scott: "Set the boil kettle's target to 170 °F, like the HLT, and it holds there"). So power has TARGET beside
-   AUTO/MANUAL, as the HLT does, and the boil power's button moved into its window: while the target is BOIL, the green
-   45 % is that button. A hold reads like the HLT: SV and its temperature, with OUT. */
+          The power box also holds BOIL AT and the usual power. Three ideas from commercial boil controllers come with
+          it (nudgeHTML below).
+   In both, the power button sets the boil power in either mode: it never changes meaning with the mode. In MANUAL the
+   element runs at its own level, as the HLT's does.
+   The newer BoilPower gives the boil kettle an ordinary target, BOIL or a temperature to hold: set to 170 °F, like the
+   HLT's, it holds there. So power has TARGET beside AUTO/MANUAL, as the HLT does, and the boil power's button sits in
+   its window: while the target is BOIL, the green 45 % is that button. A hold reads like the HLT: SV and its
+   temperature, with OUT. */
 const bkNew = v => v === "bk" && BK !== "today";
 /* BoilPower's boil latch: set when the wort reaches the threshold (boilFrom), and from then on the element runs at the boil
    power. With Keep_Boiling "Yes" (the default) it lets go 3.6 °F (2 °C) below the threshold and heats at full power until
-   the wort boils again; with "No" it holds the boil power until AUTO stops, even if the wort falls below a boil (Scott,
-   10 Nov: "let the boil power fully drive the temp (ok to fall if I set it too low %)"). The real screen can't read the
-   latch; it can tell from the element running at the boil power while the wort is below the threshold (BUILD-NOTES).
-   The same 3.6 °F below the boil point is where the proposed boil kettle's targets stop being BOIL (bkHoldT). */
+   the wort boils again; with "No" the boil power alone drives the temperature: it holds the boil power until AUTO stops,
+   even if the wort falls below a boil, as when the boil power is set too low. The real screen can't read the latch; it
+   can tell from the element running at the boil power while the wort is below the threshold (BUILD-NOTES).
+   The same 3.6 °F below the boil point is where the new boil kettle's targets stop being BOIL (bkHoldT). */
 const BOIL_MARGIN = 3.6;
 const bkLetGo = () => +(boilFrom() - BOIL_MARGIN).toFixed(1);
-/* the temperature the boil kettle holds, or null while it boils. Proposed (Brett's new BoilPower): its own target when it
-   is set and below BOIL. Today: the separate Hold_Target, which only the Whirlpool step and the old dashboard set */
+/* the temperature the boil kettle holds, or null while it boils. With the newer BoilPower (?bk=power): its own target
+   when it is set and below BOIL. With an older one: the separate Hold_Target, which only the Whirlpool step and
+   CraftBeerPi's own dashboard set */
 const bkHoldT = () => { const V = st.v.bk; return BK === "power" ? (V.sv > 0 && V.sv < bkLetGo() ? V.sv : null) : V.hold ?? null; };
 const bkHolding = () => st.v.bk.mode === "auto" && bkHoldT() != null;
 const bkLatched = () => { const V = st.v.bk; return V.mode === "auto" && bkHoldT() == null && (V.latched ?? V.pv >= boilFrom()); };
@@ -609,9 +639,9 @@ function bkLine() {
   if (V.mode !== "auto") { const w = byHand("bk"); return w ? byHandLine("bk", w) : "MANUAL · element by hand"; }
   /* a forgotten pause would quietly stop the boil, so the line counts it, in Prompt Amber like the button */
   if (BK === "power" && el.paused) return `<span class="warn">Heat paused for <span id="pz">${mmss(Math.max(0, st.t - el.pausedAt))}</span></span>`;
-  /* proposed: a hold is a target like the HLT's, and from BoilPower 0.0.3.post8 a PID holds it as the HLT's PID holds its
-     own, so its line reads exactly like the HLT's (Brett, 13 Nov). The element can be off just below the target while
-     the wort still rises, and comes back on as the rise slows, so the line no longer says where it heats again */
+  /* the new boil kettle: a hold is a target like the HLT's, and from BoilPower 0.0.3.post8 a PID holds it as the HLT's PID holds its
+     own, so its line reads exactly like the HLT's. The element can be off just below the target while the wort still
+     rises, and comes back on as the rise slows, so the line doesn't say where it heats again */
   if (ho != null && BK === "power") {
     const d = ho - V.pv;
     if (Math.abs(d) < 0.3) return "At target";
@@ -623,20 +653,19 @@ function bkLine() {
     return `Holding ${+ho.toFixed(1)} °F for the whirlpool` + (Math.abs(d) >= 0.3 ? ` · ${Math.abs(d).toFixed(1)} °F ${d > 0 ? "below" : "above"}` : "");
   }
   if (V.pv >= boilFrom()) return BK === "power" ? "Boiling" : `Boiling at ${V.bp} %`;
-  /* the proposed boil kettle, still at the boil power below the threshold: say what happens next, or that it won't */
+  /* the new boil kettle, still at the boil power below the threshold: say what happens next, or that it won't */
   if (BK === "power" && bkLatched()) return V.keep !== false ? `Below a boil · back to full power at ${bkLetGo()} °F`
     : `Not boiling · ${(boilFrom() - V.pv).toFixed(1)} °F below ${boilFromText()} °F`;
   const eta = GRAPHS ? graphETA("bk").replace(" at this rate", "") : "";
   return (BK === "power" ? "Full power until it boils" : `Full power until it boils, then ${V.bp} %`) + (eta ? ` · ${eta}` : "");
 }
-/* BoilPower's output in a hold. From 0.0.3.post8 (?bk=power) a PID sets it (Scott, 13 Nov: "I think the boilPower should
-   also be able to do PID control"): 14 % for each °F short, up to 100 %, plus what its integral has built up near the
-   target, less a brake on the wort's rise. For the demo, the first moment: a hold just begun has built up nothing, so it
-   starts at 14 % a °F short (52 % at 3.7 °F, the plugin's first pass on the simulators' kettle). One already running
-   (running) has built up about what the kettle loses where it holds, 21 % at 150 °F and 26 % at 170 °F on the
-   simulators' kettle, so it carries on from that, a little past the target too. An older BoilPower (_hold_climb_power):
-   full power from 7.2 °F below, easing to Hold_Power (30 %) at the hold, off at or above it; inside 3.6 °F it only
-   carries on heating (running: it was heating), so a fresh start there rests */
+/* BoilPower's output in a hold. From 0.0.3.post8 (?bk=power) a PID sets it: 14 % for each °F short, up to 100 %, plus
+   what its integral has built up near the target, less a brake on the wort's rise. For the demo, the first moment: a
+   hold just begun has built up nothing, so it starts at 14 % a °F short (52 % at 3.7 °F, the plugin's first pass on the
+   simulators' kettle). One already running (running) has built up about what the kettle loses where it holds, 21 % at
+   150 °F and 26 % at 170 °F on the simulators' kettle, so it carries on from that, a little past the target too. An
+   older BoilPower (_hold_climb_power): full power from 7.2 °F below, easing to Hold_Power (30 %) at the hold, off at or
+   above it; inside 3.6 °F it only carries on heating (running: it was heating), so a fresh start there rests */
 function holdOut(T, pv, running) {
   const below = T - pv;
   if (BK === "power") return Math.round(Math.min(100, Math.max(0, 14 * below + (running ? Math.max(0, 21 + (T - 150) / 4) : 0))));
@@ -662,6 +691,9 @@ const hhmmss = t => `${hhmm(t)}:${pad(t % 60)}`;
 const PAUSED = "No connection. Controls are paused.";
 const WAIT = "Waiting for CraftBeerPi to answer.";
 const HELD_NEXT = "The boil is waiting for you. To start it, hold START here or START THE BOIL at the top.";
+/* a recipe with nothing running and nothing stopped: CraftBeerPi takes NEXT as START (StepController.next), which would put
+   heat on with two taps, and the screen would say "Skipped to …" untruly. So NEXT STEP is greyed, as before a held boil */
+const NOT_BEGUN = s => `${s.n} hasn't started yet. To begin it, hold START.`;
 const LONG_Q = 140; // characters: longer questions are the sparge's (about 200) and the boil's (300); the rest are 125 or under
 const ICON = {
   ok: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M6.5 12.5l3.5 3.5 7-8" fill="none" stroke="#0a1016" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -695,9 +727,8 @@ function lampHTML(id) {
   let s, t, n, h = false;
   if (pend) { s = "pending"; t = pend === "on" ? "SWITCHING ON…" : "SWITCHING OFF…"; n = A.name + " · waiting for CraftBeerPi"; }
   else if (a.failed) { s = "failed"; t = a.on ? "DID NOT STOP" : "DID NOT START"; n = `${A.name} · still ${a.on ? (A.kind === "pump" ? "running" : "heating") : "off"} · tap to try again`; }
-  /* HEATING, without the element's power (Scott, 11 Nov: "I'd like the "HEATING xx %" button to only show HEATING
-     since the percentage is shown in the graph and as a number on the right side of the PID display"). Layout A has
-     no OUT and no graphs, so there the button is still the only place the power shows, and it keeps it */
+  /* HEATING, without the element's power, as the power shows in the graph and as OUT on the right of the faceplate's
+     readout. Layout A has no OUT and no graphs, so there the button, the only place the power shows, keeps it */
   else if (a.on) { s = A.kind === "heat" ? "heating" : "running"; t = A.kind === "heat" ? (LAYOUT === "a" && !(id === "bkEl" && BK === "power") ? `HEATING ${a.pct} %` : "HEATING") : "RUNNING"; n = A.name + (locked ? ` · run by ${a.by === "mt" ? "mash tun" : "AUTO"}` : A.kind === "heat" ? " · tap to turn off" : " · tap to stop"); }
   else { s = "off"; t = "OFF"; if (A.kind === "heat" && !locked) { h = true; n = A.name + " · hold to turn on"; } else n = A.name + (locked ? ` · run by ${a.by === "mt" ? "mash tun" : "AUTO"}` : " · tap to start"); }
   const why = lost ? PAUSED : pend ? WAIT : locked ? lockWhy(id) : "";
@@ -721,10 +752,10 @@ function tgtHTML(v) {
   const why = st.link === "lost" ? PAUSED : by ? `The mash tun sets this target while it runs the HERMS: up to its own target plus ${HERMS_DELTA} °F.` : pend ? WAIT : "";
   return b(none ? "tgtbtn notgt" : "tgtbtn", "TARGET", by ? "set by mash tun" : pend ? "sending…" : none ? "set SV" : bkNew(v) ? "change" : "change SV", {cmd: `tgt:${v}`, why});
 }
-/* only a kettle whose logic declares set_boil_power has this (on Scott's rig, the boil kettle). It sits beside the
-   element it governs and works at any time, also while a recipe runs (Scott, 10 Nov). In AUTO it sets the logic's
-   Boil_Power, used from BoilPower's threshold up (boilFrom); in MANUAL, including the "Ready to boil?" hold, it sets the
-   element's own level, used when it is on by hand. The kettle's mode decides what it sets, never the recipe.
+/* only a kettle whose logic declares set_boil_power has this (on the brewer's rig, the boil kettle). It sits beside the
+   element it governs and works at any time, also while a recipe runs. In AUTO it sets the logic's Boil_Power, used
+   from BoilPower's threshold up (boilFrom); in MANUAL, including the "Ready to boil?" hold, it sets the element's own
+   level, used when it is on by hand. The kettle's mode decides what it sets, never the recipe.
    Changing it is a tap on SET, like a target: it changes a level, it doesn't switch heat on */
 function powerHTML() {
   const V = st.v.bk, auto = V.mode === "auto", pend = st.pend["p:bk"], why = st.link === "lost" ? PAUSED : pend ? WAIT : "";
@@ -737,24 +768,24 @@ function powerHTML() {
     {cmd: "pwr:bk", why, expanded: exp});
 }
 /* the redesigns' name for the boil kettle's target: the temperature the boil counts from (BoilPower's threshold). Only the
-   dropped words design still uses it; the proposed design's BOIL AT is in the power box (editorHTML) */
+   words design uses it here; the new design's BOIL AT is in the power box (editorHTML) */
 function boilAtHTML() {
   const pend = st.pend["t:bk"], why = st.link === "lost" ? PAUSED : pend ? WAIT : "";
   return b("tgtbtn", "BOIL AT", pend ? "sending…" : "change",
     {cmd: "tgt:bk", why, expanded: !!st.edit && st.edit.kind === "tgt" && st.edit.v === "bk"});
 }
-/* the proposed boil kettle's boil power, in its window while the target is BOIL: the green number is the setting, so it is
-   the button that opens the power box (TARGET took its place beside AUTO/MANUAL). Framed like the graph's chosen span,
+/* the new boil kettle's boil power, in its window while the target is BOIL: the green number is the setting, so it is
+   the button that opens the power box (TARGET sits beside AUTO/MANUAL). Framed like the graph's selected span,
    with a small "change" like every other button's, so it reads as a control, not only a reading. Its tap area is at
    least 44 px tall. The HLT's and the mash tun's readings stay readings */
 function boilReadHTML() {
   const V = st.v.bk, pend = st.pend["p:bk"], why = st.link === "lost" ? PAUSED : pend ? WAIT : "";
   return `<button type="button" class="svbtn" data-cmd="pwr:bk" aria-expanded="${!!st.edit && st.edit.kind === "pwr"}" aria-label="Boil power ${V.bp} percent: change"${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}><span class="svv">${V.bp}<span class="u">%</span></span><small>${pend === "set" ? "sending…" : "change"}</small></button>`;
 }
-/* the proposed boil kettle's TARGET box: the HLT's, plus BOIL (Scott: "Set the boil kettle's target to 170 °F, like the
-   HLT, and it holds there"). Anything from the boil point less 3.6 °F up is BOIL, so the steps run …205.6, 206.5, BOIL,
-   and a typed 212 is BOIL too; BOIL is the top, so + is refused there. SET BOIL sends the boil point as the target.
-   The third row: BOIL, pressed while the box says BOIL, and BOIL POWER, the second way to the power box */
+/* the new boil kettle's TARGET box: the HLT's, plus BOIL. Like the HLT, the kettle holds a target such as 170 °F.
+   Anything from the boil point less 3.6 °F up is BOIL, so the steps run …205.6, 206.5, BOIL, and a typed 212 is BOIL
+   too; BOIL is the top, so + is refused there. SET BOIL sends the boil point as the target. The third row: BOIL,
+   pressed while the box says BOIL, and BOIL POWER, the second way to the power box */
 function bkTgtEditorHTML() {
   const val = st.edit.val, boil = val >= bkLetGo(), x = boil ? "BOIL" : val.toFixed(1);
   const top = boil ? "BOIL is the top. BOIL AT, under BOIL POWER, sets where the boil starts." : "";
@@ -766,13 +797,12 @@ function bkTgtEditorHTML() {
     <button type="button" class="ok" data-cmd="tset">SET <span id="tok">${boil ? "BOIL" : x + " °F"}</span></button><button type="button" class="no" data-cmd="tcancel">CANCEL</button>
     <button type="button" class="tboil" data-cmd="tboil" aria-pressed="${boil}">BOIL<small>full power to ${boilFromText()} °F</small></button><button type="button" class="tpwr" data-cmd="pwr:bk">BOIL POWER<small>change</small></button></div>`;
 }
-/* ---------- the proposed boil kettle (?bk=power): three ideas from commercial boil controllers, all chosen by Scott
-   on 10 Nov ("All three"). While AUTO boils, the boil power's one-tap steps sit either side of the element button, like
-   a Grainfather's arrow keys: −5 % and +5 %, and since 11 Nov −1 % and +1 % between them and the button (Scott: "I'd
-   like the +/-1 in addition to the +/- 5 you already have"), in the power box's order, −5 −1 … +1 +5. The element
-   button itself pauses the heat for a boil-over and keeps AUTO, the recipe and the boil power, like the heater button
-   on an Ss Brewtech eController; carrying on is a held press, like any heat. Each recipe starts at the usual boil
-   power, like a Grainfather's default boil power. */
+/* ---------- the new boil kettle (?bk=power): three ideas from commercial boil controllers. While AUTO boils, the
+   boil power's one-tap steps sit either side of the element button, like a Grainfather's arrow keys: −5 % and +5 %,
+   with −1 % and +1 % between them and the button, in the power box's order, −5 −1 … +1 +5. The element button itself
+   pauses the heat for a boil-over and keeps AUTO, the recipe and the boil power, like the heater button on an Ss
+   Brewtech eController; carrying on is a held press, like any heat. Each recipe starts at the usual boil power, like a
+   Grainfather's default boil power. */
 function nudgeHTML(d) {
   const V = st.v.bk, pend = st.pend["p:bk"];
   /* a step that would pass 0 or 100 % stops there; only at the end itself is the button refused */
@@ -803,11 +833,11 @@ function bkLampHTML() {
 /* the steps show only while AUTO can use the boil power: not in MANUAL, where they would seem to set the element's
    own level, nor in a hold, nor while the boil kettle's box is open, which has steps of its own */
 const bkNudges = () => BK === "power" && st.v.bk.mode === "auto" && !bkHolding() && !(st.edit && st.edit.v === "bk");
-/* the proposed boil kettle's Keep boiling choice (Scott, 10 Nov: "add a small checkbox with LED to choose keep at boil
-   temp or let the boil power fully drive the temp"). A small checkbox at the end of the nameplate row; the box is the LED,
-   lit Setpoint Green with a tick while ticked. One tap sets Keep_Boiling (set_keep_boiling), in any mode, like the boil
-   power. Its tap area reaches 44 px into the padding above and the gap below without making the row taller. It shows
-   only while the target is BOIL: a hold never uses it. */
+/* the new boil kettle's Keep boiling choice: keep the wort at a boil, or let the boil power alone drive the
+   temperature. A small checkbox at the end of the nameplate row; the box is the LED, lit Setpoint Green with a tick
+   while ticked. One tap sets Keep_Boiling (set_keep_boiling), in any mode, like the boil power. Its tap area reaches
+   44 px into the padding above and the gap below without making the row taller. It shows only while the target is
+   BOIL: a hold never uses it. */
 function keepHTML() {
   const V = st.v.bk, on = V.keep !== false, pend = st.pend["k:bk"], lost = st.link === "lost";
   const why = lost ? PAUSED : pend ? WAIT : "";
@@ -824,7 +854,7 @@ function editorHTML(v) {
     <button type="button" class="bkat" data-cmd="bat">BOIL AT ${boilFromText()} °F<small>full power until then · change</small></button><p class="usual">${st.v.bk.usual != null ? `USUAL ${st.v.bk.usual} %<small>starts each recipe · set in Hardware</small>` : "USUAL – –<small>none · set one in Hardware</small>"}</p>` : ""}</div>`;
   }
   if (v === "bk" && BK === "power" && st.edit.kind === "tgt") return bkTgtEditorHTML();
-  /* the HLT's and the mash tun's target, or the boil point (the proposed design's BOIL AT; the words design's target) */
+  /* the HLT's and the mash tun's target, or the boil point (the new design's BOIL AT; the words design's target) */
   const x = st.edit.val.toFixed(1), at = bkNew(v);
   return `<div class="editor" role="group" aria-label="${at ? "New boil temperature for the boil kettle" : `New target for the ${VNAME[v].toLowerCase()}`}">
     <button type="button" data-cmd="tstep:-1" aria-label="Down 1 degree">−1</button><button type="button" data-cmd="tstep:-0.1" aria-label="Down 0.1 degree">−.1</button>
@@ -832,13 +862,12 @@ function editorHTML(v) {
     <button type="button" data-cmd="tstep:0.1" aria-label="Up 0.1 degree">+.1</button><button type="button" data-cmd="tstep:1" aria-label="Up 1 degree">+1</button>
     <button type="button" class="ok" data-cmd="tset">SET <span id="tok">${x}</span> °F</button><button type="button" class="no" data-cmd="tcancel">CANCEL</button></div>`;
 }
-/* an element on by hand (Scott, 13 Nov: "Oh! I turned the HLT element on without using 'Auto'... that is dangerous" and
-   "Maybe a warning?"): its vessel in MANUAL, and no AUTO running it, neither its own nor the mash tun's HERMS. In MANUAL
-   nothing compares the temperature with the target, so the element runs until someone turns it off. t: the target it
-   won't stop at (the HLT's SV; the proposed boil kettle's, when it is below where BOIL starts), or null: none, or one
-   at or past where BOIL starts, which the wort or water boils before it reaches. over: "boil" from where BOIL starts,
-   else "target" from 2 °F past the target, else "". The boil kettle with its target at BOIL, or none, boils by hand as
-   a boil kettle should: not this */
+/* an element on by hand, which is dangerous, so the screen warns of it: its vessel in MANUAL, and no AUTO running it,
+   neither its own nor the mash tun's HERMS. In MANUAL nothing compares the temperature with the target, so the element
+   runs until someone turns it off. t: the target it won't stop at (the HLT's SV; the new boil kettle's, when it is
+   below where BOIL starts), or null: none, or one at or past where BOIL starts, which the wort or water boils before it
+   reaches. over: "boil" from where BOIL starts, else "target" from 2 °F past the target, else "". The boil kettle with
+   its target at BOIL, or none, boils by hand as a boil kettle should: not this */
 const BY_OVER = 2;
 function byHand(v) {
   const el = v === "hlt" ? st.a.hltEl : v === "bk" ? st.a.bkEl : null, V = st.v[v];
@@ -861,7 +890,7 @@ function devHTML(v) {
   if (bkNew(v)) return bkLine();
   const V = st.v[v], herms = v === "hlt" && st.v.mt.mode === "auto", driven = V.mode === "auto" || herms;
   /* AUTO with no target (unset, 0 or below) runs but holds nothing, so nothing heats. The line says so at once, in Prompt
-     Amber, and never calls it MANUAL; CraftBeerPi's own warning follows in the title bar after 5 s (Scott, 10 Nov) */
+     Amber, and never calls it MANUAL; CraftBeerPi's own warning follows in the title bar after 5 s */
   if (herms && st.v.mt.sv == null) return `<span class="warn">Not heating: the mash tun has no target</span>`;
   if (noTarget(v)) return `<span class="warn">${v === "mt" ? "No target, so the HLT won't heat" : "No target, so it won't heat"}</span>`;
   const w = byHand(v);
@@ -875,8 +904,7 @@ function devHTML(v) {
 }
 /* layout B's faceplate also shows output and mode, like a hardware PID controller. OUT is the element's power now, on
    every vessel and in every state: on the boil kettle 100 % while it heats to the boil, the boil power once it boils,
-   0 while paused, and the hand level in MANUAL. The green BOIL number is the setting; OUT is what the element is doing
-   (Scott, 11 Nov: "BoilPower's display has lost its current 'out' element power number? Please put it back") */
+   0 while paused, and the hand level in MANUAL. The green BOIL number is the setting; OUT is what the element does */
 function auxHTML(v) {
   const el = v === "hlt" ? st.a.hltEl : v === "bk" ? st.a.bkEl : null;
   const mode = v === "hlt" && st.v.mt.mode === "auto" ? "HERMS" : st.v[v].mode === "auto" ? "AUTO" : "MAN";
@@ -891,7 +919,7 @@ function hermsRowHTML() {
 function svCell(v) {
   const V = st.v[v], u = s => `<span class="u">${s}</span>`;
   if (!bkNew(v)) return ["SV", V.sv == null ? "– –" : f1(V.sv) + u("°F")];
-  /* proposed: a hold reads like the HLT's target; while the target is BOIL the green number is the boil power, and its button */
+  /* the new boil kettle: a hold reads like the HLT's target; while the target is BOIL the green number is the boil power, and its button */
   if (BK === "power") { const ho = bkHoldT(); return ho != null ? ["SV", f1(ho) + u("°F")] : ["BOIL", boilReadHTML()]; }
   if (bkHolding()) return ["HOLD", f1(V.hold) + u("°F")];
   return ["BOIL", f1(boilFrom()) + u("°F")];
@@ -899,7 +927,7 @@ function svCell(v) {
 function plateHTML(v) {
   const V = st.v[v], by = v === "hlt" && st.v.mt.mode === "auto" && st.v.mt.sv != null, [svT, svV] = svCell(v);
   const second = v === "bk" ? (BK === "power" ? "" : powerHTML()) : "";
-  /* the proposed boil kettle has TARGET beside AUTO/MANUAL, as the HLT does; the words design had BOIL AT there */
+  /* the new boil kettle has TARGET beside AUTO/MANUAL, as the HLT does; the words design has BOIL AT there */
   const setBtn = bkNew(v) && BK !== "power" ? boilAtHTML() : tgtHTML(v);
   const nudge = v === "bk" && bkNudges();
   const lamps = v === "bk" && BK === "power" ? (nudge ? nudgeHTML(-5) + nudgeHTML(-1) + bkLampHTML() + nudgeHTML(1) + nudgeHTML(5) : bkLampHTML()) : VACT[v].map(lampHTML).join("") + second;
@@ -927,21 +955,48 @@ function recipeHTML() {
   const start = pS ? `<button type="button" class="lamp" data-state="pending" data-cmd="noop" aria-disabled="true" data-why="${WAIT}"><span class="st">STARTING…</span><span class="nm">recipe</span></button>`
     : run ? `<button type="button" class="lamp" data-state="running" data-cmd="noop" aria-disabled="true" data-why="The recipe is already running."><span class="st">RUNNING</span><span class="nm">step ${r.cur + 1} of ${S.length}</span></button>`
     : `<button type="button" class="lamp" data-state="off" data-cmd="r:start"${off ? ` aria-disabled="true" data-why="${off}"` : " data-hold"}>${off ? "" : '<span class="fill"></span>'}<span class="st">START</span><span class="nm">hold to start</span></button>`;
-  const stop = b("cmdbtn", pX ? "STOPPING…" : "STOP", run ? "tap to stop" : "not running", {cmd: "r:stop", why: off || (pX ? WAIT : "") || (!run ? "The recipe is not running." : "")});
-  const last = r.cur >= S.length - 1;
+  /* the middle button: STOP while a step runs; RESET, to reset the brew day's progress after a stop, while nothing
+     runs and some step has begun (stopped, failed, done, or the boil held for you), as a stopwatch's Reset shows once
+     it is stopped. CraftBeerPi refuses a reset while a step runs. On a recipe not begun, STOP is greyed. RESET asks
+     first (resetConfirmHTML) */
+  const pR = st.pend["r:reset"], begun = r.state === "stopped" || r.cur > 0;
+  const stop = !run && (begun || pR) ? b("cmdbtn", pR ? "RESETTING…" : "RESET", "back to step 1", {cmd: "r:reset", why: off || (pR ? WAIT : "")})
+    : b("cmdbtn", pX ? "STOPPING…" : "STOP", run ? "tap to stop" : "not running", {cmd: "r:stop", why: off || (pX ? WAIT : "") || (!run ? "The recipe is not running." : "")});
+  const last = r.cur >= S.length - 1, notBegun = r.state === "ready" && !r.held;
   /* held before the boil, CraftBeerPi takes NEXT as "start the boil" (StepController.next), which would put heat on with
-     two taps, so NEXT STEP is greyed and says how to start it */
-  const next = b("cmdbtn", pN ? "MOVING ON…" : "NEXT STEP", last ? "last step" : `to ${S[r.cur + 1].n}`, {cmd: "r:next", why: off || (pN ? WAIT : "") || (r.held ? HELD_NEXT : "") || (last ? "This is the last step." : "")});
+     two taps, so NEXT STEP is greyed and says how to start it. The same on a recipe loaded or reset and not begun, where
+     NEXT would start its first step (NOT_BEGUN) */
+  const next = b("cmdbtn", pN ? "MOVING ON…" : "NEXT STEP", last ? "last step" : notBegun ? "not started" : `to ${S[r.cur + 1].n}`, {cmd: "r:next", why: off || (pN ? WAIT : "") || (r.held ? HELD_NEXT : "") || (notBegun ? NOT_BEGUN(S[r.cur]) : "") || (last ? "This is the last step." : "")});
   return `<h2>${esc(RECIPE.name)}</h2>
     <p class="rmeta">${run ? "Running" : r.state === "ready" ? "Ready to start" : "Stopped"} · step ${r.cur + 1} of ${S.length}</p>
     <div class="rctl">${start}${stop}${next}</div>
-    ${st.confirmNext ? confirmHTML() : ""}
+    ${st.confirmNext ? confirmHTML() : st.confirmReset && !run && begun ? resetConfirmHTML() : ""}
     <p class="note">${st.notes.r || ""}</p>
     <ol class="steps" aria-label="Recipe steps">${S.map(stepHTML).join("")}</ol>${TIMERS === "new" ? timersHTML() : ""}`;
 }
 function confirmHTML() {
   const r = st.recipe, cur = RECIPE.steps[r.cur], nx = RECIPE.steps[r.cur + 1];
   return `<div class="confirm" role="group" aria-labelledby="cf-t"><p id="cf-t">Skip the rest of <b>${cur.n}</b>${cur.min ? ` (${mmss(r.left)} left)` : ""} and start <b>${nx.n}</b>${nx.temp ? ` at ${nx.temp} °F` : ""}?</p><div><button type="button" class="yes" data-cmd="r:next-yes">SKIP TO ${nx.n.toUpperCase()}</button><button type="button" data-cmd="r:next-no">KEEP GOING</button></div></div>`;
+}
+/* RESET's question, as NEXT STEP's: a reset can't be undone, so it says what CraftBeerPi forgets (the steps done, and the
+   minutes the stopped step had run: a 40 min rest stopped at 16 runs all 40 again), what goes with it (the questions about
+   the brew), and what it leaves alone. Its answers say what each does; neither is the default */
+function resetConfirmHTML() {
+  const r = st.recipe, S = RECIPE.steps, cur = S[r.cur], n = r.cur, lost = [];
+  if (n) lost.push(n === 1 ? "step 1 is done" : n === 2 ? "steps 1 and 2 are done" : `steps 1 to ${n} are done`);
+  const ran = r.state === "stopped" && cur.min ? cur.min * 60 - r.left : 0;
+  if (ran > 0) lost.push(`${cur.n} has run ${ran < 60 ? "under a minute" : Math.floor(ran / 60)} of its ${cur.min} minutes`);
+  const said = [lost.length ? `CraftBeerPi forgets that ${lost.join(" and that ")}.` : "Nothing has been done yet.",
+    brewQuestions().length ? "Its questions waiting for you are taken down." : "",
+    `Kettles, pumps and ${TIMERS === "new" ? "timers" : "the rest timer"} stay as they are.`].filter(Boolean).join(" ");
+  return `<div class="confirm" role="group" aria-labelledby="cf-t"><p id="cf-t">Reset the recipe to step 1, <b>${S[0].n}</b>? ${said}</p><div><button type="button" class="yes" data-cmd="r:reset-yes">RESET TO STEP 1</button><button type="button" data-cmd="r:reset-no">${n ? `STAY AT STEP ${n + 1}` : "STAY STOPPED"}</button></div></div>`;
+}
+/* the questions about the brew that wait for you, by their lines in LOG: those under a step's name, the hop alerts,
+   Brewing Complete, Resume brew? and BrewScribe's. A reset takes them down (StepController.reset_all; BrewScribe its
+   own); not a timer's alarm, nor a warning, nor another plugin's question */
+function brewQuestions() {
+  const names = new Set([...RECIPE.steps.map(s => s.n), "Hop Alert", "Brewing Complete", "Resume brew?", "BrewScribe"]);
+  return st.events.filter(e => e[2] === "waiting for you" && names.has(e[1].split(":")[0])).map(e => e[1].split(":")[0]);
 }
 function stepHTML(s, i) {
   const r = st.recipe, state = i < r.cur ? "done" : i === r.cur ? "cur" : "";
@@ -969,6 +1024,14 @@ function handHTML() {
     <div class="handlinks">${b("cmdbtn", "RECIPE BOOK", "all recipes", {cmd: "tab:Recipe Book"})}${b("cmdbtn", "BREW STEPS", "build or edit steps", {cmd: "tab:Brew Steps"})}</div>
     <p class="note">${st.notes.r || ""}</p>`;
 }
+/* the versions, the recipe column's last line (VERSIONS): the quietest words on the screen, in the bottom left corner on
+   a monitor and at the end of the page on a phone. The web UI's, with when it was built, then CraftBeerPi's. Each keeps
+   whole; where the column is narrow the two go on two lines. Live, before CraftBeerPi has answered, the web UI's alone */
+function verHTML() {
+  const v = VERSIONS;
+  if (!v) return "";
+  return `<p class="ver"><span>Web UI ${v.ui}${v.built ? `, built ${v.built}` : ""}</span>${v.cbpi ? `<span>CraftBeerPi ${v.cbpi}</span>` : ""}</p>`;
+}
 function nowHTML() {
   const r = st.recipe;
   if (!r) return `<span class="n">–</span><b>No recipe running</b><span class="p">Brewing by hand · ${TIMERS === "new" ? "timers" : "rest timer"} below</span>${tmlHTML()}`;
@@ -979,7 +1042,7 @@ function nowHTML() {
   return `<span class="n">${r.cur + 1}</span><b>${s.n}</b><span class="p">${p}</span><span class="left">${r.state === "running" ? (r.wait ? waitHTML(r.wait).toLowerCase() : s.min ? `<span id="now-left">${mmss(r.left)}</span> left` : runWord(s).toLowerCase()) : r.state === "ready" ? (r.wait ? waitHTML(r.wait).toLowerCase() : "ready") : "stopped"}</span>  ${s.min ? `<span class="bar"><i id="now-bar" style="width:${pct}%"></i></span>` : ""}${nxt}${tmlHTML()}`;
 }
 /* a running step whose timer hasn't started says what it waits for: HEATING, or WAITING FOR YOU (in the brighter amber
-   of Brett's screen) while CraftBeerPi's question under the step's name is up. A SpargeStep's temperature is the HLT's
+   screen.js uses) while CraftBeerPi's question under the step's name is up. A SpargeStep's temperature is the HLT's
    water, not the mash, so it says so; once started with no timer it is SPARGING rather than NOW */
 const waitHTML = w => w === true ? "HEATING" : w === WFY ? `<span class="wfy">${w}</span>` : w;
 const stepTemp = s => (s.type === "SpargeStep" ? "water " : "") + s.temp;
@@ -989,7 +1052,7 @@ const runWord = s => s.type === "SpargeStep" ? "SPARGING" : "NOW";
 function bannerHTML() {
   const x = st.banner;
   if (!x) return `${ICON.ok}<span class="msg">No alarms</span>`;
-  /* several answers, as the screen as built shows them (acts). A timer's alarm (?timers=new) has two: +5 MIN, drawn as the
+  /* several answers, as screen.js shows them (acts). A timer's alarm (?timers=new) has two: +5 MIN, drawn as the
      lesser one (sec), and OK. Its own command is pending, not the banner's */
   const acts = x.acts || (x.act ? [{label: x.act, cmd: x.cmd, hold: x.hold}] : []), busy = x.timer != null ? st.pend["t:" + x.timer] : st.pend.b;
   /* an answer that switches heat on (START THE BOIL) takes a held press, as START does, and says so under it */
@@ -1004,8 +1067,9 @@ const needleAngle = pv => -120 + 240 * (Math.min(220, Math.max(50, pv)) - 50) / 
 /* ---------- which way the hand valves are drawn ----------
    CraftBeerPi can't see the valves, so the drawing goes by the recipe. It finds the runoff the way the core finds
    it for the first-wort reminder (StepController._collects_wort): from the start of the step named for the runoff
-   until the boil starts, the wort pump sends wort to the boil kettle and the HLT pump sends sparge water to the top
-   of the mash tun (Scott, 9 Nov: "I fly sparge"). At any other time, and with no recipe, it shows recirculating. */
+   until the boil starts, the wort pump sends wort to the boil kettle and the HLT pump sends sparge water through the
+   HERMS coil, which flushes the wort out of it, and on into the top of the mash tun along the coil's own line, as in a
+   fly sparge. At any other time, and with no recipe, it shows recirculating. */
 const RUNOFF_NAME = /^(?:step \d+ )?(?:(?:start|begin) )?(?:(?:fly|batch|continuous) )?(?:sparge|sparging|lauter|lautering|run ?off)(?: |$)/;
 const NOT_RUNOFF = /\b(?:water|heat|heating|prepare|preparation|salts|treatment)\b/;
 function collectsWort(s) {
@@ -1031,9 +1095,9 @@ function runoffStep() {
   return ro >= 0 && stepStatus(ro) !== "I" && (bo < 0 || stepStatus(bo) === "I") ? ro : -1;
 }
 /* the boil has started (its step is running, stopped or done; held for "Ready to boil?" it is still I). From then on the
-   wort pump's hoses are on the boil kettle: Scott moves them in that hold, as CraftBeerPi's notification says ("The wort
-   pump is off, so you can move its hoses", core 1c08d4c). After the recipe finishes its steps are all D, so the hoses
-   stay there for the chill and the transfer, until a recipe is loaded or reset and its boil is I again (Scott, 12 Nov) */
+   wort pump's hoses are on the boil kettle: the brewer moves them in that hold, as CraftBeerPi's notification says ("The
+   wort pump is off, so you can move its hoses"). After the recipe finishes its steps are all D, so the hoses stay there
+   for the chill and the transfer, until a recipe is loaded or reset and its boil is I again */
 function boilStarted() {
   const bo = RECIPE.steps.findIndex(s => s.boil);
   return bo >= 0 && stepStatus(bo) !== "I";
@@ -1047,11 +1111,11 @@ function rigDesc(ro, held, setNow, post) {
         : `The wort pump is drawn under the boil kettle: it takes wort from the bottom of the kettle and sends it${WP === "chill" ? " through the chiller and" : ""} back in at the top. `)
       + "The mash tun and the HERMS coil are out of use. The HLT pump circulates hot water around the hot liquor tank. The valves are set by hand and CraftBeerPi can't see them: they are shown for recirculating.";
   }
-  if (ro < 0 || held) return head + "The HLT pump circulates hot water around the hot liquor tank. The wort pump moves wort from the mash tun, through the coil inside the hot liquor tank, and back into the mash tun. The valves are set by hand and CraftBeerPi can't see them: they are shown for recirculating, with the lines to the boil kettle"
-    + (spLine ? " and to the top of the mash tun" : "") + " closed."
-    + (setNow ? ` Step ${ro + 1}, ${RECIPE.steps[ro].n}, is waiting for you to set them for the sparge: close the coil line${spLine ? " and the HLT return" : ""}, and open the line to the boil kettle${spLine ? " and the sparge line to the top of the mash tun" : ""}.` : "");
-  return head + (spLine ? "The HLT pump sends hot water over to the top of the mash tun for the sparge. " : "The HLT pump circulates hot water around the hot liquor tank. ")
-    + `The wort pump moves wort from the mash tun down and across to the boil kettle, past the HERMS coil. The valves are set by hand and CraftBeerPi can't see them: they are shown as step ${ro + 1}, ${RECIPE.steps[ro].n}, needs them.`;
+  if (ro < 0 || held) return head + "The HLT pump circulates hot water around the hot liquor tank. The wort pump moves wort from the mash tun, through the coil inside the hot liquor tank, and back into the mash tun. The valves are set by hand and CraftBeerPi can't see them: they are shown for recirculating, with the line to the boil kettle"
+    + (spLine ? " and the sparge line into the coil" : "") + " closed."
+    + (setNow ? ` Step ${ro + 1}, ${RECIPE.steps[ro].n}, is waiting for you to set them for the sparge: close the wort pump's line to the coil${spLine ? " and the HLT return" : ""}, and open the line to the boil kettle${spLine ? " and the sparge line into the coil" : ""}.` : "");
+  return head + (spLine ? "The HLT pump sends hot water through the coil inside the hot liquor tank, flushing the wort out of it, and on into the top of the mash tun for the sparge. " : "The HLT pump circulates hot water around the hot liquor tank. ")
+    + `The wort pump moves wort from the mash tun down and across to the boil kettle. The valves are set by hand and CraftBeerPi can't see them: they are shown as step ${ro + 1}, ${RECIPE.steps[ro].n}, needs them.`;
 }
 /* change: the valve is drawn where it is now and marked, in Prompt Amber, with where it has to go (a SpargeStep's prompt).
    The HLT return's run is too short for SET CLOSED, so that tag moves left of the riser, level with its valve */
@@ -1086,14 +1150,24 @@ function renderRig() {
   const ro = runoffStep(), r = st.recipe, held = ro >= 0 && RECIPE.steps[ro].type === "SpargeStep" && r.cur === ro && !r.started;
   const setNow = held && r.wait === WFY && live, hasSp = !!$("#ln-sparge");
   const out = ro >= 0 && !held, sp = out && hasSp;
-  /* after the boil starts, the wort pump serves the boil kettle (Scott chose ?wp=chill on 12 Nov: drawn there, on a
-     short loop through the chiller), so nothing on the mash tun's side lights. The valves are drawn as before: for
-     recirculating, so a running HLT pump (the HLT's stirrer too) still goes round the hot liquor tank. While the mash
-     tun's AUTO is on, its HERMS runs the wort pump through the coil, so the hoses are back on the mash tun (#notarget;
-     Scott, 12 Nov: until a recipe is loaded or reset, or the mash tun's AUTO is on) */
+  /* after the boil starts, the wort pump serves the boil kettle (?wp=chill, the default, draws it there, on a short
+     loop through the chiller), so nothing on the mash tun's side lights. The valves are drawn for recirculating, as
+     before the boil, so a running HLT pump (the HLT's stirrer too) still goes round the hot liquor tank. The hoses stay
+     on the boil kettle until a recipe is loaded or reset, or the mash tun's AUTO is on: its HERMS runs the wort pump
+     through the coil, so then the hoses are back on the mash tun (#notarget) */
   const post = WP !== "today" && LAYOUT === "b" && boilStarted() && st.v.mt.mode !== "auto";
   const wp = live && a.wortPump.on, hp = live && a.hltPump.on, mtw = wp && !post;
-  on("#ln-wort-in", mtw); on("#ln-wort-out", mtw); on("#ln-wort-coil", mtw && !out); on("#ln-xfer", mtw && out); on("#coil", mtw && !out);
+  /* the coil, its inlet stub and its line on to the mash tun carry the wort while the wort pump recirculates, or the
+     sparge water, in the liquor's colour, while the HLT pump sparges through it */
+  const coilW = mtw && !out, coilL = hp && sp;
+  on("#ln-wort-in", mtw); on("#ln-wort-out", mtw); on("#ln-wort-coil", coilW); on("#ln-xfer", mtw && out);
+  for (const s of ["#ln-coil-in", "#ln-coil-out", "#coil"]) {
+    const n = $(s);
+    if (!n) continue;
+    n.classList.toggle("on", coilW || coilL);
+    n.classList.toggle("liq", coilL);
+    if (s !== "#coil") n.classList.toggle("wrt", !coilL);
+  }
   on("#ln-bk-loop", wp && post); on("#ln-swirl", wp && post);
   if ($("#pump-wort-bk")) ["#pump-wort-bk", "#ln-bk-loop", "#chiller"].forEach(s => { const n = $(s); if (n) n.classList.toggle("gone", !post); });
   $("#pump-wort").classList.toggle("gone", post && !!$("#pump-wort-bk"));
@@ -1141,9 +1215,12 @@ function renderAll() {
   bn.innerHTML = bannerHTML();
   $("#event").innerHTML = eventHTML();
   $("#plates").innerHTML = ["hlt", "mt", "bk"].map(plateHTML).join("");
-  $("#recipe").innerHTML = recipeHTML();
+  $("#recipe").innerHTML = recipeHTML() + verHTML();
   /* while a timer's editor is open, the one-screen layout gives it the step list's room (by hand, the recipe book's) */
   $("#recipe").toggleAttribute("data-tedit", TIMERS === "new" && !!st.tedit);
+  /* and while something in it waits for you (NEXT STEP's or RESET's question, a timer's alarm), the versions' line steps
+     aside on a monitor, so the step list keeps the current step whole (brew-day.css) */
+  $("#recipe").toggleAttribute("data-asking", !!(st.confirmNext || st.confirmReset || (TIMERS === "new" && st.tmrs.some(t => t.state === "done"))));
   $("#now").innerHTML = nowHTML();
   if (TIMERS === "new") {
     /* a timer that has run out and not been answered: its row, the title bar and a frame round the whole screen pulse
@@ -1152,8 +1229,8 @@ function renderAll() {
     bn.toggleAttribute("data-ring", !!(st.banner && st.banner.timer != null));
     if (st.banner && st.banner !== lastBanner && st.banner.timer == null) ring(2);
     lastBanner = st.banner;
-    keepStepInView();
   }
+  keepStepInView();
   renderRig();
   if (GRAPHS) { renderGraphPanel(); drawGraphs(); }
 }
@@ -1162,10 +1239,9 @@ let toastT;
 function toast(text) { const t = $("#toast"); t.textContent = text; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3800); }
 function logEvent(what, res, tone, cav = "") { st.events.unshift([hhmmss(st.t), what, res, tone, cav]); }
 /* a question's line says "waiting for you", in Prompt Amber, only while CraftBeerPi waits for its answer. Once it goes,
-   answered on any screen or taken down by CraftBeerPi, the same line says so in the plain colour and keeps the time it
-   was asked; the line for the answer itself is logged as before. So amber in the log always means something still
-   needs you (Brett, 12 Nov: the screen as built never changed a line). A question's line starts with its title: "Hop
-   Alert: …", "Stir finished", "No target for the Mash Tun" */
+   answered on any screen or taken down by CraftBeerPi, the same line says so in the plain colour and keeps the time of
+   the question; the answer itself is logged on a line of its own. So amber in the log always means something still
+   needs you. A question's line starts with its title: "Hop Alert: …", "Stir finished", "No target for the Mash Tun" */
 function questionGone(title, res = "answered") {
   const e = st.events.find(x => x[2] === "waiting for you" && (x[1] === title || x[1].startsWith(title + ":") || x[1].startsWith(title + " finished")));
   if (e) { e[2] = res; e[3] = ""; }
@@ -1228,9 +1304,9 @@ function setMode(v, m) {
     V.latched = m === "auto" && ho == null && V.pv >= boilFrom();
     if (m === "auto" && ho != null) { const p = holdOut(ho, V.pv, false); a.bkEl.on = p > 0; a.bkEl.pct = p; }
     else { a.bkEl.on = m === "auto"; a.bkEl.pct = m === "auto" ? (V.latched ? V.bp : 100) : 0; }
-    /* today's power editor edits the setting its button named when it opened; if a step or ALL OFF changes the mode,
-       that setting is no longer the one in use, so the editor closes without sending anything. (In the redesigns the
-       button always sets the boil power, so a mode change leaves the editor open.) */
+    /* the older faceplate's power editor (?bk=today) edits the setting its button named when it opened; if a step or
+       ALL OFF changes the mode, that setting is no longer the one in use, so the editor closes without sending anything.
+       (In the redesigns the button always sets the boil power, so a mode change leaves the editor open.) */
     if (BK === "today" && st.edit && st.edit.kind === "pwr" && st.edit.what !== (m === "auto" ? "boil" : "hand")) {
       st.edit = null;
       note("bk", `The boil kettle switched to ${m.toUpperCase()}, so the button now sets ${m === "auto" ? "the boil power" : "the element's power by hand"}. Nothing was changed.`);
@@ -1239,19 +1315,19 @@ function setMode(v, m) {
   ["hltEl", "wortPump", "bkEl"].forEach(id => { a[id].failed = null; });
 }
 function cmdMode(v, m) { send("m:" + v, m, `${VNAME[v]} ${m.toUpperCase()}`, () => setMode(v, m)); }
-/* every target box, and the proposed boil kettle's other boxes, start with their number selected, so typing replaces it
-   ("BOIL" included): typing 150 into 168.0 used to give 150168.0 (Brett, 10 Nov) */
+/* every target box, and the new boil kettle's other boxes, start with their number selected, so typing replaces it
+   ("BOIL" included): typing 150 into 168.0 gives 150, not 150168.0 */
 const focusTin = sel => setTimeout(() => { const i = $("#tin"); if (!i) return; i.focus(); if (sel) i.select(); }, 0);
 function cmdTgtOpen(v) {
   const V = st.v[v], pw = v === "bk" && BK === "power";
   st.edit = {v, kind: "tgt", val: pw ? bkHoldT() ?? boilFrom() : bkNew(v) ? boilFrom() : V.sv ?? (v === "bk" ? 210.2 : v === "mt" ? 149.0 : V.own ?? 168.0)};
   renderAll(); focusTin(true);
 }
-/* the proposed boil kettle's BOIL AT, in the power box: the boil point, Boil_Threshold (set_boil_at) */
+/* the new boil kettle's BOIL AT, in the power box: the boil point, Boil_Threshold (set_boil_at) */
 function cmdBatOpen() { st.edit = {v: "bk", kind: "bat", val: boilFrom()}; renderAll(); focusTin(true); }
 function cmdTgtStep(d) {
   const e = st.edit;
-  /* the proposed boil kettle's target: BOIL sits just above the highest hold, so − from BOIL gives 206.5 or 205.6 */
+  /* the new boil kettle's target: BOIL sits just above the highest hold, so − from BOIL gives 206.5 or 205.6 */
   if (e.v === "bk" && BK === "power" && e.kind === "tgt") {
     const edge = bkLetGo();
     if (e.val >= edge) { if (d > 0) return; e.val = edge; }
@@ -1291,7 +1367,7 @@ function cmdTgtSet() {
     questionGone(`No target for the ${KNAME[v]}`, "no longer needed");
   });
 }
-/* the proposed boil kettle's TARGET (Brett's new BoilPower): SET BOIL sends the boil point as the target, and anything from
+/* the new boil kettle's TARGET (the newer BoilPower): SET BOIL sends the boil point as the target, and anything from
    the boil point less 3.6 °F up counts as BOIL; a lower temperature is held, as on the HLT. A hold set during the Boil
    step is honoured and the step's timer carries on, so the event says so. Pause wins: a paused element stays off */
 function cmdBkTgtSet(val) {
@@ -1305,7 +1381,8 @@ function cmdBkTgtSet(val) {
   send("t:bk", "set", `Boil kettle target ${boil ? "BOIL" : T.toFixed(1) + " °F"}`, () => { const was = bkHolding(); V.sv = T; bkRetarget(was); }, cav);
 }
 /* BOIL AT: where full power gives way to the boil power (190-212 °F; above 212 °F the wort may never get there). A target
-   at BOIL moves with it, so raising the boil point never turns BOIL into a hold (asked of Brett's server change) */
+   at BOIL moves with it, so raising the boil point never turns BOIL into a hold (the mockup expects BoilPower's
+   set_boil_at to do the same) */
 function cmdBatSet(val) {
   if (!(val >= 190 && val <= 212)) {
     note("bk", val > 212 ? "Above 212 °F the wort may never count as boiling, and the element would stay at full power. Enter 212 °F or less." : "Enter a boil temperature from 190 to 212 °F.");
@@ -1324,9 +1401,9 @@ function cmdBatSet(val) {
   }, ho != null ? `not used while it holds ${+ho.toFixed(1)} °F` : "");
 }
 /* set_boil_power: kept in the kettle's Boil_Power setting, so it can be set at any time, also during a recipe; AUTO uses it
-   at its next control decision (every 2 s) once the kettle is at or above the boil threshold. In MANUAL today's button
-   sets the element's own level instead (set_power), which it runs at when it is on by hand; the redesigns' button
-   always sets the boil power. */
+   at its next control decision (every 2 s) once the kettle is at or above the boil threshold. In MANUAL the older
+   faceplate's button (?bk=today) sets the element's own level instead (set_power), which it runs at when it is on by
+   hand; the redesigns' button always sets the boil power. */
 function cmdPwrOpen() {
   const boil = BK !== "today" || st.v.bk.mode === "auto";
   st.edit = {v: "bk", kind: "pwr", what: boil ? "boil" : "hand", val: boil ? st.v.bk.bp : st.a.bkEl.lvl};
@@ -1349,7 +1426,7 @@ function cmdPwrSet() {
     else { el.lvl = val; if (V.mode !== "auto" && el.on) el.pct = val; }
   }, cav);
 }
-/* the proposed boil kettle's one-tap steps, −5 % −1 % +1 % +5 %: sent at once, no SET. The same set_boil_power as the
+/* the new boil kettle's one-tap steps, −5 % −1 % +1 % +5 %: sent at once, no SET. The same set_boil_power as the
    editor; a tap that would go past 0 or 100 % stops there (2 % − 5 → 0 %), and only at 0 or 100 % itself is the button
    refused. The wait is kept under the step ("-5", "-1", "1", "5"), so only the button pressed shows it */
 function cmdNudge(d) {
@@ -1361,7 +1438,7 @@ function cmdNudge(d) {
     if (V.mode === "auto" && el.on && bkLatched()) el.pct = val;
   }, cav);
 }
-/* the proposed boil kettle's Keep boiling checkbox: set_keep_boiling, kept in the kettle's Keep_Boiling setting, so it can
+/* the new boil kettle's Keep boiling checkbox: set_keep_boiling, kept in the kettle's Keep_Boiling setting, so it can
    be set in any mode and stays as set. Ticking it while BoilPower holds the boil power more than 3.6 °F below the
    threshold lets go of the boil at once: full power until it boils again. A hold doesn't use it */
 function cmdKeep() {
@@ -1375,8 +1452,8 @@ function cmdKeep() {
     if (want && far) { V.latched = false; if (el.on) el.pct = 100; }
   }, cav);
 }
-/* the proposed boil kettle's pause, for a boil-over: the element goes off and AUTO, the recipe and the boil power carry
-   on. Brett's BoilPower does it with set_paused(Paused="Yes"), and "No" carries on; it is refused unless AUTO runs.
+/* the new boil kettle's pause, for a boil-over: the element goes off and AUTO, the recipe and the boil power carry
+   on. The newer BoilPower does it with set_paused(Paused="Yes"), and "No" carries on; it is refused unless AUTO runs.
    Carrying on picks up where AUTO is: the boil power while boiling, full power below the boil, a hold's own power */
 function cmdPause(on) {
   const el = st.a.bkEl, V = st.v.bk;
@@ -1389,7 +1466,7 @@ function cmdPause(on) {
     el.on = p > 0; el.pct = p;
   });
 }
-/* the proposed boil kettle, after its target changes while AUTO runs: BOIL heats at full power until the boil point, then
+/* the new boil kettle, after its target changes while AUTO runs: BOIL heats at full power until the boil point, then
    at the boil power; a hold's PID sets the power, none once the wort is well above it. was: it was holding before the
    change, so its PID carries on with what it had built up; from BOIL a hold starts a new one. A paused element stays off */
 function bkRetarget(was = false) {
@@ -1400,7 +1477,7 @@ function bkRetarget(was = false) {
   const p = ho == null ? (V.latched ? V.bp : 100) : holdOut(ho, V.pv, BK === "power" ? was : el.on);
   el.on = p > 0; el.pct = p;
 }
-/* a recipe step sets its kettle's target. With Brett's new BoilPower the Boil step sets the boil kettle's target to BOIL
+/* a recipe step sets its kettle's target. With the newer BoilPower the Boil step sets the boil kettle's target to BOIL
    (the boil point), so a hold left from the day before can't stop a boil */
 function stepTarget(s) {
   const pw = s.k === "bk" && BK === "power", was = pw && bkHolding();
@@ -1423,7 +1500,7 @@ function stepStart(i) {
   if (moved && st.banner && st.banner.cmd === "b:done" && st.banner.title === was.n) { st.banner = null; questionGone(was.n, "no longer needed"); }
   /* on to the boil kettle: the mash tun's AUTO, and a mash step's HERMS with it, has done its work */
   if (s.k === "bk") { st.fill.bk = true; if (st.v.mt.mode === "auto") setMode("mt", "manual"); }
-  /* the runoff over (core 1c08d4c, the hltpump extension): as the last step named for the runoff ends, by NEXT here or its
+  /* the runoff over (the core's hltpump extension): as the last step named for the runoff ends, by NEXT here or its
      time up, CraftBeerPi switches the HLT pump off and leaves the wort pump to finish draining the mash tun. Its
      information notification goes in the event line word for word, as CraftBeerPi's notifications do on the screen */
   if (moved && collectsWort(was) && !collectsWort(s) && st.a.hltPump.on) {
@@ -1432,8 +1509,8 @@ function stepStart(i) {
     soon(() => logEvent(`HLT pump: ${was.n} has ended, so the HLT pump is off.${wort ? " The wort pump is still running, to finish draining the mash tun." : ""}`, "from CraftBeerPi", ""));
   }
   r.cur = i; r.left = (s.min || 0) * 60; r.adds = []; r.wait = false;
-  /* the boil waits for the brewer (CONFIRM_BEFORE_BOIL, as on Scott's rig): nothing is active, so nothing heats, and the
-     wort pump, if it runs, goes on draining the mash tun. The step says WAITING FOR YOU, as on the screen as built. Its
+  /* the boil waits for the brewer (CONFIRM_BEFORE_BOIL, as on the brewer's rig): nothing is active, so nothing heats,
+     and the wort pump, if it runs, goes on draining the mash tun. The step says WAITING FOR YOU, as in screen.js. Its
      prompt goes in the event line in CraftBeerPi's words, as there */
   if (s.boil) {
     const q = boilHoldBanner(s);
@@ -1452,7 +1529,7 @@ function stepStart(i) {
     soon(() => logEvent(`${s.n}: ${s.note}`, "waiting for you", "wait"));
   }
 }
-/* the brewer starts the held boil, with START THE BOIL or a held START (core 1c08d4c, BoilStep._runoff_over): the runoff
+/* the brewer starts the held boil, with START THE BOIL or a held START (BoilStep._runoff_over): the runoff
    is over, so CraftBeerPi switches the wort pump and the HLT pump off, whichever run, once a brew, and says so; then the
    boil kettle's AUTO, heating to the boil before the step's timer starts */
 function boilStart() {
@@ -1467,8 +1544,8 @@ function boilStart() {
   if (st.hist) st.hist.steps.push([st.t, r.cur + 1]);
   stepTarget(s);
   Object.assign(r, {held: false, state: "running", wait: st.v.bk.pv < boilFrom()});
-  /* the step's line first, then what CraftBeerPi says as it starts: the screen as built logs a step's change before the
-     words it sets going (the design, 12 Nov) */
+  /* the step's line first, then what CraftBeerPi says as it starts: screen.js logs a step's change before the words it
+     sets going */
   soon(() => {
     logEvent(boilStartLine(s, boilFrom()), "by recipe", "");
     if (off.length) {
@@ -1501,6 +1578,7 @@ function spargeBegin(s) {
   }, 600));
 }
 function cmdStart() {
+  st.confirmReset = false;
   send("r:start", "start", "Recipe started", () => {
     /* held before the boil, START starts the boil, as START THE BOIL does */
     if (st.recipe.held) return boilStart();
@@ -1509,9 +1587,9 @@ function cmdStart() {
     r.state = "running";
     if (s.type === "SpargeStep") spargeBegin(s);
     else if (s.temp != null) stepTarget(s);
-    /* the proposed boil kettle: a recipe started from its first step puts the boil power back to the usual power (a new
-       BoilPower setting, see BUILD-NOTES). A change made later that day, before or during the boil, is kept for the boil,
-       and doesn't carry over to the next brew day */
+    /* the new boil kettle: a recipe started from its first step puts the boil power back to the usual power
+       (BoilPower's Usual_Boil_Power setting, see BUILD-NOTES). A change made later that day, before or during the boil,
+       is kept for the boil, and doesn't carry over to the next brew day */
     if (BK === "power" && fresh && st.v.bk.usual != null && st.v.bk.bp !== st.v.bk.usual) {
       const was = st.v.bk.bp; st.v.bk.bp = st.v.bk.usual;
       timers.push(setTimeout(() => { logEvent(`Boil power back to your usual ${st.v.bk.usual} % (was ${was} %)`, "by recipe", ""); renderAll(); }, 300));
@@ -1519,12 +1597,12 @@ function cmdStart() {
   });
 }
 function cmdStop() {
-  st.confirmNext = false;
+  st.confirmNext = false; st.confirmReset = false;
   send("r:stop", "stop", "Recipe stopped", () => {
     const k = RECIPE.steps[st.recipe.cur].k;
     st.recipe.state = "stopped";
     if (st.v[k].mode === "auto") setMode(k, "manual");
-    /* a SpargeStep's "Sparge started" question is taken down when the step stops, and asked again when it starts */
+    /* a SpargeStep's "Sparge started" question is taken down when the step stops, and put up again when it starts */
     if (st.banner && st.banner.sparge) { st.banner = null; st.recipe.wait = null; questionGone(RECIPE.steps[st.recipe.cur].n, "no longer needed"); }
   });
 }
@@ -1532,6 +1610,21 @@ function cmdNextYes() {
   const r = st.recipe, nx = RECIPE.steps[r.cur + 1];
   st.confirmNext = false;
   send("r:next", "next", `Skipped to ${nx.n}`, () => { stepStart(r.cur + 1); if (!r.held) r.state = "running"; });
+}
+/* RESET TO STEP 1: CraftBeerPi's reset (POST /step2/reset). Every step back to not started, the time a step had run and
+   what the steps kept about this brew forgotten, its questions taken down: their lines say "no longer needed". It
+   switches nothing. The recipe stays loaded, back at step 1, waiting for START. The graphs lose their step marks, which
+   CraftBeerPi forgets too, and DAY goes back to the last 8 hours, as with no recipe begun */
+function cmdReset() {
+  st.confirmReset = false;
+  send("r:reset", "reset", "Recipe reset to step 1", () => {
+    const q = new Set(brewQuestions());
+    q.forEach(t => questionGone(t, "no longer needed"));
+    if (st.banner && q.has(st.banner.title)) st.banner = null;
+    st.recipe = {state: "ready", cur: 0, left: 0, adds: []};
+    st.finished = false;
+    if (st.hist) { st.hist.steps = []; st.hist.start = st.t - 8 * 3600; }
+  });
 }
 function cmdBanner(x) {
   if (x === "added") send("b", "x", "Hop Alert answered: Added", () => { questionGone("Hop Alert"); st.banner = null; if (st.recipe) st.recipe.adds[0] = "done"; });
@@ -1557,13 +1650,13 @@ function cmdBanner(x) {
     });
   }
   /* OK on CraftBeerPi's own warning or error, one without buttons (cbpi): it goes from every screen's title bar, and its
-     lines say "seen", a warning's in the plain colour, an error's still red (the design, 13 Nov). No line of its own */
+     lines say "seen", a warning's in the plain colour, an error's still red. No line of its own */
   else if (st.banner && st.banner.cbpi) { seenLines(`${st.banner.title}: ${st.banner.text}`); st.banner = null; renderAll(); }
   /* OK: the rest timer's alarm, or a warning that waits for one (no target, a forgotten pause) */
   else { if (st.banner) questionGone(st.banner.title); st.banner = null; renderAll(); }
 }
 /* CraftBeerPi's warning or error OK'd, here or on any screen or in BrewScribe (CraftBeerPi tells every page, with its
-   earlier copies in the same words; Brett, 13 Nov): each of its lines says "seen". A warning's turns plain, as it no
+   earlier copies in the same words): each of its lines says "seen". A warning's turns plain, as it no
    longer waits; an error's stays red, as it records that something went wrong (The Amber Means Waiting Rule) */
 function seenLines(words) {
   st.events.forEach(e => {
@@ -1576,12 +1669,12 @@ function cmdLoad(i) {
   if (i !== 0) return toast(`Mockup: only Test Recipe v5 is filled in here. On the real screen, LOAD sends ${BOOK[i].n} to Brew Steps, as the Recipe Book does today.`);
   send("r:load", "load", `${BOOK[0].n} loaded`, () => { st.recipe = {state: "ready", cur: 0, left: 0, adds: []}; st.finished = false; });
 }
-/* ALL OFF (Scott, 9 Nov): stop the recipe first so it can't switch a kettle back on, then every vessel to MANUAL,
+/* ALL OFF: stop the recipe first so it can't switch a kettle back on, then every vessel to MANUAL,
    then both elements and both pumps off */
 function cmdAllOff() {
   const running = st.recipe && st.recipe.state === "running";
   const cav = Object.keys(ACT).filter(id => ACT[id].override).map(id => `${ACT[id].name}'s override switch can still run it`).join(" · ");
-  st.confirmNext = false; st.edit = null;
+  st.confirmNext = false; st.confirmReset = false; st.edit = null;
   send("alloff", "off", `ALL OFF: elements and pumps off, every vessel MANUAL${running ? ", recipe stopped" : ""}`, () => {
     if (running) st.recipe.state = "stopped";
     ["hlt", "mt", "bk"].forEach(v => { if (st.v[v].mode === "auto") setMode(v, "manual"); });
@@ -1589,7 +1682,7 @@ function cmdAllOff() {
     if (st.banner && /^act:/.test(st.banner.cmd || "")) st.banner = null;
   }, cav);
 }
-/* one rest timer, kept by CraftBeerPi, so the monitor and the phone show the same one (Scott, 9 Nov) */
+/* one rest timer, kept by CraftBeerPi, so the monitor and the phone show the same one */
 function cmdTimer(x) {
   const t = st.timer;
   if (x === "go") {
@@ -1601,17 +1694,16 @@ function cmdTimer(x) {
   renderAll();
 }
 /* ---------- timers (?timers=new) ----------
-   Scott, 10 Nov 2026, after using the rest timer: "why is it named that? lots of things use a timer during a brew day",
-   an optionally audible alarm, a more attention-grabbing but still elegant alert when one runs out, several at once with
-   a "+", and names. Up to four, kept by CraftBeerPi on the brewing clock, so every screen shows the same ones (as the
-   rest timer is), during a recipe as well as by hand. Modelled on a four-channel kitchen timer (ThermoWorks TimeStack):
-   all four in view at once, a finished one pulses and counts up until it is answered, and OK puts it back to its own
-   time, ready to start again. SOUND belongs to each screen: its timers and CraftBeerPi's alerts (Scott's choice). */
+   Timers rather than one rest timer, as many things use a timer during a brew day: several at once, added with a "+",
+   each with a name and an alarm that can sound, and an alert that catches the eye but stays elegant when one runs out.
+   Up to four, kept by CraftBeerPi on the brewing clock, so every screen shows the same ones (as the rest timer is),
+   during a recipe as well as by hand. Modelled on a four-channel kitchen timer (ThermoWorks TimeStack): all four in
+   view at once, a finished one pulses and counts up until it is answered, and OK puts it back to its own time, ready
+   to start again. SOUND belongs to each screen: its timers and CraftBeerPi's alerts. */
 const TMAX = 4, TPRE = [5, 10, 15, 20, 30, 60];
-/* the names to pick come from CraftBeerPi's BREWDAY_TIMER_NAMES setting, sent with the timers as `names` (Scott, 11 Nov
-   2026: "an easy config setting to choose the default timer names from the setup", then "multiple choice boxes from
-   preconfigured list", "or freeform in addition to mult choice"). TNAMES is its default; TNLEN a name's length;
-   TNMAX how many buttons the editor has room for: two rows of three */
+/* the names to pick come from CraftBeerPi's BREWDAY_TIMER_NAMES setting, sent with the timers as `names`, so the usual
+   names are set up once; the editor offers them as buttons, and the name box takes any other name as well. TNAMES is
+   its default; TNLEN a name's length; TNMAX how many buttons the editor has room for: two rows of three */
 const TNAMES = ["Hop stand", "Yeast", "Vorlauf"], TNLEN = 24, TNMAX = 6;
 /* the setting as the server reads it: separated by commas, each trimmed and kept to 24 characters, repeats dropped
    (whatever their capitals); blank gives none. The mockup's ?names=… goes through it, to try a list */
@@ -1662,11 +1754,11 @@ function trowHTML(t, off) {
 }
 /* one editor at a time, in place: under its timer, or where + TIMER was for a new one. A running or paused timer's time
    changes by a minute or five at once, as the boil power's nudges do; a stopped one is set and then saved */
-/* the names to pick, under NAME: the names in BREWDAY_TIMER_NAMES as buttons, in Scott's order, three to a row, the first
-   six (two rows: the editor then still fits a 1920×950 screen; the setting's description says so). A tap names the
-   timer, a second tap clears it; typing any other name still works. A name another timer has is greyed, and a tap says
-   why. Nothing is filled in for him: a timer nobody names is "Timer 3", as on the server. The buttons carry their place
-   in the list, not the name, so a name with a colon or quote can't break the command */
+/* the names to pick, under NAME: the names in BREWDAY_TIMER_NAMES as buttons, in the setting's order, three to a row,
+   the first six (two rows: the editor then still fits a 1920×950 screen; the setting's description says so). A tap
+   names the timer, a second tap clears it; typing any other name still works. A name another timer has is greyed, and
+   a tap says why. Nothing is filled in for the brewer: a timer nobody names is "Timer 3", as on the server. The
+   buttons carry their place in the list, not the name, so a name with a colon or quote can't break the command */
 function namesHTML(e, t) {
   const all = st.names;
   if (!all.length) return `<p class="tnote">No names to pick: BREWDAY_TIMER_NAMES in Settings is blank.</p>`;
@@ -1703,6 +1795,8 @@ function tmlHTML() {
   return `<button type="button" class="tml" data-cmd="tjump"><span class="tl">TIMERS</span><span id="tml-t">${tmlText()}</span></button>`;
 }
 const tmlText = () => st.tmrs.filter(t => t.state !== "stopped").map(t => t.state === "done" ? `<span class="d">${esc(t.name)} TIME'S UP</span>` : `${esc(t.name)} ${t.state === "paused" ? "paused " : ""}${tfmt(t.left)}`).join(" · ");
+/* the step list scrolls, where it has to, so the current step is whole in view: on the one-screen layout the list is
+   the part of the column that gives up height, to the timers, a question or an editor, with or without the timers */
 function keepStepInView() {
   const l = $("#recipe .steps"), c = l && l.querySelector('[aria-current="step"]');
   if (!c || l.scrollHeight <= l.clientHeight + 1) return;
@@ -1722,8 +1816,8 @@ function cmdTe(x, y) {
   /* spaces as the server keeps them: trimmed, and one between words */
   const t = e.id != null ? tById(e.id) : null, name = (e.name || "").split(/\s+/).filter(Boolean).join(" ") || e.ph;
   if (x === "rm") {
-    /* a timer with time left on it (running or paused) is asked about once, in place, as NEXT STEP is; a stopped one, or
-       one that has run out, goes at once, and its alarm with it */
+    /* a timer with time left on it (running or paused) gets a question first, in place, as NEXT STEP does; a stopped
+       one, or one that has run out, goes at once, and its alarm with it */
     if ((t.state === "running" || t.state === "paused") && !e.confirm) { e.confirm = true; return renderAll(); }
     return send("t:" + t.id, "rm", `${t.name} removed`, () => { tAnswered(t, "no longer needed"); st.tmrs = st.tmrs.filter(z => z !== t); st.tedit = null; });
   }
@@ -1763,14 +1857,14 @@ function cmdTm2(x, id, y) {
   if (x === "plus5") return send(key, "plus5", `${t.name}: 5 more minutes`, () => { answer(); t.state = "running"; t.left = t.run = 300; });
 }
 /* the mockup's alarm sound: a piezo-style beep, as a panel controller's buzzer, softened (a sine at 1760 Hz, 120 ms each).
-   The screen plays the sound chosen in Settings, BREWDAY_ALARM_SOUND (alarm.js); this is its "Soft ping" */
+   The screen plays the sound set in Settings, BREWDAY_ALARM_SOUND (alarm.js); this is its "Soft ping" */
 function audioOK() {
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)();
     if (actx.state === "suspended") actx.resume();
-    /* a silent one-sample sound, started inside the press. Some browsers, Safari on an iPhone in particular, have let a
-       page play sound later only once a sound has started inside a press, not just on resume(). The beeps used to do
-       that; this does it unheard */
+    /* a silent one-sample sound, started inside the press. Some browsers, Safari on an iPhone in particular, let a page
+       play sound later only once a sound has started inside a press, not just on resume(). This starts one unheard, as
+       a press never beeps (cmdSnd) */
     const z = actx.createBufferSource(); z.buffer = actx.createBuffer(1, 1, 22050); z.connect(actx.destination); z.start(0);
     return true;
   } catch (_) { return false; }
@@ -1786,8 +1880,7 @@ function ring(n) {
   }
 }
 /* SOUND is silent: switching it on, or allowing it while it says TAP TO ALLOW, plays nothing. Sound means a timer that
-   has run out, or a new alert or question, never a press (Scott, 12 Nov: "I don't want to hear a sound when I click the
-   "SOUND" box for the timer. ONly when timer expires"). The lit box says it's on; Settings' Try plays the sound on
+   has run out, or a new alert or question, never a press. The lit box says it's on; Settings' Try plays the sound on
    purpose. The press still lets the page play sound later (audioOK) */
 function cmdSnd() {
   const s = st.snd;
@@ -1857,7 +1950,8 @@ function run(cmd) {
       if (x === "start") return cmdStart();
       if (x === "stop") return cmdStop();
       if (x === "next-yes") return cmdNextYes();
-      st.confirmNext = x === "next"; return renderAll();
+      if (x === "reset-yes") return cmdReset();
+      st.confirmNext = x === "next"; st.confirmReset = x === "reset"; return renderAll();
     case "b": return cmdBanner(x);
     case "alloff": return cmdAllOff();
     case "log": st.logOpen = !st.logOpen; return renderAll();
@@ -1917,7 +2011,7 @@ document.addEventListener("keydown", e => {
     return;
   }
   if (e.key === "Escape" && st.tedit) { st.tedit = null; renderAll(); return; }
-  if (e.key === "Escape" && (st.edit || st.logOpen || st.confirmNext)) { st.edit = null; st.logOpen = false; st.confirmNext = false; renderAll(); }
+  if (e.key === "Escape" && (st.edit || st.logOpen || st.confirmNext || st.confirmReset)) { st.edit = null; st.logOpen = false; st.confirmNext = false; st.confirmReset = false; renderAll(); }
 });
 document.addEventListener("keyup", e => { if (hold && (e.key === " " || e.key === "Enter")) { e.preventDefault(); holdEnd(true); } });
 document.addEventListener("input", e => {
@@ -1938,7 +2032,7 @@ document.addEventListener("input", e => {
   if (!Number.isFinite(x)) return;
   st.edit.val = pwr ? Math.round(x) : Math.round(x * 10) / 10;
   if (!ok) return;
-  /* the proposed boil kettle's TARGET: a typed number from the boil point less 3.6 °F up is BOIL, and SET says so before
+  /* the new boil kettle's TARGET: a typed number from the boil point less 3.6 °F up is BOIL, and SET says so before
      it is pressed; the box keeps what was typed */
   if (st.edit.v === "bk" && BK === "power" && st.edit.kind === "tgt") {
     const boil = st.edit.val >= bkLetGo();
@@ -1979,9 +2073,9 @@ setInterval(() => {
   const r = st.recipe;
   const pz = document.getElementById("pz");
   if (pz && st.a.bkEl.paused) pz.textContent = mmss(Math.max(0, st.t - st.a.bkEl.pausedAt));
-  /* CraftBeerPi's warning, 5 s after a kettle's AUTO started with no target (Brett's server change, 10 Nov). The boil
-     kettle never gets one: BoilPower puts its boil threshold in as the target as it starts. Under the HERMS the HLT
-     isn't in AUTO itself; the mash tun's warning covers it. */
+  /* CraftBeerPi's warning, 5 s after a kettle's AUTO started with no target. The boil kettle never gets one: BoilPower
+     puts its boil threshold in as the target as it starts. Under the HERMS the HLT isn't in AUTO itself; the mash tun's
+     warning covers it. */
   ["mt", "hlt"].forEach(v => {
     const V = st.v[v];
     if (!noTarget(v)) { V.noTgt = 0; V.warned = false; return; }
@@ -1994,8 +2088,8 @@ setInterval(() => {
     say(`No target for the ${KNAME[v]}. ${st.banner.text}`, true);
     renderAll();
   });
-  /* the proposed boil kettle: CraftBeerPi's warning after 2 brewing minutes paused, once per pause (Scott, 10 Nov). Behind
-     another prompt it waits its turn, as the no-target warning does */
+  /* the new boil kettle: CraftBeerPi's warning after 2 brewing minutes paused, once per pause. Behind another
+     prompt it waits its turn, as the no-target warning does */
   const pe = st.a.bkEl;
   if (BK === "power" && pe.paused && !pe.pauseWarned && st.t - pe.pausedAt >= 120 && !st.banner) {
     pe.pauseWarned = true;
@@ -2004,11 +2098,11 @@ setInterval(() => {
     say(`${st.banner.title}. ${st.banner.text}`, true);
     renderAll();
   }
-  /* CraftBeerPi's alarm for an element on by hand (the design, 13 Nov): 2 °F past its target, or where BOIL starts, for
-     30 s of the brewing clock. At most twice a stretch of heating by hand: once past the target, once near the boil, so
-     an OK'd alarm left unheeded comes back before the water boils. A stretch ends when the element is off, the vessel in
-     AUTO, or the target changes. Behind another prompt it waits its turn here, as the others do; the screen as built
-     puts it first, as CraftBeerPi sends it as an error */
+  /* CraftBeerPi's alarm for an element on by hand: 2 °F past its target, or where BOIL starts, for 30 s of the brewing
+     clock. At most twice a stretch of heating by hand: once past the target, once near the boil, so an OK'd alarm left
+     unheeded comes back before the water boils. A stretch ends when the element is off, the vessel in AUTO, or the
+     target changes. Behind another prompt it waits its turn here, as the others do; screen.js puts it first, as
+     CraftBeerPi sends it as an error */
   ["hlt", "bk"].forEach(v => {
     const V = st.v[v], w = byHand(v);
     if (!w || w.t !== V.byT) { V.byFor = 0; V.byRaised = []; V.byT = w ? w.t : undefined; }
@@ -2050,12 +2144,12 @@ function load(name) {
   /* a moment can open an editor (open) and borrow another moment's graph history (base) */
   const open = st.open, base = st.base || key;
   delete st.open; delete st.base;
-  Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, logOpen: false}, open);
+  Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, logOpen: false}, open);
   if (st.v.bk.bp == null) st.v.bk.bp = 45; // the boil kettle's Boil_Power setting, read from its props
   if (st.a.bkEl.lvl == null) st.a.bkEl.lvl = 100; // the boil element's own level (its power), used when it is on by hand
-  if (st.v.bk.usual === undefined) st.v.bk.usual = 45; // the proposed boil kettle's usual boil power (Usual_Boil_Power); null: none set
-  if (st.v.bk.keep == null) st.v.bk.keep = true; // its Keep_Boiling setting, "Yes" unless Scott unticks it
-  if (st.v.bk.boilAt == null) st.v.bk.boilAt = BOIL_TH; // the proposed boil kettle's boil point, Boil_Threshold (BOIL AT)
+  if (st.v.bk.usual === undefined) st.v.bk.usual = 45; // the new boil kettle's usual boil power (Usual_Boil_Power); null: none set
+  if (st.v.bk.keep == null) st.v.bk.keep = true; // its Keep_Boiling setting, "Yes" unless the brewer unticks it
+  if (st.v.bk.boilAt == null) st.v.bk.boilAt = BOIL_TH; // the new boil kettle's boil point, Boil_Threshold (BOIL AT)
   if (TIMERS === "new") {
     st.tmrs = (st.tmrs || []).map(t => Object.assign({run: t.set}, t));
     if (!st.snd) st.snd = {on: false, ok: true};
@@ -2108,27 +2202,26 @@ if (LAYOUT === "b") {
   $(".main").prepend($("#recipe"));
   $(".brewhouse").append($("#rig"));
 }
-/* temperature graphs (graphs.js), in the faceplates as Scott chose on 10 Nov 2026. ?graphs=none shows the screen
-   without them; ?graphs=panel is option B, which he turned down, kept only for graphs.html. Layout A has none. */
+/* temperature graphs (graphs.js), in the faceplates. ?graphs=none shows the screen without them; ?graphs=panel is
+   option B, the graphs in a panel, kept only for graphs.html. Layout A has none. */
 const GRAPHS = LAYOUT === "a" || QS.get("graphs") === "none" ? "" : QS.get("graphs") === "panel" ? "panel" : "face";
 if (GRAPHS) { document.documentElement.dataset.graphs = GRAPHS; graphSetup(QS); }
-/* the boil kettle's faceplate: the redesign Scott approved, built on the screen on 10 Nov (the default, ?bk=power); the
-   faceplate from before it, which the screen keeps for an older BoilPower without set_boil_at (?bk=today); or ?bk=words,
-   an option he didn't take. boil-kettle.html compares the first two. */
+/* the boil kettle's faceplate: the redesign (the default, ?bk=power); the faceplate the screen keeps for an older
+   BoilPower without set_boil_at (?bk=today); or ?bk=words, a words-only alternative kept for comparison.
+   boil-kettle.html compares the first two. */
 const BK = ["words", "today"].includes(QS.get("bk")) ? QS.get("bk") : "power";
 document.documentElement.dataset.bk = BK;
-/* the timers: several, named, with sound, as Scott approved and Brett built on 11 Nov (the default; ?timers=new is the
-   same, as the identity test asks for it), or ?timers=today, the one rest timer, which the screen keeps for an older
-   CraftBeerPi without the timers */
+/* the timers: several, named, with sound (the default; ?timers=new is the same, as the identity test asks for it), or
+   ?timers=today, the one rest timer, which the screen keeps for an older CraftBeerPi without the timers */
 const TIMERS = QS.get("timers") === "today" ? "today" : "new";
 document.documentElement.dataset.timers = TIMERS;
-/* the drawing after the boil (Scott, 12 Nov: "whirlpool / hop-stand step pump symbol shows it going through the HERMS
-   coil", then "I don't want the symbols to become too chaotic. Maybe another representation of the wort pump instead
-   of trying to connect the pipe/valves over there from where it currently is?"). From the boil's start, layout B: he
-   chose ?wp=chill on 12 Nov, the default since: the wort pump drawn at the boil kettle on a short loop through the
-   chiller. ?wp=move is the same loop without the chiller and ?wp=swirl keeps the pump where it is and draws the wort
-   turning in the kettle, both options he didn't take; ?wp=today is the screen as built before, when the drawing went
-   back to recirculating after the boil, through the coil. whirlpool.html compares them */
+/* the drawing after the boil. During the whirlpool and the hop stand the wort pump serves the boil kettle, not the
+   HERMS coil, and the drawing stays simple: rather than pipes and valves drawn across from where the pump sits, it
+   represents the wort pump another way. From the boil's start, layout B: ?wp=chill, the default, draws the wort pump at
+   the boil kettle on a short loop through the chiller. ?wp=move is the same loop without the chiller and ?wp=swirl
+   keeps the pump where it is and draws the wort turning in the kettle, both alternatives kept for comparison;
+   ?wp=today is the released build's drawing, which goes back to recirculating after the boil, through the coil.
+   whirlpool.html compares them */
 const WP = ["today", "move", "swirl"].includes(QS.get("wp")) ? QS.get("wp") : "chill";
 /* the title bar's name: the BREWERY_NAME setting, at every width, so the rig and a simulator can't be taken for each
    other. ?name=… tries another; blank shows CraftBeerPi. Two lines at most, then an ellipsis. A name of more than
@@ -2143,6 +2236,13 @@ if (BREWERY.length > LONG_NAME) { $(".brand").setAttribute("data-long", ""); $("
 document.title = `${BREWERY} · Brew day (mockup)`;
 /* BREWSCRIBE: the screen shows it where BrewScribe is installed; ?brewscribe=none shows the screen without it */
 if (QS.get("brewscribe") === "none") $('.tabs a[data-tab="BrewScribe"]').remove();
+/* the versions, shown somewhere inconspicuous: the recipe column's last line (verHTML). Each build carries its own: the
+   release number and the commit it was built from, with when it was built; an installed release, as on the rig, the
+   release number only. The demo's are made up and fixed, so the pictures don't change with each build. ?ver=release
+   shows an installed release's; ?ver=none the screen without the line, as an older release draws it (for the picture
+   test's comparison with that release) */
+const VERSIONS = QS.get("ver") === "none" ? null : QS.get("ver") === "release" ? {ui: "0.5.1.a3.post12", built: "", cbpi: "4.7.7.post36"}
+  : {ui: "0.5.1.a3.post12+abc1234", built: "12 Nov 21:47", cbpi: "4.7.7.post36+def5678"};
 /* ?focus=bk (boil-kettle.html): keep that vessel's faceplate in view and tell the page around this one where it is,
    so the page can show just that faceplate. ?focus=rig (whirlpool.html) does the same for the drawing */
 const FOCUS = QS.get("focus");

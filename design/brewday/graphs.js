@@ -1,7 +1,7 @@
 "use strict";
-/* ---------- temperature graphs: a proposal (9 Nov 2026), off unless the page has ?graphs=face or ?graphs=panel ----------
-   Scott: "Can you mock up a way to add temperature graphs to the dashboard? It should be natural looking and not like a
-   bolt-on", and tapping a graph should switch between the last 10 minutes, the last 30 minutes and the whole brew day.
+/* ---------- temperature graphs, off unless the page has ?graphs=face or ?graphs=panel ----------
+   Graphs that look part of the panel, not bolted on; tapping one switches between the last 10 minutes, the last 30
+   minutes and the whole brew day.
    One graph per vessel, in its faceplate's black window and colours: the PV as a red line, the SV as a green line while
    AUTO or the HERMS holds it, and the element's OUT as an orange band along the bottom. Small numbered marks show where
    recipe steps started. Tapping a graph moves all three to the next span, so their time axes stay lined up; tapping a
@@ -97,7 +97,7 @@ function gDemo(scene) {
       sv: [[hms(15, 1, 47), E, 210.2]],
       out: [[hms(11, 58), hms(15, 1, 47), 0], [hms(15, 1, 47), hms(15, 29, 30), 100], [hms(15, 29, 30), E, 45]]}
   };
-  /* a boil-over (#pause): the boiling day at 15:31:20. With the proposed boil kettle (?bk=power) the heat was paused at
+  /* a boil-over (#pause): the boiling day at 15:31:20. With the new boil kettle (?bk=power) the heat is paused at
      15:30:55, so the OUT band drops to 0 there. #pause-long, at 15:33:10, has the wort falling since */
   if (scene === "pause" || scene === "pause-long") {
     const d = gDemo("boiling");
@@ -107,7 +107,7 @@ function gDemo(scene) {
     return d;
   }
   /* a hop stand by hand (#handhold at 12:58:40; #bktarget borrows it at 12:41:02): no recipe. The boil kettle in AUTO
-     from 10:21:40, boiling from 11:03 at 45 %; its target set to 170 °F at 12:41:10 (today: a Hold_Target), so the
+     from 10:21:40, boiling from 11:03 at 45 %; its target set to 170 °F at 12:41:10 (with ?bk=today, a Hold_Target), so the
      element went off and the wort cools towards it. The HLT and the mash tun, done for the day, cool too. */
   if (scene === "handhold") {
     const t0 = hms(10, 20), a = hms(10, 21, 40), T = hms(12, 41, 10), now = hms(12, 58, 40), pw = BK === "power";
@@ -137,8 +137,8 @@ function gDemo(scene) {
   };
   /* boiling and hold: the #hop day, carried on. The simulator boils at 212 °F, so the boil kettle settles there. At
      17:00:04 the boil ends; the wort is chilled to 170 °F for the whirlpool and cools to 166.3 °F in the stand, and from
-     17:14:31 BoilPower holds 170 °F: today a separate Hold_Target, which only the words design draws; with Brett's new
-     BoilPower (?bk=power) the kettle's own target, held from 0.0.3.post8 by a PID. Its readings and powers are the
+     17:14:31 BoilPower holds 170 °F: with an older BoilPower (?bk=today) a separate Hold_Target, which only the words design
+     draws; with the new one (?bk=power) the kettle's own target, held by a PID from 0.0.3.post8. Its readings and powers are the
      plugin's own on the simulators' kettle, as its test models it: 52-59 % in the first minute, easing as the brake on
      the rise comes in, 37 % at 168.4 °F at 17:18:40, 170 °F at about 17:25:30, then 26 %. finished: the stand ends at
      17:28:10, switching the boil kettle off, and the chiller takes the wort down to 88.4 °F by 17:41:30 */
@@ -195,11 +195,15 @@ function gDemo(scene) {
     mt: {pv: [[hms(8, 30), 66.0], [hms(9, 25), 66.0, "h"], [hms(9, 26), 156.0, "s"], [hms(9, 28), 156.0, "h"], [hms(9, 30), 150.9, "s"], [hms(10, 4, 20), 150.2, "l"]]},
     bk: {pv: [[hms(8, 30), 71.6]], out: [[hms(8, 30), E, 0]]}
   };
+  /* #stopped, #reset, #reset-done: STOP at 14:32:31 took the mash tun's AUTO off, and its HERMS with it: no SV from then,
+     and the HLT element off */
+  const end = ["stopped", "reset", "reset-done"].includes(scene) ? hms(14, 32, 31) : E;
   return {
-    start: hms(12, 40), steps, until: scene === "offline" ? hms(14, 32, 10) : null,
-    hlt: {pv: [...hltMash, [hms(14, 32, 31), 154.2, "s"]], sv: [[hms(12, 40), hms(14, 9, 40), 131.4], [hms(14, 9, 40), E, 154.4]],
-      out: [...hltOut, [hms(14, 17, 30), E, [52, 72]]]},
-    mt: {pv: [...mtMash, [hms(14, 32, 31), 148.6, "s"]], sv: [[hms(12, 40), hms(14, 9, 40), 126.0], [hms(14, 9, 40), E, 149.0]]},
+    /* #reset-done: CraftBeerPi has forgotten the steps' start times, so no step marks, and DAY is the last 8 hours */
+    start: scene === "reset-done" ? st.t - 8 * 3600 : hms(12, 40), steps: scene === "reset-done" ? [] : steps, until: scene === "offline" ? hms(14, 32, 10) : null,
+    hlt: {pv: [...hltMash, [hms(14, 32, 31), 154.2, "s"]], sv: [[hms(12, 40), hms(14, 9, 40), 131.4], [hms(14, 9, 40), end, 154.4]],
+      out: [...hltOut, [hms(14, 17, 30), end, [52, 72]], ...(end < E ? [[end, E, 0]] : [])]},
+    mt: {pv: [...mtMash, [hms(14, 32, 31), 148.6, "s"]], sv: [[hms(12, 40), hms(14, 9, 40), 126.0], [hms(14, 9, 40), end, 149.0]]},
     bk: {pv: [[hms(12, 40), 68.0]], out: [[hms(12, 40), E, 0]]}
   };
 }
@@ -243,14 +247,14 @@ function graphSummary(v) {
   let lo = Infinity, hi = -Infinity;
   rows.forEach(p => { lo = Math.min(lo, p[1]); hi = Math.max(hi, p[1]); });
   const how = Math.abs(b - a) < 1 ? `held between ${lo.toFixed(1)} and ${hi.toFixed(1)} °F` : `${b > a ? "rose" : "fell"} from ${a.toFixed(1)} to ${b.toFixed(1)} °F`;
-  /* the proposed boil kettle: a target below BOIL is held, like the HLT's; at BOIL the boil counts from the boil point */
+  /* the new boil kettle (?bk=power): a target below BOIL is held, like the HLT's; at BOIL the boil counts from the boil point */
   const tgt = v === "bk" && BK === "power" ? (last[2] == null ? "" : last[2] < bkLetGo() ? `; target ${last[2].toFixed(1)} °F` : `; the boil counts from ${boilFrom().toFixed(1)} °F`)
     : v === "bk" && BK !== "today" ? (last[4] != null ? `; holding ${last[4].toFixed(1)} °F` : last[2] != null ? `; the boil counts from ${last[2].toFixed(1)} °F` : "")
     : last[2] != null ? `; target ${last[2].toFixed(1)} °F` : "";
   return `${VNAME[v]}, ${GSAY[gSpan]}: ${how}${tgt}${last[3] != null ? `; element ${last[3]} %` : ""}.`;
 }
-/* from the last three minutes of readings; only while heading for the target, and only up to two hours away. The proposed
-   boil kettle heads for its hold, or for the boil point while its target is BOIL */
+/* from the last three minutes of readings; only while heading for the target, and only up to two hours away. The new
+   boil kettle (?bk=power) heads for its hold, or for the boil point while its target is BOIL */
 function graphETA(v) {
   const V = st.v[v], T = v === "bk" && BK === "power" ? bkHoldT() ?? boilFrom() : V.sv;
   if (!st.hist || T == null || V.pv == null) return "";

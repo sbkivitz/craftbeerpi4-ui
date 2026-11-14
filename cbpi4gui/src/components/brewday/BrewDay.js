@@ -8,9 +8,12 @@ import { createBrewDay } from "./screen";
 // CraftBeerPi's state as the screen's frame reads it, for the brew-day screen and the Settings page in its frame.
 // waiting: the prompts CraftBeerPi waits on (AlertProvider), with how many times it has sent the list. retired and
 // answer: why a prompt was taken down, and the button it was answered with when CraftBeerPi says. seen: the warnings
-// and errors OK'd on any page or in BrewScribe, with how many times that has changed
+// and errors OK'd on any page or in BrewScribe, with how many times that has changed. version and commit: CraftBeerPi's
+// release number and the commit of the checkout it runs from (GET /system/; "---" and null until it answers)
 export const liveSnap = (state, alerts, retired, waiting = null, answer = null, seen = null) => ({
   connected: !!state.connection,
+  version: state.version,
+  commit: state.commit,
   kettles: state.kettle,
   logic: state.logic,
   actors: state.actors,
@@ -62,6 +65,8 @@ const BrewDay = () => {
       name: qs.has("name") ? qs.get("name") : null,
       // with ?demo=, ?brewscribe=none shows the screen where BrewScribe isn't installed, without its tab
       brewscribe: qs.get("brewscribe"),
+      // with ?demo=, ?ver=release shows an installed release's versions, the release numbers only, and ?ver=none none
+      ver: qs.get("ver"),
       navigate: (path) => go.current(path),
       removeAlert: (id) => remove(id),
     });

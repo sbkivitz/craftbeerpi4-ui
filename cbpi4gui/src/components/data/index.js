@@ -33,6 +33,8 @@ export const CBPiProvider = ({ children }) => {
   const [spindledata, setSpindledata] = useState(false);
   const [guiversion, setGUIersion] = useState("---");
   const [codename, setCodename] = useState("---");
+  // The commit of the checkout CraftBeerPi runs from: null when installed by pip, or until it answers.
+  const [commit, setCommit] = useState(null);
   const a = useAlert();
   const [notification, setNotifiaction] = useState("");
   const [allnotifications, setAllNotifiactions] = useState([]);
@@ -171,6 +173,7 @@ export const CBPiProvider = ({ children }) => {
       setSpindledata(data.spindledata);
       setGUIersion(data.guiversion);
       setCodename(data.codename);
+      setCommit(data.commit || null);
       setStepTypes(Object.values(data.step.types));
       setStepTypesFermenter(Object.values(data.fermenter.steptypes));
       setAuth(true);
@@ -224,7 +227,7 @@ export const CBPiProvider = ({ children }) => {
   const get_sensor_by_id = (id) => sensors.find((item) => item.id === id);
 
   const value = {
-    state: { sensors, version, guiversion, codename, actors, logic, kettle, fermenter, fermenterlogic, auth, plugins, temp, sensorData, sensorDataType, sensorInRange, spindledata,
+    state: { sensors, version, guiversion, codename, commit, actors, logic, kettle, fermenter, fermenterlogic, auth, plugins, temp, sensorData, sensorDataType, sensorInRange, spindledata,
              actorTypes, sensorTypes, config, mashProfile, fermentersteps, FermenterProfile, mashBasic, stepTypes, stepTypesFermenter, connection, allnotifications, bf_recipes, system, resttimer, timers },
     actions: {
       delete_kettle,

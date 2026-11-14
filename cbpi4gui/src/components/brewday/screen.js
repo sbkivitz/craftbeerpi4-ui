@@ -42,6 +42,10 @@
 //   screen", as its own line says "answered": the question isn't logged again. It names the button pressed when
 //   CraftBeerPi says which; a SpargeStep's question gets
 //   none, as its step's "sparge started" line is its answer. The mockup has no other screen, so this is live only.
+// - A reset on another screen (the Brew Steps page's, or another Brew Day's) gets one line, "Recipe reset to step 1",
+//   "from another screen". Live only, as above.
+// - The versions' line says what is really running: this bundle's release number, commit and build time, stamped in
+//   as it is built (config-overrides.js), and CraftBeerPi's from GET /system/. The demo shows the mockup's made-up ones.
 // - The title bar shows the most urgent thing waiting, then "· N more waiting": no connection, a command that failed
 //   and CraftBeerPi's errors; a timer that has run out; what the brew
 //   needs (a question CraftBeerPi sends as a warning or an error, or the current step's own); warnings without buttons;
@@ -73,6 +77,9 @@ const WAIT = "Waiting for CraftBeerPi to answer.";
 /* held before the boil, CraftBeerPi takes NEXT as "start the boil" (StepController.next, with nothing active), which would
    put heat on with two taps, so NEXT STEP is greyed and says how to start it */
 const HELD_NEXT = "The boil is waiting for you. To start it, hold START here or START THE BOIL at the top.";
+/* a recipe with nothing running and nothing stopped: CraftBeerPi takes NEXT as START (StepController.next), which would put
+   heat on with two taps, and the screen would say "Skipped to …" untruly. So NEXT STEP is greyed, as before a held boil */
+const NOT_BEGUN = s => `${s.n} hasn't started yet. To begin it, hold START.`;
 const LONG_Q = 140; // characters: longer questions are the sparge's (about 200) and the boil's (300); the rest are 125 or under
 /* the title bar's name: the BREWERY_NAME setting, at every width, so the rig and a simulator can't be taken for each other.
    Blank shows CraftBeerPi. Two lines at most, then an ellipsis (the CSS); a name of more than LONG_NAME characters is drawn
@@ -589,21 +596,49 @@ function recipeHTML() {
   const start = pS ? `<button type="button" class="lamp" data-state="pending" data-cmd="noop" aria-disabled="true" data-why="${WAIT}"><span class="st">STARTING…</span><span class="nm">recipe</span></button>`
     : run ? `<button type="button" class="lamp" data-state="running" data-cmd="noop" aria-disabled="true" data-why="The recipe is already running."><span class="st">RUNNING</span><span class="nm">step ${r.cur + 1} of ${S.length}</span></button>`
     : `<button type="button" class="lamp" data-state="off" data-cmd="r:start"${off ? ` aria-disabled="true" data-why="${off}"` : " data-hold"}>${off ? "" : '<span class="fill"></span>'}<span class="st">START</span><span class="nm">hold to start</span></button>`;
-  const stop = b("cmdbtn", pX ? "STOPPING…" : "STOP", run ? "tap to stop" : "not running", {cmd: "r:stop", why: off || (pX ? WAIT : "") || (!run ? "The recipe is not running." : "")});
-  const last = r.cur >= S.length - 1;
+  /* the middle button: STOP while a step runs; RESET, to reset the brew day's progress after a stop, while nothing
+     runs and some step has begun (stopped, failed, done, or the boil held for you), as a stopwatch's Reset shows once
+     it is stopped. CraftBeerPi refuses a reset while a step runs. On a recipe not begun, STOP is greyed. RESET asks
+     first (resetConfirmHTML) */
+  const pR = st.pend["r:reset"], begun = r.state === "stopped" || r.cur > 0;
+  const stop = !run && (begun || pR) ? b("cmdbtn", pR ? "RESETTING…" : "RESET", "back to step 1", {cmd: "r:reset", why: off || (pR ? WAIT : "")})
+    : b("cmdbtn", pX ? "STOPPING…" : "STOP", run ? "tap to stop" : "not running", {cmd: "r:stop", why: off || (pX ? WAIT : "") || (!run ? "The recipe is not running." : "")});
+  const last = r.cur >= S.length - 1, notBegun = r.state === "ready" && !r.held;
   /* held before the boil, NEXT STEP is greyed and says how to start it (HELD_NEXT): CraftBeerPi would take it as "start the
-     boil" */
-  const next = b("cmdbtn", pN ? "MOVING ON…" : "NEXT STEP", last ? "last step" : `to ${esc(S[r.cur + 1].n)}`, {cmd: "r:next", why: off || (pN ? WAIT : "") || (r.held ? HELD_NEXT : "") || (last ? "This is the last step." : "")});
+     boil". The same on a recipe loaded or reset and not begun, where NEXT would start its first step (NOT_BEGUN) */
+  const next = b("cmdbtn", pN ? "MOVING ON…" : "NEXT STEP", last ? "last step" : notBegun ? "not started" : `to ${esc(S[r.cur + 1].n)}`, {cmd: "r:next", why: off || (pN ? WAIT : "") || (r.held ? HELD_NEXT : "") || (notBegun ? NOT_BEGUN(S[r.cur]) : "") || (last ? "This is the last step." : "")});
   return `<h2>${esc(M.RECIPE.name)}</h2>
     <p class="rmeta">${run ? "Running" : r.state === "ready" ? "Ready to start" : "Stopped"} · step ${r.cur + 1} of ${S.length}</p>
     <div class="rctl">${start}${stop}${next}</div>
-    ${st.confirmNext ? confirmHTML() : ""}
+    ${st.confirmNext ? confirmHTML() : st.confirmReset && !run && begun ? resetConfirmHTML() : ""}
     <p class="note">${esc(st.notes.r || "")}</p>
     <ol class="steps" aria-label="Recipe steps">${S.map(stepHTML).join("")}</ol>${M.TIMERS ? timersHTML() : ""}`;
 }
 function confirmHTML() {
   const r = st.recipe, cur = M.RECIPE.steps[r.cur], nx = M.RECIPE.steps[r.cur + 1];
   return `<div class="confirm" role="group" aria-labelledby="cf-t"><p id="cf-t">Skip the rest of <b>${esc(cur.n)}</b>${cur.min ? ` (${mmss(r.left)} left)` : ""} and start <b>${esc(nx.n)}</b>${nx.temp ? ` at ${nx.temp} ${M.U}` : ""}?</p><div><button type="button" class="yes" data-cmd="r:next-yes">SKIP TO ${esc(nx.n.toUpperCase())}</button><button type="button" data-cmd="r:next-no">KEEP GOING</button></div></div>`;
+}
+/* RESET's question, as NEXT STEP's: a reset can't be undone, so it says what CraftBeerPi forgets (the steps done, and the
+   minutes the stopped step had run: a 40 min rest stopped at 16 runs all 40 again), what goes with it (the questions about
+   the brew), and what it leaves alone. Its answers say what each does; neither is the default */
+function resetConfirmHTML() {
+  const r = st.recipe, S = M.RECIPE.steps, cur = S[r.cur], n = r.cur, lost = [];
+  if (n) lost.push(n === 1 ? "step 1 is done" : n === 2 ? "steps 1 and 2 are done" : `steps 1 to ${n} are done`);
+  const ran = r.state === "stopped" && cur.min ? cur.min * 60 - r.left : 0;
+  if (ran > 0) lost.push(`${esc(cur.n)} has run ${ran < 60 ? "under a minute" : Math.floor(ran / 60)} of its ${cur.min} minutes`);
+  const said = [lost.length ? `CraftBeerPi forgets that ${lost.join(" and that ")}.` : "Nothing has been done yet.",
+    brewQuestions().length ? "Its questions waiting for you are taken down." : "",
+    `Kettles, pumps and ${M.TIMERS ? "timers" : "the rest timer"} stay as they are.`].filter(Boolean).join(" ");
+  return `<div class="confirm" role="group" aria-labelledby="cf-t"><p id="cf-t">Reset the recipe to step 1, <b>${esc(S[0].n)}</b>? ${said}</p><div><button type="button" class="yes" data-cmd="r:reset-yes">RESET TO STEP 1</button><button type="button" data-cmd="r:reset-no">${n ? `STAY AT STEP ${n + 1}` : "STAY STOPPED"}</button></div></div>`;
+}
+/* the questions about the brew that wait for you, which a reset takes down (StepController.reset_all; BrewScribe its own):
+   those under a step's name, the hop alerts, Brewing Complete, Resume brew? and BrewScribe's; not a timer's alarm, nor a
+   warning, nor another plugin's question. Live, the ones CraftBeerPi waits on; in the demo, as the mockup finds them, by
+   their lines in LOG */
+function brewQuestions() {
+  const names = new Set([...M.RECIPE.steps.map(s => s.n), "Hop Alert", "Brewing Complete", "Resume brew?", "BrewScribe"]);
+  if (!DEMO_MODE) return st.prompts.map(p => ut(String(p.title || ""))).filter(t => names.has(t));
+  return st.events.filter(e => e[2] === "waiting for you" && names.has(e[1].split(":")[0])).map(e => e[1].split(":")[0]);
 }
 /* r.wait: a running step whose timer has not started yet says what it is waiting for (HEATING, COOLING, WAITING,
    WAITING FOR YOU, or a BrewStart's STARTS 05:30); a step held for the brewer says WAITING FOR YOU. A SpargeStep's
@@ -640,6 +675,27 @@ function handHTML() {
     <div class="handlinks">${b("cmdbtn", "RECIPE BOOK", "all recipes", {cmd: "tab:Recipe Book"})}${b("cmdbtn", "BREW STEPS", "build or edit steps", {cmd: "tab:Brew Steps"})}</div>
     <p class="note">${esc(st.notes.r || "")}</p>`;
 }
+/* the versions, the recipe column's last line: the quietest words on the screen, in the bottom left corner on a monitor
+   and at the end of the page on a phone. The web UI's, with when it was built, then CraftBeerPi's. Each keeps whole;
+   where the column is narrow the two go on two lines. Before CraftBeerPi has answered, the web UI's alone */
+function verHTML() {
+  const v = versions();
+  if (!v) return "";
+  return `<p class="ver"><span>Web UI ${esc(v.ui)}${v.built ? `, built ${esc(v.built)}` : ""}</span>${v.cbpi ? `<span>CraftBeerPi ${esc(v.cbpi)}</span>` : ""}</p>`;
+}
+/* this bundle's own: its release number (cbpi4gui/version.py), the commit it was built from, and when, on the building
+   machine's clock, stamped in as it is built (config-overrides.js). A build made without git has the number alone */
+/* global __CBPI_UI__ */
+const UI_BUILD = typeof __CBPI_UI__ !== "undefined" ? __CBPI_UI__ : {version: "", commit: null, built: null};
+/* -> {ui, built, cbpi}, or null for no line. Live: CraftBeerPi's as GET /system/ gives it, with the commit of the checkout
+   it runs from, which one installed by pip doesn't have. A part without its commit is the release number alone, as an
+   installed release has it, and says nothing of when it was built. The demo's are the mockup's, made up and fixed */
+function versions() {
+  if (DEMO_MODE) return DEMO.versions(opts.ver);
+  if (!UI_BUILD.version) return null;
+  const s = last || {}, cb = s.version && s.version !== "---" ? `${s.version}${s.commit ? `+${s.commit}` : ""}` : "";
+  return {ui: `${UI_BUILD.version}${UI_BUILD.commit ? `+${UI_BUILD.commit}` : ""}`, built: UI_BUILD.commit ? UI_BUILD.built || "" : "", cbpi: cb};
+}
 function nowHTML() {
   const r = st.recipe;
   if (!r) return `<span class="n">–</span><b>No recipe running</b><span class="p">Brewing by hand · ${M.TIMERS ? "timers" : "rest timer"} below</span>${tmlHTML()}`;
@@ -670,8 +726,9 @@ const needleAngle = pv => -120 + 240 * (Math.min(220, Math.max(50, pv)) - 50) / 
 /* ---------- which way the hand valves are drawn ----------
    CraftBeerPi can't see the valves, so the drawing goes by the recipe. It finds the runoff the way the core finds
    it for the first-wort reminder (StepController._collects_wort): from the start of the step named for the runoff
-   until the boil starts, the wort pump sends wort to the boil kettle and the HLT pump sends sparge water to the top
-   of the mash tun, for a fly sparge. At any other time, and with no recipe, it shows recirculating. */
+   until the boil starts, the wort pump sends wort to the boil kettle and the HLT pump sends sparge water through the
+   HERMS coil, which flushes the wort out of it, and on into the top of the mash tun along the coil's own line, as in a
+   fly sparge. At any other time, and with no recipe, it shows recirculating. */
 const RUNOFF_NAME = /^(?:step \d+ )?(?:(?:start|begin) )?(?:(?:fly|batch|continuous) )?(?:sparge|sparging|lauter|lautering|run ?off)(?: |$)/;
 const NOT_RUNOFF = /\b(?:water|heat|heating|prepare|preparation|salts|treatment)\b/;
 function collectsWort(s) {
@@ -711,11 +768,11 @@ function rigDesc(ro, held, setNow, post) {
   // with no recipe running, the boil can only have started if the recipe has finished (boilStarted)
   if (post) return head + (st.recipe ? "The boil has started, so the wort pump's hoses are on the boil kettle. " : "The recipe has finished, and the wort pump's hoses are still on the boil kettle, where they went for the boil. ")
     + "The wort pump is drawn under the boil kettle: it takes wort from the bottom of the kettle and sends it through the chiller and back in at the top. The mash tun and the HERMS coil are out of use. The HLT pump circulates hot water around the hot liquor tank. The valves are set by hand and CraftBeerPi can't see them: they are shown for recirculating.";
-  if (ro < 0 || held) return head + "The HLT pump circulates hot water around the hot liquor tank. The wort pump moves wort from the mash tun, through the coil inside the hot liquor tank, and back into the mash tun. The valves are set by hand and CraftBeerPi can't see them: they are shown for recirculating, with the lines to the boil kettle"
-    + (spLine ? " and to the top of the mash tun" : "") + " closed."
-    + (setNow ? ` Step ${ro + 1}, ${M.RECIPE.steps[ro].n}, is waiting for you to set them for the sparge: close the coil line${spLine ? " and the HLT return" : ""}, and open the line to the boil kettle${spLine ? " and the sparge line to the top of the mash tun" : ""}.` : "");
-  return head + (spLine ? "The HLT pump sends hot water over to the top of the mash tun for the sparge. " : "The HLT pump circulates hot water around the hot liquor tank. ")
-    + `The wort pump moves wort from the mash tun down and across to the boil kettle, past the HERMS coil. The valves are set by hand and CraftBeerPi can't see them: they are shown as step ${ro + 1}, ${M.RECIPE.steps[ro].n}, needs them.`;
+  if (ro < 0 || held) return head + "The HLT pump circulates hot water around the hot liquor tank. The wort pump moves wort from the mash tun, through the coil inside the hot liquor tank, and back into the mash tun. The valves are set by hand and CraftBeerPi can't see them: they are shown for recirculating, with the line to the boil kettle"
+    + (spLine ? " and the sparge line into the coil" : "") + " closed."
+    + (setNow ? ` Step ${ro + 1}, ${M.RECIPE.steps[ro].n}, is waiting for you to set them for the sparge: close the wort pump's line to the coil${spLine ? " and the HLT return" : ""}, and open the line to the boil kettle${spLine ? " and the sparge line into the coil" : ""}.` : "");
+  return head + (spLine ? "The HLT pump sends hot water through the coil inside the hot liquor tank, flushing the wort out of it, and on into the top of the mash tun for the sparge. " : "The HLT pump circulates hot water around the hot liquor tank. ")
+    + `The wort pump moves wort from the mash tun down and across to the boil kettle. The valves are set by hand and CraftBeerPi can't see them: they are shown as step ${ro + 1}, ${M.RECIPE.steps[ro].n}, needs them.`;
 }
 /* change: the valve is drawn where it is now and marked, in Prompt Amber, with where it has to go (a SpargeStep's prompt).
    The HLT return's run is too short for SET CLOSED, so that tag moves left of the riser, level with its valve (rig.js's
@@ -759,7 +816,17 @@ function renderRig() {
      recipe is loaded or reset */
   const post = LAYOUT === "b" && boilStarted() && st.v.mt.mode !== "auto";
   const wp = live && a.wortPump.on, hp = live && a.hltPump.on, mtw = wp && !post;
-  on("#ln-wort-in", mtw); on("#ln-wort-out", mtw); on("#ln-wort-coil", mtw && !out); on("#ln-xfer", mtw && out); on("#coil", mtw && !out);
+  /* the coil, its inlet stub and its line on to the mash tun carry the wort while the wort pump recirculates, or the
+     sparge water, in the liquor's colour, while the HLT pump sparges through it */
+  const coilW = mtw && !out, coilL = hp && sp;
+  on("#ln-wort-in", mtw); on("#ln-wort-out", mtw); on("#ln-wort-coil", coilW); on("#ln-xfer", mtw && out);
+  for (const s of ["#ln-coil-in", "#ln-coil-out", "#coil"]) {
+    const n = $(s);
+    if (!n) continue;
+    n.classList.toggle("on", coilW || coilL);
+    n.classList.toggle("liq", coilL);
+    if (s !== "#coil") n.classList.toggle("wrt", !coilL);
+  }
   on("#ln-bk-loop", wp && post);
   ["#pump-wort-bk", "#ln-bk-loop", "#chiller"].forEach(s => { const n = $(s); if (n) n.classList.toggle("gone", !post); });
   $("#pump-wort").classList.toggle("gone", post && !!$("#pump-wort-bk"));
@@ -813,7 +880,10 @@ function renderAll() {
     morph($("#plates"), ["hlt", "mt", "bk"].map(plateHTML).join(""));
     // a timer's editor open: on the one-screen layout the step list (by hand, the recipe book) makes room for it
     $("#recipe").toggleAttribute("data-tedit", !!M.TIMERS && !!st.tedit);
-    morph($("#recipe"), recipeHTML());
+    /* and while something in it waits for you (NEXT STEP's or RESET's question, a timer's alarm), the versions' line steps
+       aside on a monitor, so the step list keeps the current step whole (brewday.css) */
+    $("#recipe").toggleAttribute("data-asking", !!(st.confirmNext || st.confirmReset || (M.TIMERS && st.tmrs.some(t => t.state === "done"))));
+    morph($("#recipe"), recipeHTML() + verHTML());
     morph($("#now"), nowHTML());
   }
   /* a timer that has run out and not been answered: its row, the title bar and a frame round the whole screen pulse
@@ -834,7 +904,7 @@ function renderAll() {
   if (st.alarm) st.alarm.fresh = false;
   // the Settings page's frame has no brewhouse to draw
   if (PAGE) return;
-  if (M.TIMERS) keepStepInView();
+  keepStepInView();
   renderRig();
   if (GRAPHS) drawGraphs();
 }
@@ -1299,6 +1369,7 @@ function spargeBegin(s) {
   }, 600));
 }
 function cmdStart() {
+  st.confirmReset = false;
   send("r:start", "start", "Recipe started", () => {
     /* held before the boil, START starts the boil, as START THE BOIL does */
     if (st.recipe.held) return boilStart();
@@ -1317,7 +1388,7 @@ function cmdStart() {
   });
 }
 function cmdStop() {
-  st.confirmNext = false;
+  st.confirmNext = false; st.confirmReset = false;
   send("r:stop", "stop", "Recipe stopped", () => {
     const k = M.RECIPE.steps[st.recipe.cur].k;
     st.recipe.state = "stopped";
@@ -1330,6 +1401,21 @@ function cmdNextYes() {
   const r = st.recipe, nx = M.RECIPE.steps[r.cur + 1];
   st.confirmNext = false;
   send("r:next", "next", `Skipped to ${nx.n}`, () => { stepStart(r.cur + 1); if (!r.held) r.state = "running"; });
+}
+/* RESET TO STEP 1: CraftBeerPi's reset (POST /step2/reset). Every step back to not started, the time a step had run and
+   what the steps kept about this brew forgotten, its questions taken down: their lines say "no longer needed". It
+   switches nothing. The recipe stays loaded, back at step 1, waiting for START. The graphs lose their step marks, which
+   CraftBeerPi forgets too, and DAY goes back to the last 8 hours, as with no recipe begun */
+function cmdReset() {
+  st.confirmReset = false;
+  send("r:reset", "reset", "Recipe reset to step 1", () => {
+    const q = new Set(brewQuestions());
+    q.forEach(t => questionGone(t, "no longer needed"));
+    if (st.banner && q.has(st.banner.title)) st.banner = null;
+    st.recipe = {state: "ready", cur: 0, left: 0, adds: []};
+    st.finished = false;
+    if (st.hist) { st.hist.steps = []; st.hist.start = st.t - 8 * 3600; }
+  });
 }
 function cmdBanner(x) {
   if (x === "added") send("b", "x", "Hop Alert answered: Added", () => { questionGone("Hop Alert"); st.banner = null; if (st.recipe) st.recipe.adds[0] = "done"; });
@@ -1371,7 +1457,7 @@ function cmdLoad(i) {
 function cmdAllOff() {
   const running = st.recipe && st.recipe.state === "running";
   const cav = Object.keys(M.ACT).filter(id => M.ACT[id].override).map(id => `${M.ACT[id].name}'s override switch can still run it`).join(" · ");
-  st.confirmNext = false; st.edit = null;
+  st.confirmNext = false; st.confirmReset = false; st.edit = null;
   send("alloff", "off", `ALL OFF: elements and pumps off, every vessel MANUAL${running ? ", recipe stopped" : ""}`, () => {
     if (running) st.recipe.state = "stopped";
     ["hlt", "mt", "bk"].forEach(v => { if (st.v[v].mode === "auto") setMode(v, "manual"); });
@@ -1531,13 +1617,28 @@ function livePause(on, label) {
 }
 function liveStart() {
   const r = st.recipe, s = r && M.RECIPE.steps[r.cur];
+  st.confirmReset = false;
   own.start = {at: Date.now(), ids: s ? [s.id] : []};
   exec("r:start", "start", "Recipe started", api.start, {fail: () => alarm("The recipe did not start.", "OK", "b:ok")});
 }
 function liveStop() {
-  st.confirmNext = false;
+  st.confirmNext = false; st.confirmReset = false;
   own.stop = Date.now();
   exec("r:stop", "stop", "Recipe stopped", api.stop, {fail: () => alarm("The recipe did not stop. It may still be running.", "TRY AGAIN", "r:stop")});
+}
+/* RESET TO STEP 1, for real: confirmed from the steps, as the boil power is from what CraftBeerPi holds. CraftBeerPi
+   refuses a reset while a step runs (409; an older one answers 200 all the same), and another screen's START can bring
+   that about after the question opened. So after its answer, up to 3 s for every step to read I */
+function liveReset() {
+  st.confirmReset = false;
+  own.reset = Date.now();
+  const waiting = () => { const S = ((last || {}).steps || []).filter(Boolean); return S.length > 0 && S.every(s => s.status === "I"); };
+  exec("r:reset", "reset", "Recipe reset to step 1", async () => {
+    const res = await api.reset();
+    if (!res.ok) return res;
+    for (let i = 0; i < 30 && !waiting(); i++) await new Promise(r => setTimeout(r, 100));
+    return waiting() ? res : {ok: false, status: res.status, data: null, error: "kept"};
+  }, {fail: () => alarm("The recipe was not reset. A step may be running.", "OK", "b:ok")});
 }
 function liveNext() {
   const r = st.recipe, nx = r && M.RECIPE.steps[r.cur + 1];
@@ -1572,6 +1673,7 @@ function livePrompt(nid, aid) {
 function liveLoad(i) {
   const x = M.BOOK[i];
   if (!x) return;
+  own.load = Date.now();
   exec("r:load", "load", `${x.n} loaded`, () => api.brew(x.file), {fail: () => alarm(`${x.n} did not load.`, "OK", "b:ok")});
 }
 /* ALL OFF: the recipe stops first so it can't switch a kettle back on, then every kettle to
@@ -1581,7 +1683,7 @@ async function liveAllOff() {
   if (st.pend.alloff) return;
   const g = gen, running = st.recipe && st.recipe.state === "running";
   const cav = Object.keys(M.ACT).filter(id => M.ACT[id].id && M.ACT[id].override).map(id => `${M.ACT[id].name}'s override switch can still run it`).join(" · ");
-  st.confirmNext = false; st.edit = null;
+  st.confirmNext = false; st.confirmReset = false; st.edit = null;
   st.pend.alloff = "off"; renderAll();
   const failed = [];
   if (M.RECIPE.steps.some(s => s.status === "A")) {
@@ -1708,7 +1810,8 @@ function tmlHTML() {
   return `<button type="button" class="tml" data-cmd="tjump"><span class="tl">TIMERS</span><span id="tml-t">${tmlText()}</span></button>`;
 }
 const tmlText = () => st.tmrs.filter(t => t.state !== "stopped").map(t => t.state === "done" ? `<span class="d">${esc(t.name)} TIME'S UP</span>` : `${esc(t.name)} ${t.state === "paused" ? "paused " : ""}${tfmt(t.left)}`).join(" · ");
-/* with the timers below them, the steps get less room: the current one is kept in view */
+/* the step list scrolls, where it has to, so the current step is whole in view: on the one-screen layout the list is
+   the part of the column that gives up height, to the timers, a question or an editor, with or without the timers */
 function keepStepInView() {
   const l = $("#recipe .steps"), c = l && l.querySelector('[aria-current="step"]');
   if (!c || l.scrollHeight <= l.clientHeight + 1) return;
@@ -1936,7 +2039,9 @@ function run(cmd) {
       if (x === "start") return DEMO_MODE ? cmdStart() : liveStart();
       if (x === "stop") return DEMO_MODE ? cmdStop() : liveStop();
       if (x === "next-yes") return DEMO_MODE ? cmdNextYes() : liveNext();
-      st.confirmNext = x === "next"; st.confirmFor = st.recipe ? st.recipe.cur : null; return renderAll();
+      if (x === "reset-yes") return DEMO_MODE ? cmdReset() : liveReset();
+      /* NEXT STEP's and RESET's questions: one at a time, so opening either closes the other */
+      st.confirmNext = x === "next"; st.confirmReset = x === "reset"; st.confirmFor = st.recipe ? st.recipe.cur : null; return renderAll();
     case "b":
       if (DEMO_MODE) return cmdBanner(x);
       if (x === "ok") st.alarm = null;
@@ -1964,7 +2069,7 @@ function blankMoment() {
   ACTS.forEach(x => { a[x] = {on: false, pct: 0}; });
   return {t: daySeconds(), link: "lost", age: null, banner: null, v, a, recipe: null, timer: {left: 3600, running: false},
     tmrs: [], names: [], tedit: null, snd: soundInit(),
-    events: loadEvents(), pend: {}, notes: {}, edit: null, confirmNext: false, logOpen: false,
+    events: loadEvents(), pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, logOpen: false,
     fail: {}, expect: {}, alarm: null, errors: [], warnings: [], prompts: [], lostAt: null, openedAt: Date.now(),
     waitN: 0, oldAt: 0, seenN: 0, seenDone: new Set()};
 }
@@ -2026,7 +2131,13 @@ function applyLive(snap) {
   liveLocks();
   st.prompts = (snap.alerts || []).filter(x => x && Array.isArray(x.action) && x.action.length);
   st.recipe = liveRecipe(snap);
-  if (st.confirmNext && (!st.recipe || st.recipe.cur !== st.confirmFor || st.recipe.state !== "running")) st.confirmNext = false;
+  /* a question in the recipe column stays open while its words stay true, and goes with the recipe or when the current
+     step changes. NEXT STEP's also when the recipe is ready (not begun, or the boil held), where NEXT STEP is greyed: on a
+     stopped recipe it stays, as CraftBeerPi's NEXT then marks the stopped step done and starts the next one. RESET's also
+     when the middle button stops being RESET: a step starts, or the recipe is reset or replaced */
+  const rc = st.recipe, begun = !!rc && (rc.state === "stopped" || rc.cur > 0);
+  if (st.confirmNext && (!rc || rc.cur !== st.confirmFor || rc.state === "ready")) st.confirmNext = false;
+  if (st.confirmReset && (!rc || rc.cur !== st.confirmFor || rc.state === "running" || !begun)) st.confirmReset = false;
   st.timer = timerNow(snap.timer);
   /* the timers, while CraftBeerPi has them: a CraftBeerPi that tells of its rest timer and not of them has none, and keeps
      the rest timer. An editor shuts when its timer goes (removed on another screen) or runs out */
@@ -2341,6 +2452,13 @@ function observe(prev, snap) {
   if (steps.length && steps.every(s => s.status === "D") && (prev.steps || []).some(s => s && s.status !== "D") && steps.every(s => old.has(s.id))) {
     logStep("Recipe finished", "by recipe", "ok", steps[steps.length - 1].name, true);
   }
+  /* a reset on another screen (the Brew Steps page's, or another Brew Day's): every step waiting again, the same steps as
+     before. The same recipe loaded again on another page reads the same, to the same effect; a different one has new
+     steps. Not RESET or LOAD pressed here, which log themselves */
+  if (steps.length && steps.length === old.size && steps.every(s => s.status === "I" && old.has(s.id))
+    && (prev.steps || []).some(s => s && s.status !== "I") && !(Date.now() - Math.max(own.reset || 0, own.load || 0) < 10000)) {
+    logEvent("Recipe reset to step 1", "from another screen", "");
+  }
   fresh.filter(a => !lastWords(a)).forEach(logAlert);
 }
 /* the screen opened inside the app (back from Brew Steps, say) with questions already waiting: each gets its "waiting for
@@ -2521,7 +2639,7 @@ const handlers = {
     }
     if (e.key === "Escape" && moreOpen()) { closeMore(); const t = $('.tabs a[data-tab="More"]'); if (t) t.focus(); return; }
     if (e.key === "Escape" && st.tedit) { st.tedit = null; renderAll(); return; }
-    if (e.key === "Escape" && (st.edit || st.logOpen || st.confirmNext)) { st.edit = null; st.logOpen = false; st.confirmNext = false; renderAll(); }
+    if (e.key === "Escape" && (st.edit || st.logOpen || st.confirmNext || st.confirmReset)) { st.edit = null; st.logOpen = false; st.confirmNext = false; st.confirmReset = false; renderAll(); }
   },
   keyup: e => { if (hold && (e.key === " " || e.key === "Enter")) { e.preventDefault(); holdEnd(true); } },
   input: e => {
@@ -2740,7 +2858,7 @@ export function createBrewDay(el, o = {}) {
        connection (demo below) */
     M = {TIMERS: false, BKNEW: false, U: "°F"};
     st = {link: "ok", banner: null, t: 14 * 3600 + 32 * 60, pend: {}, notes: {}, edit: null, tedit: null, logOpen: false,
-      confirmNext: false, tmrs: [], events: [["14:31:52", "Mash Tun at target, 149.0 °F", "confirmed", "ok"]]};
+      confirmNext: false, confirmReset: false, tmrs: [], events: [["14:31:52", "Mash Tun at target, 149.0 °F", "confirmed", "ok"]]};
   } else if (DEMO_MODE) {
     const key = DEMO.SCENES[o.demo] || DEMO.EXTRA[o.demo] ? o.demo : "mash";
     M = {RECIPE: DEMO.RECIPE, VNAME: DEMO.VNAME, VACT: DEMO.VACT, ACT: DEMO.ACT, HERMS_DELTA: DEMO.HERMS_DELTA, BOOK: DEMO.BOOK, U: "°F", LIMITS: [32, 230],
@@ -2751,7 +2869,7 @@ export function createBrewDay(el, o = {}) {
     // a moment can open an editor (open) and borrow another moment's graph history (base)
     const open = st.open, base = st.base || key;
     delete st.open; delete st.base;
-    Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, logOpen: false}, open);
+    Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, logOpen: false}, open);
     if (st.v.bk.bp == null) st.v.bk.bp = 45; // the boil kettle's Boil_Power setting, read from its props
     if (st.a.bkEl.lvl == null) st.a.bkEl.lvl = 100; // the boil element's own level (its power), used when it is on by hand
     if (st.v.bk.usual === undefined) st.v.bk.usual = 45; // its Usual_Boil_Power setting; null: none set

@@ -62,6 +62,8 @@ export const api = {
   start: () => post("/step2/start"),
   stop: () => post("/step2/stop"),
   next: () => post("/step2/next"),
+  // Every step back to not started; refused with 409 while a step runs.
+  reset: () => post("/step2/reset"),
   answer: (notificationId, actionId) => post(`/notification/${id(notificationId)}/action/${id(actionId)}`),
   // OK on a warning or an error without buttons: CraftBeerPi takes it down from every page, and BrewScribe's
   seen: (notificationId) => post(`/notification/${id(notificationId)}/seen`),

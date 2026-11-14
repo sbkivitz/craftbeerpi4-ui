@@ -1,4 +1,4 @@
-/* Settings mockup (proposal, 11 Nov 2026): the groups in brewing order, each setting's plain name over its key, FIND A
+/* Settings mockup: the groups in brewing order, each setting's plain name over its key, FIND A
    SETTING, one SAVE for every change, and the answer at each row. Vanilla JS like brew-day.js. A mockup: SAVE only
    pretends, and nothing here talks to CraftBeerPi. Values are the simulator's (settings-data.js). */
 "use strict";
@@ -335,7 +335,7 @@ function paintChrome() {
   if (st.link === "lost") { ho.setAttribute("aria-disabled", "true"); ho.dataset.why = PAUSED; } else { ho.removeAttribute("aria-disabled"); delete ho.dataset.why; }
   paintBrand();
 }
-/* the title bar's name (M74): the Brewery name setting as CraftBeerPi has it, so it changes on SAVE, not while typing.
+/* the title bar's name: the Brewery name setting as CraftBeerPi has it, so it changes on SAVE, not while typing.
    Blank shows CraftBeerPi; a name of more than LONG_NAME characters is drawn smaller (brew-day.css), and its title gives
    it whole. The browser tab's title starts with it, as on the brew-day screen */
 function paintBrand() {
@@ -497,7 +497,7 @@ function toast(msg) {
   t.textContent = msg; t.hidden = false;
   clearTimeout(toast.t); toast.t = setTimeout(() => (t.hidden = true), 4000);
 }
-/* TRY: the brew-day screen's own sound (alarm.js, a copy of Brett's), its whole burst, as a timer that has run out plays
+/* TRY: the brew-day screen's own sound (alarm.js), its whole burst, as a timer that has run out plays
    it, whatever that screen's SOUND switch says: pressing TRY is asking to hear it. Its small line says "playing" for the
    burst, so a muted device still shows that it worked */
 let actx;
@@ -563,7 +563,7 @@ document.addEventListener("input", e => {
   const row = f.closest && f.closest(".row");
   if (!row) return;
   if (f.tagName === "TEXTAREA") {
-    // one line, as the page's text boxes are now: a pasted line break becomes a space
+    // the page's text boxes hold one line: a pasted line break becomes a space
     const v = f.value.replace(/^(\r\n|\r|\n)+|(\r\n|\r|\n)+$/g, "").replace(/(\r\n|\r|\n)+/g, " ");
     if (v !== f.value) f.value = v;
     f.style.height = "auto"; f.style.height = f.scrollHeight + 2 + "px";

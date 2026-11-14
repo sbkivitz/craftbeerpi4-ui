@@ -12,43 +12,45 @@ OWN-WORLD: Dark slate panel; black PID faces with a big red PV over a smaller gr
 the vessel's temperature graph under them; buttons topped by lamp strips that also say their state (orange
 heating, green running, grey off, red failed); a line drawing of the rig with cyan liquor and gold wort pipes
 that move only while pumped.
-STORY: From across the garage Scott sees what is heating, how close each vessel is, and the step now and
+STORY: From across the garage the brewer sees what is heating, how close each vessel is, and the step now and
 next; heat starts only on a held press; every command answers at its own button.
 FIRST VIEWPORT: Left: recipe with Start, Stop, Next step. Right: three faceplates across the top, the line
 drawing below with each vessel under its own faceplate. Alarms in the title bar; last event and screen tabs
 under it.
-FORM: Brewhouse touch panel with process-mimic plumbing (Scott's picks, rounds 2-5); layout B (D3, chosen
-9 Nov 2026 over A/D1); seed fad8ffb4.
+FORM: Brewhouse touch panel with process-mimic plumbing; layout B (D3); seed fad8ffb4.
 
-This is a proposal mockup with demo data. It does not talk to CraftBeerPi.
+This is a mockup with demo data. It does not talk to CraftBeerPi.
 Scenes: #mash (default), #sparge, #hop, #boilpower, #heatup, #pause, #boiling, #hold, #fail, #manual, #offline, #notarget,
 #notarget-hlt, and the rest in the strip. #sparge-ready and #boil-hold show the pumps CraftBeerPi switches off so their
-hoses can move (core 1c08d4c, 11 Nov). #byhand and #byhand-past show an element on by hand in MANUAL, before and after
-it passes its target (13 Nov). Add ?bare to hide the mockup strip.
-Layouts: ?layout=b (default, chosen) or ?layout=a (the D1 alternative, kept for comparison; its drawing has no
-sparge line, so its HLT pump always goes back round the hot liquor tank).
-Graphs: in the faceplates by default (option A, chosen 10 Nov 2026). ?graphs=none shows the screen without them,
-as first built; ?graphs=panel is option B, kept only for graphs.html. ?span=10|30|day picks the starting span.
-Boil kettle: the redesign Scott said yes to on 10 Nov, built on the screen that evening, is the default (?bk=power):
-one-tap −5/−1/+1/+5 % (±1 added 11 Nov), a pause for boil-overs, a usual boil power, TARGET (BOIL or a hold) and
-KEEP BOILING.
-?bk=today is the faceplate from before it, which the screen keeps for an older BoilPower (one without set_boil_at);
-boil-kettle.html compares the two. ?bk=words is an earlier option he didn't take. ?focus=bk is for that page.
-Timers: the ones Scott approved on 11 Nov, built on the screen that day, are the default (#timers, #timer-done,
-#timer-new, #timer-names, #timer-nonames, #timers-hand, #sound-allow); ?timers=new shows the same. ?timers=today is
-the one rest timer, which the screen keeps for an older CraftBeerPi without the timers.
+hoses can move. #byhand and #byhand-past show an element on by hand in MANUAL, before and after it passes its target.
+#stopped, #reset and #reset-done show the recipe stopped, RESET asking first, and the recipe back at step 1.
+Add ?bare to hide the mockup strip.
+Layouts: ?layout=b (default) or ?layout=a (the D1 alternative, kept for comparison; its drawing has no sparge line, so
+its HLT pump always goes back round the hot liquor tank).
+Graphs: in the faceplates by default. ?graphs=none shows the screen without them, as the released build has it;
+?graphs=panel is the other layout, a panel of graphs in place of the drawing, kept only for graphs.html.
+?span=10|30|day picks the starting span.
+Boil kettle: the default (?bk=power) has one-tap −5/−1/+1/+5 %, a pause for boil-overs, a usual boil power, TARGET (BOIL
+or a hold) and KEEP BOILING. ?bk=today is the faceplate the screen shows with an older BoilPower (one without
+set_boil_at); boil-kettle.html compares the two. ?bk=words is a words-only alternative, kept for comparison. ?focus=bk
+is for that page.
+Timers: the default (#timers, #timer-done, #timer-new, #timer-names, #timer-nonames, #timers-hand, #sound-allow);
+?timers=new shows the same. ?timers=today is the one rest timer, which the screen shows with an older CraftBeerPi
+without the timers.
 ?names=Hop stand,Yeast tries a BREWDAY_TIMER_NAMES list (blank: none), read as CraftBeerPi reads the setting.
-Title bar: the BREWERY_NAME setting at every width (11 Nov), so a rig and a simulator can't be taken for each other.
+Title bar: the BREWERY_NAME setting at every width, so a rig and a simulator can't be taken for each other.
 ?name=Simulator 8012 tries another name; blank shows CraftBeerPi. Two lines at most, and a name of more than 24
 characters is drawn smaller (0.7 of the size) on a monitor and a phone; from 701 to 1023 px wide it keeps the full size.
-Tabs: BREWSCRIBE, last, opens BrewScribe in a browser tab of its own (11 Nov); ?brewscribe=none shows the screen
-where BrewScribe isn't installed.
-The wort pump after the boil (12 Nov): Scott chose ?wp=chill, the default since: from the boil's start the wort pump is
-drawn at the boil kettle, on a short loop through the chiller (#whirlpool shows it running). It stays there after the
-recipe finishes (#finished), until a recipe is loaded or reset, or while the mash tun's AUTO is on (#notarget).
-?wp=today is the drawing as built before (after the boil it went back to recirculating, through the HERMS coil);
-?wp=move (no chiller) and ?wp=swirl (the pump stays, the kettle swirls) are options he didn't take. whirlpool.html
-shows them side by side; ?focus=rig is for that page.
+Tabs: BREWSCRIBE, last, opens BrewScribe in a browser tab of its own; ?brewscribe=none shows the screen where
+BrewScribe isn't installed.
+Versions: the recipe column's last line, made up and fixed in the demo; ?ver=release shows an installed release's, the
+release numbers only; ?ver=none shows the screen without it, as the released build has it.
+The wort pump after the boil: by default (?wp=chill), from the boil's start the wort pump is drawn at the boil kettle,
+on a short loop through the chiller (#whirlpool shows it running). It stays there after the recipe finishes
+(#finished), until a recipe is loaded or reset, or while the mash tun's AUTO is on (#notarget).
+?wp=today is the released build's drawing (after the boil it goes back to recirculating, through the HERMS coil);
+?wp=move (no chiller) and ?wp=swirl (the pump stays, the kettle swirls) are alternatives kept for comparison.
+whirlpool.html shows them side by side; ?focus=rig is for that page.
 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -59,6 +61,9 @@ shows them side by side; ?focus=rig is for that page.
 <nav class="mock" id="mock" aria-label="Mockup scenes (not part of the design)">
   <strong>Mockup with demo data.</strong> Show:
   <a href="#mash">Mid-mash</a>
+  <a href="#stopped">Stopped</a>
+  <a href="#reset">RESET asks first</a>
+  <a href="#reset-done">Reset to step 1</a>
   <a href="#sparge">Sparge</a>
   <a href="#sparge-heat">Sparge step: heating the water</a>
   <a href="#sparge-ready">Sparge step: waiting for you</a>
@@ -92,10 +97,10 @@ shows them side by side; ?focus=rig is for that page.
   <a href="#timer-nonames">No names in Settings</a>
   <a href="#timers-hand">Timers by hand</a>
   <a href="#sound-allow">Sound waiting for a tap</a>
-  <span class="lay">Brewery name: <a data-nm="" href="?">default</a> <a data-nm="EBrews - Simulator" href="?name=EBrews - Simulator">Scott's</a> <a data-nm="Simulator 8012" href="?name=Simulator 8012">a simulator</a> <a data-nm="EBrews - A CraftBeerPi Brewery" href="?name=EBrews - A CraftBeerPi Brewery">30 characters</a> <a data-nm="Old Mill Lane Garage Brewing Company" href="?name=Old Mill Lane Garage Brewing Company">36 characters</a></span>
-  <span class="lay">Wort pump after the boil: <a data-wp="chill" href="?">chosen: moves, with chiller</a> <a data-wp="today" href="?wp=today">as built before</a> <a data-wp="move" href="?wp=move">moves, no chiller</a> <a data-wp="swirl" href="?wp=swirl">stays, kettle swirls</a> <a href="whirlpool.html">side by side</a></span>
-  <span class="lay">Timers: <a data-tm="new" href="?">as built</a> <a data-tm="today" href="?timers=today">older CraftBeerPi</a></span>
-  <span class="lay">Boil kettle: <a data-bk="power" href="?bk=power">as built</a> <a data-bk="today" href="?bk=today">older BoilPower</a></span>
+  <span class="lay">Brewery name: <a data-nm="" href="?">default</a> <a data-nm="EBrews - Simulator" href="?name=EBrews - Simulator">EBrews</a> <a data-nm="Simulator 8012" href="?name=Simulator 8012">a simulator</a> <a data-nm="EBrews - A CraftBeerPi Brewery" href="?name=EBrews - A CraftBeerPi Brewery">30 characters</a> <a data-nm="Old Mill Lane Garage Brewing Company" href="?name=Old Mill Lane Garage Brewing Company">36 characters</a></span>
+  <span class="lay">Wort pump after the boil: <a data-wp="chill" href="?">default: moves, with chiller</a> <a data-wp="today" href="?wp=today">released build</a> <a data-wp="move" href="?wp=move">moves, no chiller</a> <a data-wp="swirl" href="?wp=swirl">stays, kettle swirls</a> <a href="whirlpool.html">side by side</a></span>
+  <span class="lay">Timers: <a data-tm="new" href="?">default</a> <a data-tm="today" href="?timers=today">older CraftBeerPi</a></span>
+  <span class="lay">Boil kettle: <a data-bk="power" href="?bk=power">default</a> <a data-bk="today" href="?bk=today">older BoilPower</a></span>
   <span class="lay">Layout: <a data-layout="a" href="?layout=a">A · recipe right</a> <a data-layout="b" href="?layout=b">B · recipe left</a></span>
 </nav>
 <div class="app" id="app" data-link="ok">
