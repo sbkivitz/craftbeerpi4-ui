@@ -2,8 +2,8 @@
 //
 // It must look identical to the brew-day mockup, not a rough likeness, so this is the mockup's own code
 // (design/brewday/brew-day.js, layout B): the same functions write the same markup, styled by the mockup's
-// own stylesheet (brewday.css, generated from it) and drawn by its own rig drawing (rig.js).
-// design/brewday/check_identity.py compares the two pictures, moment by moment and screen size by size.
+// own stylesheet (brewday.css, generated from it) and drawn by its own rig drawing (rig.js). cbpi-testbench's
+// test_ui_brewday_identity.py compares the two pictures, moment by moment and screen size by size.
 //
 // What is different from the mockup:
 // - The drawing code reads M (what stays put through a brew day: the recipe, which switch is which) and st
