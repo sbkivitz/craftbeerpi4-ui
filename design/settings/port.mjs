@@ -1,5 +1,4 @@
-// Make the approved Settings mockup (design/settings, the Settings design agent's, approved by Scott on 11 Nov 2026)
-// into the Settings page's own files, untouched where they can be:
+// Make the Settings mockup (design/settings) into the Settings page's own files, untouched where they can be:
 //
 //   node design/settings/port.mjs
 //
@@ -51,7 +50,7 @@ const write = (name, text) => { writeFileSync(join(OUT, name), text); console.lo
   const elsewhere = between(js, "const ELSEWHERE = ", "\n");
   const ind = s => s.split("\n").map(l => l ? "  " + l : l).join("\n");
   write("catalog.js", `${HEAD}//
-// The page's catalogue (Scott, 11 Nov: "A: in the web page, for now"): M, what it knows about each setting - its plain
+// The page's catalogue, kept in the web page: M, what it knows about each setting - its plain
 // name n, what it does h, extra words for FIND syn, its control ctl, option order and labels, what blank means,
 // unit, restart, its main switch dep, adv, secret, InfluxDB Cloud's names cloud and hc, a worked-out line calc, keep -
 // and G, the nine groups in brewing order. A setting it doesn't list still shows, by its key (page.js).

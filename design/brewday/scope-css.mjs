@@ -1,11 +1,10 @@
-// Make the approved mockup's stylesheet (brew-day.css, unchanged) into the
+// Make the brew-day mockup's stylesheet (brew-day.css, unchanged) into the
 // brew-day screen's stylesheet: cbpi4gui/src/components/brewday/brewday.css.
 //
 //   node design/brewday/scope-css.mjs
 //
-// The rules themselves are not touched - the screen must look exactly like the
-// mockup (Scott, 9 Nov 2026: "It is imperitive that the actual dashboard look
-// identical to your proposal"). What changes is only where they apply:
+// The rules themselves are not touched - the screen must look identical to the
+// mockup. What changes is only where they apply:
 //
 // - Every selector gets :where(html.bd-page) in front. The screen puts that
 //   class on <html> while it is open, so none of these rules reach the other
@@ -25,8 +24,7 @@
 //   [data-timers=new] while CraftBeerPi has the timers, M.TIMERS).
 // - The mockup's own strip (.mock, html.bare) is left out, and --mock-h is 0.
 //   So is graphs option B (.gpanel, .ghead, .gcol, .gwin, .gview and
-//   [data-graphs=panel]), kept in the mockup only as the record of what Scott
-//   chose from.
+//   [data-graphs=panel]), which only the mockup keeps.
 // - Its animations are renamed bd-blink, bd-march, bd-flow and bd-ring: names
 //   are global, and another stylesheet's @keyframes of the same name would win.
 import { readFileSync, writeFileSync } from "node:fs";
@@ -41,7 +39,7 @@ const SCOPE = ":where(html.bd-page)";
 function scopeSelector(sel) {
   const s = sel.trim();
   if (s.startsWith(".mock") || s.startsWith("html.bare")) return null;
-  // Graphs option B, the DRAWING / GRAPHS switch Scott turned down (10 Nov), stays in the mockup only.
+  // Graphs option B, the DRAWING / GRAPHS switch, stays in the mockup only.
   if (/^\.(gpanel|ghead|gcol|gwin|gview)\b/.test(s) || s.startsWith("[data-graphs=panel]")) return null;
   if (s === ":root") return SCOPE;
   if (s === "html") return "html.bd-page";
