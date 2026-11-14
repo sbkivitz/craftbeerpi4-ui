@@ -1,6 +1,6 @@
 # Settings, grouped by what they do
 
-A proposal for the CraftBeerPi Settings page, 11 Nov 2026. Nothing is built or changed yet. Updated the same afternoon with the mockup's setting names and, at the end, what each part needs to be built.
+A proposal for the CraftBeerPi Settings page, 11 Nov 2026, updated that afternoon with the mockup's setting names and, at the end, what each part needs to be built. The brewer approved it the same day; Brett built it on 12 Nov, and it is in the 13 Nov release (web UI 14a4108).
 
 **How it's arranged.** The groups follow a brew day: the brewhouse and the recipe first, then mash and sparge, boil, whirlpool and cooling, then the things that run all day (timers and alerts), what CraftBeerPi keeps and sends (logs and data), and last the software itself (plugins, system and dashboards). Inside a stage, settings that act **while you brew** come first, then the defaults that **imported recipes** get. Inside each part, the order is the order you'd meet them, or the main switch first and its details under it.
 

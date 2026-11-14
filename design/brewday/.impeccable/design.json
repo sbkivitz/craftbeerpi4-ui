@@ -1060,7 +1060,7 @@
       },
       {
         "name": "The Hoses Rule",
-        "body": "When a hose has to move, CraftBeerPi switches its pump off, not the screen (core 1c08d4c, 11 Nov 2026): the wort pump as a SpargeStep starts, the HLT pump as the sparge water is ready and the step asks \"Sparge started\", the HLT pump as the runoff ends (the wort pump runs on, draining the mash tun), and whichever still runs as the boil starts. The screen shows the lamp go to OFF and says why in CraftBeerPi's own words: the sparge question names the pumps that are off (\"…ready at 168 °F, and both pumps are off.\"), and the event line carries CraftBeerPi's notification word for word, with \"from CraftBeerPi\". The brewer starts the pumps again by hand. The request was \"Any time I need to change hoses or \"valves\" that respective pump should be off\".",
+        "body": "When a hose has to move, CraftBeerPi switches its pump off, not the screen (core 251edbf, 11 Nov 2026): the wort pump as a SpargeStep starts, the HLT pump as the sparge water is ready and the step asks \"Sparge started\", the HLT pump as the runoff ends (the wort pump runs on, draining the mash tun), and whichever still runs as the boil starts. The screen shows the lamp go to OFF and says why in CraftBeerPi's own words: the sparge question names the pumps that are off (\"…ready at 168 °F, and both pumps are off.\"), and the event line carries CraftBeerPi's notification word for word, with \"from CraftBeerPi\". The brewer starts the pumps again by hand. The request was \"Any time I need to change hoses or \"valves\" that respective pump should be off\".",
         "section": "components"
       },
       {
@@ -1093,7 +1093,7 @@
       "Do let an open timer editor take the step list's room on the one-screen layout, rather than leaving a sliced row; the header still says which step runs, and alerts still come in the title bar (11 Nov 2026).",
       "Do let the first tap or key press (not Escape) allow sound, and let a press on SOUND while it says TAP TO ALLOW allow it and keep it on, silently; never switch it off (timers, built 11 Nov 2026; silent since 12 Nov).",
       "Do leave a number the window already shows off the button: the lamp says HEATING, and the element's power is the window's OUT and the graph's OUT band (as asked on 11 Nov 2026). Layout A, with no OUT, keeps HEATING 62 %.",
-      "Do let CraftBeerPi switch a pump off when its hose has to move, and say so in its words: the sparge question names the pumps that are off, and its notifications go in the event line word for word (core 1c08d4c, 11 Nov 2026).",
+      "Do let CraftBeerPi switch a pump off when its hose has to move, and say so in its words: the sparge question names the pumps that are off, and its notifications go in the event line word for word (core 251edbf, 11 Nov 2026).",
       "Do show the brewery's name from Settings in the title bar at every width, phone included: it is what tells the rig from a simulator (11 Nov 2026).",
       "Do say before the press when a tab opens another program in a browser tab of its own: an icon after its name, and words for screen readers (11 Nov 2026).",
       "Do change a question's line in the event log from \"waiting for you\" to \"answered\" or \"no longer needed\" once it goes, in the plain colour, so Prompt Amber in the log always means something still waits (12 Nov 2026).",

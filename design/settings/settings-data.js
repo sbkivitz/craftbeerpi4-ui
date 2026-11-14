@@ -1,6 +1,6 @@
 /* A snapshot of the simulator's settings (CBPI_CONFIG) from http://127.0.0.1:8000/config/ (cbpi4 4.7.7.post36), with
-   AddMashOutStep and BREWDAY_ALARM_SOUND (marked new: true) from port 8012, and the simulator's kettles, switches,
-   probes and step types (CBPI_THINGS). Generated; do not edit by hand. */
+   AddMashOutStep and BREWDAY_ALARM_SOUND (marked new: true) as port 8012 serves them at cbpi4 4.7.7.post37, and the
+   simulator's kettles, switches, probes and step types (CBPI_THINGS). Generated; do not edit by hand. */
 window.CBPI_CONFIG = {
 "ACTOR_INTERLOCK_GROUPS": {
 "d": "Advanced. Only needed if ACTOR_INTERLOCK_MODE cannot express your rig. Actor NAMES that must never be on together, e.g. 'HLT Heater,Boil Heater'; separate groups with ';'. Renaming an actor silently breaks this, so prefer the mode setting above.",
@@ -82,7 +82,7 @@ window.CBPI_CONFIG = {
 "v": "Yes"
 },
 "BREWDAY_ALARM_SOUND": {
-"d": "Brew-day screen: the sound of a timer that has run out, played every 3 seconds until you answer it; a new message plays its first two beeps. Kitchen timer: four quick, bright beeps. Alarm: a fuller, lower tone, three beeps then two. High beep: three high, pure beeps, the soft ping at full strength. Soft ping: the first sound, quiet. Switching SOUND on at the screen plays it. (default: Kitchen timer)",
+"d": "Brew-day screen: the sound of a timer that has run out, played every 3 seconds until you answer it; a new message plays its first two beeps. Kitchen timer: four quick, bright beeps. Alarm: a fuller, lower tone, three beeps then two. High beep: three high, pure beeps, the soft ping at full strength. Soft ping: the first sound, quiet. Switching SOUND on at the screen makes no sound. (default: Kitchen timer)",
 "new": true,
 "o": [
 {

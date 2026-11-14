@@ -15,7 +15,7 @@ This folder is a proposal. Nothing in it changes CraftBeerPi, and nothing is com
   `#sparge-heat`, `#sparge-ready`, `#sparge-run` and `#sparge-batch` show the new SpargeStep (core
   4.7.7.post35); `#sparge` keeps the old MashStep sparge that recipes already in the book still have.
   `#boil-hold` is the hold before the boil, after a SpargeStep, with the pumps CraftBeerPi switches off for the
-  hoses (core 1c08d4c). The timers
+  hoses (core 251edbf). The timers
   approved on 11 Nov, built that day, are shown by default (`#timers`, `#timer-done`, `#timer-new`,
   `#timer-names`, `#timer-nonames`, `#timers-hand`, `#sound-allow`); add `?timers=today` for the one rest timer the
   screen keeps for an older CraftBeerPi.
@@ -762,7 +762,7 @@ All four use the `#mash` day and recipe with step 4 replaced by a SpargeStep (`S
 
 ## After your port: five small changes (10 Nov, late)
 
-> Built the same evening: you ported 3, 4 and the USUAL wording in 5 (UI c864354, build 66d6de1, on 8012).
+> Built the same evening: you ported 3, 4 and the USUAL wording in 5 (UI 10608b9, build 5cbd721, on 8012).
 > Your design copy matches this folder file for file, and identity is 281/281 again. The released screen on main
 > was whole in all 28 of its moments, so nothing needed back-porting. The timers proposal stays out of the screen
 > (scope-css.mjs) until the brewer approves it.
@@ -857,8 +857,8 @@ Then, on 11 Nov: "add the timers that design agent discussed. Those default name
 changed on brew day. I'd like to have an easy config setting to choose the default timer names from the setup if
 that's easy enough too". The names setting is the next section but one.
 
-> **Built, 11 Nov.** Brett built it the same day: the screen in dc789c6 (build 6f659e3, the web UI's brewday-graphs
-> branch), the server in 246e263, c9c83dc and e36433b (`cbpi\controller\timers_controller.py`,
+> **Built, 11 Nov.** Brett built it the same day: the screen in d14cd4e (build 6aec761, the web UI's brewday-graphs
+> branch), the server in 1a60d39, 8369ac8 and 0784a6d (`cbpi\controller\timers_controller.py`,
 > `cbpi\http_endpoints\http_timers.py`). His identity test matched the mockup 375/375 with `&timers=new`, and the new
 > live test passed 56/56. 8012 runs it. The mockup then took four of the screen's choices and made the timers its
 > default: see "After the build" at the end of this section.
@@ -1029,7 +1029,7 @@ timers. At 1440×900 three names fit and six scroll the page by 28 to 52 px. At 
 
 ### What the server needed: done 11 Nov
 
-1. **A blank setting gives no names** (e36433b, with the setting's description). `config.get()` returns the default
+1. **A blank setting gives no names** (0784a6d, with the setting's description). `config.get()` returns the default
    for a blank value (`config_controller.py`, lines 46 to 55), so a blank list offered the three default names, and
    ConfigUpdate added "Hop stand, Yeast, Vorlauf" back at the next start. Both now look in the cache:
 
@@ -1043,9 +1043,9 @@ timers. At 1440×900 three names fit and six scroll the page by 28 to 52 px. At 
    ```
 
 2. **A saved list reaches the screens already open**: the screen reads the names from the settings, as above.
-3. **One name per timer on the server too** (c9c83dc). `_name()` refuses a name another timer has, with the
+3. **One name per timer on the server too** (8369ac8). `_name()` refuses a name another timer has, with the
    screen's words, comparing with `casefold()`; `_default_name()` skips a "Timer N" the same way.
-4. **A wider box on the Settings page: done** (web UI 4641a7f). Text settings used MUI's default `TextField`
+4. **A wider box on the Settings page: done** (web UI 1f66a3d). Text settings used MUI's default `TextField`
    (about 180 px wide), so most of a six-name list was out of view while he typed it. `fullWidth` alone wouldn't
    have widened it, because the value column only grows to fit what's in it. The brewer chose "wider boxes, and a long
    value wraps": from 900 px wide every text box is 360 px, and six names fit on one line; below that it takes its
@@ -1100,7 +1100,7 @@ Three more, mine, for Brett to take or leave:
   the prompt down (OK and +5 MIN use it too), and the next waiting alarm takes the title bar a second later. Live,
   CraftBeerPi already withdraws the prompt, so only the demo was wrong.
 
-> **Taken, 11 Nov.** Brett took all three as written, in web UI 7b0697d (build 091c9a2). One difference, right for
+> **Taken, 11 Nov.** Brett took all three as written, in web UI d31b4b1 (build 72af3d1). One difference, right for
 > the screen: its `unlockSound()` calls `renderAll()` rather than redrawing only `.snd`, because the screen updates
 > its regions in place and the pressed button stays put. His identity test matched this folder 375/375 (the 11:23
 > copy), asking for `?timers=today` for a build without the timers; the timers live test passed 56/56 and the brew
@@ -1192,7 +1192,7 @@ Three changes, all on `brew-day.html` as it opens:
 - ±1 %, at 13:19: "for BoilPower, I'd like the +/-1 in addition to the +/- 5 you already have."
 - HEATING without its %, at 13:45: "I'd like the "HEATING xx %" button to only show HEATING since the percentage is shown in the graph and as a
   number on the right side of the PID display. It would be cleaner to remove this duplicate version"
-- Pumps off for the hoses, the request your core 1c08d4c (DEFECTS M71) answers: "Any time I need to change hoses or "valves" that respective pump should
+- Pumps off for the hoses, the request your core 251edbf (DEFECTS M71) answers: "Any time I need to change hoses or "valves" that respective pump should
   be off".
 
 The first two need nothing from the server. The third shows what the server now does, and brings the hold before the
@@ -1264,7 +1264,7 @@ The screen builds only layout B, so for you it is always HEATING:
 t = A.kind === "heat" ? (LAYOUT === "a" && !(id === "bkEl" && BK === "power") ? `HEATING ${a.pct} %` : "HEATING") : "RUNNING";
 ```
 
-### Pumps off for the hoses (core 1c08d4c)
+### Pumps off for the hoses (core 251edbf)
 
 The mockup now does what your server does, and shows it the way the screen already shows CraftBeerPi's own doings:
 the lamp goes to OFF, the drawing's line stops, and CraftBeerPi's words say why. The screen never switches these
@@ -1542,7 +1542,7 @@ page titled). The mockup adds "(mockup)".
 
 ### Built (11 Nov, evening)
 
-- Brett built it the same evening: web UI e3735aa, build 5d3d66b. His identity test matches with `?name=` on both
+- Brett built it the same evening: web UI 307014f, build 33ebeb7. His identity test matches with `?name=` on both
   pages: the 30-character name in `#mash`, `#sparge-ready`, `#boil-hold`, `#notarget` and `#offline`, and
   "Simulator 8012", the 36-character name and a blank one in `#mash`, at his five sizes. The page's title is ported
   too. A change in Settings shows at once on open screens.
@@ -1635,7 +1635,7 @@ row keeps its height everywhere (56 px on a monitor, 97 px on a phone). With `?b
 
 ### Built (11 Nov, evening)
 
-- Brett built it the same evening: web UI 625c63a, build 281129d. Every moment opens with the tab, as in the mockup;
+- Brett built it the same evening: web UI df5ed6c, build 971d000. Every moment opens with the tab, as in the mockup;
   his identity test also compares the press, and `#mash` and the timers without the tab (`?brewscribe=none`), at
   every size: 451/451.
 - Item 1 above, how the screen tells: it asks CraftBeerPi `HEAD /brewscribe/`, and anything but 404 counts as
@@ -1741,7 +1741,7 @@ in the next section.
 
 ### Built (11 Nov, night)
 
-- Brett built it the same night (DEFECTS M76; web UI a513fe4, build ad897b3), live on 8012. The special case is gone
+- Brett built it the same night (DEFECTS M76; web UI 9c550bd, build 152bfa7), live on 8012. The special case is gone
   from `auxHTML`, and both CSS rules came over as written, through his scoped stylesheet. His sizes match the
   mockup's, so the PV formula stands unchanged. Identity 451/451 on every moment, size and graphs setting.
 - His live boil power test now reads OUT on both pages: 30 % at the boil power, 25 % after −5, 0 % paused (BOIL still
@@ -1824,7 +1824,7 @@ where it has 2 px. So the " %" goes at exactly the three widths where the PV is 
 
 ### Built (11 Nov, night)
 
-- Brett built it the same night (DEFECTS M77; web UI 1b75633, build c616051), live on 8012. Identity 451/451.
+- Brett built it the same night (DEFECTS M77; web UI ffd9660, build 388b916), live on 8012. Identity 451/451.
 - 1180 px isn't one of his identity sizes, so he added a live check there to his boil power test: HEATING and PAUSED
   fit, the element is at least twice a step, every step is 24 px or more, the " %" is gone while the spoken names
   still say "percent", and pausing doesn't move the AUTO / MANUAL row. 95/95. The build before fails those three
@@ -1928,9 +1928,9 @@ Beeps counted as the sound's oscillators start, and the silent sound as its buff
 
 ### Built (12 Nov, morning)
 
-- Brett built it the same morning (web UI 9faf75d, build 007e146), live on 8012: `cmdSnd()` and `audioOK()` as above,
+- Brett built it the same morning (web UI ab17060, build d55d3c0), live on 8012: `cmdSnd()` and `audioOK()` as above,
   with the mockup's comment above `cmdSnd()`, and `alarm.js`'s header changed. He also changed the core's description of
-  BREWDAY_ALARM_SOUND, which said switching SOUND on plays it (core 3000cbd).
+  BREWDAY_ALARM_SOUND, which said switching SOUND on plays it (core aff4684).
 - Checks: identity 451/451, so no picture changes. His alarm sound test went from 22 to 32 checks, all passing: a
   press on SOUND plays nothing and starts the one silent sound; a real warning from CraftBeerPi (the interlock refusing
   a second heating element) plays each of the four sounds' first two pulses; a run-out timer still plays its whole
@@ -2102,7 +2102,7 @@ function boilStarted() {
 
 ### Built (12 Nov, morning)
 
-Brett built it and put it live on 8012: UI 0cec5eb, build 2f64c39 (main.3af9a77b.js). `rig.js` is the mockup's, with
+Brett built it and put it live on 8012: UI e2c2d43, build 97aebf9 (main.3af9a77b.js). `rig.js` is the mockup's, with
 his header and export; the screen draws `?wp=chill`; `boilStarted()`, `renderRig` and `rigDesc` are as above; the CSS
 came through scope-css; the `#whirlpool` moment is `?demo=whirlpool`. design/brewday was synced as of 09:50, with
 `whirlpool.html`.
@@ -2267,7 +2267,7 @@ Brett's live run on 12 Nov found two differences: the stand's notice comes first
 
 ## A question's line turns "answered": ready to build (12 Nov, afternoon)
 
-Brett ran `#finished` against the live screen (UI cf501e6) and found two differences:
+Brett ran `#finished` against the live screen (UI f76694c) and found two differences:
 
 1. **A question's line stays "waiting for you"**, in amber, after it's answered. The screen never changes a line once
    it's logged; the answer adds a line of its own. My moments show such lines as "answered": the malt, the hop alert,
@@ -2511,13 +2511,13 @@ Only in the event line:
 
 ## The event log's order, warnings, and CraftBeerPi's own words: ready to build (12 Nov, late afternoon)
 
-Brett built the last section (M81: UI 60b858b, build 95a1f17; identity 471/471, and his live tests pass) and ran it
+Brett built the last section (M81: UI 963c600, build 4d10413; identity 471/471, and his live tests pass) and ran it
 live. What came back, and what I've decided:
 
 - **His call, agreed:** a question that drops off as the page connects again, or after a restart, with no reason from
   CraftBeerPi, says "no longer waiting", as on a page opened later. The page can't tell whether it was answered or
   taken down. DESIGN.md now says so.
-- **Brewing Complete is now kept for pages opened later** (core 3eda6aa). Nothing to design.
+- **Brewing Complete is now kept for pages opened later** (core 393449d). Nothing to design.
 - The rest is below: the order of lines that arrive together (1), warnings (2), two live lines that say something
   untrue (3), the demo (4), and the questions CraftBeerPi still doesn't keep (5).
 
@@ -2718,7 +2718,7 @@ The other changes are in LOG only.
 
 ### Built (12 Nov, late afternoon)
 
-Brett built all of it (M82: UI 8623f57, build 9288b45, main.5506e3a5.js; core 6272e9b), live on 8012 after its
+Brett built all of it (M82: UI a6f1971, build 59bedb5, main.5506e3a5.js; core 287ba9a), live on 8012 after its
 restart. His live runs give the order above, word for word: the sparge's end (`#boil-hold`), START THE BOIL
 (`#heatup`), and the whirlpool to the end (`#hold`, `#finished`).
 
@@ -2835,7 +2835,7 @@ None. The mockup has no other screen, so this is live only.
 
 ### Built (12 Nov, evening)
 
-Brett built it (M83: UI 62b70b9, build ca2074c, main.2117d396.js; core 12213a2; tests 135ebf1), live on 8012. He took
+Brett built it (M83: UI d45186a, build b1a0c19, main.2117d396.js; core 5de41ae; tests dba0c2a), live on 8012. He took
 the optional part too: CraftBeerPi now sends the label of the button that was pressed when it takes a question down as
 answered. So the line names it, as an answer here does: "MashIn answered: Next Step", "Hop Alert answered: Added",
 "Resume brew? answered: Resume", each "· from another screen". With an older core it's "Hop Alert answered". A timer's
@@ -3020,7 +3020,7 @@ only. I haven't added BrewScribe's reminders to the moments: they're Porter's, a
 
 ### Built (12 Nov, evening)
 
-Brett built it (M84: UI cd249f3, build 4c61a03), with a fix of his own (M85: UI 919cd90, build 63bde9d,
+Brett built it (M84: UI 2696819, build 819b513), with a fix of his own (M85: UI fbc0eb7, build 9029e50,
 main.5a5e11a6.js). 8012 runs both, with BrewScribe logger.16.
 
 His calls, all agreed:
@@ -3212,8 +3212,8 @@ None of the 32 there were. The two new ones are added.
 
 ### Built (13 Nov, midday)
 
-Brett built all three of today's sections together: web UI a15d667, built in 2e6a9e8 as main.61b624e7.js, live on 8012.
-This one is M87, with the alarm in a new core extension, `cbpi/extension/byhand` (core 47ec4e6).
+Brett built all three of today's sections together: web UI 0b299b8, built in 0ff9458 as main.61b624e7.js, live on 8012.
+This one is M87, with the alarm in a new core extension, `cbpi/extension/byhand` (core c70bd9f).
 
 - **As designed:** the four lines, `#byhand` and `#byhand-past`, the demo's alarm tick, and CraftBeerPi's alarm as an
   error with the words above.
@@ -3258,7 +3258,7 @@ In the walk above: OK on the alarm leaves no new line, and every copy with its w
 
 ### Built (13 Nov, midday)
 
-M88, in the same build as the last section (main.61b624e7.js), with core 165097e. An OK on this screen sends
+M88, in the same build as the last section (main.61b624e7.js), with core a3b25a0. An OK on this screen sends
 `POST /notification/<id>/seen`. CraftBeerPi tells every page, and also gives a page the list of what was seen as it
 connects. Lines say "seen" only where they were still amber or red, so a warning pushed out, or kept from an earlier
 page, is left plain, as designed. Identical errors show once. A new live walk, test_e2e_brewday_seen, runs a monitor, a
@@ -3604,8 +3604,8 @@ Not chosen:
 
 Two parts, each kept whole:
 
-- `Web UI 0.5.1.a3.post12+a15d667, built 13 Nov 11:12`
-- `CraftBeerPi 4.7.7.post36+165097e`
+- `Web UI 0.5.1.a3.post12+0b299b8, built 13 Nov 11:12`
+- `CraftBeerPi 4.7.7.post36+a3b25a0`
 
 They sit side by side, 14 px apart (`flex-wrap`, `column-gap`), where the column has room: 1920 wide, and tablets.
 Where it doesn't (1180 and 1366 wide, and phones), CraftBeerPi's goes on a second line. At 12 px the full line takes
@@ -3904,7 +3904,8 @@ In your test's set-up: the page clock paused, the fonts served from `cbpi4gui\sr
 Chromium (1243, from `craftbeerpi4\.venv`) with your switches.
 
 - **Before and after, all 37 moments at your five sizes,** in five set-ups: a graphs build with the timers and with
-  `?timers=today`, and the released build's with the full line, `?ver=release` and `?ver=none` (925 pages each).
+  `?timers=today`, and the released build's with the full line, `?ver=release` and `?ver=none` (185 pages in each,
+  before and after).
   - With the timers, the list moved in none of 185.
   - Without, the current step was cut in 13 of 185 before (5 with `?ver=none`, so 8 came with the versions line), and
     in none after.

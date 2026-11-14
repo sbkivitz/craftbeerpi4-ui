@@ -14,6 +14,7 @@
   so where a step only just fits the list can start lower than it needs to; and in his build each update from
   CraftBeerPi pulls a hand-scrolled list back to the current step. A gentler rule, scrolling only when the current step
   or the list's height changes, would leave the brewer's own scrolling alone.
+- Handed to Brett; released on 13 Nov in web UI 0.5.1.a3.post13 (14a4108).
 
 ## The sparge through the HERMS coil (13 Nov 2026, late afternoon)
 - The request, on 8012: "on my sparge step, I actually run the HLT water through the HERMS coil and then into the Mash
@@ -34,7 +35,8 @@
   so its tag ran into the line to the boil kettle); a route under the HLT pump (through its labels); off-page
   connectors (less readable than one hop).
 - Checked: what lights in each phase, the hop at twice the scale, and every moment's picture before and after: the
-  drawing is the only thing that changes, and phones not at all. Handed to Brett.
+  drawing is the only thing that changes, and phones not at all. Handed to Brett; released on 13 Nov in web UI
+  0.5.1.a3.post13 (14a4108).
 
 ## Reset after STOP, and the versions on the screen (13 Nov 2026, afternoon)
 - The brewer on 8012, relayed by Brett: "Seems to me that there needs to be a way to reset the brewday progress after hitting
@@ -77,7 +79,9 @@
 - Checked: the walk and the presses (the boil hold, Escape, STAY, NEXT, ALL OFF, keyboard, no connection, the greyed
   NEXT STEP's words); 224 pictures of the 32 older moments with the versions' line hidden, 201 identical, the other 23
   being #boil-hold's middle button and this morning's PID hold; and the line in all 37 moments at 8 sizes and
-  configurations, never cutting the current step or spilling. Handed to Brett.
+  configurations, never spilling. It did cut the current step at 1440×900 without the timers, which that check left
+  out; found that evening, and fixed by the step list following the current step there too (above). Handed to Brett;
+  released on 13 Nov in web UI 0.5.1.a3.post13 (14a4108).
 
 ## A hold held by a PID (13 Nov 2026, late morning)
 - Brett put BoilPower 0.0.3.post8 on both simulators: any boil kettle target below the boil is held by a PID, with
@@ -95,7 +99,7 @@
   PID doesn't make.
 - Checked: 15 presses through the new hold model; 224 pictures before and after, 208 identical, the other 16 changed
   only in the boil kettle's faceplate and the event line of #hold, #whirlpool and #finished. Handed to Brett.
-- Built the same day with the two below (M86-M88: web UI a15d667, build 2e6a9e8, live on 8012). I read his code against
+- Built the same day with the two below (M86-M88: web UI 0b299b8, build 0ff9458, live on 8012). I read his code against
   the design: the same words, and "seen" only where a line was still amber or red.
 
 ## Heating by hand, and OK on a warning from any screen (13 Nov 2026)
@@ -134,7 +138,7 @@
   states), each one line, buttons never moving; 224 pictures of the 32 moments before, identical. Handed to Brett.
 - Left out, and said so: a hard limit belongs in the rig; the mash tun heated through the coil by hand has no line of its
   own.
-- Built the same day (M87, core 47ec4e6; M88, core 165097e). Live, the alarm's 2 °F is 1 °C on a Celsius brewery. In a
+- Built the same day (M87, core c70bd9f; M88, core a3b25a0). Live, the alarm's 2 °F is 1 °C on a Celsius brewery. In a
   slow test run the HLT stayed on long enough to near the boil, and the second alarm came as designed.
 
 ## Which question the title bar shows first, and when it beeps (12 Nov 2026, evening)
@@ -293,7 +297,7 @@
   what lets the page play sound later. `audioOK()` now starts a silent one-sample sound in the press instead.
 - Checked: a SOUND press 0 beeps (2 before) and 1 silent sound; alerts still 2 beeps; a run-out timer still 3 every
   3 s; pictures identical at 1920, 1180 and 390 px. Handed to Brett (`screen.js` cmdSnd and audioOK, `alarm.js`'s
-  header). Built the same morning (web UI 9faf75d, build 007e146; identity 451/451; his alarm sound test 32/32, and
+  header). Built the same morning (web UI ab17060, build d55d3c0; identity 451/451; his alarm sound test 32/32, and
   the build before fails exactly the five silent-press checks).
 
 ## OUT back on the boil kettle's window (11 Nov 2026, night)
@@ -314,7 +318,7 @@
   now has a limit worked out from the window's width, the same for all three, keeping it 6 px clear: 40.6 px at 1180,
   53.5 at 1280, 50.2 at 900; unchanged at the brewer's monitor, half of it and his phone. The big number gives way, not
   the small ones: the small words are near their legibility floor, and the PV at 40 px is still twice OUT.
-- Built by Brett the same night (M76; web UI a513fe4, build ad897b3; identity 451/451; his live boil power test reads
+- Built by Brett the same night (M76; web UI 9c550bd, build 152bfa7; identity 451/451; his live boil power test reads
   OUT through a pause, MANUAL and back, 92/92).
 - Also found: the −5 −1 HEATING +1 +5 row left HEATING 29 px at 1180, 53 at 900 and 62 at 1280 (it needs about 73),
   so where the window was narrow the boil-over button was the smallest; at 1180 a pause also wrapped its hint onto
@@ -323,7 +327,7 @@
   narrowest windows the steps give way instead (32 px at 1180, still full height, above WCAG 2.5.8's 24 px), and
   there they read −5 −1 +1 +5, like the power box's steps. Which button gives way follows from what each is for: a
   slip on a narrow step costs one step of power or a pause a held press undoes; a boil-over needs the element at once.
-  Built by Brett the same night (M77, web UI 1b75633, build c616051; identity 451/451; a live check at 1180 px, which
+  Built by Brett the same night (M77, web UI ffd9660, build 388b916; identity 451/451; a live check at 1180 px, which
   his identity sizes don't include, 95/95).
 - The brewer renamed 8012 again, to "EBrews - Simulator" (18 characters): so the simulators are now told from the rig by
   name, as suggested. It fits as designed: one line on a monitor, two whole lines on a 360 px phone.
@@ -358,13 +362,13 @@
   Porter's answer (his newer build, not yet installed): BrewScribe shows CraftBeerPi's waiting prompts on its own alarm
   line, "Answer in Brew Day ↗", until answered on any screen, and gets them back after a paused tab returns. It plays
   no sound; whether it should is the brewer's call. If he wants it, the two tabs must not both ring on one screen.
-- Built the same evening by Brett: the name in web UI e3735aa (build 5d3d66b), BREWSCRIBE in 625c63a (build 281129d),
+- Built the same evening by Brett: the name in web UI 307014f (build 33ebeb7), BREWSCRIBE in df5ed6c (build 971d000),
   identity 451/451. The screen shows BREWSCRIBE where CraftBeerPi answers `HEAD /brewscribe/` with anything but 404,
   remembered per device so the tab row doesn't move as it opens. The brewer then shortened his 8012 name to "EBrews".
   Checked on 8012 by looking only: as the mockup at 1920, 960 and 390 px.
 
 ## Pumps off for the hoses; the hold before the boil; long questions (11 Nov 2026, late afternoon)
-- Brett's core 1c08d4c (DEFECTS M71), for the brewer: "Any time I need to change hoses or "valves" that respective pump
+- Brett's core 251edbf (DEFECTS M71), for the brewer: "Any time I need to change hoses or "valves" that respective pump
   should be off", and imported recipes should do it without hand edits. CraftBeerPi now switches a pump off where its
   hose moves: the wort pump as a SpargeStep starts, the HLT pump as the water is ready, the HLT pump as the runoff
   ends (the wort pump runs on to drain the mash tun), and whichever runs as the boil starts. The mockup mirrors it:
@@ -418,7 +422,7 @@
   altogether (Brett left that to me; the screen builds only B).
 
 ## Timers built; the mockup's default (11 Nov 2026)
-- Brett built the timers and the names the same day (screen dc789c6, server 246e263, c9c83dc, e36433b); identity
+- Brett built the timers and the names the same day (screen d14cd4e, server 1a60d39, 8369ac8, 0784a6d); identity
   375/375 with &timers=new. The mockup now shows them by default, as it did ?bk=power; ?timers=new draws the same
   (116 of 116 moments and views, pixel for pixel), and ?timers=today keeps the rest timer for an older CraftBeerPi.
 - Took four of the screen's choices: a press on SOUND while TAP TO ALLOW allows it and keeps it on with two beeps (it
@@ -433,9 +437,9 @@
 - Found while testing: in the simulation (the mockup's and the screen's demo mode), removing or setting a finished
   timer left its alarm pulsing in the title bar with dead buttons. Fixed with tAnswered(). CraftBeerPi itself
   already withdraws the prompt.
-- Brett took all three in web UI 7b0697d (identity 375/375, ?timers=today for a build without the timers). He also
+- Brett took all three in web UI d31b4b1 (identity 375/375, ?timers=today for a build without the timers). He also
   made the Settings page's text boxes 360 px wide from 900 px, wrapping a long value (the brewer's choice: "wider boxes,
-  and a long value wraps"), so six timer names fit on one line (4641a7f).
+  and a long value wraps"), so six timer names fit on one line (1f66a3d).
 
 ## Timers approved; names from Settings (11 Nov 2026)
 - The brewer: "add the timers that design agent discussed. Those default names are fine as long as they're easily
@@ -482,8 +486,8 @@
   without the doubled "set").
 - Agreed with the rest of Brett's port decisions (older BoilPower keeps the old faceplate, two sparge event lines,
   NEXT/Stop leave the HLT's target, the 3.6 °F edge). New designs avoid the class name `box`: App.css shadows it.
-- Brett ported the tag lines, the title bar rule and the USUAL wording the same evening (UI c864354, build
-  66d6de1); identity 281/281 against this folder again.
+- Brett ported the tag lines, the title bar rule and the USUAL wording the same evening (UI 10608b9, build
+  5cbd721); identity 281/281 against this folder again.
 
 ## Timers, proposed (10 Nov 2026, evening; for the brewer to review)
 - The brewer, after using the rest timer: "why is it named that? lots of things use a timer during a brew day", an
