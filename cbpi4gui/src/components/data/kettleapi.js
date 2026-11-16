@@ -97,6 +97,62 @@ export const action = (id, action, parameter = {}, callback_susscess = () => {},
     });
 };
 
+// A kettle's settings as a file of its own. CraftBeerPi makes the file, works
+// out what loading one would change (the preview), and loads it once the
+// brewer has confirmed that preview, so the checks live in one place.
+
+// What a failed request says, for the brewer: CraftBeerPi's own reason when it
+// gave one.
+export const fileError = (error, fallback) => {
+  const data = error?.response?.data;
+  if (data && typeof data === "object" && data.detail) {
+    return data.detail;
+  }
+  if (!error?.response) {
+    return "CraftBeerPi didn't answer. Check the connection and try again.";
+  }
+  return fallback;
+};
+
+// The name a download was given: Content-Disposition's filename* (any
+// characters), else its filename, else the fallback.
+export const attachmentName = (disposition, fallback) => {
+  const text = disposition || "";
+  const encoded = /filename\*=UTF-8''([^;]+)/i.exec(text);
+  if (encoded) {
+    try {
+      return decodeURIComponent(encoded[1].trim());
+    } catch (e) {
+      // fall through to the plain name
+    }
+  }
+  const plain = /filename="([^"]*)"/i.exec(text);
+  return plain && plain[1] ? plain[1] : fallback;
+};
+
+// The file's text is sent exactly as it was read: a file that isn't JSON at
+// all must reach CraftBeerPi as it is, to be refused with the reason, rather
+// than be quoted into a JSON string by axios on the way.
+const asIs = { headers: { "Content-Type": "application/json" }, transformRequest: [(data) => data] };
+
+// -> {name, text}: the file, and the name CraftBeerPi gave it.
+export const settingsFile = async (id) => {
+  const response = await axios.get("/kettle/" + id + "/file", { responseType: "text", transformResponse: [(data) => data] });
+  return { name: attachmentName(response.headers["content-disposition"], "kettle settings.json"), text: response.data };
+};
+
+// -> the preview: what loading the file would change. id null: what it would
+// make a new kettle.
+export const previewFile = async (id, text) => {
+  const url = id ? "/kettle/" + id + "/file/preview" : "/kettle/file/preview";
+  return (await axios.post(url, text, asIs)).data;
+};
+
+// -> {kettle, changes, plan}: loaded, as the preview with this token showed.
+export const loadFile = async (id, text, token) => {
+  return (await axios.post("/kettle/" + id + "/file?token=" + encodeURIComponent(token), text, asIs)).data;
+};
+
 export const kettleapi = {
   add,
   remove,
@@ -105,5 +161,8 @@ export const kettleapi = {
   action,
   save,
   start,
-  stop
+  stop,
+  settingsFile,
+  previewFile,
+  loadFile,
 }

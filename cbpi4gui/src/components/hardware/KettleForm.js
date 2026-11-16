@@ -1,4 +1,4 @@
-import { Container, Breadcrumbs, Divider, Link, Paper, Typography } from "@mui/material";
+import { Box, Container, Breadcrumbs, Divider, Link, Paper, Typography } from "@mui/material";
 import { styled } from '@mui/material/styles';
 import Button from "@mui/material/Button";
 import Grid from "@mui/material/Grid";
@@ -12,6 +12,8 @@ import ActorSelect from "../util/ActorSelect";
 import LogicSelect from "../util/LogicSelect";
 import PropsEdit from "../util/PropsEdit";
 import SensorSelect from "../util/SensorSelect";
+import KettleFileActions from "./KettleFileActions";
+import { formSnapshot } from "./kettleFile";
 
 const PREFIX = 'KettleForm';
 
@@ -87,10 +89,13 @@ const KettleForm = () => {
   // The settings each other logic last had on this kettle, from the server's
   // props_by_type, plus any put aside while this form is open.
   const [propsByType, setPropsByType] = useState({});
+  // The form as it held the kettle when it was last filled from the server: what
+  // the settings file's buttons compare with to tell unsaved changes.
+  const [baseline, setBaseline] = useState(null);
+  const record = kettle.find((item) => item.id === id);
 
-  // See useLoadExisting. This is the form where a blank save costs the most: a
-  // kettle's props are its control logic's configuration, PID gains included.
-  const ready = useLoadExisting(id, kettle.find((item) => item.id === id), (item) => {
+  // Fill the form from the kettle as CraftBeerPi has it.
+  const fill = (item) => {
     setName(item.name);
     setHeater(item.heater);
     setAgitator(item.agitator);
@@ -98,7 +103,12 @@ const KettleForm = () => {
     setSensor(item.sensor);
     setProps(item.props);
     setPropsByType(item.props_by_type || {});
-  });
+    setBaseline(formSnapshot(item));
+  };
+
+  // See useLoadExisting. This is the form where a blank save costs the most: a
+  // kettle's props are its control logic's configuration, PID gains included.
+  const ready = useLoadExisting(id, record, fill);
 
   // Separate from loading, because the logic list can arrive after the record.
   useEffect(() => {
@@ -151,23 +161,49 @@ const KettleForm = () => {
     }
   }
 
+  const unsaved = Boolean(id) && baseline !== null && formSnapshot({ name, type, heater, agitator, sensor, props }) !== baseline;
+
+  // A new kettle filled in from a settings file: everything it holds, and its
+  // name unless one has been typed already. Saved, as ever, by Save.
+  const fillFromFile = (after) => {
+    setName((typed) => (typed && typed.trim() ? typed : after.name || ""));
+    setType(after.type || "");
+    setHeater(after.heater || "");
+    setAgitator(after.agitator || "");
+    setSensor(after.sensor || "");
+    setProps({ ...(after.props || {}) });
+  };
+
   return (
     (<Root>
       <Container maxWidth="lg">
-        <Typography variant="h6" gutterBottom>
-          Kettle Config
-        </Typography>
-        <Breadcrumbs aria-label="breadcrumb">
-          <Link
-            color="inherit"
-            onClick={() => {
-              navigate("/hardware");
-            }}
-          >
-            Kettle
-          </Link>
-          <Typography color="textPrimary">{name}</Typography>
-        </Breadcrumbs>
+        <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", justifyContent: "space-between", columnGap: 3, rowGap: 2, mb: 1 }}>
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              Kettle Config
+            </Typography>
+            <Breadcrumbs aria-label="breadcrumb">
+              <Link
+                color="inherit"
+                onClick={() => {
+                  navigate("/hardware");
+                }}
+              >
+                Kettle
+              </Link>
+              <Typography color="textPrimary">{name}</Typography>
+            </Breadcrumbs>
+          </Box>
+          <KettleFileActions
+            id={id}
+            name={record?.name || name}
+            auto={record?.state === true}
+            unsaved={unsaved}
+            ready={ready}
+            onLoaded={fill}
+            onFill={fillFromFile}
+          />
+        </Box>
 
         <Divider />
         <Paper className={classes.paper}>
