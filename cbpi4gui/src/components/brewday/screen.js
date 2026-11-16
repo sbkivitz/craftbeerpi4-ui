@@ -1915,6 +1915,15 @@ function ring(pulses) {
   if (!M.TIMERS || !st.snd || !st.snd.on || !st.snd.ok || !actx) return;
   playSound(actx, actx.destination, actx.currentTime + 0.02, st.alarmSound, pulses);
 }
+/* a timer that has run out: its whole burst every 3 s until it is answered, checked at each second's tick and as each
+   message from CraftBeerPi arrives. A tab behind another runs its ticks as seldom as once a minute, but the messages
+   still arrive on time, so the first burst sounds as CraftBeerPi says the timer has run out. Timed from the last burst,
+   not by the clock's seconds: a tick a few ms early or late could land twice in one second, and two bursts a second
+   apart would run into each other */
+function alarmCheck() {
+  if (DEMO_MODE || !st || !M || !M.TIMERS) return;
+  if ((st.tmrs || []).some(t => t.state === "done") && Date.now() - rangAt >= 2500) { rangAt = Date.now(); ring(); }
+}
 /* SOUND as this device left it. A browser set to play sound without a tap (a kiosk's --autoplay-policy) is allowed at once */
 function soundInit() {
   let on = false;
@@ -2009,9 +2018,7 @@ function liveTmTick() {
     else if (t.state === "done") setText($("#tt-" + t.id), "+" + tfmt(tUp(t)));
   }
   const m = $("#tml-t"); if (m) m.innerHTML = tmlText();
-  // every 3 s while one waits, from the moment it runs out. Timed from the last, not by the clock's seconds: a tick a few
-  // ms early or late could land twice in one second, and two bursts a second apart would run into each other
-  if (st.tmrs.some(t => t.state === "done") && Date.now() - rangAt >= 2500) { rangAt = Date.now(); ring(); }
+  alarmCheck();
 }
 const TAB_PATH = {"Recipe Book": "/recipes", "Brew Steps": "/mashprofile"};
 function go(path) { if (opts.navigate) opts.navigate(path); else window.location.hash = "#" + path; }
@@ -2162,6 +2169,7 @@ function applyLive(snap) {
   if (!PAGE && !st.recipe && !bookShown) { bookShown = true; loadBook(); }
   if (st.recipe) bookShown = false;
   powerModeChanged(st.v.bk.mode);
+  alarmCheck();
 }
 /* a running kettle logic owns its heater, and a HERMS also the pump through its coil (the mash tun's first:
    its HERMS outranks the HLT's own AUTO) */
