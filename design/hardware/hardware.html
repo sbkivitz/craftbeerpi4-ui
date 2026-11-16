@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en" data-layout="b">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hardware · CraftBeerPi proposal (mockup)</title>
+<!--
+DIRECTION CONTRACT (Impeccable; source: .impeccable/decisions/direction-log.md)
+THESIS: The Hardware page is the brewhouse x-rayed: Brew Day's own drawing, with what CraftBeerPi has at each vessel
+named, wired and live under it, and every part listed by vessel. It refuses three tables of IDs and icons.
+OWN-WORLD: The brew-day touch panel unchanged: slate panels, Barlow Condensed capitals, PV-red readings, lamp-topped
+ON/OFF buttons, the line drawing; Settings' rows, the plain name first and CraftBeerPi's key under it in Dim Steel.
+STORY: At the desk the brewer finds a part by its vessel, sees what it's called and how it's wired, changes it in plain
+words, and knows what saving will switch off before he saves.
+FIRST VIEWPORT: Left, the list by vessel with live readings and one-tap switches. Right, under FIND, + ADD, UNDO and
+SAVE, the drawing with a nameplate under each vessel, as Brew Day puts its faceplates. From 701 to 1179 px the list
+scrolls between the tool row at the top and the drawing docked at the bottom.
+FORM: the brewhouse drawing as the way in, 4th of 7; staging: an x-ray of Brew Day's drawing; seed c966e2d4.
+
+This is a proposal mockup. Its hardware is the simulator's (http://127.0.0.1:8012), read once, or the rig's as its
+records in cbpi-rig-comms give it; it saves nothing and talks to no CraftBeerPi. Scenes are listed in the strip at the top;
+add ?bare to hide it. The frame (title bar, last event, tabs) is the brew-day screen's layout B, as Settings has it.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="hardware.css">
+</head>
+<body>
+<nav class="mock" id="mock" aria-label="Mockup scenes (not part of the design)">
+  <strong>Hardware mockup.</strong> Show:
+  <a href="#open">As it opens</a>
+  <a href="#rig">The rig</a>
+  <a href="#kettle">A kettle, from a link</a>
+  <a href="#probe">A probe</a>
+  <a href="#switch">A switch, on the rig</a>
+  <a href="#pin">A pin already in use</a>
+  <a href="#find">Find "p gain"</a>
+  <a href="#changes">3 changes, AUTO on</a>
+  <a href="#empty">Empty settings</a>
+  <a href="#ask">SAVE, with settings empty</a>
+  <a href="#saved">Saved, one didn't</a>
+  <a href="#delete">Delete asks first</a>
+  <a href="#add">Adding a probe</a>
+  <a href="#file">Loading a settings file</a>
+  <a href="#fillin">The file, with empty settings filled in</a>
+  <a href="#stale">A file, after the kettle changed</a>
+  <a href="#badfile">A file that isn't one</a>
+  <a href="#fill">A new kettle from a file</a>
+  <a href="#leave">Leaving with changes</a>
+  <a href="#waiting">A link, before the item arrives</a>
+  <a href="#missing">A link to nothing</a>
+  <a href="#offline">Connection lost</a>
+  <span class="lay">The rig's switches, probes and kettles are from its records of 8 to 10 Oct. Its probe addresses, readings and Boil Kettle settings are made up.</span>
+</nav>
+<div class="app" id="app" data-link="ok">
+  <header class="topbar">
+    <p class="brand"><span class="bname" id="bname">CraftBeerPi Brewery</span></p>
+    <div class="banner" id="banner" data-tone="ok"></div>
+    <p class="link" id="link" data-link="ok"><i aria-hidden="true"></i><span id="link-t">Connected</span></p>
+    <button class="alloff" id="alloff" type="button">ALL OFF</button>
+    <p class="clock" id="clock">14:32</p>
+  </header>
+
+  <section class="status" aria-label="The last event">
+    <div class="event" id="event"></div>
+  </section>
+
+  <nav class="tabs" aria-label="Screens">
+    <a href="#tab" data-tab="Brew day">Brew day</a>
+    <a href="#tab" data-tab="Brew steps"><span class="long">Brew steps</span><span class="short">Steps</span></a>
+    <a href="#tab" data-tab="Recipe book"><span class="long">Recipe book</span><span class="short">Recipes</span></a>
+    <a href="#tab" data-tab="Analytics">Analytics</a>
+    <a href="#tab" data-tab="Hardware" aria-current="page">Hardware</a>
+    <a href="#tab" data-tab="Settings">Settings</a>
+    <a href="#tab" data-tab="More">More</a>
+    <a href="#tab" data-tab="BrewScribe" class="ext"><span class="lbl">Brew<wbr><span class="nw">Scribe<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M5 1.8H2.4a.6.6 0 0 0-.6.6v7.2c0 .3.3.6.6.6h7.2c.3 0 .6-.3.6-.6V7M7.2 1.8h3v3M10.2 1.8 5.6 6.4"/></svg></span></span><span class="sr"> (opens in its own tab)</span></a>
+  </nav>
+
+  <main class="main" id="main" data-view="index">
+    <div class="top" id="top"><div class="tool" id="tool"></div><div class="note" id="note" role="region" aria-label="Waiting for you" hidden></div></div>
+    <aside class="idx" id="idx" aria-label="Hardware by vessel"></aside>
+    <section class="pane" id="pane" aria-label="The brewhouse, or the item open">
+      <div id="view"></div>
+    </section>
+    <section class="dock" id="dock" aria-label="The brewhouse drawing">
+      <div class="xhd"><h2>Brewhouse</h2><p id="dk-t">Tap a part, or its line above, to open its settings.</p></div>
+      <div class="xrig" id="dkrig"></div>
+    </section>
+  </main>
+  <div class="savebar" id="savebar" hidden></div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+<p class="sr" id="sr" aria-live="polite"></p>
+<input type="file" id="kettle-file-input" accept=".json,application/json" hidden data-kettle-file="input">
+<script src="rig.js"></script>
+<script src="hardware-data.js"></script>
+<script src="hardware-catalog.js"></script>
+<script src="hardware.js"></script>
+</body>
+</html>
