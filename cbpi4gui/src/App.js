@@ -11,10 +11,8 @@ import CBPiSystem from "./components/system";
 import {Dashboard2 , FixDashboard} from "./components/dashboard/Dashboard";
 import BrewDay from "./components/brewday/BrewDay";
 import Hardware from "./components/hardware";
-import ActorForm from "./components/hardware/ActorForm";
-import KettleForm from "./components/hardware/KettleForm";
+import Fermenters from "./components/hardware/Fermenters";
 import FermenterForm from "./components/hardware/FermenterForm";
-import SensorForm from "./components/hardware/SensorForm";
 import Plugins from "./components/plugins";
 import MashProfile from "./components/mashprofile";
 import FermenterProfile from "./components/fermenterprofile";
@@ -241,6 +239,14 @@ const CraftBeerPiApp = () => {
           {/* Settings, in the brew-day screen's frame: its title bar and tabs, SETTINGS lit. */}
           <Route path="settings" element={<Settings />} />
           <Route path="settings/:source" element={<Settings />} />
+          {/* Hardware, in the same frame with HARDWARE lit: the list, and each kettle, probe and switch, or a new one. */}
+          <Route path="hardware" element={<Hardware />} />
+          <Route path="kettle/:id" element={<Hardware />} />
+          <Route path="kettle" element={<Hardware />} />
+          <Route path="sensor/:id" element={<Hardware />} />
+          <Route path="sensor" element={<Hardware />} />
+          <Route path="actor/:id" element={<Hardware />} />
+          <Route path="actor" element={<Hardware />} />
           <Route element={<AppLayout appBarHeight={appBarHeight} /> } >
                   <Route path="dashboard" element={<Dashboard2 />}/>   
                   <Route path="fixdash/:dashboardid" element={<FixDashboard />}/>
@@ -248,15 +254,9 @@ const CraftBeerPiApp = () => {
                   <Route path="about" element={<About />}/>
                   <Route path="upload" element={<Upload />}/>
                   <Route path="system" element={<CBPiSystem />}/>
-                  <Route path="hardware" element={<Hardware />}/>
-                  <Route path="kettle/:id" element={<KettleForm />}/>
-                  <Route path="kettle" element={<KettleForm />}/>
+                  <Route path="fermenters" element={<Fermenters />}/>
                   <Route path="fermenter/:id" element={<FermenterForm />}/>
                   <Route path="fermenter" element={<FermenterForm />}/>
-                  <Route path="actor/:id" element={<ActorForm />}/>
-                  <Route path="actor" element={<ActorForm />}/>
-                  <Route path="sensor/:id" element={<SensorForm />}/>
-                  <Route path="sensor" element={<SensorForm />}/>
                   <Route path="mashprofile" element={<MashProfile />}/>
                   <Route path="fermenterprofile/:fermenterid" element={<FermenterProfile />}/>
                   <Route path="fermenterprofile" element={<FermenterProfile />}/>

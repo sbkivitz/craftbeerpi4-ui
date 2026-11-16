@@ -31,20 +31,3 @@ export const readChosenFile = async (file) => {
   }
   return await file.text();
 };
-
-const sorted = (value) => {
-  if (Array.isArray(value)) {
-    return value.map(sorted);
-  }
-  if (value && typeof value === "object") {
-    return Object.keys(value)
-      .sort()
-      .reduce((out, key) => ({ ...out, [key]: sorted(value[key]) }), {});
-  }
-  return value === undefined || value === null ? "" : value;
-};
-
-// What the kettle form edits, as text that two equal forms share: for telling
-// whether the form still holds the kettle as it was saved.
-export const formSnapshot = ({ name, type, heater, agitator, sensor, props }) =>
-  JSON.stringify(sorted({ name, type, heater, agitator, sensor, props: props || {} }));

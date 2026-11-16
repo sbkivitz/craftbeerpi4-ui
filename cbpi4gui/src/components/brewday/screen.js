@@ -129,11 +129,13 @@ const TIMER_RAN_OUT = /^The \d+(?::\d\d){1,2} timer has run out\.$/;
 
 /* ---------- the screen's markup: the mockup's page, after layout B's moves ---------- */
 const MORE = [["#/dashboard", "Dashboard"], ["#/fermenterprofile", "Fermenter profile"], ["#/plugins", "Plugins"], ["#/system", "System"], ["#/about", "About"]];
-/* page: "" the brew-day screen; "settings", its frame (title bar, last event, tabs) round the Settings page, whose host
-   (#sp) takes the brewhouse's place and which draws itself (settings/page.js) */
+/* page: "" the brew-day screen; "settings" or "hardware", its frame (title bar, last event, tabs) round the Settings or
+   Hardware page, whose host (#sp) takes the brewhouse's place and which draws itself (settings/page.js,
+   hardware/page.js) */
+const PAGE_TAB = {settings: "Settings", hardware: "Hardware"};
 function skeleton(demo, page) {
   const h = p => demo ? "#tab" : p;
-  const cur = t => (page === "settings" ? t === "Settings" : t === "") ? ' aria-current="page"' : "";
+  const cur = t => (PAGE_TAB[page] || "") === t ? ' aria-current="page"' : "";
   return `<div class="app" id="app" data-link="ok">
   <header class="topbar">
     <p class="brand"><span class="bname">CraftBeerPi Brewery</span></p>
@@ -152,7 +154,7 @@ function skeleton(demo, page) {
     <a href="${h("#/mashprofile")}" data-tab="Brew Steps"><span class="long">Brew steps</span><span class="short">Steps</span></a>
     <a href="${h("#/recipes")}" data-tab="Recipe Book"><span class="long">Recipe book</span><span class="short">Recipes</span></a>
     <a href="${h("#/charting")}" data-tab="Analytics">Analytics</a>
-    <a href="${h("#/hardware")}" data-tab="Hardware">Hardware</a>
+    <a href="${h("#/hardware")}" data-tab="Hardware"${cur("Hardware")}>Hardware</a>
     <a href="${h("#/settings/All")}" data-tab="Settings"${cur("Settings")}>Settings</a>
     <a href="${h("#/more")}" data-tab="More"${demo ? "" : ' aria-haspopup="true" aria-expanded="false" aria-controls="bd-more"'}>More</a>
   </nav>
@@ -233,7 +235,7 @@ function setBrewery(raw) {
   nm.textContent = name;
   el.toggleAttribute("data-long", name.length > LONG_NAME);
   if (name.length > LONG_NAME) el.title = name; else el.removeAttribute("title");
-  document.title = `${name} · ${PAGE === "settings" ? "Settings" : "Brew day"}`;
+  document.title = `${name} · ${PAGE_TAB[PAGE] || "Brew day"}`;
 }
 function showBrewScribe(on) {
   const nav = root && root.querySelector(".tabs"), tab = nav && nav.querySelector('a[data-tab="BrewScribe"]');
@@ -902,7 +904,7 @@ function renderAll() {
   // what had just arrived has had its chance at the title bar
   newIds.clear();
   if (st.alarm) st.alarm.fresh = false;
-  // the Settings page's frame has no brewhouse to draw
+  // the Settings and Hardware pages' frame has no brewhouse to draw
   if (PAGE) return;
   keepStepInView();
   renderRig();
@@ -963,7 +965,8 @@ function schedule() {
 
 /* ---------- messages ---------- */
 function toast(text) { const t = $("#toast"); t.textContent = text; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3800); }
-// shared: a line for every tab (the Settings page's), marked so another tab open on this device adds it (onStorage).
+// shared: a line for every tab (the Settings and Hardware pages'), marked so another tab open on this device adds it
+// (onStorage).
 // q: the CraftBeerPi notification a "waiting for you" line is about, so the line can say what became of it (questionGone)
 function logEvent(what, res, tone, cav = "", shared = false, q = null) {
   if (DEMO_MODE) { st.events.unshift([hhmmss(st.t), what, res, tone, cav]); return; }
@@ -2687,7 +2690,7 @@ const handlers = {
         if (tab.dataset.tab === "BrewScribe") toast("Mockup: this opens BrewScribe in a browser tab of its own, or goes back to that tab if it's open, without reloading it.");
         else if (tab.dataset.tab) toast(tab.dataset.tab === "More" ? "Mockup: MORE holds Fermenter Profile, Plugins, System and About." : `Mockup: this opens the existing ${tab.dataset.tab} page.`);
       } else if (tab.dataset.tab === "More") { e.preventDefault(); toggleMore(tab); }
-      // the page's own tab goes nowhere: Brew day on the brew-day screen, SETTINGS on the Settings page
+      // the page's own tab goes nowhere: Brew day on the brew-day screen, SETTINGS or HARDWARE on those pages
       else if (tab.getAttribute("aria-current") === "page") e.preventDefault();
       return;
     }
@@ -2827,7 +2830,7 @@ function liveTick() {
 export function createBrewDay(el, o = {}) {
   if (root) teardown();
   const myGen = ++gen;
-  root = el; opts = o; DEMO_MODE = !!o.demo; PAGE = o.page === "settings" ? "settings" : "";
+  root = el; opts = o; DEMO_MODE = !!o.demo; PAGE = PAGE_TAB[o.page] ? o.page : "";
   /* this tab's name, so BrewScribe's BREW DAY button (target="craftbeerpi") comes back to it rather than opening
      another */
   if (!DEMO_MODE) { try { window.name = "craftbeerpi"; } catch (_) { /* a sandboxed frame: no name */ } }
@@ -2910,7 +2913,7 @@ export function createBrewDay(el, o = {}) {
   for (const k in handlers) document.addEventListener(k, handlers[k]);
   window.addEventListener("resize", onWindow);
   window.addEventListener("scroll", onWindow, {passive: true});
-  // the Settings page's lines from another tab (onStorage), so a save there shows here
+  // the Settings and Hardware pages' lines from another tab (onStorage), so a save there shows here
   if (!DEMO_MODE) window.addEventListener("storage", onStorage);
   // the Settings page's demo stands still, as its mockup's title bar does
   const ticker = setInterval(() => { if (gen === myGen && st && !(DEMO_MODE && PAGE)) (DEMO_MODE ? demoTick : liveTick)(); }, 1000);
@@ -2978,8 +2981,9 @@ export function createBrewDay(el, o = {}) {
       if (snap.connected) everConnected = true;
       schedule();
     },
-    /* for the Settings page (page "settings"): its host; the last-event line, the screen reader's line and the toast,
-       which it shares; MORE's list; and in its demo, the title bar's connection and last events, from its mockup */
+    /* for the Settings and Hardware pages (page "settings" or "hardware"): its host; the last-event line, the screen
+       reader's line and the toast, which it shares; MORE's list; and in the Settings page's demo, the title bar's
+       connection and last events, from its mockup */
     host: PAGE ? $("#sp") : null,
     log(what, res, tone, cav = "") { if (gen === myGen && st) { logEvent(what, res, tone, cav, true); schedule(); } },
     say(text, urgent) { if (gen === myGen && st) say(text, urgent); },
@@ -2995,10 +2999,10 @@ export function createBrewDay(el, o = {}) {
     destroy() { if (gen === myGen) teardown(); }
   };
 }
-/* another tab's Settings lines, so a save in Settings reaches a brew-day screen open in another tab: added here in time
-   order, and kept with this tab's own lines from then on. Only those: every tab logs what it sees CraftBeerPi do (the
-   connection, its messages, the steps), so taking the other tab's list would show each of those twice. Read from the
-   event, not from storage, which this tab may already have written over */
+/* another tab's Settings and Hardware lines, so a save there reaches a brew-day screen open in another tab: added here
+   in time order, and kept with this tab's own lines from then on. Only those: every tab logs what it sees CraftBeerPi do
+   (the connection, its messages, the steps), so taking the other tab's list would show each of those twice. Read from
+   the event, not from storage, which this tab may already have written over */
 function onStorage(e) {
   if (e.key !== EVENTS_KEY || !st || DEMO_MODE) return;
   const have = new Set(st.events.map(x => `${x[5]}|${x[1]}`));

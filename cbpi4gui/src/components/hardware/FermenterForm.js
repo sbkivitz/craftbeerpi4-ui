@@ -109,9 +109,9 @@ const FermenterForm = () => {
     };
 
     if (id) {
-      actions.update_fermenter(id, data, () => navigate("/hardware"));
+      actions.update_fermenter(id, data, () => navigate("/fermenters"));
     } else {
-      actions.add_fermenter(data, () => navigate("/hardware"));
+      actions.add_fermenter(data, () => navigate("/fermenters"));
     }
   };
 
@@ -160,7 +160,7 @@ const FermenterForm = () => {
           <Link
             color="inherit"
             onClick={() => {
-              navigate("/hardware");
+              navigate("/fermenters");
             }}
           >
             Fermenter
@@ -208,7 +208,7 @@ const FermenterForm = () => {
               variant="contained"
               color="secondary"
               onClick={() => {
-                navigate("/hardware");
+                navigate("/fermenters");
               }}
               className={classes.button}
             >

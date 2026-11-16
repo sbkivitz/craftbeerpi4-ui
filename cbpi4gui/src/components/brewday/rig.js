@@ -202,4 +202,4 @@ ${rigPump("hlt", hp, yPump, "liq", "HLT PUMP", rs)}${rigPump("wort", wp, yPump, 
 </svg>`;
 }
 
-export { rigSVG, RIG_H };
+export { rigSVG, RIG_H, rigGeom, r1 };

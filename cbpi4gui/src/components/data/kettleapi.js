@@ -142,15 +142,17 @@ export const settingsFile = async (id) => {
 };
 
 // -> the preview: what loading the file would change. id null: what it would
-// make a new kettle.
-export const previewFile = async (id, text) => {
-  const url = id ? "/kettle/" + id + "/file/preview" : "/kettle/file/preview";
+// make a new kettle. fill: each setting loading would leave empty filled in
+// with the value its logic uses for it, shown as a change.
+export const previewFile = async (id, text, fill = false) => {
+  const url = (id ? "/kettle/" + id + "/file/preview" : "/kettle/file/preview") + (fill ? "?fill=1" : "");
   return (await axios.post(url, text, asIs)).data;
 };
 
-// -> {kettle, changes, plan}: loaded, as the preview with this token showed.
-export const loadFile = async (id, text, token) => {
-  return (await axios.post("/kettle/" + id + "/file?token=" + encodeURIComponent(token), text, asIs)).data;
+// -> {kettle, changes, plan}: loaded, as the preview with this token showed,
+// made with the same fill.
+export const loadFile = async (id, text, token, fill = false) => {
+  return (await axios.post("/kettle/" + id + "/file?token=" + encodeURIComponent(token) + (fill ? "&fill=1" : ""), text, asIs)).data;
 };
 
 export const kettleapi = {
