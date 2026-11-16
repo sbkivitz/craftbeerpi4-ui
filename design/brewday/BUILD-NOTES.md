@@ -63,7 +63,7 @@ same. The section at the end has the detail.
 | Last event and LOG under the title bar | React UI | Covers commands from this screen. Showing commands from the phone on the monitor too needs a shared log: server, optional. |
 | Rest timer when brewing by hand: one timer, shared by every screen | Server and React UI | Chosen on 9 Nov. The server keeps the time left and whether it is running; START TIMER, PAUSE TIMER and ±5 MIN are commands to it, and every open screen shows the same countdown. At zero the server raises a CraftBeerPi notification, which shows on every screen and stays until answered, as hop alerts have since the S2 fix. Since 11 Nov the screen has up to four named timers instead (see "Timers" below), and keeps this one rest timer only for an older CraftBeerPi. |
 | Barlow and Barlow Condensed fonts | React UI | Bundle the font files with the UI build. The Pi may have no internet on brew day; the mockup loads them from Google Fonts. |
-| An HLT pump in the simulator | Simulator configuration | The rig already has one: `Recirc_PUMP` on GPIO 7, which is also the HLT kettle's agitator (the brewer confirmed the pump mapping on 9 Oct). The simulator has `Mash Pump` and `Glycol Pump` but no HLT pump; Brett plans to add one when he builds this. |
+| An HLT pump in the simulator (DONE) | Simulator configuration | The rig already has one: `Recirc_PUMP` on GPIO 7, which is also the HLT kettle's agitator (the brewer confirmed the pump mapping on 9 Oct). The 8000 simulator's configuration (`cbpi-testbench\config`) has "HLT Pump" as the HLT's agitator and in `BREWDAY_OVERRIDE_ACTOR`, and `brewday_sim.py` gives each copy it makes the same switch. |
 
 ## What this screen does not fix
 
