@@ -33,6 +33,7 @@ button{cursor:pointer}
 .gi .t{grid-column:2;font:600 20px/1.1 var(--cond);letter-spacing:.02em}
 .gi .d{grid-column:2;font:500 15px/1.25 var(--cond);letter-spacing:.02em;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gi .s{grid-column:3;grid-row:1/3;font:600 15px/1 var(--cond);letter-spacing:.06em;color:var(--text-3);text-align:right;white-space:nowrap}
+.gi:hover .s,.gi.none:hover .t,.gi.none:hover .n,.gi.none:hover .d,.cmd:not(.go):not(.ans):not([aria-disabled=true]):hover small{color:var(--text-2)}
 .gi[aria-current=true]{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),var(--active);border-color:var(--active-edge)}
 .gi[aria-current=true] .n,.gi[aria-current=true] .d,.gi[aria-current=true] .s{color:var(--active-ink)}
 .gi .chg{display:inline-block;padding:4px 7px;border-radius:4px;background:var(--select);color:#fff;font:700 13px/1 var(--cond);letter-spacing:.06em}
@@ -54,7 +55,7 @@ button{cursor:pointer}
 .cmd:hover{background:var(--hover)}
 .cmd.go{background:var(--select);border-color:var(--select);color:#fff;min-width:150px}
 .cmd.go small{color:#fff}
-.cmd.go:hover{background:#3477c8}
+.cmd.go:not([aria-disabled=true]):hover{background:#3477c8}
 .cmd[aria-disabled=true]{background:var(--panel-2);border-color:var(--edge);color:var(--text-3);cursor:not-allowed}
 .cmd[aria-disabled=true] small{color:var(--text-3)}
 .cmd.busy{position:relative;overflow:hidden;cursor:progress}
@@ -86,7 +87,7 @@ button{cursor:pointer}
 .row .wh{margin:5px 0 0;max-width:62ch;font:500 15px/1.4 var(--sans);color:var(--text-2)}
 .row .ky{margin:7px 0 0;font:500 14px/1.2 var(--cond);letter-spacing:.06em;color:var(--text-3);overflow-wrap:anywhere}
 .row .ky .tg{display:inline-block;margin-left:10px;padding:2px 6px;border:1px solid var(--edge);border-radius:3px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-2)}
-.row .ct{display:grid;gap:8px;align-content:start;min-width:0}
+.row .ct{display:grid;gap:10px;align-content:start;min-width:0}
 .row mark{padding:0 1px;border-radius:2px;background:#5a4300;color:#fff3d6}
 .row.dep{grid-template-columns:minmax(0,calc(var(--row-l) - 30px)) minmax(280px,var(--row-c));margin-left:22px;padding-left:18px;border-top-color:transparent;border-left:1px solid var(--edge);border-radius:0}
 .row.dep+.row.dep{border-top-color:var(--line)}
