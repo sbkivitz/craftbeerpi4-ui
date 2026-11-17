@@ -2,8 +2,9 @@
 // moments of a brew day it shows, with its proposed boil kettle (?bk=power), which the screen builds. The screen's demo
 // mode (?demo=mash, sparge, sparge-heat, sparge-ready, sparge-run, sparge-batch, boil-hold, hop, boilpower, heatup, pause,
 // pause-long, boiling, hold, whirlpool, finished, keepboil, letfall, bktarget, handhold, fail, manual, offline, notarget,
-// notarget-hlt, timers, timer-done, timer-new, timer-names, timer-nonames, timers-hand, sound-allow, byhand,
-// byhand-past, stopped, reset or reset-done) runs on this, so it can be compared with the mockup pixel for pixel.
+// notarget-hlt, timers, timer-done, timer-back, timer-back-done, timer-back-unknown, timer-new, timer-names,
+// timer-nonames, timers-hand, sound-allow, byhand, byhand-past, stopped, reset or reset-done) runs on this, so it can be
+// compared with the mockup pixel for pixel.
 
 const RECIPE = {
   name: "Craftbeerpi Test Recipe v5",
@@ -401,6 +402,32 @@ const SCENES = {
     Object.assign(t, {state: "done", left: 0, at: s.t - 12});
     s.banner = tBanner(t, s.tmrs);
     s.events = [["14:32:19", "Stir finished", "waiting for you", "wait"], ["14:17:19", "Stir started, 15:00 to go", "confirmed", "ok"], ...MASH_EVENTS.map(e => e.slice())];
+    return s;
+  },
+  /* CraftBeerPi off for 12 minutes, a power cut from 14:20:31 to 14:32:31. Stir had been counting down since 14:12:43,
+     with 7:12 left at the cut, so it comes back paused there, and a line across its row says how long CraftBeerPi was
+     off until it is started; Yeast, set up for later, is as it was */
+  "timer-back": () => {
+    const s = SCENES.timers(), t = s.tmrs[0];
+    Object.assign(t, {state: "paused", run: 15 * 60, interrupted: true, off: 12 * 60});
+    s.events = [["14:12:43", "Stir started, 15:00 to go", "confirmed", "ok"], ...MASH_EVENTS.map(e => e.slice())];
+    return s;
+  },
+  /* the same cut, with Stir started at 14:10:00: it ran out at 14:25:00, while CraftBeerPi was off, so it comes back run
+     out, with its alarm, counting up from then, the time off included */
+  "timer-back-done": () => {
+    const s = SCENES.timers(), t = s.tmrs[0];
+    Object.assign(t, {state: "done", left: 0, run: 15 * 60, at: s.t - (7 * 60 + 31), interrupted: true, off: 12 * 60});
+    s.banner = tBanner(t, s.tmrs);
+    s.events = [["14:32:31", "Stir finished", "waiting for you", "wait"], ["14:10:00", "Stir started, 15:00 to go", "confirmed", "ok"], ...MASH_EVENTS.map(e => e.slice())];
+    return s;
+  },
+  /* the same, before the network has set CraftBeerPi's clock: how long it was off isn't known yet, so neither is how
+     long ago Stir ran out ("– –"); Yeast, counting down at the cut, comes back paused */
+  "timer-back-unknown": () => {
+    const s = SCENES["timer-back-done"](), [t, y] = s.tmrs;
+    Object.assign(t, {at: null, off: null});
+    Object.assign(y, {state: "paused", left: 12 * 60 + 30, run: 20 * 60, interrupted: true, off: null});
     return s;
   },
   /* + TIMER pressed: a third timer, named Vorlauf from the names to pick (BREWDAY_TIMER_NAMES as it comes); YEAST is

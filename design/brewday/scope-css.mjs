@@ -96,7 +96,8 @@ function convert(text) {
   }).filter(Boolean).join("\n");
 }
 
-const source = readFileSync(SRC, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+// the mockup's line endings are its own; the stylesheet written here has LF lines whatever they are
+const source = readFileSync(SRC, "utf8").replace(/\r\n/g, "\n").replace(/\/\*[\s\S]*?\*\//g, "");
 const header = `/* GENERATED from design/brewday/brew-day.css by design/brewday/scope-css.mjs - do not edit.
    The approved mockup's rules, unchanged, applied only while the brew-day screen is open. */\n`;
 writeFileSync(OUT, header + convert(source) + "\n");
