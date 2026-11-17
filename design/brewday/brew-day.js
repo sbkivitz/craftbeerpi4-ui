@@ -837,9 +837,8 @@ function nudgeHTML(d) {
   /* a step that would pass 0 or 100 % stops there; only at the end itself is the button refused */
   const why = st.link === "lost" ? PAUSED : pend ? WAIT : d < 0 && V.bp <= 0 ? "The boil power is already 0 %." : d > 0 && V.bp >= 100 ? "The boil power is already 100 %." : "";
   /* waiting for CraftBeerPi, all four are greyed and the one pressed shows the lamps' marching stripes; the wait is
-     kept under the step itself, so −5 and −1 can't both look pressed. The " %" is its own span: on the narrowest
-     windows it goes (.nudge .pc), as the steps are too narrow for it there; the spoken name keeps "percent" */
-  return b(`cmdbtn nudge${pend === String(d) ? " sending" : ""}`, `${d < 0 ? "−" : "+"}${Math.abs(d)}<span class="pc"> %</span>`, "",
+     kept under the step itself, so −5 and −1 can't both look pressed. The spoken name says "percent" */
+  return b(`cmdbtn nudge${pend === String(d) ? " sending" : ""}`, `${d < 0 ? "−" : "+"}${Math.abs(d)} %`, "",
     {cmd: `pnudge:${d}`, why, label: `Boil power ${d < 0 ? "down" : "up"} ${Math.abs(d)} percent`});
 }
 function bkLampHTML() {
@@ -849,8 +848,8 @@ function bkLampHTML() {
      boil kettle's only element) and kept for screen readers; the line says only what a press does. Waiting for
      CraftBeerPi there, it keeps its state word, as the steps keep theirs, and the line says what is on its way:
      PAUSING… needs 75 px and the button has 63 at 1366 px, and a word that wrapped would make all three faceplates'
-     rows taller for that moment */
-  const narrow = bkNudges(), nm = narrow ? '<span class="sr">BOIL ELEMENT · </span>' : "BOIL ELEMENT · ";
+     rows taller for that moment. With the steps in a row of their own (TIGHT) it has the row to itself, as in MANUAL */
+  const narrow = bkNudges() && !TIGHT, nm = narrow ? '<span class="sr">BOIL ELEMENT · </span>' : "BOIL ELEMENT · ";
   let s, t, n, cmd, h = false;
   if (pend && narrow) { s = "pending"; t = a.paused ? "PAUSED" : a.on ? "HEATING" : "OFF"; n = nm + ({pause: "pausing…", resume: "heating…"}[pend] || "waiting…"); cmd = "noop"; }
   else if (pend) { s = "pending"; t = pend === "pause" ? "PAUSING…" : pend === "resume" ? "CARRYING ON…" : pend === "on" ? "SWITCHING ON…" : "SWITCHING OFF…"; n = nm + "waiting for CraftBeerPi"; cmd = "noop"; }
@@ -880,7 +879,7 @@ function editorHTML(v) {
     <input id="tin" inputmode="numeric" value="${p}" aria-label="${st.edit.what === "boil" ? "New boil power in percent" : "New power by hand in percent"}">
     <button type="button" data-cmd="pstep:1" aria-label="Up 1 percent">+1</button><button type="button" data-cmd="pstep:5" aria-label="Up 5 percent">+5</button>
     <button type="button" class="ok" data-cmd="pset">SET <span id="tok">${p}</span> %</button><button type="button" class="no" data-cmd="tcancel">CANCEL</button>${BK === "power" ? `
-    <button type="button" class="bkat" data-cmd="bat">BOIL AT ${boilFromText()} °F<small>full power until then · change</small></button><p class="usual">${st.v.bk.usual != null ? `USUAL ${st.v.bk.usual} %<small>starts each recipe · set in Hardware</small>` : "USUAL – –<small>none · set one in Hardware</small>"}</p>` : ""}</div>`;
+    <button type="button" class="bkat" data-cmd="bat">BOIL AT ${boilFromText()} °F<small>full power until then · change</small></button><p class="usual">${st.v.bk.usual != null ? `USUAL <span class="nw">${st.v.bk.usual} %</span><small>starts each recipe · set in Hardware</small>` : `USUAL <span class="nw">– –</span><small>none · set one in Hardware</small>`}</p>` : ""}</div>`;
   }
   if (v === "bk" && BK === "power" && st.edit.kind === "tgt") return bkTgtEditorHTML();
   /* the HLT's and the mash tun's target, or the boil point (the new design's BOIL AT; the words design's target) */
@@ -958,8 +957,14 @@ function plateHTML(v) {
   const second = v === "bk" ? (BK === "power" ? "" : powerHTML()) : "";
   /* the new boil kettle has TARGET beside AUTO/MANUAL, as the HLT does; the words design has BOIL AT there */
   const setBtn = bkNew(v) && BK !== "power" ? boilAtHTML() : tgtHTML(v);
-  const nudge = v === "bk" && bkNudges();
-  const lamps = v === "bk" && BK === "power" ? (nudge ? nudgeHTML(-5) + nudgeHTML(-1) + bkLampHTML() + nudgeHTML(1) + nudgeHTML(5) : bkLampHTML()) : VACT[v].map(lampHTML).join("") + second;
+  /* the boil power's steps: either side of the element where four 44 px steps and HEATING fit in one row; on tight
+     faceplates in a row of their own under AUTO/MANUAL and TARGET, so that, as they come and go with AUTO, a hold
+     or the power box, nothing above them moves. Where the page scrolls (STACKED), the row keeps its place while the
+     steps are away, so the page's height doesn't change and nothing below moves either */
+  const nudge = v === "bk" && bkNudges(), own = nudge && TIGHT, keep = v === "bk" && BK === "power" && TIGHT && STACKED && !own;
+  const steps = () => nudgeHTML(-5) + nudgeHTML(-1) + nudgeHTML(1) + nudgeHTML(5);
+  const lamps = v === "bk" && BK === "power" ? (nudge && !own ? nudgeHTML(-5) + nudgeHTML(-1) + bkLampHTML() + nudgeHTML(1) + nudgeHTML(5) : bkLampHTML()) : VACT[v].map(lampHTML).join("") + second;
+  const mode = `<div class="moderow">${modeHTML(v)}${setBtn}</div>`;
   return `<section class="plate" id="pl-${v}" aria-labelledby="h-${v}">
     ${v === "bk" && BK === "power" ? `<div class="phead"><h2 id="h-${v}">${VNAME[v]}</h2>${bkHoldT() == null ? keepHTML() : ""}</div>` : `<h2 id="h-${v}">${VNAME[v]}</h2>`}
     <div class="face${st.link === "lost" ? " stale" : ""}">
@@ -969,11 +974,26 @@ function plateHTML(v) {
       ${GRAPHS ? graphHTML(v, "f") : ""}
     </div>
     <p class="dev">${devHTML(v)}${by ? " · SV set by the mash tun" : ""}</p>
-    <div class="ctrls${nudge ? " bkpow" : ""}">${lamps}</div>
-    ${st.edit && st.edit.v === v ? editorHTML(v) : v === "hlt" && st.v.mt.mode === "auto" ? hermsRowHTML() : `<div class="moderow">${modeHTML(v)}${setBtn}</div>`}
+    <div class="ctrls${nudge && !own ? " bkpow" : ""}">${lamps}</div>
+    ${st.edit && st.edit.v === v ? editorHTML(v) : v === "hlt" && st.v.mt.mode === "auto" ? hermsRowHTML() : own ? `<div class="mstack">${mode}<div class="bksteps" role="group" aria-label="Boil power steps">${steps()}</div></div>` : keep ? `<div class="mstack">${mode}<div class="bkspace"></div></div>` : mode}
     <p class="note">${st.notes[v] || ""}</p>
   </section>`;
 }
+/* tight faceplates: three side by side, each under 276 px inside, where four 44 px keys, their gaps and HEATING (or a
+   box's number) don't fit in one row. There the boil power's steps get a row of their own (plateHTML), and so do a
+   box's keys, under its number (#plates[data-tight], brew-day.css). Measured from the faceplates' own width, so it
+   holds at any window size: windows about 900 to 970 px wide, and 1180 to 1320 beside the recipe column */
+const TIGHT_IN = 276;
+let TIGHT = false, STACKED = false;
+function platesTight() {
+  const P = $("#plates"), s = getComputedStyle(P);
+  if (s.gridTemplateColumns.split(" ").length < 3) return false;
+  const pl = P.querySelector(".plate"), ps = pl && getComputedStyle(pl);
+  const inner = pl ? pl.clientWidth - parseFloat(ps.paddingLeft) - parseFloat(ps.paddingRight) : (P.clientWidth - 2 * parseFloat(s.columnGap)) / 3 - 26;
+  return inner < TIGHT_IN;
+}
+/* the recipe column under the brewhouse, not beside it: the page scrolls, rather than the drawing giving up height */
+const mainStacked = () => getComputedStyle($(".main")).gridTemplateColumns.split(" ").length < 2;
 
 /* ---------- recipe column ---------- */
 function recipeHTML() {
@@ -1243,6 +1263,11 @@ function renderAll() {
   bn.toggleAttribute("data-long", !!(st.banner && (st.banner.act || st.banner.acts) && st.banner.text.length > LONG_Q));
   bn.innerHTML = bannerHTML();
   $("#event").innerHTML = eventHTML();
+  TIGHT = platesTight();
+  STACKED = mainStacked();
+  $("#plates").toggleAttribute("data-tight", TIGHT);
+  /* the boil power's steps in a row of their own: on one screen the drawing gives up their height (brew-day.css) */
+  $("#app").toggleAttribute("data-steps", TIGHT && bkNudges());
   $("#plates").innerHTML = ["hlt", "mt", "bk"].map(plateHTML).join("");
   $("#recipe").innerHTML = recipeHTML() + verHTML();
   /* while a timer's editor is open, the one-screen layout gives it the step list's room (by hand, the recipe book's) */
@@ -1801,11 +1826,12 @@ function trowHTML(t, off) {
 }
 /* one editor at a time, in place: under its timer, or where + TIMER was for a new one. A running or paused timer's time
    changes by a minute or five at once, as the boil power's nudges do; a stopped one is set and then saved */
-/* the names to pick, under NAME: the names in BREWDAY_TIMER_NAMES as buttons, in the setting's order, three to a row,
-   the first six (two rows: the editor then still fits a 1920×950 screen; the setting's description says so). A tap
-   names the timer, a second tap clears it; typing any other name still works. A name another timer has is greyed, and
-   a tap says why. Nothing is filled in for the brewer: a timer nobody names is "Timer 3", as on the server. The
-   buttons carry their place in the list, not the name, so a name with a colon or quote can't break the command */
+/* the names to pick, under NAME: the names in BREWDAY_TIMER_NAMES as buttons, in the setting's order, three to a row
+   (two on a phone, where the page scrolls), the first six (two rows: the editor then still fits a 1920×950 screen; the
+   setting's description says so). A tap names the timer, a second tap clears it; typing any other name still works. A
+   name another timer has is greyed, and a tap says why. Nothing is filled in for the brewer: a timer nobody names is
+   "Timer 3", as on the server. The buttons carry their place in the list, not the name, so a name with a colon or quote
+   can't break the command */
 function namesHTML(e, t) {
   const all = st.names;
   if (!all.length) return `<p class="tnote">No names to pick: BREWDAY_TIMER_NAMES in Settings is blank.</p>`;
@@ -2308,3 +2334,6 @@ if (FOCUS) {
 window.addEventListener("hashchange", () => load(location.hash.slice(1)));
 load(location.hash.slice(1));
 new ResizeObserver(drawRig).observe($("#rig"));
+/* the faceplates' width crossing 276 px inside moves the boil power's steps and a box's keys between one row and two;
+   the recipe column going under the brewhouse, or back beside it, decides whether the steps' row keeps its place */
+new ResizeObserver(() => { if (platesTight() !== TIGHT || mainStacked() !== STACKED) renderAll(); }).observe($("#plates"));

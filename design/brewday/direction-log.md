@@ -1,5 +1,27 @@
 # Direction decision log
 
+## Every key at least 44 px wide; nothing moves as the steps come and go (17 Nov 2026)
+- Asked for, after the restart-timer hand-off listed them: WHIRLPOOL split at 360 px, and the timer presets, the boil
+  power's steps and the boxes' keys under 44 px wide. KEEP BOILING, SOUND and the boil power button stay as
+  documented, with their larger tap areas.
+- Presets: 2 px gaps instead of 4 give each 44.7 px on a 360 px phone and 45.3 px in a monitor's recipe column. Names to
+  pick: two to a row on a phone, where three left WHIRLPOOL 79 px of the 80 it needs; 2 px of padding a side gives a
+  monitor's three to a row 84 px.
+- The steps and the keys can't be 44 px beside the element or the number on a faceplate under 276 px inside (windows
+  about 900 to 970 and 1180 to 1320 px wide, an iPad in landscape among them): four keys, their gaps and HEATING, or the
+  number, need 276. Offered three ways for the steps (a row of their own; as now, 32 to 40 px; only ±5 there) and two
+  for the keys. Chosen: a row of their own for both, from a picture with the steps under the element.
+- Then asked that nothing move while someone could be reaching for it. Measuring every change (AUTO and MANUAL, a hold,
+  the boxes opening and closing) for what moves and what lands where a control was: under the element, all three
+  faceplates' mode rows moved by the row's height each time, and a second tap where a closed box's keys had been
+  landed on MANUAL. So the row went under AUTO/MANUAL and TARGET: nothing above it moves. On one screen the drawing
+  gives up its height, down to 64 px, as for an open box, so the page's height doesn't change (in a paused boil-over
+  with a note, on an 800 px tall window, the drawing is 80 px). Where the page scrolls, the browser's scroll anchoring
+  moved the faceplates by the row's height, so there the row keeps its place, empty, while the steps are away: 58 px
+  more page at 900 to 970 px, all day.
+- Found, not changed: from 900 to 1179 px, scrolled into the faceplates, a box opening or closing moves the mockup's
+  faceplates by its height, today too; the mockup draws them anew, and a build that updates them in place may not.
+
 ## Timers brought back after a restart (16 Nov 2026, night)
 - Brett built it (core 4.7.7.post42, UI post17): CraftBeerPi keeps its timers through a restart. One that was counting
   down comes back paused, and one that had run out stays run out with its alarm, counting up from when it ran out. Until

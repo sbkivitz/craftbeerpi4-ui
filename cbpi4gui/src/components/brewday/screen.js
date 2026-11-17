@@ -223,6 +223,8 @@ let newIds = new Set(), openIds = null;
    them out. gSpan: the span the three show, kept on each device. H: the live history. */
 let GRAPHS = "face", gSpan = "30", H = null;
 const GSPAN_KEY = "cbpi.brewday.graphspan";
+// the faceplates as last drawn: tight (platesTight), and the page scrolling under them (mainStacked)
+let TIGHT = false, STACKED = false;
 // the name in the title bar now (LONG_NAME): set again only when the setting changes; null as the screen opens
 let brewery = null;
 const answered = new Set(), own = {};
@@ -444,10 +446,8 @@ function nudgeHTML(d) {
   const V = st.v.bk, pend = st.pend["p:bk"];
   const why = st.link === "lost" ? PAUSED : pend ? WAIT : d < 0 && V.bp <= 0 ? "The boil power is already 0 %." : d > 0 && V.bp >= 100 ? "The boil power is already 100 %." : "";
   /* waiting for CraftBeerPi, all four are greyed and the one pressed shows the lamps' marching stripes; the wait is kept
-     under the step itself, so −5 and −1 can't both look pressed. The " %" is its own span: on the narrowest windows it
-     goes (.nudge .pc): the steps are too narrow for it there, and would squeeze the element button's HEATING to "ATI" at
-     1180 px. The spoken name keeps "percent" */
-  return b(`cmdbtn nudge${pend === String(d) ? " sending" : ""}`, `${d < 0 ? "−" : "+"}${Math.abs(d)}<span class="pc"> %</span>`, "",
+     under the step itself, so −5 and −1 can't both look pressed. The spoken name says "percent" */
+  return b(`cmdbtn nudge${pend === String(d) ? " sending" : ""}`, `${d < 0 ? "−" : "+"}${Math.abs(d)} %`, "",
     {cmd: `pnudge:${d}`, why, label: `Boil power ${d < 0 ? "down" : "up"} ${Math.abs(d)} percent`});
 }
 /* the element button in AUTO: not locked, a tap pauses the heat (set_paused) and keeps AUTO, the recipe and the boil power;
@@ -459,8 +459,8 @@ function bkLampHTML() {
      boil kettle's only element) and kept for screen readers; the line says only what a press does. Waiting for
      CraftBeerPi there, it keeps its state word, as the steps keep theirs, and the line says what is on its way:
      PAUSING… needs 75 px and the button has 63 at 1366 px, and a word that wrapped would make all three faceplates'
-     rows taller for that moment */
-  const narrow = bkNudges(), nm = narrow ? `<span class="sr">${name} · </span>` : `${name} · `;
+     rows taller for that moment. With the steps in a row of their own (TIGHT) it has the row to itself, as in MANUAL */
+  const narrow = bkNudges() && !TIGHT, nm = narrow ? `<span class="sr">${name} · </span>` : `${name} · `;
   let s, t, n, cmd, h = false;
   if (pend && narrow) { s = "pending"; t = a.paused ? "PAUSED" : a.on ? "HEATING" : "OFF"; n = nm + ({pause: "pausing…", resume: "heating…"}[pend] || "waiting…"); cmd = "noop"; }
   else if (pend) { s = "pending"; t = pend === "pause" ? "PAUSING…" : pend === "resume" ? "CARRYING ON…" : pend === "on" ? "SWITCHING ON…" : "SWITCHING OFF…"; n = nm + "waiting for CraftBeerPi"; cmd = "noop"; }
@@ -480,9 +480,10 @@ function keepHTML() {
   const why = lost ? PAUSED : pend ? WAIT : "";
   return `<button type="button" class="keep${lost ? " stale" : ""}" role="checkbox" aria-checked="${on}" data-cmd="keep:bk"${pend ? ' data-state="pending"' : ""}${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}><span class="box" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3.2 8.4l3 3 6.6-7"/></svg></span><span class="kl">KEEP BOILING</span><span class="sr">: full power again if the wort falls ${margin()} ${M.U} below a boil</span></button>`;
 }
-/* the usual boil power (Usual_Boil_Power), a reading in the power box: blank in Hardware, each recipe keeps the last */
-const usualHTML = () => st.v.bk.usual == null ? `USUAL – –<small>none · set one in Hardware</small>`
-  : `USUAL ${st.v.bk.usual} %<small>starts each recipe · set in Hardware</small>`;
+/* the usual boil power (Usual_Boil_Power), a reading in the power box: blank in Hardware, each recipe keeps the last. The
+   number and its % stay on one line: where the box is narrow, USUAL goes over them */
+const usualHTML = () => st.v.bk.usual == null ? `USUAL <span class="nw">– –</span><small>none · set one in Hardware</small>`
+  : `USUAL <span class="nw">${st.v.bk.usual} %</span><small>starts each recipe · set in Hardware</small>`;
 function editorHTML(v) {
   if (st.edit.kind === "pwr") {
     const p = st.edit.val;
@@ -570,10 +571,16 @@ function svCell(v) {
 function plateHTML(v) {
   const V = st.v[v], by = v === "hlt" && hermsOn() && st.v.mt.sv != null, [svT, svV] = svCell(v);
   /* the new boil kettle has TARGET beside AUTO/MANUAL, as the HLT does, and its element button between the boil power's
-     steps, −5 −1 … +1 +5 */
-  const pw = bkNew(v) && M.VACT.bk.includes("bkEl"), nudge = pw && bkNudges();
-  const lamps = pw ? (nudge ? nudgeHTML(-5) + nudgeHTML(-1) + bkLampHTML() + nudgeHTML(1) + nudgeHTML(5) : bkLampHTML())
+     steps, −5 −1 … +1 +5, where four 44 px steps and HEATING fit in one row. On tight faceplates (TIGHT) the steps have
+     a row of their own under AUTO/MANUAL and TARGET, so that, as they come and go with AUTO, a hold or the power box,
+     nothing above them moves. Where the page scrolls (STACKED), the row keeps its place while the steps are away, so
+     the page's height doesn't change and nothing below moves either */
+  const pw = bkNew(v) && M.VACT.bk.includes("bkEl"), nudge = pw && bkNudges(), own = nudge && TIGHT, keep = pw && TIGHT && STACKED && !own;
+  const lamps = pw ? (nudge && !own ? nudgeHTML(-5) + nudgeHTML(-1) + bkLampHTML() + nudgeHTML(1) + nudgeHTML(5) : bkLampHTML())
     : M.VACT[v].map(lampHTML).join("") + (v === "bk" && M.BOILPOWER && !M.BKNEW ? powerHTML() : "");
+  const mode = `<div class="moderow">${modeHTML(v)}${tgtHTML(v)}</div>`;
+  const steps = own ? `<div class="bksteps" role="group" aria-label="Boil power steps">${nudgeHTML(-5) + nudgeHTML(-1) + nudgeHTML(1) + nudgeHTML(5)}</div>`
+    : keep ? `<div class="bkspace"></div>` : "";
   return `<section class="plate" id="pl-${v}" aria-labelledby="h-${v}">
     ${bkNew(v) ? `<div class="phead"><h2 id="h-${v}">${M.VNAME[v]}</h2>${bkHoldT() == null ? keepHTML() : ""}</div>` : `<h2 id="h-${v}">${M.VNAME[v]}</h2>`}
     <div class="face${st.link === "lost" ? " stale" : ""}">
@@ -583,11 +590,25 @@ function plateHTML(v) {
       ${GRAPHS ? graphHTML(G(), v, "f") : ""}
     </div>
     <p class="dev">${devHTML(v)}${by ? " · SV set by the mash tun" : ""}</p>
-    <div class="ctrls${nudge ? " bkpow" : ""}">${lamps}</div>
-    ${st.edit && st.edit.v === v ? editorHTML(v) : v === "hlt" && hermsOn() ? hermsRowHTML() : `<div class="moderow">${modeHTML(v)}${tgtHTML(v)}</div>`}
+    <div class="ctrls${nudge && !own ? " bkpow" : ""}">${lamps}</div>
+    ${st.edit && st.edit.v === v ? editorHTML(v) : v === "hlt" && hermsOn() ? hermsRowHTML() : steps ? `<div class="mstack">${mode}${steps}</div>` : mode}
     <p class="note">${esc(st.notes[v] || "")}</p>
   </section>`;
 }
+/* tight faceplates: three side by side, each under 276 px inside, where four 44 px keys, their gaps and HEATING (or a
+   box's number) don't fit in one row. There the boil power's steps get a row of their own (plateHTML), and so do a
+   box's keys, under its number (.plates[data-tight], brewday.css). Measured from the faceplates' own width, so it holds
+   at any window size: windows about 900 to 970 px wide, and 1180 to 1320 beside the recipe column */
+const TIGHT_IN = 276;
+function platesTight() {
+  const P = $("#plates"), s = getComputedStyle(P);
+  if (s.gridTemplateColumns.split(" ").length < 3) return false;
+  const pl = P.querySelector(".plate"), ps = pl && getComputedStyle(pl);
+  const inner = pl ? pl.clientWidth - parseFloat(ps.paddingLeft) - parseFloat(ps.paddingRight) : (P.clientWidth - 2 * parseFloat(s.columnGap)) / 3 - 26;
+  return inner < TIGHT_IN;
+}
+// the recipe column under the brewhouse, not beside it: the page scrolls, rather than the drawing giving up height
+const mainStacked = () => getComputedStyle($(".main")).gridTemplateColumns.split(" ").length < 2;
 
 /* ---------- recipe column ---------- */
 function recipeHTML() {
@@ -879,6 +900,11 @@ function renderAll() {
   morph(bn, bannerHTML());
   morph($("#event"), eventHTML());
   if (!PAGE) {
+    TIGHT = platesTight();
+    STACKED = mainStacked();
+    $("#plates").toggleAttribute("data-tight", TIGHT);
+    // the boil power's steps in a row of their own: on one screen the drawing gives up their height (brewday.css)
+    $("#app").toggleAttribute("data-steps", TIGHT && bkNew("bk") && M.VACT.bk.includes("bkEl") && bkNudges());
     morph($("#plates"), ["hlt", "mt", "bk"].map(plateHTML).join(""));
     // a timer's editor open: on the one-screen layout the step list (by hand, the recipe book) makes room for it
     $("#recipe").toggleAttribute("data-tedit", !!M.TIMERS && !!st.tedit);
@@ -1789,11 +1815,11 @@ function trowHTML(t, off) {
   const open = !!(st.tedit && st.tedit.id === t.id);
   return `<div class="trow${open ? " editing" : ""}" data-state="${t.state}" id="tr-${t.id}"><button type="button" class="tsel" data-cmd="te:open:${t.id}" aria-expanded="${open}" aria-label="${esc(said)}. Change it"${off ? ` aria-disabled="true" data-why="${off}"` : ""}><span class="tn">${esc(t.name)}</span><span class="ts">${sub}</span><span class="tt" id="tt-${t.id}">${time}</span></button>${back ? `<p class="toff" aria-hidden="true">${tOff(t)}</p>` : ""}<div class="tbtn">${btn}</div>${live ? `<span class="bar"><i id="tb-${t.id}" style="width:${tPct(t)}%"></i></span>` : ""}</div>`;
 }
-/* the names to pick, under NAME: the names in BREWDAY_TIMER_NAMES as buttons, in the setting's order, three to a row, the first
-   six (two rows: the editor then still fits a 1920×950 screen). A tap names the timer, a second tap clears it; typing any
-   other name still works. A name another timer has is greyed, and a tap says why. Nothing is filled in: a timer
-   nobody names is "Timer 3", as on the server. The buttons carry their place in the list, not the name, so a name with a
-   colon or quote can't break the command */
+/* the names to pick, under NAME: the names in BREWDAY_TIMER_NAMES as buttons, in the setting's order, three to a row (two
+   on a phone, where the page scrolls), the first six (two rows: the editor then still fits a 1920×950 screen). A tap names
+   the timer, a second tap clears it; typing any other name still works. A name another timer has is greyed, and a tap
+   says why. Nothing is filled in: a timer nobody names is "Timer 3", as on the server. The buttons carry their place in
+   the list, not the name, so a name with a colon or quote can't break the command */
 function namesHTML(e, t) {
   const all = st.names;
   if (!all.length) return `<p class="tnote">No names to pick: BREWDAY_TIMER_NAMES in Settings is blank.</p>`;
@@ -2939,6 +2965,10 @@ export function createBrewDay(el, o = {}) {
   const ticker = setInterval(() => { if (gen === myGen && st && !(DEMO_MODE && PAGE)) (DEMO_MODE ? demoTick : liveTick)(); }, 1000);
   const ro = PAGE ? null : new ResizeObserver(drawRig);
   if (ro) ro.observe($("#rig"));
+  /* the faceplates' width crossing 276 px inside moves the boil power's steps and a box's keys between one row and two;
+     the recipe column going under the brewhouse, or back beside it, decides whether the steps' row keeps its place */
+  const pro = PAGE ? null : new ResizeObserver(() => { if (gen === myGen && st && (platesTight() !== TIGHT || mainStacked() !== STACKED)) renderAll(); });
+  if (pro) pro.observe($("#plates"));
   // each graph is drawn to its box: again when the boxes change size, and when the fonts arrive, which widens them
   const gro = GRAPHS ? new ResizeObserver(() => drawGraphs()) : null;
   if (gro) gro.observe($(".brewhouse"));
@@ -2947,6 +2977,7 @@ export function createBrewDay(el, o = {}) {
   function teardownThis() {
     clearInterval(ticker);
     if (ro) ro.disconnect();
+    if (pro) pro.disconnect();
     if (gro) gro.disconnect();
     if (document.fonts) document.fonts.removeEventListener("loadingdone", onFonts);
   }

@@ -4072,6 +4072,132 @@ after "A timer runs out".
   under the pointer, and "After a restart"); Connection lost (the smaller values and units).
 - `.impeccable\design.json`, regenerated, and `.impeccable\decisions\direction-log.md`.
 
+## Every key at least 44 px wide, and nothing moves as the steps come and go: ready to build (17 Nov)
+
+You asked for three of the things I'd found: WHIRLPOOL split at 360 px, and the timer presets, the boil power's steps
+and the boxes' keys at least 44 px wide at every size. KEEP BOILING, SOUND and the boil power button stay as
+documented. Where the steps and the keys don't fit, you chose a row of their own for both, and asked that nothing
+move while someone could be reaching for it.
+
+### What changes
+
+**The timer presets.** `.tpre`'s gap is 2 px, not 4. Each preset is then 45.3 px wide in a monitor's recipe column
+(1180 to 1440 px wide windows), 44.7 px on a 360 px phone and 49.7 px at 390. It was 43.7 and 43.
+
+**The names to pick.** Two to a row on a phone: `.tsug{grid-template-columns:repeat(2,minmax(0,1fr))}` at the end of
+the `max-width:700px` block. At 360 px a name then has 130 px, where WHIRLPOOL needs 80; three to a row it had 79.
+`.tsug .cmdbtn` has 2 px of padding a side, not 4, so a monitor's three to a row gives a name 84 px, not 80. A third
+row on a phone costs nothing another part needs, as the page scrolls there.
+
+**When the faceplates are tight.** Four 44 px keys, their gaps and HEATING at its smallest (18 px) need 276 px. A
+faceplate narrower than that inside is tight: windows about 900 to 970 px wide, and 1180 to 1320 beside the recipe
+column (a scrollbar moves the edge by a pixel or so). `platesTight()` in `brew-day.js` measures it from the faceplates
+themselves, so no window widths are written down: three
+faceplates side by side, each under 276 px between its padding. `renderAll` sets `#plates[data-tight]` from it, and a
+`ResizeObserver` on `#plates` draws again when it changes. `mainStacked()` says whether the recipe column is under the
+brewhouse (the page scrolls) rather than beside it.
+
+**The boil power's steps.**
+- Beside the element, where they fit, as now. Their columns are `minmax(44px,1fr)`, so a step is never under 44 px
+  wide there, and the element gives way first, never narrower than HEATING. The steps always read "−5 %": the `.pc`
+  span and its rule are gone, and `.nudge{white-space:nowrap}` keeps the % with its number.
+- On tight faceplates, a row of their own, 50 px tall (`--steps-h`) and 53 to 61 px wide, under AUTO/MANUAL and
+  TARGET. In `plateHTML` the boil kettle's fifth child is then
+  `<div class="mstack"><div class="moderow">…</div><div class="bksteps" role="group" aria-label="Boil power steps">…</div></div>`,
+  and `.ctrls` holds the element alone, full width, with its name back ("BOIL ELEMENT · tap to pause"):
+  `narrow = bkNudges() && !TIGHT` in `bkLampHTML`.
+- Why under the mode row and not under the element, as in the picture you chose from: I measured every change
+  (AUTO and MANUAL, the power and target boxes opening and closing, a hold starting and ending, the HLT's box) for
+  what moves and what lands where a control was. Under the element, the mode rows of all three faceplates moved by
+  the row's height each time, and a second tap where a closed box's keys had been landed on MANUAL. Under the mode
+  row, nothing above it moves.
+- On one screen (1180 px and wider) the drawing gives up the row's height, as it does for an open box:
+  `.app[data-steps]` (set in `renderAll` while the row shows) lets it go down to 64 px with graphs in the faceplates,
+  136 px without. The page's height then never changes as the steps come and go. In `#hop` at 1180×820 the drawing
+  goes from 183 to 120 px; at worst, a paused boil-over with a note under the faceplate on an 800 px tall window, 80 px.
+- Where the page scrolls (900 to 969 px), the row keeps its place, empty (`<div class="bkspace">`, the steps' height),
+  while the steps are away in MANUAL, a hold or the power box. Nothing below moves either.
+- The other faceplates' mode rows keep their height beside the taller row: `.plates[data-tight] .plate>.moderow{align-self:start}`.
+  They have the row's height empty at their bottom.
+- The marching stripes on a step on its way are `.nudge.sending::before`, no longer only inside `.ctrls`.
+
+**The boxes' keys.** On tight faceplates the number takes the box's width, the four keys a row under it, and SET and
+CANCEL the next row in halves; the boil kettle's third row (BOIL AT and USUAL, or BOIL and BOIL POWER) too. CSS only,
+under `.plates[data-tight] .editor`. The keys are then 53 to 61 px wide.
+
+**USUAL 45 %.** `USUAL <span class="nw">45 %</span>`, with `.editor .usual .nw{white-space:nowrap}`. At 900 and 1180 px
+the % had a line of its own.
+
+### What moves
+
+Measured at 1180×820, 1280×800, 960×1080, 900×1200 and 1366×768, at the top of the page and scrolled part of the way
+and to the bottom, for each change above:
+
+- As the steps come and go (AUTO and MANUAL, a hold starting and ending), no control moves at any of those sizes or
+  scroll positions, except the boil kettle's TARGET by 3 px within its own place when MANUAL's hint changes its length.
+  Today that 3 px moves all three faceplates' mode rows. A box opening or closing moves nothing either, except as
+  under "Found, not changed" below.
+- What is now where a control was: the boil kettle's own buttons, changing state where they are (AUTO and MANUAL, the
+  element's tap). An opening box's number and keys, where AUTO, MANUAL, TARGET and the steps were. After a box closes,
+  MANUAL where its number was, as today, and, while AUTO boils on a tight faceplate, the four steps where its four
+  keys were, in the same order. SET's and CANCEL's places are empty after the box closes.
+- Today, when a hold starts or AUTO stops at 1180 px, the element widens over the steps' places. That no longer
+  happens on tight faceplates.
+
+Found, not changed: from 900 to 1179 px, scrolled into the faceplates, an opening or closing box moves the mockup's
+faceplates by the box's height. The browser holds the drawing below still, because the mockup draws the faceplates
+anew each time. Your `morph()` keeps the elements, so your build may keep the faceplates still instead.
+
+### Your bench tests
+
+- `test_e2e_boil_power.py`, the 1180 px window (lines 530 to 556): there the steps have their own row. `row_at` reads
+  `#pl-bk .ctrls button`, which is now the element alone; the steps are `#pl-bk .bksteps button`. "The boil-over
+  button at least twice a step" and "the steps read −5 −1 +1 +5 there", with `pc == 0`, no longer apply: each step
+  is 53 px wide and reads "−5 %", and `.pc` is gone. "AUTO and MANUAL don't move as the heat pauses" still holds:
+  `#pl-bk .moderow` is inside `.mstack`.
+- The same test at 1440 px (line 463, the five buttons in `.ctrls`, steps either side) and with the power box open
+  (line 505, no steps) still holds.
+- `test_e2e_brewday_timers.py` reads the names' text (lines 237 and 353), which is unchanged.
+
+### Moments whose pictures change
+
+Compared as your identity test does (animations off, the page clock stopped, software drawing), the mockup as in
+post18 against this one, all 40 moments at your five sizes:
+
+- 1920×1080, 1920×950 and 1440×900: only the timer editor's three moments (`#timer-new`, `#timer-names`,
+  `#timer-nonames`), in the presets' row.
+- 900×1200: all 40. 900 px is tight, so the faceplates are 58 px taller there (the steps' row, or its place kept
+  empty), and in `#boilpower` and `#bktarget` the box's keys have a row of their own.
+- 390×844: the same three timer moments: the names two to a row (`#timer-new`, `#timer-names`) and the presets' gaps
+  (`#timer-nonames`).
+
+### Checked
+
+- Every moment, all 40, at 17 sizes (your five, 1920×800, 1680×1050, 1600×900, 1536×864, 1366×768, 1280×800,
+  1180×820, 1024×768, 960×1080, 768×1024, 763×1141 and 360×740): no word split across lines, no text under its
+  contrast minimum, no box over another, no script errors, and with the pointer on every line and button at 1920×1080
+  and 1366×768, no text under its minimum. Under 44 px: only KEEP BOILING, SOUND and the boil power button, as
+  documented. Before, the same measure also found the presets (43 and 44 px), the steps (32 to 40 px), the boxes' keys
+  (36 to 42 px), and WHIRLPOOL split at 360 px.
+- The steps and keys, measured at 16 sizes: beside the element 44.4 px at 1366, 45 at 1024 and 48 at 360; in their
+  own row 53 px at 1180, 59 at 900 and 61 at 1280. The boxes' keys are 47 px or wider everywhere, 53 to 61 in their own
+  row. HEATING fits its button whole at every size.
+- On one screen, 56 boiling moments (the 7 with the steps, with and without a note under the faceplate) at 1180×820,
+  1240×780, 1280×800 and 1300×1024: with graphs in the faceplates, the page is as tall with the steps as without,
+  every time. At 1321 px the steps fit beside the element, at 44 px. Without graphs (`?graphs=none`), a paused
+  boil-over with a note is 2 to 4 px taller in MANUAL than with the steps, as the drawing's least height there is
+  220 px; it is today too.
+- Greyed controls under the pointer at 1920×1080, 1366×768, 1180×820 and 960×1080, the steps' own row among them:
+  368, none changes.
+- The timers' state lines and restart notes stay inside their boxes on 80 pages.
+
+### Changed
+
+- `proposal\brew-day.css`, `proposal\brew-day.js` and this file.
+- `DESIGN.md`: the step buttons, the target and power editors, the timer editor's presets and the names to pick, and
+  the boil power's Do.
+- `.impeccable\design.json`, regenerated, and `.impeccable\decisions\direction-log.md`.
+
 ## Open questions about the drawing
 
 Both were answered on 10 Nov. The valves have been in the drawing since then; the path after the boil was
