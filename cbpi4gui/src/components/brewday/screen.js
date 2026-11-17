@@ -383,9 +383,9 @@ function bkLine() {
   }
   if (V.pv >= boilFrom()) return "Boiling";
   /* still at the boil power below the boil point: say what happens next, or that it won't */
-  if (bkLatched()) return V.keep !== false ? `Below a boil · back to full power at ${bkLetGo()} ${U}`
+  if (bkLatched()) return V.keep !== false ? `Below a boil · full power at ${bkLetGo()} ${U}`
     : `Not boiling · ${(boilFrom() - V.pv).toFixed(1)} ${U} below ${boilTh()} ${U}`;
-  const eta = GRAPHS ? graphETA(G(), "bk").replace(" at this rate", "") : "";
+  const eta = GRAPHS ? graphETA(G(), "bk") : "";
   return "Full power until it boils" + (eta ? ` · ${eta}` : "");
 }
 /* BoilPower's output in a hold. From 0.0.3.post8 (M.BKNEW) a PID sets it: 14 % for each °F short, up to 100 %, plus
@@ -526,6 +526,9 @@ function byHandLine(v, w) {
   if (w.over === "boil") return `<span class="alarm">Near the boil · heating by hand</span>`;
   return `<span class="warn">Heating by hand · ${w.t != null ? "won't stop at target" : "until you turn it off"}</span>`;
 }
+/* the line under the window. From 900 px wide the three faceplates share their rows, so a line on two lines would move
+   every AUTO/MANUAL under it: each line here, and in bkLine and byHandLine, fits on one line with at least 8 px to spare
+   at the narrowest faceplate (229 px inside, at 1180 px wide), with three-digit numbers */
 function devHTML(v) {
   const stale = s => `<span class="stale">${s}</span>`;
   if (st.link === "lost") return st.age == null ? stale("No reading yet") : `<span class="age">Last reading ${st.age} s ago</span>`;
@@ -536,7 +539,7 @@ function devHTML(v) {
   const herms = v === "hlt" && hermsOn(), driven = V.mode === "auto" || herms;
   /* AUTO with no target (unset, 0 or below) runs but holds nothing, so nothing heats. The line says so at once, in Prompt
      Amber, and never calls it MANUAL; CraftBeerPi's own warning follows in the title bar after 5 s */
-  if (herms && st.v.mt.sv == null) return `<span class="warn">Not heating: the mash tun has no target</span>`;
+  if (herms && st.v.mt.sv == null) return `<span class="warn">No mash tun target, so it won't heat</span>`;
   if (noTarget(v)) return `<span class="warn">${v === "mt" && M.HERMS !== false ? "No target, so the HLT won't heat" : "No target, so it won't heat"}</span>`;
   const w = byHand(v);
   if (w) return byHandLine(v, w);
@@ -569,7 +572,7 @@ function svCell(v) {
   return ho != null ? ["SV", f1(ho) + u] : ["BOIL", boilReadHTML()];
 }
 function plateHTML(v) {
-  const V = st.v[v], by = v === "hlt" && hermsOn() && st.v.mt.sv != null, [svT, svV] = svCell(v);
+  const V = st.v[v], [svT, svV] = svCell(v);
   /* the new boil kettle has TARGET beside AUTO/MANUAL, as the HLT does, and its element button between the boil power's
      steps, −5 −1 … +1 +5, where four 44 px steps and HEATING fit in one row. On tight faceplates (TIGHT) the steps have
      a row of their own under AUTO/MANUAL and TARGET, so that, as they come and go with AUTO, a hold or the power box,
@@ -589,7 +592,7 @@ function plateHTML(v) {
       ${LAYOUT === "b" ? auxHTML(v) : ""}
       ${GRAPHS ? graphHTML(G(), v, "f") : ""}
     </div>
-    <p class="dev">${devHTML(v)}${by ? " · SV set by the mash tun" : ""}</p>
+    <p class="dev">${devHTML(v)}</p>
     <div class="ctrls${nudge && !own ? " bkpow" : ""}">${lamps}</div>
     ${st.edit && st.edit.v === v ? editorHTML(v) : v === "hlt" && hermsOn() ? hermsRowHTML() : steps ? `<div class="mstack">${mode}${steps}</div>` : mode}
     <p class="note">${esc(st.notes[v] || "")}</p>

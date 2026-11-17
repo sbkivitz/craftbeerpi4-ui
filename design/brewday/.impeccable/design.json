@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-17T09:13:20.561Z",
+  "generatedAt": "2026-11-17T18:16:47.567Z",
   "title": "Design System: CraftBeerPi Brew Day",
   "extensions": {
     "colorMeta": {
@@ -920,7 +920,7 @@
       "name": "Target Editor",
       "kind": "input",
       "refersTo": "target-input",
-      "description": "Replaces a faceplate’s mode row in place when TARGET is pressed: step keys, a small PID-window input in Setpoint Green, SET in Selection Blue, and CANCEL. Keys are never under 44px wide: on a faceplate under 276px inside the value takes the width and the keys a row under it.",
+      "description": "Replaces a faceplate’s mode row in place when TARGET is pressed: step keys, a small PID-window input in Setpoint Green, SET in Selection Blue, and CANCEL. Keys are never under 44px wide: on a faceplate under 276px inside the value takes the width and the keys a row under it. Keys are never under 44px wide: on a faceplate under 276px inside the value takes the width and the keys a row under it.",
       "html": "<div class=\"ds-editor\" role=\"group\" aria-label=\"New target for the mash tun\"><button type=\"button\" aria-label=\"Down 1 degree\">−1</button><button type=\"button\" aria-label=\"Down 0.1 degree\">−.1</button><input inputmode=\"decimal\" value=\"149.0\" aria-label=\"New target in °F\"><button type=\"button\" aria-label=\"Up 0.1 degree\">+.1</button><button type=\"button\" aria-label=\"Up 1 degree\">+1</button><button type=\"button\" class=\"ds-ok\">SET 149.0 °F</button><button type=\"button\" class=\"ds-no\">CANCEL</button></div>",
       "css": ".ds-editor{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) minmax(0,1.7fr) repeat(2,minmax(0,1fr));gap:6px;width:360px;font-family:\"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif} .ds-editor button{min-height:54px;padding:0 2px;border:1px solid var(--edge,#33475a);border-radius:6px;background:var(--panel-2,#1e2b37);color:var(--text,#e8eef3);font:700 18px/1 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;cursor:pointer} .ds-editor input{min-width:0;min-height:54px;border:2px solid #3d7fd0;border-radius:6px;background:var(--face,#030609);color:var(--sv,#3ddc6f);font:600 28px/1 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;text-align:center;font-variant-numeric:tabular-nums} .ds-editor .ds-ok{grid-column:1/4;background:var(--select,#2a6fc0);border-color:var(--select,#2a6fc0);color:#fff} .ds-editor .ds-no{grid-column:4/6} .ds-editor button:focus-visible,.ds-editor input:focus-visible{outline:3px solid #8cc2ff;outline-offset:2px}"
     },
@@ -1059,7 +1059,7 @@
       },
       {
         "name": "The Mode Tells The Truth Rule",
-        "body": "The line under the window never contradicts MODE. AUTO with no target (unset, 0 or below, which SV shows as \"– –\") runs but holds nothing, so nothing heats for it. The line says so at once, in Prompt Amber, and names what won't heat: \"No target, so the HLT won't heat\" on the mash tun, \"Not heating: the mash tun has no target\" on the hot liquor tank under the HERMS, and \"No target, so it won't heat\" on a kettle with its own AUTO. It never says MANUAL while MODE says AUTO. CraftBeerPi's own warning follows in the title bar after 5 s, and both go once the kettle has a target or leaves AUTO. The warning was asked for on 10 Nov: \"I think a \"SV\" was not set - but it should pop up a warning in that case\".",
+        "body": "The line under the window never contradicts MODE. AUTO with no target (unset, 0 or below, which SV shows as \"– –\") runs but holds nothing, so nothing heats for it. The line says so at once, in Prompt Amber, and names what won't heat: \"No target, so the HLT won't heat\" on the mash tun, \"No mash tun target, so it won't heat\" on the hot liquor tank under the HERMS, and \"No target, so it won't heat\" on a kettle with its own AUTO. It never says MANUAL while MODE says AUTO. CraftBeerPi's own warning follows in the title bar after 5 s, and both go once the kettle has a target or leaves AUTO. The warning was asked for on 10 Nov: \"I think a \"SV\" was not set - but it should pop up a warning in that case\".",
         "section": "components"
       },
       {

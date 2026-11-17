@@ -43,7 +43,7 @@ same. The section at the end has the detail.
 | A fixed brew-day screen: recipe on the left, three faceplates across the top, line drawing of the rig below, screen tabs along the top (bottom on a phone) | React UI | A new view in `cbpi4gui`. The free-form dashboard and its editor stay for other uses. |
 | Say which kettle is the HLT, mash tun and boil kettle, which switches are the two elements and the two pumps, and which switch has its own override | React UI and one setting | As built by Brett (9 Nov): no mapping file. The screen reads it from CraftBeerPi's own settings, the way the kettle logics do: the mash tun is `MASH_TUN` or the kettle running PID_HERMS; the boil kettle is `BoilKettle`; the HLT is PID_HERMS's `HLT_Kettle`, or else the kettle whose sensor is its `HLT_Sensor`; the elements are those kettles' heaters and the pumps their agitators. A separate mapping could disagree with what the logics actually drive and lock or label the wrong switch. The override is one new setting, `BREWDAY_OVERRIDE_ACTOR` (an actor picker in Settings). On the rig this gives `HLT_HEAT` (GPIO 6), `BK_HEAT` (GPIO 5), `Recirc_PUMP` (GPIO 7, the override) and `Wort PUMP` (GPIO 8). |
 | Faceplates: big red PV over smaller green SV, plus OUT (element power) and MODE | React UI | All from existing data: sensor value, kettle `target_temp`, actor power, whether the kettle logic is running. |
-| "SV set by the mash tun" and the locked HLT buttons while the mash tun's HERMS logic runs | React UI | Read from the kettle config the screen already loads: `PID_HERMS` names its heater (`HLT Heater`) and its pump (`Mash Pump`). Write it as a general rule ("a running kettle logic drives its own heater and pump"), not as a special case. |
+| The HERMS button ("run by the mash tun") and the locked HLT buttons while the mash tun's HERMS logic runs | React UI | Read from the kettle config the screen already loads: `PID_HERMS` names its heater (`HLT Heater`) and its pump (`Mash Pump`). Write it as a general rule ("a running kettle logic drives its own heater and pump"), not as a special case. |
 | Lamp-strip buttons that say their state in words: HEATING, RUNNING, OFF, DID NOT STOP; at least 56 px tall | React UI | Fixes defects U2 (small, adjacent buttons) and U3 (on and off shown mainly by colour). |
 | Hold for one second to turn heat on, to switch a kettle to AUTO, and to start the recipe; one tap to turn anything off | React UI | Fixes U2 (one mis-tap can start a heating element). Works with a mouse, touch and the keyboard (Space or Enter held). |
 | Every command answers at its own button: "switching on…", then confirmed, or a red "did not stop, tap to try again" plus an alert in the title bar | React UI | Fixes U1 (failed commands are invisible). Actor on and off already return 500 when they fail. The UI must stop throwing errors away and must time out a command that gets no answer. |
@@ -4196,6 +4196,125 @@ post18 against this one, all 40 moments at your five sizes:
 - `proposal\brew-day.css`, `proposal\brew-day.js` and this file.
 - `DESIGN.md`: the step buttons, the target and power editors, the timer editor's presets and the names to pick, and
   the boil power's Do.
+- `.impeccable\design.json`, regenerated, and `.impeccable\decisions\direction-log.md`.
+
+## Every line under a window on one line, so the buttons under it stay put: ready to build (17 Nov, morning)
+
+Your build agent found that at 1180 px the boil kettle's "Below a boil · back to full power at 207.0 °F" takes two
+lines, and that all three faceplates' AUTO/MANUAL rows sit 18 px lower until it shortens, because the faceplates share
+their rows. DESIGN.md promised that every such line fits on one line at 229 px. The words change, not the layout:
+keeping room for a second line would take 18 px from the drawing on every narrow window, all day, for a line that is
+almost always short.
+
+Checking every line in every moment found more than that one. On post19, in layout B, eight different lines took two
+lines in 11 of the 40 moments, mostly at 1180 to 1200 px wide, some at 900 and 1280:
+- every line with a time to target, such as "6.7 °F below target · about 2 min at this rate" (`#manual`, `#hold`,
+  `#handhold`, `#sparge-heat` and four more);
+- the HLT's line under the HERMS, with anything but "At target" before " · SV set by the mash tun": "1.8 °F below
+  target · SV set by the mash tun" (`#sparge`), "Last reading 48 s ago · SV set by the mash tun" (`#offline`). With a
+  time to target as well, it takes two lines at every width, 1920 included;
+- "Below a boil · back to full power at 206.6 °F" (`#keepboil`).
+
+"Not heating: the mash tun has no target" fitted with 0.3 px to spare.
+
+### What changes
+
+Only words, in `brew-day.js` and `graphs.js`. No CSS.
+
+| Line | Was | Now | In your build |
+|---|---|---|---|
+| Time to target, every vessel (`graphETA`) | "about 15 min at this rate", "under a minute at this rate" | "about 15 min", "under 1 min" | `graphs.js` line 46 |
+| Boil kettle below a boil, KEEP BOILING ticked (`bkLine`) | "Below a boil · back to full power at 207.0 °F" | "Below a boil · full power at 207.0 °F" | `screen.js` line 386; the unit stays `${U}` |
+| Boil kettle heading for the boil (`bkLine`) | `graphETA("bk").replace(" at this rate", "")` | `graphETA("bk")`, with nothing to take off | line 388 |
+| HLT under the HERMS, mash tun with no target (`devHTML`) | "Not heating: the mash tun has no target" | "No mash tun target, so it won't heat" | line 539 |
+| HLT under the HERMS (`plateHTML`) | its line, then " · SV set by the mash tun" | its line alone; `by` is gone | line 592 |
+
+"under a minute" in a restarted step's note (`screen.js` line 651) is a different line and stays.
+
+Why each:
+- **"at this rate".** The graph right above the line shows the rate, and the time only shows with the graph. Without
+  those three words the longest time line, "108.0 °F below target · about 120 min", has 22 px to spare at 229 px;
+  with them it was 44 px too long. The boil kettle's line already left them out.
+- **"under 1 min".** "Full power until it boils · under a minute" had 5 px to spare. It has 25 now, and reads like
+  "about 2 min".
+- **" · SV set by the mash tun".** At 229 px it fits only after "At target". MODE in the window already says HERMS,
+  the HERMS button under the line says "run by the mash tun", and tapping it says the mash tun sets this target to its
+  own plus 5 °F. I tried putting "SV" into the HERMS button's words instead. Every wording took two lines there at
+  1320 to 1440 px and on phones, which made that row taller than the mash tun's and the boil kettle's beside it, so the
+  button's words stay as they are.
+- **"Below a boil · full power at 207.0 °F".** 32 px to spare. "back to full at" had 24 but drops "power", the word
+  every other boil line uses; "full power again at" was 3 px too long.
+- **"No mash tun target, so it won't heat".** 24 px to spare, and it reads like the mash tun's own line beside it,
+  "No target, so the HLT won't heat".
+
+### The rule, with numbers for a test
+
+Every line under a window fits on one line at the narrowest faceplate, 229 px inside at 1180 px wide, with at least
+8 px to spare, three-digit numbers included. That holds for layout B with and without graphs and with `?bk=today`;
+the mockup's layout A is 7 px narrower and isn't built. The widths, in 15 px Barlow Condensed 500, measured in Edge
+by putting each line into `#pl-hlt .dev` at 1180×820; every other line is shorter:
+
+| Line, with its longest numbers | Width | To spare |
+|---|---|---|
+| "137.0 °F above target · heating by hand" (a target under about 70 °F) | 221 px | 8 px |
+| "Full power until it boils · about 120 min" | 217 px | 12 px |
+| "Heating by hand · won't stop at target" | 215 px | 14 px |
+| "Heating by hand · until you turn it off" | 211 px | 18 px |
+| "108.0 °F above target · about 120 min" | 208 px | 21 px |
+| "No mash tun target, so it won't heat" | 205 px | 24 px |
+| "Below a boil · full power at 208.6 °F" | 199 px | 30 px |
+| "Not boiling · 109.9 °F below 212.0 °F" | 198 px | 31 px |
+
+The 8 px are for small differences in how other browsers lay out the same font: an iPad in landscape is 1180 px wide.
+A check on the bench that would have caught this: at 1180×820, in every moment, each `.plate .dev` is one line (the
+distinct tops of its text's client rects).
+
+### What moves
+
+At 1180×820 and 1180×900, switching AUTO and MANUAL on the boil kettle in `#keepboil`, on the HLT in `#manual` and on
+the mash tun in `#sparge` (which ends the HERMS): on post19, 8 to 11 buttons across all three faceplates moved 18 to
+21 px each time. Now none does, except the switched vessel's own TARGET, as below.
+
+Your second point, the boil kettle's AUTO, MANUAL and TARGET 5.4 px shorter in MANUAL at 1180, is left as it is. It
+happens on every vessel, from 1180 to 1320 px. In AUTO, MANUAL's hint "tap to stop AUTO" takes two lines in its half
+of the row, 73 px wide, so AUTO and MANUAL are 59.4 px tall and TARGET 61.4. In MANUAL, AUTO's "hold to start" takes
+one line, so they are 54 and 56 px. Their tops stay put, they stay well over 44 px, and nothing else comes under the
+5.4 px they give up.
+
+### Your bench tests
+
+- `test_e2e_brewday.py` line 506 waits for "Not heating: the mash tun has no target" on `#pl-hlt`: now "No mash tun
+  target, so it won't heat".
+- Line 511 waits for "SV set by the mash tun" on `#pl-hlt`, which is gone. The same line's check for "HERMS" still
+  holds, and the HERMS button still says "run by the mash tun".
+- `test_e2e_boil_power.py` line 433 quotes the old "Below a boil" line in a comment.
+- No test reads "at this rate".
+
+### Moments whose pictures change
+
+Compared as your identity test does (animations off, the page clock stopped, software drawing), post19's mockup against
+this one, all 40 moments at your five sizes. Only the line under a window changes, and nothing else in the picture:
+- 21 moments at all five sizes: `#mash`, `#hold`, `#whirlpool`, `#keepboil`, `#handhold`, `#sparge`, `#sparge-heat`,
+  `#fail`, `#manual`, `#timers`, `#timer-done`, `#timer-back`, `#timer-back-done`, `#timer-back-unknown`, `#timer-new`,
+  `#timer-names`, `#timer-nonames`, `#timers-hand`, `#sound-allow`, `#offline` and `#notarget`.
+- At 900×1200, `#handhold` and `#offline` are 18 px shorter: their line took two lines there.
+- With `?bk=today`, 18 moments: the same, less `#hold`, `#whirlpool`, `#keepboil` and `#handhold`, plus `#heatup`. At
+  900×1200, `#heatup` and `#offline` are 18 px shorter. With `?graphs=none`, 14: the same, less the seven with a time
+  to target. At 900×1200, `#offline` is 18 px shorter.
+
+### Checked
+
+- Every line under a window, in all 40 moments, at 17 sizes from 360 to 1920 px wide, in the default, `?graphs=none`,
+  `?bk=today` and layout A: 2,720 pages, none on two lines. The least room to spare in any moment at 1180 px is 13.8 px
+  ("Heating by hand · won't stop at target" in `#byhand`).
+- What moves, and what comes under where each button was, as above.
+- The HERMS button's words, at 12 sizes, against the rows beside it.
+
+### Changed
+
+- `proposal\brew-day.js`, `proposal\graphs.js` and this file (this section, and the HERMS row of the "Change by
+  change" table).
+- `DESIGN.md`: the line under the window, and The Mode Tells The Truth Rule.
 - `.impeccable\design.json`, regenerated, and `.impeccable\decisions\direction-log.md`.
 
 ## Open questions about the drawing

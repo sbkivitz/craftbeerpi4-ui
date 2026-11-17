@@ -266,7 +266,8 @@ function graphETA(v) {
   if (Math.sign(rate) !== Math.sign(d) || Math.abs(rate) < 0.15) return "";
   const m = Math.abs(d) / Math.abs(rate);
   if (m > 120) return "";
-  return m < 1 ? "under a minute at this rate" : `about ${m < 10 ? Math.round(m) : Math.round(m / 5) * 5} min at this rate`;
+  /* "about", not "at this rate": the graph above the line shows the rate, and the line has room for no more */
+  return m < 1 ? "under 1 min" : `about ${m < 10 ? Math.round(m) : Math.round(m / 5) * 5} min`;
 }
 
 /* ---------- markup and drawing ---------- */

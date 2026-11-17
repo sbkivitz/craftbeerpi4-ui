@@ -1,5 +1,28 @@
 # Direction decision log
 
+## Every line under a window on one line (17 Nov 2026, morning)
+- Found by the build agent, measuring post19: at 1180 px the boil kettle's "Below a boil · back to full power at
+  207.0 °F" took two lines, and all three faceplates' AUTO/MANUAL rows sat 18 px lower until it shortened, because the
+  faceplates share their rows. DESIGN.md promised one line at 229 px. Brett: "either the line or the layout needs to
+  change. Your call."
+- Measuring every line in every moment found eight lines doing it in 11 of the 40 moments, mostly at 1180 to 1200 px,
+  some at 900 and 1280: every time to target ("· about 2 min at this rate"), the HLT's " · SV set by the mash tun"
+  after anything but "At target" (with a time to target as well, at every width), and "Below a boil".
+  "Not heating: the mash tun has no target" fitted with 0.3 px to spare.
+- Chosen: change the words, not the layout. Room kept for a second line would take 18 px from the drawing on every
+  narrow window, all day, for a line that is almost always short. The time to target drops "at this rate" (the graph
+  above shows the rate, and the boil kettle's line had already dropped it) and says "under 1 min" in its last minute;
+  "Below a boil · full power at 207.0 °F"; "No mash tun target, so it won't heat", like the mash tun's own "No target,
+  so the HLT won't heat". The HLT's line under the HERMS has nothing added: MODE says HERMS, and the HERMS button
+  under the line says "run by the mash tun". "SV" in that button's words made its row taller than the rows beside it
+  at 1320 to 1440 px and on phones, so its words stay.
+- The rule now: every line fits on one line at 229 px with at least 8 px to spare, three-digit numbers included, for
+  small differences in how other browsers lay out the font (an iPad in landscape is 1180 px wide). The tightest is
+  "137.0 °F above target · heating by hand", 221 px.
+- Left as it is, as Brett suggested: from 1180 to 1320 px a vessel's AUTO, MANUAL and TARGET are 5.4 px shorter in
+  MANUAL than in AUTO, because AUTO's MANUAL hint "tap to stop AUTO" takes two lines. Their tops stay put, they stay
+  54 px tall or more, and nothing else comes under the space they give up.
+
 ## Every key at least 44 px wide; nothing moves as the steps come and go (17 Nov 2026)
 - Asked for, after the restart-timer hand-off listed them: WHIRLPOOL split at 360 px, and the timer presets, the boil
   power's steps and the boxes' keys under 44 px wide. KEEP BOILING, SOUND and the boil power button stay as
