@@ -1194,7 +1194,7 @@ function onClick(e) {
   if (t.getAttribute("aria-disabled") === "true") {
     e.preventDefault();
     if ("save" in d) toast(st.wait === "loading" ? "Waiting for CraftBeerPi to send the item." : st.wait === "missing" ? "There's nothing here to save." : lost() ? "No connection: SAVE sends your changes once CraftBeerPi is back." : invalids().length ? "Fix the entry marked in red first: it needs a number." : "Nothing has changed yet.");
-    else if ("undoall" in d) toast("Nothing to undo.");
+    else if ("undoall" in d) toast(st.saving ? "Saving: UNDO is back once CraftBeerPi answers." : "Nothing to undo.");
     else if ("sw" in d) toast(PAUSED);
     else if ("del" in d) toast("Not now: the line under it says why.");
     else if ("fileSave" in d || "fileLoad" in d) toast(st.fileBusy ? "Waiting for CraftBeerPi." : $("#kettle-file-help").textContent);

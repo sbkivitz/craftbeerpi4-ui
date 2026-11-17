@@ -12,8 +12,7 @@
 //   rules can't reach the title bar. So :root becomes :host, the frame's rules (title bar, last event, tabs: the
 //   brew-day screen's own, which it draws) are left out, and so are .app's, which go in hardware-frame.css. The
 //   drawing's rules (brew-day.css's own for layout B's line drawing) come along: the page draws its own copy of the
-//   brewhouse in the shadow root. One rule is added: a SAVE that can't be pressed keeps its grey under the pointer,
-//   where the mockup's .cmd.go:hover would light it blue behind its grey words.
+//   brewhouse in the shadow root.
 // - hardware-frame.css: the mockup's .app rules (one screen tall from 620 px, not the brew-day's 860; scrolling below
 //   1180 px wide; room for the phone's save bar), for <html data-page=hardware> only. And the name box's own rules:
 //   input#name sits in the page's host, outside the shadow root, and shows in the Name row through a slot, so a
@@ -140,7 +139,6 @@ const write = (name, text) => { writeFileSync(join(OUT, name), text); console.lo
     shadow.push({...r, sel: keep.join(",")});
   }
   if (light.length !== Object.keys(LIGHT).length) fail("the name box's rules (.fld, .sr, :focus-visible) aren't all there");
-  shadow.push({media: [], sel: ".cmd.go[aria-disabled=true]:hover", body: "background:var(--panel-2)"});
   // the host fills the frame's fourth row, and the page's .main fills the host
   shadow.unshift({media: [], sel: ":host", body: "display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);min-width:0;min-height:0"});
   const SCOPE = "html.bd-page[data-page=hardware] ", HOST = "#sp>";
