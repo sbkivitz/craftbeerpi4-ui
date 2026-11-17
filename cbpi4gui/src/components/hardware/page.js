@@ -51,6 +51,8 @@ let host = null, sr = null, nameBox = null, env = {}, gen = 0, timers = [], off 
 let D = null, LAST = null, TYPES = {kettle: {}, sensor: {}, actor: {}}, BLANKS = {}, st = null;
 const $ = (s, r = sr) => r.querySelector(s), $$ = (s, r = sr) => [...r.querySelectorAll(s)];
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+/* a CraftBeerPi name such as Sensor_Stale_Seconds may break after an underscore, not inside a word, in a narrow column */
+const brk = s => esc(s).replace(/_/g, "_<wbr>");
 const phone = () => matchMedia("(max-width:700px)").matches;
 const wide = () => matchMedia("(min-width:1180px)").matches;
 const later = (fn, ms) => { const g = gen; const t = setTimeout(() => { if (g === gen && st) fn(); }, ms); timers.push(t); return t; };
@@ -332,14 +334,15 @@ function partRowHTML(p) {
   if (q && !h.item && !h.rows.length) return "";
   const [lv, lc] = liveText(p.kind, p.id), chip = stateChip(k);
   const mates = p.kind === "actor" ? pinMates(p.id) : [], pin = p.kind === "actor" ? pinOf(x) : "", sw0 = p.kind === "actor" && !p.with;
-  /* under the name: its kind, a probe's OneWire address and CraftBeerPi's Sensor ID; a switch's pin has a column */
+  /* under the name and its reading or pin, across the line: its kind, a probe's OneWire address and CraftBeerPi's
+     Sensor ID */
   const kindLine = x && !x.fresh ? (p.kind === "sensor" && x.type === "OneWire" && (x.props || {}).Sensor ? `${x.type} · ${x.props.Sensor}` : x.type || "") : "";
-  const sub = p.with ? `with the ${esc(find("kettle", p.with).name)}${pin ? ` · GPIO ${esc(pin)}` : ""}` : `${esc(kindLine)}${sw0 ? `<span class="pin2"> · ${pin ? `GPIO ${esc(pin)}` : "no pin"}</span>` : ""}${mates.length ? ` · <span class="dup">${esc(andList(mates.map(m => m.name)))} ${mates.length === 1 ? "has" : "have"} GPIO ${esc(pin)} too</span>` : ""}`;
+  const sub = p.with ? `with the ${esc(find("kettle", p.with).name)}${pin ? ` · GPIO ${esc(pin)}` : ""}` : `${esc(kindLine)}${sw0 ? ` <span class="pin2">· ${pin ? `GPIO ${esc(pin)}` : "no pin"}</span>` : ""}${mates.length ? ` · <span class="dup">${esc(andList(mates.map(m => m.name)))} ${mates.length === 1 ? "has" : "have"} GPIO ${esc(pin)} too</span>` : ""}`;
   const sid = p.kind === "sensor" && x && !x.fresh ? `<small class="sid">Sensor ID ${esc(p.id)}</small>` : "";
   const pinCol = `<span class="pin${!pin ? " none" : mates.length ? " dup" : ""}">${pin ? `GPIO ${esc(pin)}` : "no pin"}</span>`;
   const hits = hitsHTML(p.kind, p.id, h);
   const sw = sw0 ? swHTML(p.id) : "";
-  return `<li class="hp${p.with ? " ref" : ""}"><a href="#/${p.kind}/${esc(p.id)}" data-open="${esc(k)}" data-hot="${esc(k)}" aria-current="${cur}"><span class="k">${word}</span><span class="t">${marked(x ? nameOf(p.kind, p.id) : "")}${sw0 && chip ? ` ${chip}` : ""}${sub ? `<small>${sub}</small>` : ""}${sid}</span><span class="v ${sw0 || chip ? "" : lc}">${sw0 ? pinCol : chip || esc(lv)}</span></a>${sw}</li>${hits ? `<li class="hp-hits">${hits}</li>` : ""}`;
+  return `<li class="hp${p.with ? " ref" : ""}"><a href="#/${p.kind}/${esc(p.id)}" data-open="${esc(k)}" data-hot="${esc(k)}" aria-current="${cur}"><span class="k">${word}</span><span class="t">${marked(x ? nameOf(p.kind, p.id) : "")}${sw0 && chip ? ` ${chip}` : ""}</span><span class="v ${sw0 || chip ? "" : lc}">${sw0 ? pinCol : chip || esc(lv)}</span>${sub || sid ? `<span class="sub">${sub ? `<small>${sub}</small>` : ""}${sid}</span>` : ""}</a>${sw}</li>${hits ? `<li class="hp-hits">${hits}</li>` : ""}`;
 }
 function groupHTML(g, i) {
   const k = ik("kettle", g.k.id), q = words().length, h = hitsOf("kettle", g.k.id);
@@ -444,7 +447,7 @@ function xrHTML() {
   const extra = groups.filter(g => !v || !v.includes(g.k)).map(g => g.k.name);
   const also = [...extra.map(n => `the kettle <b>${esc(n)}</b>`), ...loose.map(p => `<b>${esc(find(p.kind, p.id).name)}</b>`)];
   const alsoP = `<p class="xalso">${also.length ? `Not in the drawing: ${also.join(", ")}${loose.length ? ", which no kettle uses" : ""}. ` : ""}Fermenters are on <a href="#/fermenters" data-fer>their own page</a>.</p>`;
-  return `<section class="xr" aria-labelledby="xr-h"><header class="xhd"><h2 id="xr-h">Brewhouse</h2><p>${v ? "Tap a part, or its line under the drawing, to open its settings." : "Choose the mash tun and boil kettle in Settings to see them drawn here."}</p></header><div class="xrig" id="xrig" data-keep${v ? "" : " hidden"}></div><div class="nps">${nps}</div>${alsoP}</section>`;
+  return `<section class="xr" aria-labelledby="xr-h"><header class="xhd"><h2 id="xr-h">Brewhouse</h2><p>${v ? `<span class="np-on">Tap a part, or its line under the drawing, to open its settings.</span><span class="np-off">Tap a part, or its line in the list, to open its settings.</span>` : "Choose the mash tun and boil kettle in Settings to see them drawn here."}</p></header><div class="xrig" id="xrig" data-keep${v ? "" : " hidden"}></div><div class="nps">${nps}</div>${alsoP}</section>`;
 }
 /* the drawing, at the width of its box as on Brew Day, with a probe drawn into each vessel and every part marked. It is
    drawn again only when what it shows changes: its size, the part lit, the switches and their names */
@@ -636,7 +639,7 @@ function planRows(f) {
    A new kettle is filled in from the file instead; a preview the kettle has changed since loads nothing until it is redrawn */
 function previewHTML(x) {
   const p = st.file, plan = p.plan, type = p.type, rows = planRows(p), ch = rows.filter(r => r.changes), visible = p.all ? rows : ch, same2 = rows.length - ch.length;
-  const tr = r => `<tr data-row="${esc(r.key)}" data-changes="${r.changes ? "yes" : "no"}"${r.filled ? ' data-filled="yes"' : ""}><th scope="row">${esc(r.name)}<small>${esc(r.key)}</small></th><td data-side="now"${r.now === "" ? ' class="q"' : ""}>${esc(r.now === "" ? "blank" : r.now)}</td><td data-side="after"${r.changes ? ' class="after"' : ' class="same"'}>${r.changes ? esc(r.after === "" ? "blank" : r.after) + (r.filled ? `<small>${esc(type)}'s built-in value</small>` : "") : "same"}${r.note ? `<small>${esc(r.note)}</small>` : ""}</td></tr>`;
+  const tr = r => `<tr data-row="${esc(r.key)}" data-changes="${r.changes ? "yes" : "no"}"${r.filled ? ' data-filled="yes"' : ""}><th scope="row">${esc(r.name)}<small>${brk(r.key)}</small></th><td data-side="now"${r.now === "" ? ' class="q"' : ""}>${r.now === "" ? "blank" : brk(r.now)}</td><td data-side="after"${r.changes ? ' class="after"' : ' class="same"'}>${r.changes ? (r.after === "" ? "blank" : brk(r.after)) + (r.filled ? `<small>${brk(type)}'s built-in value</small>` : "") : "same"}${r.note ? `<small>${brk(r.note)}</small>` : ""}</td></tr>`;
   const blank = (plan.blank || []).map(b => ({...b, n: metaFor("kettle", type, b.label).n, u: unitText(metaFor("kettle", type, b.label).u)}));
   const vals = blank.filter(b => b.value != null), nulls = blank.filter(b => b.value == null), filled = rows.filter(r => r.filled);
   const stale = !!p.stale, blocked = !p.isNew && x.auto, offAll = stale || blocked || p.busy;
@@ -656,7 +659,7 @@ function previewHTML(x) {
   const err = stale ? `<div class="kfe" data-kettle-file="error" role="alert"><p><b>Nothing was loaded: ${esc(x.name)} has changed since this preview.</b> It was changed on another screen. LOOK AGAIN shows what loading would change now.</p><button type="button" class="cmd ans" data-file-again>Look again<small>shows the changes now</small></button></div>`
     : p.error ? `<div class="kfe" data-kettle-file="error" role="alert"><p><b>Nothing was loaded.</b> ${esc(p.error)}</p></div>`
     : blocked ? `<div class="kfe" data-kettle-file="blocked" role="alert"><p><b>Nothing can be loaded while ${esc(x.name)}'s AUTO is on.</b> Switch it off on Brew Day, then load the file.</p></div>` : "";
-  return `<div data-kettle-file="preview"><div class="kfp" role="dialog" aria-labelledby="kettle-file-title" aria-describedby="kettle-file-from"><h3 id="kettle-file-title">${p.isNew ? "Fill in this kettle from a file?" : `Load settings into ${esc(x.name)}?`}</h3><p class="from" id="kettle-file-from">${esc(from)}</p>${other}<h4 data-kettle-file="heading">${esc(heading)}</h4>${visible.length ? `<table aria-label="What would change"><thead><tr><th scope="col" style="width:40%">Setting</th><th scope="col">Now</th><th scope="col">After loading</th></tr></thead><tbody>${visible.map(tr).join("")}</tbody></table>` : ""}${same2 ? `<p><button type="button" class="lnk" data-file-all aria-expanded="${!!p.all}">${p.all ? `Hide the ${same2} that stay the same` : `Show the ${same2} that stay the same`}</button></p>` : ""}${problems.length ? `<h4>Not loaded</h4><ul data-kettle-file="problems">${problems.map(t => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}${left.length ? `<h4>Not in the file</h4><ul data-kettle-file="left">${left.map(t => `<li>${esc(t)}</li>`).join("")}</ul>` : ""}${box}${err}${acts}</div></div>`;
+  return `<div data-kettle-file="preview"><div class="kfp" role="dialog" aria-labelledby="kettle-file-title" aria-describedby="kettle-file-from"><h3 id="kettle-file-title">${p.isNew ? "Fill in this kettle from a file?" : `Load settings into ${esc(x.name)}?`}</h3><p class="from" id="kettle-file-from">${esc(from)}</p>${other}<h4 data-kettle-file="heading">${esc(heading)}</h4>${visible.length ? `<table aria-label="What would change"><thead><tr><th scope="col" style="width:40%">Setting</th><th scope="col">Now</th><th scope="col">After loading</th></tr></thead><tbody>${visible.map(tr).join("")}</tbody></table>` : ""}${same2 ? `<p><button type="button" class="lnk" data-file-all aria-expanded="${!!p.all}">${p.all ? `Hide the ${same2} that stay the same` : `Show the ${same2} that stay the same`}</button></p>` : ""}${problems.length ? `<h4>Not loaded</h4><ul data-kettle-file="problems">${problems.map(t => `<li>${brk(t)}</li>`).join("")}</ul>` : ""}${left.length ? `<h4>Not in the file</h4><ul data-kettle-file="left">${left.map(t => `<li>${brk(t)}</li>`).join("")}</ul>` : ""}${box}${err}${acts}</div></div>`;
 }
 
 function sheetHTML(kind, id) {
