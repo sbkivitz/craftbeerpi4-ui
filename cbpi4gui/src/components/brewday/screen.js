@@ -1742,8 +1742,22 @@ const tById = id => st.tmrs.find(t => t.id === id);
    its line says "no longer needed". Live, CraftBeerPi withdraws the prompt and observe() changes the line */
 function tAnswered(t, res = "answered") { delete t.at; questionGone(t.name, res); if (st.banner && st.banner.timer === t.id) st.banner = null; }
 const tPct = t => t.run ? Math.round(100 * (1 - t.left / t.run)) : 0;
-// how long ago a timer ran out: on the demo's clock, or CraftBeerPi's brewing clock
+// how long ago a timer ran out: on the demo's clock, or CraftBeerPi's brewing clock. For one brought back after a restart,
+// CraftBeerPi tells only once its clock can be trusted (tOff); until then its row shows "– –" in place of the count
+const tUpKnown = t => DEMO_MODE ? t.at != null : t.up != null;
 const tUp = t => Math.max(0, DEMO_MODE ? st.t - t.at : t.up);
+const tUpText = t => tUpKnown(t) ? "+" + tfmt(tUp(t)) : "– –";
+/* a timer CraftBeerPi brought back when it started again (a power cut, say): one that was counting down comes back paused,
+   one that had run out still run out. Until it is started or answered, its line says how long CraftBeerPi was off, or, while
+   CraftBeerPi can't tell, that it isn't known: a Raspberry Pi with no clock board starts with a wrong time after a power
+   cut, until the network sets it */
+const offFor = s => {
+  if (s < 59.5) return `${Math.max(1, Math.round(s))} s`;
+  const m = Math.round(s / 60), h = Math.floor(m / 60);
+  return m < 60 ? `${m} min` : h >= 48 ? `${Math.round(m / 1440)} days` : m % 60 ? `${h} h ${m % 60} min` : `${h} h`;
+};
+const tBack = t => !!t.interrupted && (t.state === "paused" || t.state === "done");
+const tOff = t => t.off == null ? "CraftBeerPi was off; for how long isn't known" : `CraftBeerPi was off for ${offFor(t.off)}`;
 /* two timers never share a name (whatever its capitals): their alarms, titled with it, would be hard to tell apart */
 const tTwin = (name, t) => st.tmrs.find(z => z !== t && z.name.toLowerCase() === name.toLowerCase());
 const tTwinWhy = n => `Another timer is already called ${n}. Give this one another name, so you can tell their alarms apart.`;
@@ -1761,9 +1775,10 @@ function timersHTML() {
    length (its own time, or the 5 minutes more after it ran out), for "of" and the bar */
 function trowHTML(t, off) {
   const p = st.pend["t:" + t.id], why = off || (p ? WAIT : ""), done = t.state === "done", run = t.state === "running", live = run || t.state === "paused";
-  const up = done ? tfmt(tUp(t)) : "", time = done ? "+" + up : tfmt(t.left);
-  const sub = done ? "TIME'S UP" : run ? `of ${tfmt(t.run)}` : live ? `PAUSED · of ${tfmt(t.run)}` : "ready";
-  const said = done ? `${t.name}: time's up, ${up} ago` : `${t.name}: ${tfmt(t.left)}${run ? " left" : live ? " left, paused" : ", ready"}`;
+  const up = done && tUpKnown(t) ? tfmt(tUp(t)) : "", time = done ? tUpText(t) : tfmt(t.left), back = tBack(t);
+  const sub = done ? "TIME'S UP" + (back ? ` · ${tOff(t)}` : "") : run ? `of ${tfmt(t.run)}` : live ? `PAUSED · ${back ? tOff(t) : `of ${tfmt(t.run)}`}` : "ready";
+  const said = (done ? `${t.name}: time's up, ${up ? `${up} ago` : "how long ago isn't known"}` : `${t.name}: ${tfmt(t.left)}${run ? " left" : live ? " left, paused" : ", ready"}`)
+    + (back ? `. ${tOff(t)}` : "");
   // while its time or name is being changed, START or PAUSE waits without saying it is starting or pausing
   const btn = done ? b("cmdbtn", p === "plus5" ? "ADDING…" : "+5 MIN", "", {cmd: `tm2:plus5:${t.id}`, why}) + b("cmdbtn tok", p === "ok" ? "SENDING…" : "OK", "stops the alarm", {cmd: `tm2:ok:${t.id}`, why})
     : b("cmdbtn", p === "start" ? "STARTING…" : p === "pause" ? "PAUSING…" : run ? "PAUSE" : "START", t.state === "paused" ? "carry on" : "", {cmd: `tm2:go:${t.id}`, why});
@@ -1974,7 +1989,7 @@ function tmTick() {
         continue;
       }
       tmShow(t);
-    } else if (t.state === "done") setText($("#tt-" + t.id), "+" + tfmt(tUp(t)));
+    } else if (t.state === "done") setText($("#tt-" + t.id), tUpText(t));
   }
   if (!st.banner) { const d = st.tmrs.find(t => t.state === "done"); if (d) { st.banner = DEMO.tBanner(d, st.tmrs); changed = true; } }
   if (changed) renderAll();
@@ -1987,7 +2002,7 @@ function tmShow(t) {
   if (st.tedit && st.tedit.id === t.id) setText($("#te-left"), tfmt(t.left));
 }
 /* live: the timers as CraftBeerPi last told them, counted on between its messages, a running one down and a finished one
-   up, on its brewing clock (its scale: a simulator runs it faster) */
+   up, on its brewing clock (its scale: a simulator runs it faster). up: null while how long ago one ran out isn't known */
 function liveTmrs(x) {
   if (!x || !Array.isArray(x.timers)) return [];
   const gone = Math.max(0, Date.now() - (x.received || Date.now())) / 1000 * (num(x.scale) || 1), now = num(x.now);
@@ -1995,7 +2010,8 @@ function liveTmrs(x) {
     const set = Math.round(num(t.set) ?? 0), left0 = Math.max(0, num(t.left) ?? 0), at = num(t.at);
     const left = t.state === "running" ? Math.max(0, left0 - gone) : left0;
     return {id: t.id, name: String(t.name ?? ""), set, run: Math.round(num(t.run) ?? set), left: Math.ceil(left - 1e-6), state: String(t.state || "stopped"),
-      up: t.state === "done" && at != null && now != null ? Math.floor(now + gone - at + 1e-6) : 0, prompt: t.prompt == null ? null : String(t.prompt)};
+      up: t.state === "done" && at != null && now != null ? Math.floor(now + gone - at + 1e-6) : null, prompt: t.prompt == null ? null : String(t.prompt),
+      interrupted: t.interrupted === true, off: num(t.off)};
   });
 }
 /* the newest word on the timers: a command's own answer until the websocket's catches up with it */
@@ -2018,7 +2034,7 @@ function liveTmTick() {
   st.tmrs = liveTmrs(tMsg);
   for (const t of st.tmrs) {
     if (t.state === "running") tmShow(t);
-    else if (t.state === "done") setText($("#tt-" + t.id), "+" + tfmt(tUp(t)));
+    else if (t.state === "done") setText($("#tt-" + t.id), tUpText(t));
   }
   const m = $("#tml-t"); if (m) m.innerHTML = tmlText();
   alarmCheck();
