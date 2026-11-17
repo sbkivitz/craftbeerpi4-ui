@@ -10,7 +10,7 @@
   --alarm:#ff4a4a;--alarm-bg:#6e1414;--fault-bg:#2b1315;--alarm-ink:#ffc9c4;
   --select:#2a6fc0;--active:#1c5796;--active-edge:#3c7fcc;--active-ink:#dce9f7;--focus:#8cc2ff;
   --answer:#f4f6f8;--answer-ink:#10161c;--answer-ink-2:#3a4652;--mark:#5a4300;--mark-ink:#fff3d6;--stale:#6b7785;
-  --select-hover:#3477c8;--select-ink:#d6e6f8;--stripe:#a9bccd;--seg-on:#070c11;--seg-ring:#a9bfd4;--option-bg:#101a23;--draw:#b9c6d2;--draw-fill:#1b2833;
+  --select-hover:#3477c8;--stripe:#a9bccd;--seg-on:#070c11;--seg-ring:#a9bfd4;--option-bg:#101a23;--draw:#b9c6d2;--draw-fill:#1b2833;
   --sunk:inset 0 3px 10px rgb(0 0 0/.9),inset 0 0 0 1px #1a2530,0 1px 0 rgb(255 255 255/.06);
   --sans:"Barlow","Segoe UI",system-ui,sans-serif;
   --cond:"Barlow Condensed","Roboto Condensed","Arial Narrow","Segoe UI",sans-serif;
@@ -147,7 +147,7 @@ html.bare .mock{display:none}
 .idx .meta{margin:-4px 0 0;font:500 17px/1.3 var(--cond);letter-spacing:.03em;color:var(--text-3)}
 .idx .meta b{font-weight:600;color:var(--active-ink)}
 .idx .meta .bad{color:var(--alarm-ink)}
-.hl{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;margin:0;padding:0 2px 0 0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.hl{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;margin:0;padding:0 2px 0 0;list-style:none;display:flex;flex-direction:column;gap:8px;container:hlist/inline-size}
 .hg{display:flex;flex-direction:column;gap:4px;margin:0;padding:0;list-style:none}
 .hg ul{display:flex;flex-direction:column;gap:4px;margin:0;padding:0 0 0 22px;list-style:none}
 /* a kettle: Settings' group row, a vessel's number and name, what AUTO runs, and its state */
@@ -175,8 +175,10 @@ html.bare .mock{display:none}
 .hp>a{display:grid;grid-template-columns:62px minmax(0,1fr) auto;align-items:center;column-gap:10px;min-height:44px;padding:3px 10px;color:var(--text);text-decoration:none;min-width:0}
 .hp .k{font:600 13px/1 var(--cond);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
 .hp .t{min-width:0;font:600 18px/1.15 var(--cond);letter-spacing:.02em;overflow-wrap:anywhere}
-.hp .t small{display:block;font:500 13px/1.2 var(--cond);letter-spacing:.06em;color:var(--text-3);overflow-wrap:anywhere}
+.hp .t small,.hp .sub small{display:block;font:500 13px/1.2 var(--cond);letter-spacing:.06em;color:var(--text-3);overflow-wrap:anywhere}
 .hp .t .chip{margin-left:6px;vertical-align:2px}
+/* its kind, address and Sensor ID run under the name and the reading or pin, so a whole ID has the line's width */
+.hp .sub{grid-column:2/-1;min-width:0}
 /* a kettle's probe, element or pump not chosen, or no longer there */
 .hp.gap{border-style:dashed;background:transparent}
 .hp.gap .t{font-weight:500;color:var(--text-3)}
@@ -184,21 +186,32 @@ html.bare .mock{display:none}
 .hp .v .pin{display:inline-block;min-width:66px;padding:6px 8px;border-radius:4px;background:var(--face);box-shadow:var(--sunk);font:600 16px/1 var(--cond);letter-spacing:.04em;font-variant-numeric:tabular-nums;color:var(--text);text-align:center}
 .hp .v .pin.none{color:var(--text-3)}
 .hp .v .pin.dup{color:var(--prompt)}
-.hp .pin2{display:none}
+.hp .pin2{display:none;white-space:nowrap}
+/* a list too narrow to keep a switch's pin beside its name, as the recipe column is on a laptop: the pin moves onto the
+   line under the name, as on a phone */
+@container hlist (max-width:395px){.hp .v .pin{display:none}.hp .pin2{display:inline}}
 .hp .v{font:600 18px/1 var(--cond);font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--text-2)}
 .hp .v.pv{color:var(--pv)}
 .hp .v.heat{color:var(--heat)}
 .hp .v.on{color:var(--run)}
-.hp .v.stale{color:var(--stale)}
+/* a probe's reading sits in a sunken window, as the PID window and the pin hold theirs: Process Red reaches 4.5:1 at
+   this size only on the window's black. From before a lost connection, it is Dim Steel: Stale Grey is under 4.5:1 here */
+.hp .v.pv,.hp .v.stale{display:inline-block;min-width:66px;padding:6px 8px;border-radius:4px;background:var(--face);box-shadow:var(--sunk);text-align:center}
+.hp .v.stale{color:var(--text-3)}
 .hp>.hsw{margin-right:4px}
 /* a part that lives with another kettle: shown where this kettle uses it, as a pointer to it */
 .hp.ref{background:transparent;border-style:dashed}
 .hp.ref .t{font-weight:500;color:var(--text-2)}
-.hp.ref .t small{color:var(--text-3)}
+.hp.ref .sub small{color:var(--text-3)}
+/* under the pointer, Dim Steel text in a line or button turns Soft Steel: Dim Steel on Hover Slate is 4.46:1. SAVE's
+   white, the answer buttons' own colours and a greyed button stay as they are */
+.hk:hover .s,.hp:hover .k,.hp:hover .t small,.hp:hover .sub small,.hp.gap:hover .t,.fer:hover small,.cmd:not(.go):not(.ans):not([aria-disabled=true]):hover small,.cmd.go.idle:not([aria-disabled=true]):hover small{color:var(--text-2)}
 .hk[aria-current=true],.hp:has(>a[aria-current=true]){background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),var(--active);border-color:var(--active-edge)}
 .hp:has(>a[aria-current=true]){background:var(--active)}
-.hk[aria-current=true] .n,.hk[aria-current=true] .d,.hk[aria-current=true] .s,.hp>a[aria-current=true] .k,.hp>a[aria-current=true] .t small,.hp>a[aria-current=true] .v{color:var(--active-ink)}
-.chip{display:inline-block;padding:4px 7px;border-radius:4px;font:700 13px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+.hk[aria-current=true] .n,.hk[aria-current=true] .d,.hk[aria-current=true] .s,.hp>a[aria-current=true] .k,.hp>a[aria-current=true] .t small,.hp>a[aria-current=true] .sub small,.hp>a[aria-current=true] .v,.hp.ref>a[aria-current=true] .t{color:var(--active-ink)}
+.hp>a[aria-current=true] .v.pv{color:var(--pv)}
+.hp>a[aria-current=true] .v.stale{color:var(--text-3)}
+.chip{display:inline-block;padding:4px 7px;border-radius:4px;font:700 13px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
 .chip.chg{background:var(--select);color:#fff}
 .chip.nwc{background:var(--panel);border:1px solid var(--active-edge);color:var(--active-ink)}
 .chip.fl{background:var(--fault-bg);border:1px solid var(--alarm);color:var(--alarm-ink)}
@@ -207,7 +220,7 @@ html.bare .mock{display:none}
 .hg.none .hk .t,.hg.none .hk .n,.hg.none .hh{color:var(--text-3)}
 .hg.none .hk .d{color:var(--text-3)}
 .hits{display:grid;gap:2px;margin:2px 0 0;padding:0 0 0 72px;list-style:none}
-.hits button{width:100%;min-height:32px;padding:2px 8px;border:0;border-radius:4px;background:transparent;color:var(--text-2);font:500 15px/1.25 var(--cond);letter-spacing:.02em;text-align:left}
+.hits button{width:100%;min-height:44px;padding:2px 8px;border:0;border-radius:4px;background:transparent;color:var(--text-2);font:500 15px/1.25 var(--cond);letter-spacing:.02em;text-align:left}
 .hits button:hover{background:var(--hover);color:var(--text)}
 .hits b{font-weight:600;color:var(--text)}
 mark{padding:0 1px;border-radius:2px;background:var(--mark);color:var(--mark-ink)}
@@ -247,7 +260,7 @@ mark{padding:0 1px;border-radius:2px;background:var(--mark);color:var(--mark-ink
 .cmd small{font:500 13px/1 var(--cond);letter-spacing:.04em;text-transform:none;color:var(--text-3)}
 .cmd:hover{background:var(--hover)}
 .cmd.go{background:var(--select);border-color:var(--select);color:#fff;min-width:150px}
-.cmd.go small{color:var(--select-ink)}
+.cmd.go small{color:#fff}
 .cmd.go:hover{background:var(--select-hover)}
 .cmd.go.idle{background:var(--panel-2);border-color:var(--edge);color:var(--text-2)}
 .cmd.go.idle small{color:var(--text-3)}
@@ -281,7 +294,7 @@ mark{padding:0 1px;border-radius:2px;background:var(--mark);color:var(--mark-ink
 
 /* the brewhouse, x-rayed: Brew Day's drawing, and under each vessel a nameplate of what CraftBeerPi has there, as Brew
    Day puts a faceplate under each vessel */
-.xr{display:grid;grid-template-rows:auto minmax(200px,1fr) auto auto;gap:var(--gap);padding:14px 18px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.xr{display:grid;grid-template-rows:auto minmax(200px,1fr);gap:var(--gap);padding:14px 18px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);container:xr/inline-size}
 .xhd{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 14px}
 .xhd h2{margin:0;font:700 27px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase}
 .xhd p{margin:0;font:500 17px/1.3 var(--cond);letter-spacing:.02em;color:var(--text-2)}
@@ -299,9 +312,13 @@ mark{padding:0 1px;border-radius:2px;background:var(--mark);color:var(--mark-ink
 .np .v.pv{color:var(--pv)}
 .np .v.on{color:var(--run)}
 .np .v.heat{color:var(--heat)}
-.np .v.stale{color:var(--stale)}
+.np .v.stale{color:var(--text-3)}
 .np .ref .t{font-weight:500;color:var(--text-2)}
 .np .none{margin:0;padding:6px 8px;font:500 15px/1.3 var(--cond);letter-spacing:.02em;color:var(--text-3)}
+/* nameplates too narrow to hold a name beside its reading give way, as on a tablet: the list beside the drawing carries
+   the same names, and the line over the drawing points to it instead */
+.xhd .np-off{display:none}
+@container xr (max-width:809px){.nps,.xhd .np-on{display:none}.xhd .np-off{display:inline}}
 .xalso{margin:0;font:500 17px/1.35 var(--cond);letter-spacing:.02em;color:var(--text-2)}
 /* the drawing docked under the list, on a tablet only */
 .dock{display:none}
@@ -309,7 +326,7 @@ mark{padding:0 1px;border-radius:2px;background:var(--mark);color:var(--mark-ink
 .dock .xhd p{font-size:15px}
 .dock .xrig{min-height:0}
 .xalso b{font-weight:600;color:var(--text)}
-.xalso a{color:var(--text);text-underline-offset:3px}
+.xalso a{display:inline-flex;align-items:center;min-height:44px;margin-block:-10px;color:var(--text);text-underline-offset:3px}
 /* a part of the drawing: a probe drawn where CraftBeerPi reads the vessel, and every part lit while its line is pointed
    at, or while it is open */
 .probe path{fill:none;stroke:var(--draw);stroke-width:3;stroke-linecap:round}
@@ -390,7 +407,9 @@ mark{padding:0 1px;border-radius:2px;background:var(--mark);color:var(--mark-ink
 .row .wh{margin:5px 0 0;max-width:62ch;font:500 15px/1.4 var(--sans);color:var(--text-2)}
 .row .ky{margin:7px 0 0;font:500 14px/1.2 var(--cond);letter-spacing:.06em;color:var(--text-3);overflow-wrap:anywhere}
 .row .ky .tg{display:inline-block;margin-left:10px;padding:2px 6px;border:1px solid var(--edge);border-radius:3px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-2)}
-.row .ct{display:grid;gap:8px;align-content:start;min-width:0}
+/* 10 px between a control and the lines under it: a text button's 44 px box reaches 10 px above its line, and stops at
+   the control's edge rather than over it */
+.row .ct{display:grid;gap:10px;align-content:start;min-width:0}
 .row .why{margin:0;font:500 15px/1.35 var(--sans);color:var(--note)}
 .row .full{margin:8px 0 0;max-width:72ch;padding:8px 12px;border-left:1px solid var(--edge);font:500 15px/1.45 var(--sans);color:var(--text-2)}
 .row .full[hidden]{display:none}
@@ -405,8 +424,8 @@ mark{padding:0 1px;border-radius:2px;background:var(--mark);color:var(--mark-ink
 .st.ok{color:var(--run)}
 .st.no{color:var(--alarm-ink)}
 .st .why2{text-transform:none;letter-spacing:.02em;font-weight:500}
-.lnk{position:relative;min-height:24px;padding:0 2px;border:0;background:none;color:var(--text);font:700 15px/1 var(--cond);letter-spacing:.08em;text-transform:uppercase;text-decoration:underline;text-underline-offset:3px}
-.lnk::before{content:"";position:absolute;inset:-10px -8px}
+/* a text button in a line of text: a 44 px box whose margins give back the 20 px it adds, so the line keeps its height */
+.lnk{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;margin-block:-10px;padding:0 6px;border:0;background:none;color:var(--text);font:700 15px/1 var(--cond);letter-spacing:.08em;text-transform:uppercase;text-decoration:underline;text-underline-offset:3px}
 .lnk:hover{color:#fff}
 .seg{display:inline-grid;grid-auto-flow:column;grid-auto-columns:minmax(96px,auto);justify-self:start;max-width:100%;border:1px solid var(--edge);border-radius:var(--r);overflow:hidden}
 .seg button{min-height:48px;padding:0 16px;border:0;background:var(--panel-2);color:var(--text-2);font:700 18px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase;touch-action:manipulation}
@@ -453,13 +472,15 @@ select.fld option{background:var(--option-bg);color:var(--text)}
   .hl,.hg,.hg ul{gap:6px}
   .np button{min-height:44px}
 }
-/* a laptop's window (about 820 px tall or less): the drawing gives way first, then the list's second lines */
+/* a laptop's window (about 820 px tall or less): the drawing gives way first, then the list's second lines. A switch's
+   pin stays in view: its line goes only while the pin keeps its own column */
 @media (min-width:1180px) and (max-height:820px){
-  .hk .d,.hp .t small,.np .t small{display:none}
+  .hk .d,.hp .t small,.hp .sub .sid,.np .t small{display:none}
+  @container hlist (min-width:396px){.hp .sub{display:none}}
   .hk{min-height:44px}
   .hk .n{grid-row:auto;font-size:22px}
   .hk .s{grid-row:auto}
-  .xr{grid-template-rows:auto minmax(150px,1fr) auto auto;padding:10px 14px}
+  .xr{grid-template-rows:auto minmax(150px,1fr);padding:10px 14px}
 }
 
 /* tablet: one column, and the page scrolls. The tool row stays at the top and the brewhouse drawing at the bottom, in

@@ -60,6 +60,25 @@
 - Found after the hand-off, while writing the list into .impeccable/design.json: the list's switches were 36 px tall and
   its lines' links 42 px, under the 44 px the build notes promise. Both are 44 px now, so each line is 46 px, 2 px more,
   and the rig's list is about 18 px longer; it scrolls on its own at every monitor size, as before.
+- Brett's build (0.5.1.a3.post16) measured three problems that were in the mockup too: names split mid-word from 1180
+  to 1440 px wide ("HLT_ / HEA / T": the pin's box and the switch left a name 34 px of the 340 px recipe column), the
+  list's red readings at 4.3:1 on Raised Slate, and MORE and the Fermenters link under 44 px. My checks had looked for
+  overflow, not for words crushed into a narrow column, which the interaction-design checklist asks for. Measuring every
+  moment at 16 sizes for split words, contrast and target size found more of the same kinds: splits up to 1680 px, in
+  the nameplates at 1180 px, in a chip and in the file preview's keys on a phone; SAVE's second line at 4.0:1, an open
+  shared part's name at 4.1:1, readings from before a lost connection at 3.2:1; other text buttons and FIND's matches
+  at 24 and 32 px. Chosen, keeping the approved design: the pin moves under the name wherever the list is too narrow
+  for it (as on a phone, decided by the list's own width); a reading sits in a sunken window like the PID window's, so
+  Process Red stays and reaches 6.1:1; the type, address and Sensor ID run under the reading too, so a whole Sensor ID
+  fits; nameplates too narrow for a name give way, as on a tablet; text buttons are 44 px boxes that keep their line's
+  height; long CraftBeerPi names break after underscores. Widening the list column was weighed and left: the drawing
+  and nameplates lose the room, and the recipe column's shape is shared with Brew Day.
+- The Settings session, fixing the same two problems on its page, swept its moments and found Dim Steel on Hover Slate
+  at 4.46:1 under the pointer, on both pages, and asked for a decision for both. Chosen: under the pointer, Dim Steel
+  text in the line or button turns Soft Steel (7.0:1), which keeps it quieter than the name or label; SAVE's white, the
+  answer buttons and greyed buttons keep their colours. It also noted UNDO's 44 px box reaching 2 px into the control
+  above it; on Hardware that happens only under a wide menu, and the gap under a row's control is now 10 px. The
+  measure now also moves the pointer onto every line and button, and looks for see-through boxes over other controls.
 
 ## The step list keeps the current step in view, with or without the timers (13 Nov 2026, evening)
 - Brett asked for it for tonight's release: the current step stays in view whether or not CraftBeerPi has the timers.

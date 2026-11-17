@@ -49,7 +49,7 @@ A probe sits under the kettle that uses it. A probe no kettle uses is under "Not
 |---|---|---|
 | Name | The switch's line: ELEMENT, PUMP or SWITCH, and its name | Seen, as today |
 | Type | The switch's line, second line: "GPIOActor" | Seen, as today |
-| GPIO | The switch's line: "GPIO 7" in a box of its own, or "no pin". On a phone it's on the second line: "GPIOActor · GPIO 7". | Seen, as today |
+| GPIO | The switch's line: "GPIO 7" in a box of its own, or "no pin". On a phone, and wherever the list is too narrow to keep the box beside the name (a laptop's), it's on the second line: "GPIOActor · GPIO 7". | Seen, as today |
 | State: the on/off switch | ON/OFF button on the line, one tap, lit orange for an element, green for a pump | 1, as today |
 | Eye, Bin, + | As for kettles: the line opens it; DELETE… in its page; + ADD, then Switch | 1; 3; 2 |
 

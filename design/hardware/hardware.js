@@ -7,6 +7,8 @@
 const HW = window.CBPI_HW;
 const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+/* a CraftBeerPi name such as Sensor_Stale_Seconds may break after an underscore, not inside a word, in a narrow column */
+const brk = s => esc(s).replace(/_/g, "_<wbr>");
 const phone = () => matchMedia("(max-width:700px)").matches;
 const wide = () => matchMedia("(min-width:1180px)").matches;
 const calm = () => matchMedia("(prefers-reduced-motion:reduce)").matches;
@@ -272,14 +274,15 @@ function partRowHTML(p, n) {
   if (q && !h.item && !h.rows.length) return "";
   const [lv, lc] = liveText(p.kind, p.id), chip = stateChip(k);
   const mates = p.kind === "actor" ? pinMates(p.id) : [], pin = p.kind === "actor" ? pinOf(x) : "", sw0 = p.kind === "actor" && !p.with;
-  /* under the name: its kind, a probe's OneWire address and CraftBeerPi's Sensor ID; a switch's pin has a column */
+  /* under the name and its reading or pin, across the line: its kind, a probe's OneWire address and CraftBeerPi's
+     Sensor ID */
   const kindLine = x && !x.fresh ? (p.kind === "sensor" && x.type === "OneWire" && (x.props || {}).Sensor ? `${x.type} · ${x.props.Sensor}` : x.type || "") : "";
-  const sub = p.with ? `with the ${esc(find("kettle", p.with).name)}${pin ? ` · GPIO ${esc(pin)}` : ""}` : `${esc(kindLine)}${sw0 ? `<span class="pin2"> · ${pin ? `GPIO ${esc(pin)}` : "no pin"}</span>` : ""}${mates.length ? ` · <span class="dup">${esc(andList(mates.map(m => m.name)))} ${mates.length === 1 ? "has" : "have"} GPIO ${esc(pin)} too</span>` : ""}`;
+  const sub = p.with ? `with the ${esc(find("kettle", p.with).name)}${pin ? ` · GPIO ${esc(pin)}` : ""}` : `${esc(kindLine)}${sw0 ? ` <span class="pin2">· ${pin ? `GPIO ${esc(pin)}` : "no pin"}</span>` : ""}${mates.length ? ` · <span class="dup">${esc(andList(mates.map(m => m.name)))} ${mates.length === 1 ? "has" : "have"} GPIO ${esc(pin)} too</span>` : ""}`;
   const sid = p.kind === "sensor" && x && !x.fresh ? `<small class="sid">Sensor ID ${esc(p.id)}</small>` : "";
   const pinCol = `<span class="pin${!pin ? " none" : mates.length ? " dup" : ""}">${pin ? `GPIO ${esc(pin)}` : "no pin"}</span>`;
   const hits = h.rows.length ? `<ul class="hits">${h.rows.slice(0, 4).map(r => `<li><button type="button" data-hit="${esc(k)}|${esc(r.f)}"><b>${marked(r.n)}</b> ${esc(shown(p.kind, p.id, r.f, val(p.kind, p.id, r.f)))}</button></li>`).join("")}${h.rows.length > 4 ? `<li><button type="button" data-open="${esc(k)}">and ${h.rows.length - 4} more</button></li>` : ""}</ul>` : "";
   const sw = sw0 ? swHTML(p.id) : "";
-  return `<li class="hp${p.with ? " ref" : ""}"><a href="#/${p.kind}/${esc(p.id)}" data-open="${esc(k)}" data-hot="${esc(k)}" aria-current="${cur}"><span class="k">${word}</span><span class="t">${marked(x ? nameOf(p.kind, p.id) : "")}${sw0 && chip ? ` ${chip}` : ""}${sub ? `<small>${sub}</small>` : ""}${sid}</span><span class="v ${sw0 || chip ? "" : lc}">${sw0 ? pinCol : chip || esc(lv)}</span></a>${sw}</li>${hits ? `<li class="hp-hits">${hits}</li>` : ""}`;
+  return `<li class="hp${p.with ? " ref" : ""}"><a href="#/${p.kind}/${esc(p.id)}" data-open="${esc(k)}" data-hot="${esc(k)}" aria-current="${cur}"><span class="k">${word}</span><span class="t">${marked(x ? nameOf(p.kind, p.id) : "")}${sw0 && chip ? ` ${chip}` : ""}</span><span class="v ${sw0 || chip ? "" : lc}">${sw0 ? pinCol : chip || esc(lv)}</span>${sub || sid ? `<span class="sub">${sub ? `<small>${sub}</small>` : ""}${sid}</span>` : ""}</a>${sw}</li>${hits ? `<li class="hp-hits">${hits}</li>` : ""}`;
 }
 function groupHTML(g, i) {
   const k = ik("kettle", g.k.id), q = words().length, h = hitsOf("kettle", g.k.id);
@@ -380,7 +383,7 @@ function xrHTML() {
   const extra = groups.filter(g => !v || !v.includes(g.k)).map(g => g.k.name);
   const also = [...extra.map(n => `the kettle <b>${esc(n)}</b>`), ...loose.map(p => `<b>${esc(find(p.kind, p.id).name)}</b>`)];
   const alsoP = `<p class="xalso">${also.length ? `Not in the drawing: ${also.join(", ")}${loose.length ? ", which no kettle uses" : ""}. ` : ""}Fermenters are on <a href="#/fermenter" data-fer>their own page</a>.</p>`;
-  return `<section class="xr" aria-labelledby="xr-h"><header class="xhd"><h2 id="xr-h">Brewhouse</h2><p>${v ? "Tap a part, or its line under the drawing, to open its settings." : "Choose the mash tun and boil kettle in Settings to see them drawn here."}</p></header><div class="xrig" id="xrig"${v ? "" : " hidden"}></div><div class="nps">${nps}</div>${alsoP}</section>`;
+  return `<section class="xr" aria-labelledby="xr-h"><header class="xhd"><h2 id="xr-h">Brewhouse</h2><p>${v ? `<span class="np-on">Tap a part, or its line under the drawing, to open its settings.</span><span class="np-off">Tap a part, or its line in the list, to open its settings.</span>` : "Choose the mash tun and boil kettle in Settings to see them drawn here."}</p></header><div class="xrig" id="xrig"${v ? "" : " hidden"}></div><div class="nps">${nps}</div>${alsoP}</section>`;
 }
 /* the drawing, at the width of its box as on Brew Day, with a probe drawn into each vessel and every part marked */
 function drawRig(box, sel, mini) {
@@ -528,7 +531,7 @@ function fileHTML(id) {
    A new kettle is filled in from the file instead; a preview the kettle has changed since loads nothing until it is redrawn */
 function previewHTML(x) {
   const p = st.file, rows = p.rows, ch = rows.filter(r => r.now !== r.after), visible = p.all ? rows : ch, same2 = rows.length - ch.length;
-  const tr = r => `<tr data-row="${esc(r.key)}" data-changes="${r.now !== r.after ? "yes" : "no"}"${r.filled ? ' data-filled="yes"' : ""}><th scope="row">${esc(r.name)}<small>${esc(r.key)}</small></th><td data-side="now"${r.now === "" ? ' class="q"' : ""}>${esc(r.now === "" ? "blank" : r.now)}</td><td data-side="after"${r.now !== r.after ? ' class="after"' : ' class="same"'}>${r.now !== r.after ? esc(r.after) + (r.filled ? `<small>${esc(p.type)}'s built-in value</small>` : "") : "same"}</td></tr>`;
+  const tr = r => `<tr data-row="${esc(r.key)}" data-changes="${r.now !== r.after ? "yes" : "no"}"${r.filled ? ' data-filled="yes"' : ""}><th scope="row">${esc(r.name)}<small>${brk(r.key)}</small></th><td data-side="now"${r.now === "" ? ' class="q"' : ""}>${r.now === "" ? "blank" : brk(r.now)}</td><td data-side="after"${r.now !== r.after ? ' class="after"' : ' class="same"'}>${r.now !== r.after ? brk(r.after) + (r.filled ? `<small>${brk(p.type)}'s built-in value</small>` : "") : "same"}</td></tr>`;
   const vals = p.blank.filter(b => b.value != null), nulls = p.blank.filter(b => b.value == null), filled = rows.filter(r => r.filled);
   const off = p.stale ? ' aria-disabled="true"' : "", nv = vals.length;
   /* what loading leaves empty: what its control uses then, or what empty means; and what was filled in instead */
