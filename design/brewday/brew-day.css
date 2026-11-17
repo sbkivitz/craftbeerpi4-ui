@@ -40,7 +40,7 @@ html.bare .mock{display:none}
 .link[data-link=lost]{color:#ffc9c4}
 .link[data-link=lost] i{background:transparent;border:3px solid var(--alarm);animation:blink 1s steps(2,start) infinite}
 .alloff{min-height:48px;padding:0 16px;border:2px solid #7d8fa2;border-radius:var(--r);background:var(--panel-2);color:var(--text);font:700 17px/1 var(--cond);letter-spacing:.06em}
-.alloff:hover{border-color:#ff8a80;background:#2b1315}
+.alloff:not([aria-disabled=true]):hover{border-color:#ff8a80;background:#2b1315}
 .alloff[aria-disabled=true]{opacity:.5;cursor:not-allowed}
 .clock{font:600 clamp(26px,2.4vw,40px)/1 var(--cond);font-variant-numeric:tabular-nums;min-width:3.2ch;text-align:right}
 /* on a monitor or laptop only the alarm or prompt gives way to a long message in the title bar (it wraps): ALL OFF keeps
@@ -100,7 +100,10 @@ html.bare .mock{display:none}
    it keeps its width */
 .aux dd{min-width:2.55em;margin:3px 0 10px;font:600 clamp(20px,calc(6.6 * var(--pu)),32px)/1 var(--cond);letter-spacing:.03em;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
 .aux dd:last-child{margin-bottom:0}
-.face.stale .pv,.face.stale .sv,.face.stale .aux dd{color:#6b7785;text-shadow:none}
+.face.stale .pv,.face.stale .sv{color:#6b7785;text-shadow:none}
+/* the smaller OUT and MODE values, and the units, from before a lost connection are Dim Steel: Stale Grey is under 4.5:1
+   at their size */
+.face.stale .aux dd,.face.stale .u{color:var(--text-3);text-shadow:none}
 .face.stale .outbar i{background:#6b7785}
 .outbar{display:block;height:5px;margin-top:6px;border-radius:3px;background:#1d2833;overflow:hidden}
 .outbar i{display:block;height:100%;background:var(--heat)}
@@ -115,7 +118,8 @@ html.bare .mock{display:none}
 .ctrls>:only-child{grid-column:1/-1}
 .lamp{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:72px;padding:17px 8px 8px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);text-align:center;overflow:hidden;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .lamp::before{content:"";position:absolute;inset:0 0 auto;height:8px;background:#3a4856}
-.lamp:hover{background:#253545}
+/* under the pointer a lamp lightens, except a greyed one, and a failed or locked one, which keep their own background */
+.lamp:not([aria-disabled=true]):not([data-state=failed]):not(.locked):hover{background:#253545}
 .lamp .st{position:relative;font:700 clamp(18px,calc(6.4 * var(--pu)),24px)/1 var(--cond);letter-spacing:.05em}
 .lamp .nm{position:relative;font:500 clamp(13px,calc(4.3 * var(--pu)),16px)/1.15 var(--cond);letter-spacing:.05em;color:var(--text-2)}
 .lamp[data-state=heating]::before{background:var(--heat);box-shadow:0 2px 14px rgb(255 123 28/.6)}
@@ -140,6 +144,10 @@ html.bare .mock{display:none}
 .seg small,.tgtbtn small,.cmdbtn small{position:relative;display:block;margin-top:5px;font:500 clamp(12px,calc(3.9 * var(--pu)),14px)/1.1 var(--cond);letter-spacing:.04em;color:var(--text-3)}
 .seg button[aria-pressed=true] small{color:#c9d6e2}
 .seg button:not([aria-pressed=true]):not([aria-disabled=true]):hover,.tgtbtn:not([aria-disabled=true]):hover,.cmdbtn:not([aria-disabled=true]):hover{background:#253545}
+/* under the pointer, a button's second line, and a timer's state, turn Soft Steel: Dim Steel on the hover slate is 4.46:1.
+   A pressed choice, the target's amber "no target", the timer editor's blue main action, OK on a timer that has run out,
+   that timer's amber state and a greyed button keep their own colours */
+.seg button:not([aria-pressed=true]):not([aria-disabled=true]):hover small,.tgtbtn:not(.notgt):not([aria-disabled=true]):hover small,.cmdbtn:not([aria-pressed=true]):not([aria-disabled=true]):not(.tgo):not(.tok):hover small,.trow:not([data-state=done]) .tsel:not([aria-disabled=true]):hover .ts{color:var(--text-2)}
 .tgtbtn,.cmdbtn{border:1px solid var(--edge);border-radius:var(--r)}
 .seg button[aria-disabled=true],.tgtbtn[aria-disabled=true],.cmdbtn[aria-disabled=true]{color:var(--text-3)}
 .note{margin:0;font:500 15px/1.35 var(--sans);color:#ffd9a0}
@@ -247,7 +255,7 @@ html.bare .mock{display:none}
 .adds .due{color:var(--prompt);font-weight:700}
 .adds .gone{color:var(--text-3)}
 .step[aria-current=step] .adds{color:#dce9f7}
-.step[aria-current=step] .adds .gone{color:#93acc6}
+.step[aria-current=step] .adds .gone{color:#c9d6e2}
 .step[aria-current=step] .adds .due{color:#ffd27a}
 .timer{display:grid;gap:10px;padding:12px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel-2)}
 .timer h3{margin:0;font:700 20px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase}
@@ -266,6 +274,7 @@ html.bare .mock{display:none}
 .tsel[aria-expanded=true]{box-shadow:inset 0 0 0 2px var(--select)}
 .tsel .tn{grid-column:1;font:600 20px/1.15 var(--cond);letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tsel .ts{grid-column:1;font:600 14px/1.2 var(--cond);letter-spacing:.05em;color:var(--text-3)}
+.tsel .ts .nw{white-space:nowrap}
 .tsel .tt{grid-column:2;grid-row:1/3;font:600 clamp(32px,calc(10.5 * var(--pu)),44px)/1 var(--cond);font-variant-numeric:tabular-nums}
 .trow .tbtn{display:flex;gap:8px}
 .trow .cmdbtn{min-height:56px;min-width:100px;padding:6px 10px}
@@ -284,6 +293,13 @@ html.bare .mock{display:none}
 .trow .tok{background:#f4f6f8;color:#10161c;border-color:#f4f6f8}
 .trow .tok small{color:#3a4652}
 .trow .tok:not([aria-disabled=true]):hover{background:#dfe5ea}
+/* a timer brought back after a restart: a line across its row, under its name and state, says how long CraftBeerPi was
+   off. A sentence, so regular Barlow; Prompt Amber while the timer waits, paused, for the brewer, and Prompt Cream on a
+   timer that has run out, as on its banner. Its buttons keep their place beside the name */
+.trow .toff{grid-column:1/-1;margin:-4px 0 4px;padding:0 8px;font:500 15px/1.3 var(--sans);color:var(--prompt);text-wrap:pretty}
+.trow:not([data-state=done]) .tbtn{grid-column:2;grid-row:1}
+.trow[data-state=done] .toff{margin-bottom:0;color:var(--prompt-ink)}
+.tmrs[data-editing] .trow:not(.editing) .toff{display:none}
 .tplus{min-height:56px}
 .tedit{display:grid;gap:8px;margin-top:8px;padding:14px 12px 12px;border:2px solid var(--select);border-radius:var(--r);background:var(--panel)}
 /* the editor's title sits in its top border, as a legend does */
@@ -291,7 +307,7 @@ html.bare .mock{display:none}
 .tfield{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:8px}
 .tfield label{min-width:62px;font:600 15px/1 var(--cond);letter-spacing:.05em;color:var(--text-2);text-transform:uppercase}
 .tedit input{min-width:0;min-height:52px;padding:0 12px;border:2px solid #3d7fd0;border-radius:var(--r);background:var(--face);color:var(--text);font:600 22px/1 var(--cond)}
-.tedit input::placeholder{color:#8a9bad}
+.tedit input::placeholder{color:#8a9bad;opacity:1}
 .tfield.tmin{grid-template-columns:auto 64px minmax(0,1fr) 64px}
 .tmin input{text-align:center;font-size:28px;font-variant-numeric:tabular-nums}
 .tsug,.tkeys{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
@@ -307,7 +323,7 @@ html.bare .mock{display:none}
 .tact{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px}
 .tedit .tact .cmdbtn{min-height:52px}
 .tact .tgo{background:var(--select);border-color:var(--select);color:#fff}
-.tact .tgo small{color:#dbe8f6}
+.tact .tgo small{color:#fff}
 .tact .tgo:not([aria-disabled=true]):hover{background:#3477c8}
 .keep.snd.blocked .box{border-color:var(--prompt);background:var(--prompt-bg);box-shadow:none}
 .keep.snd.blocked .box svg{visibility:hidden}

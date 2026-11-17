@@ -562,7 +562,8 @@ function paintFrame() {
   $("#app").dataset.link = st.link;
   $("#link").dataset.link = st.link;
   $("#link-t").textContent = lost() ? "No connection" : "Connected";
-  $("#alloff").toggleAttribute("aria-disabled", lost());
+  /* "true" exactly: an empty aria-disabled counts as available, to the greyed look, a tap and a screen reader */
+  if (lost()) $("#alloff").setAttribute("aria-disabled", "true"); else $("#alloff").removeAttribute("aria-disabled");
   const e = st.events[0];
   $("#event").innerHTML = `<p class="line"><time>${esc(e[0])}</time>${esc(e[1])}${e[2] ? ` <span class="res ${e[3]}">${esc(e[2])}</span>` : ""}</p><button type="button" class="logbtn" aria-label="Show the event log">LOG</button>`;
 }
@@ -822,7 +823,8 @@ document.addEventListener("click", e => {
   if (t.getAttribute("aria-disabled") === "true") {
     e.preventDefault();
     if ("save" in d) toast(st.wait === "loading" ? "Waiting for CraftBeerPi to send the item." : st.wait === "missing" ? "There's nothing here to save." : lost() ? "No connection: SAVE sends your changes once CraftBeerPi is back." : invalids().length ? "Fix the entry marked in red first: it needs a number." : "Nothing has changed yet.");
-    else if ("sw" in d) toast(PAUSED);
+    else if ("sw" in d || t.id === "alloff") toast(PAUSED);
+    else if ("undoall" in d) toast(st.saving ? "Saving: UNDO is back once CraftBeerPi answers." : "Nothing to undo.");
     else if ("del" in d) toast("Not now: the line under it says why.");
     else if ("fileSave" in d || "fileLoad" in d) toast($("#kettle-file-help").textContent);
     else if ("fileConfirm" in d || "fileFill" in d || "fileUnfill" in d) toast("LOOK AGAIN first: the kettle has changed since this preview.");

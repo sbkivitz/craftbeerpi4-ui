@@ -433,6 +433,35 @@ const SCENES = {
     s.events = [["14:32:19", "Stir finished", "waiting for you", "wait"], ["14:17:19", "Stir started, 15:00 to go", "confirmed", "ok"], ...MASH_EVENTS.map(e => e.slice())];
     return s;
   },
+  /* CraftBeerPi off for 12 minutes, a power cut from 14:20:31 to 14:32:31. Stir had been counting down since 14:12:43,
+     with 7:12 left at the cut, so it comes back paused there, and a line across its row says how long CraftBeerPi was
+     off until it is started; Yeast, set up for later, is as it was */
+  "timer-back": () => {
+    const s = SCENES.timers(), t = s.tmrs[0];
+    if (TIMERS !== "new") return s;
+    Object.assign(t, {state: "paused", run: 15 * 60, interrupted: true, off: 12 * 60});
+    s.events = [["14:12:43", "Stir started, 15:00 to go", "confirmed", "ok"], ...MASH_EVENTS.map(e => e.slice())];
+    return s;
+  },
+  /* the same cut, with Stir started at 14:10:00: it ran out at 14:25:00, while CraftBeerPi was off, so it comes back run
+     out, with its alarm, counting up from then, the time off included */
+  "timer-back-done": () => {
+    const s = SCENES.timers(), t = s.tmrs[0];
+    if (TIMERS !== "new") return s;
+    Object.assign(t, {state: "done", left: 0, run: 15 * 60, at: s.t - (7 * 60 + 31), interrupted: true, off: 12 * 60});
+    s.banner = tBanner(t, s.tmrs);
+    s.events = [["14:32:31", "Stir finished", "waiting for you", "wait"], ["14:10:00", "Stir started, 15:00 to go", "confirmed", "ok"], ...MASH_EVENTS.map(e => e.slice())];
+    return s;
+  },
+  /* the same, before the network has set CraftBeerPi's clock: how long it was off isn't known yet, so neither is how
+     long ago Stir ran out ("– –"); Yeast, counting down at the cut, comes back paused */
+  "timer-back-unknown": () => {
+    const s = SCENES["timer-back-done"](), [t, y] = s.tmrs;
+    if (TIMERS !== "new") return s;
+    Object.assign(t, {at: null, off: null});
+    Object.assign(y, {state: "paused", left: 12 * 60 + 30, run: 20 * 60, interrupted: true, off: null});
+    return s;
+  },
   /* + TIMER pressed: a third timer, named Vorlauf from the names to pick (BREWDAY_TIMER_NAMES as it comes); YEAST is
      greyed, as the second timer is called Yeast */
   "timer-new": () => Object.assign(SCENES.timers(), {open: {tedit: {id: null, name: "Vorlauf", ph: "Timer 3", set: 10 * 60}}}),
@@ -1718,6 +1747,21 @@ function tNames(raw) {
 const tfmt = s => s >= 3600 ? `${Math.floor(s / 3600)}:${pad(Math.floor(s / 60) % 60)}:${pad(s % 60)}` : mmss(s);
 const tById = id => st.tmrs.find(t => t.id === id);
 const tPct = t => t.run ? Math.round(100 * (1 - t.left / t.run)) : 0;
+/* how long ago a timer ran out, while that is known: one brought back after a restart may not know it yet (tOff), and
+   shows "– –" in its place */
+const tUpKnown = t => t.at != null;
+const tUpText = t => tUpKnown(t) ? "+" + tfmt(st.t - t.at) : "– –";
+/* a timer CraftBeerPi brought back when it started again (a power cut, say): one that was counting down comes back
+   paused, one that had run out still run out. Until it is started or answered, a line across its row says how long
+   CraftBeerPi was off, or, while CraftBeerPi can't tell, that it isn't known yet: a Raspberry Pi with no clock board
+   starts with a wrong time after a power cut, until the network sets it */
+const offFor = s => {
+  if (s < 59.5) return `${Math.max(1, Math.round(s))} s`;
+  const m = Math.round(s / 60), h = Math.floor(m / 60);
+  return m < 60 ? `${m} min` : h >= 48 ? `${Math.round(m / 1440)} days` : m % 60 ? `${h} h ${m % 60} min` : `${h} h`;
+};
+const tBack = t => !!t.interrupted && (t.state === "paused" || t.state === "done");
+const tOff = t => t.off == null ? "CraftBeerPi was off; how long isn't known yet" : `CraftBeerPi was off for ${offFor(t.off)}`;
 let lastBanner = null, actx = null;
 /* two timers never share a name (whatever its capitals): their alarms, titled with it, would be hard to tell apart */
 const tTwin = (name, t) => st.tmrs.find(z => z !== t && z.name.toLowerCase() === name.toLowerCase());
@@ -1730,7 +1774,7 @@ function tBanner(t, list = st.tmrs) {
 }
 /* its alarm is over (answered, or the timer set anew or removed): the prompt goes, and the next one waiting takes the
    title bar at the next second. Set anew or removed, CraftBeerPi takes the alarm down unanswered */
-function tAnswered(t, res = "answered") { delete t.at; questionGone(t.name, res); if (st.banner && st.banner.timer === t.id) st.banner = null; }
+function tAnswered(t, res = "answered") { delete t.at; delete t.interrupted; questionGone(t.name, res); if (st.banner && st.banner.timer === t.id) st.banner = null; }
 function timersHTML() {
   const off = st.link === "lost" ? PAUSED : "", T = st.tmrs, e = st.tedit, full = T.length >= TMAX;
   const rows = T.map(t => trowHTML(t, off) + (e && e.id === t.id ? teditHTML(off) : "")).join("");
@@ -1742,15 +1786,18 @@ function timersHTML() {
 }
 function trowHTML(t, off) {
   const p = st.pend["t:" + t.id], why = off || (p ? WAIT : ""), done = t.state === "done", run = t.state === "running", live = run || t.state === "paused";
-  const time = done ? "+" + tfmt(st.t - t.at) : tfmt(t.left);
-  /* run: this countdown's length (its own time, or the 5 minutes more after it ran out), for "of" and the bar */
-  const sub = done ? "TIME'S UP" : run ? `of ${tfmt(t.run)}` : live ? `PAUSED · of ${tfmt(t.run)}` : "ready";
-  const said = done ? `${t.name}: time's up, ${tfmt(st.t - t.at)} ago` : `${t.name}: ${tfmt(t.left)}${run ? " left" : live ? " left, paused" : ", ready"}`;
+  const time = done ? tUpText(t) : tfmt(t.left), back = tBack(t);
+  /* run: this countdown's length (its own time, or the 5 minutes more after it ran out), for "of" and the bar. "of 20:00"
+     stays whole, so a narrow row wraps "PAUSED ·" over "of 20:00" */
+  const of = `<span class="nw">of ${tfmt(t.run)}</span>`;
+  const sub = done ? "TIME'S UP" : run ? of : live ? `<span class="nw">PAUSED ·</span> ${of}` : "ready";
+  const said = (done ? `${t.name}: time's up, ${tUpKnown(t) ? `${tfmt(st.t - t.at)} ago` : "how long ago isn't known yet"}` : `${t.name}: ${tfmt(t.left)}${run ? " left" : live ? " left, paused" : ", ready"}`)
+    + (back ? `. ${tOff(t)}` : "");
   /* the go button says STARTING… or PAUSING… only for those two; for anything else the timer waits on (a new time, a
      new name, minutes more) it keeps its label, greyed, with the usual wait */
   const btn = done ? b("cmdbtn", p === "plus5" ? "ADDING…" : "+5 MIN", "", {cmd: `tm2:plus5:${t.id}`, why}) + b("cmdbtn tok", p === "ok" ? "SENDING…" : "OK", "stops the alarm", {cmd: `tm2:ok:${t.id}`, why})
     : b("cmdbtn", p === "start" ? "STARTING…" : p === "pause" ? "PAUSING…" : run ? "PAUSE" : "START", t.state === "paused" ? "carry on" : "", {cmd: `tm2:go:${t.id}`, why});
-  return `<div class="trow${st.tedit && st.tedit.id === t.id ? " editing" : ""}" data-state="${t.state}" id="tr-${t.id}"><button type="button" class="tsel" data-cmd="te:open:${t.id}" aria-expanded="${!!(st.tedit && st.tedit.id === t.id)}" aria-label="${esc(said)}. Change it"${off ? ` aria-disabled="true" data-why="${off}"` : ""}><span class="tn">${esc(t.name)}</span><span class="ts">${sub}</span><span class="tt" id="tt-${t.id}">${time}</span></button><div class="tbtn">${btn}</div>${live ? `<span class="bar"><i id="tb-${t.id}" style="width:${tPct(t)}%"></i></span>` : ""}</div>`;
+  return `<div class="trow${st.tedit && st.tedit.id === t.id ? " editing" : ""}" data-state="${t.state}" id="tr-${t.id}"><button type="button" class="tsel" data-cmd="te:open:${t.id}" aria-expanded="${!!(st.tedit && st.tedit.id === t.id)}" aria-label="${esc(said)}. Change it"${off ? ` aria-disabled="true" data-why="${off}"` : ""}><span class="tn">${esc(t.name)}</span><span class="ts">${sub}</span><span class="tt" id="tt-${t.id}">${time}</span></button>${back ? `<p class="toff" aria-hidden="true">${tOff(t)}</p>` : ""}<div class="tbtn">${btn}</div>${live ? `<span class="bar"><i id="tb-${t.id}" style="width:${tPct(t)}%"></i></span>` : ""}</div>`;
 }
 /* one editor at a time, in place: under its timer, or where + TIMER was for a new one. A running or paused timer's time
    changes by a minute or five at once, as the boil power's nudges do; a stopped one is set and then saved */
@@ -1845,7 +1892,7 @@ function cmdTm2(x, id, y) {
   if (!t) return;
   if (x === "go") {
     if (t.state === "running") return send(key, "pause", `${t.name} paused, ${tfmt(t.left)} to go`, () => { t.state = "paused"; });
-    return send(key, "start", `${t.name} started, ${tfmt(t.left)} to go`, () => { if (t.state === "stopped") t.run = t.left; t.state = "running"; });
+    return send(key, "start", `${t.name} started, ${tfmt(t.left)} to go`, () => { if (t.state === "stopped") t.run = t.left; t.state = "running"; delete t.interrupted; });
   }
   if (x === "add") {
     const s = parseInt(y, 10), want = Math.max(10, t.left + s);
@@ -1922,7 +1969,7 @@ function tmTick() {
       if (o) o.textContent = tfmt(t.left);
       if (bar) bar.style.width = tPct(t) + "%";
       if (l) l.textContent = tfmt(t.left);
-    } else if (t.state === "done") { const o = $("#tt-" + t.id); if (o) o.textContent = "+" + tfmt(st.t - t.at); }
+    } else if (t.state === "done") { const o = $("#tt-" + t.id); if (o) o.textContent = tUpText(t); }
   }
   if (!st.banner) { const d = st.tmrs.find(t => t.state === "done"); if (d) { st.banner = tBanner(d); changed = true; } }
   if (changed) renderAll();

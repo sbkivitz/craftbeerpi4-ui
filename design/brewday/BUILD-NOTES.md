@@ -63,7 +63,7 @@ same. The section at the end has the detail.
 | Last event and LOG under the title bar | React UI | Covers commands from this screen. Showing commands from the phone on the monitor too needs a shared log: server, optional. |
 | Rest timer when brewing by hand: one timer, shared by every screen | Server and React UI | Chosen on 9 Nov. The server keeps the time left and whether it is running; START TIMER, PAUSE TIMER and ±5 MIN are commands to it, and every open screen shows the same countdown. At zero the server raises a CraftBeerPi notification, which shows on every screen and stays until answered, as hop alerts have since the S2 fix. Since 11 Nov the screen has up to four named timers instead (see "Timers" below), and keeps this one rest timer only for an older CraftBeerPi. |
 | Barlow and Barlow Condensed fonts | React UI | Bundle the font files with the UI build. The Pi may have no internet on brew day; the mockup loads them from Google Fonts. |
-| An HLT pump in the simulator (DONE) | Simulator configuration | The rig already has one: `Recirc_PUMP` on GPIO 7, which is also the HLT kettle's agitator (the brewer confirmed the pump mapping on 9 Oct). The 8000 simulator's configuration (`cbpi-testbench\config`) has "HLT Pump" as the HLT's agitator and in `BREWDAY_OVERRIDE_ACTOR`, and `brewday_sim.py` gives each copy it makes the same switch. |
+| An HLT pump in the simulator | Simulator configuration | The rig already has one: `Recirc_PUMP` on GPIO 7, which is also the HLT kettle's agitator (the brewer confirmed the pump mapping on 9 Oct). The simulator has `Mash Pump` and `Glycol Pump` but no HLT pump; Brett plans to add one when he builds this. |
 
 ## What this screen does not fix
 
@@ -3913,6 +3913,164 @@ Chromium (1243, from `craftbeerpi4\.venv`) with your switches.
   `?ver=release` and `?ver=none`: the same before and after.
 - **1180×820 without the timers:** the boil in `#boil-hold`, and step 3 under `#reset`'s question, were out of view
   and are whole.
+
+## Hint lines under the pointer, greyed controls, and three lines under their contrast: ready to build (16 Nov, night)
+
+The Settings session found that Dim Steel on Hover Slate is 4.46:1, just under the 4.5:1 a hint line needs, and a
+button's second line reaches it under the pointer. Hardware and Settings now turn that text Soft Steel (7.0:1) under
+the pointer; this does the same on Brew Day. Measuring for it found three lines under their minimum at rest, and
+moving the pointer onto every greyed control found greyed lamps and ALL OFF lighting up.
+
+### What changes
+
+All in `brew-day.css`, so your built CSS follows through `scope-css.mjs`. No JavaScript.
+
+- **Hint lines under the pointer** (one rule, after the hover backgrounds): on an available choice, TARGET, command
+  button or timer row, Dim Steel text turns Soft Steel. Left as they are: a pressed choice (`.seg`, a picked name, a
+  preset), TARGET's amber "no target" (`.tgtbtn.notgt`), START's white line on blue (`.tgo`), OK's dark ink on white
+  (`.tok`), a run-out timer's amber line, and greyed buttons.
+- **START in a timer's editor:** its second line (`.tact .tgo small`) is white. #dbe8f6 on #2a6fc0 was 4.06:1; white
+  is 5.08:1, as SAVE's on Hardware and Settings.
+- **A hop already added, on the current step** (`.step[aria-current=step] .adds .gone`): #c9d6e2, 4.98:1 on the step's
+  blue. #93acc6 was 3.14:1. The ✓ still marks it as added.
+- **Connection lost:** the smaller OUT and MODE values and the units (`.face.stale .aux dd`, `.face.stale .u`) are Dim
+  Steel, 7.2:1 on the window. Stale Grey is 4.45:1 there, enough only for the large PV and SV, which keep it.
+- **Greyed controls under the pointer:** ALL OFF's pointer rule skips a greyed ALL OFF (no connection, or SWITCHING
+  OFF…), and the lamps' rule skips a greyed lamp, and a failed or locked one, which keep their own background as
+  before. A greyed lamp took Hover Slate under the pointer, the recipe's RUNNING lamp in most moments among them, and a
+  greyed ALL OFF turned red. Hardware and Settings get the same.
+- **A new timer's name box:** its placeholder ("Timer 3") is solid (`opacity:1`), since Firefox fades placeholders. It
+  was already 7.1:1 in Chromium, so nothing changes there.
+
+### Moments whose pictures change
+
+At rest, only these: `#timer-new`, `#timer-names` and `#timer-nonames` (START's second line in the timer editor);
+`#boilpower`, `#keepboil` and `#letfall` (the hop already added); `#offline` (OUT, MODE and the units). Everything else
+changes only under the pointer.
+
+### Checked
+
+- Every moment, all 40 (the three new ones included), at 16 sizes from 1920×1080 to 360×740: no text under its
+  contrast minimum, no box over another where the one on top is see-through, no script errors, and, with the pointer
+  on every line and button at 1920×1080 and 1366×768, no text in it under its minimum. A new timer's name placeholder,
+  measured on its own: 7.1:1. One split word and some small targets were there before: see "Found, not changed".
+- With the pointer on every greyed control in every moment at 1920×1080 and 1366×768: 184 controls, none changes its
+  look, and each is `aria-disabled="true"`. Before, 9 changed. The available lamps and ALL OFF under the pointer, 338,
+  look exactly as before the change.
+- Before these fixes, the same measure found the three lines above under their minimum at rest (4.06:1, 3.14:1 and
+  4.45:1), and Dim Steel at 4.46:1 under the pointer.
+
+### Found, not changed
+
+These were there before; tell me if you want any of them changed.
+
+- At 360×740 the longest name to pick in `#timer-names`, WHIRLPOOL REST AND CHILL (24 characters, the most a name can
+  have), breaks as "WHIRLPOO|L": its button is narrower than the word.
+- The timer editor's presets are 43 to 44 px wide at 1180 to 1440 px, and 43 px at 360×740.
+- The boil kettle's −5 %, −1 %, +1 % and +5 % are 32 to 40 px wide from 900 to 1280 px (in DESIGN.md: the element
+  takes what HEATING needs first).
+- The target and power editors' step keys (up and down 0.1°, 1°, 1 % and 5 %) are 54 px tall but 36 to 42 px wide
+  from 900 to 1280 px.
+- KEEP BOILING and SOUND (`.keep`) are 18 to 27 px tall, and the boil power button (`.svbtn`) 27 to 38 px, with tap
+  areas that reach 44 px into the padding around them (in DESIGN.md).
+
+## Timers brought back after a restart: the note on its own line, ready to build (16 Nov, night)
+
+You asked me to look at post17's line for a timer CraftBeerPi brings back, decide its look, and add it to the mockup
+as demo moments. 8012 runs post17, but no timer was running there when CraftBeerPi last started, so there was nothing
+to see without pressing anything. So I put your build's text into the mockup's own rows, which use the same CSS, and
+compared the two side by side at 1366×768 and 390×844.
+
+### What I decided
+
+- The note gets a line of its own across the row, under the name and state: "CraftBeerPi was off for 12 min". The
+  state line keeps what it said before: "PAUSED · of 15:00", or "TIME'S UP".
+- Regular Barlow, 500 15px, because it's a sentence. Prompt Amber on a paused timer, because CraftBeerPi paused it and
+  it waits for the brewer to start it again (The Amber Means Waiting Rule). Prompt Cream on a run-out timer, on its
+  Dark Amber Wash, as on its banner.
+- While CraftBeerPi can't tell how long it was off: "CraftBeerPi was off; how long isn't known yet". "Yet", because the
+  line changes to "…was off for 12 min" once the network sets the clock. The row's spoken label ends the same way, and
+  a run-out timer's says "how long ago isn't known yet".
+- It goes when the timer is started or answered, as now.
+
+### Why not in the state line
+
+The state line is 14 px condensed Dim Steel beside the big time. There, "PAUSED · CraftBeerPi was off for 12 min" took
+three lines at 1366×768, and the unknown one four (two and four on a phone). In Dim Steel it read like the rest of the
+state, though it's the one thing on the row that waits for the brewer. On its own line it takes one line on a monitor
+or a phone, two at 1366 for the unknown one, and it's amber.
+
+### What changes, against your screen.js 338eb52
+
+In `trowHTML`:
+
+- `sub` no longer carries the note:
+
+```js
+const of = `<span class="nw">of ${tfmt(t.run)}</span>`;
+const sub = done ? "TIME'S UP" : run ? of : live ? `<span class="nw">PAUSED ·</span> ${of}` : "ready";
+```
+
+  The spans keep "of 20:00" whole, so a narrow row wraps "PAUSED ·" over "of 20:00". Before, a paused timer with ten
+  minutes or more left wrapped "PAUSED · of" over "20:00" at 1366×768; `#timer-back-unknown` shows it. The text is the
+  same, so `textContent` still reads "PAUSED · of 20:00".
+- After the `.tsel` button, before `.tbtn`: `${back ? `<p class="toff" aria-hidden="true">${tOff(t)}</p>` : ""}`.
+  It's hidden from screen readers because the button's label already ends with it.
+- `tOff` while `t.off` is null: "CraftBeerPi was off; how long isn't known yet".
+- `said`, for a run-out timer whose count-up isn't known: "how long ago isn't known yet".
+
+In `brew-day.css`, after `.trow .tok:hover` (your built CSS follows):
+
+- `.tsel .ts .nw{white-space:nowrap}`.
+- `.trow .toff`: across the row (`grid-column:1/-1`), Barlow 500 15px/1.3, Prompt Amber, `text-wrap:pretty` so a
+  two-line note doesn't leave one word alone.
+- `.trow:not([data-state=done]) .tbtn{grid-column:2;grid-row:1}`: START or PAUSE stays beside the name, so the note
+  can't push it down.
+- On a run-out row the note is Prompt Cream, between the name and +5 MIN and OK.
+- While another timer's editor is open, the note hides with the state line, so the editor keeps its room.
+
+### Demo moments, for demo.js and the identity test
+
+- `#timer-back`: a 12-minute cut, 14:20:31 to 14:32:31. Stir, counting down since 14:12:43, comes back paused at 7:12
+  of 15:00. Yeast, set up for later, is as it was.
+- `#timer-back-done`: the same cut, with Stir started at 14:10:00. It ran out at 14:25:00, during the cut, so it comes
+  back run out, with its alarm in the title bar, counting up from then: +7:31.
+- `#timer-back-unknown`: the same, before the network has set CraftBeerPi's clock. Stir shows "– –", and Yeast,
+  counting down at the cut, comes back paused at 12:30 of 20:00.
+
+In the mockup a timer's `at: null` means its count-up isn't known, which your `tUpKnown` reads in the demo. The run-out
+timer's tick writes `tUpText(t)`, as yours does, so "– –" stays. The moments strip in `brew-day.html` has the three
+after "A timer runs out".
+
+### Your bench tests
+
+`test_e2e_brewday_timers_restart.py` reads the note in the state line. It needs:
+
+- `row()`: `off: t(".toff")` beside `sub`.
+- Lines 322, 364 and 382: wait for `x["off"]`, not `"off" in x["sub"]`.
+- Lines 323, 328, 366, 383, 386, 391, 400, 421 and 425: compare `sub` with "PAUSED · of …" or "TIME'S UP", and `off`
+  with the note.
+- Lines 56 and 57: `MARK = "how long isn't known yet"`, which line 490 looks for in the build, and
+  `UNKNOWN = "CraftBeerPi was off; how long isn't known yet"`. Line 386's `"how long ago isn't known" in said` still
+  holds.
+
+`test_e2e_brewday_timers.py` line 312 ("PAUSED · of 5:00") still holds: the text is the same.
+
+### Checked
+
+- The three moments at 1920×1080, 1366×768 and 390×844: no script errors, and each row's state line, note, time and
+  spoken label as above.
+- The timer moments (`#timers`, `#timer-done`, the three new ones, `#timers-hand`, `#timer-new` and `#timer-names`) at
+  16 sizes, 128 pages: no state line or note outside its box, and no timer's name cut short. The check catches a
+  planted one: forced onto one line, both run outside their box at 1366×768 and 360×740.
+- Every moment at 16 sizes: see the section above.
+
+### Changed, for both sections
+
+- `proposal\brew-day.css`, `proposal\brew-day.js`, `proposal\brew-day.html` and this file.
+- `DESIGN.md`: Buttons (Hover / Focus, ALL OFF, Unavailable); Typography's Button line; Timers (the row's state line
+  under the pointer, and "After a restart"); Connection lost (the smaller values and units).
+- `.impeccable\design.json`, regenerated, and `.impeccable\decisions\direction-log.md`.
 
 ## Open questions about the drawing
 

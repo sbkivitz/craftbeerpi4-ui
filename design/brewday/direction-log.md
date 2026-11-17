@@ -1,5 +1,24 @@
 # Direction decision log
 
+## Timers brought back after a restart (16 Nov 2026, night)
+- Brett built it (core 4.7.7.post42, UI post17): CraftBeerPi keeps its timers through a restart. One that was counting
+  down comes back paused, and one that had run out stays run out with its alarm, counting up from when it ran out. Until
+  each is started or answered, it says how long CraftBeerPi was off, or that it isn't known: a Raspberry Pi with no
+  clock board starts with a wrong time after a power cut, until the network sets it. His build put that into the
+  timer's state line: "PAUSED · CraftBeerPi was off for 12 min". He asked me to decide its look.
+- 8012 runs the build, but no timer was running when it last started, so there was nothing to see without pressing
+  anything. Weighed side by side instead, with the build's text in the mockup's own rows, which share its CSS: in the
+  14 px Dim Steel state line beside the big time, the note took three lines at 1366×768, four for the unknown one, and
+  read like the rest of the state, though it is the one thing on the row that waits for the brewer.
+- Chosen: a line of its own across the row, under the name and state, in regular Barlow 500 15px, since it's a
+  sentence; Prompt Amber on a paused timer, because CraftBeerPi paused it and it waits for the brewer to start it
+  again; Prompt Cream on a run-out one, on its Dark Amber Wash. The state line keeps "PAUSED · of 15:00" and "TIME'S
+  UP". The unknown case reads "CraftBeerPi was off; how long isn't known yet", because it becomes known once the clock
+  is set, and the line changes then.
+- Found on the way: a paused timer with ten minutes or more left wrapped "PAUSED · of" over "20:00" at 1366×768. It
+  now wraps "PAUSED ·" over "of 20:00", with the text unchanged, so Brett's tests still read it.
+- Three demo moments, so his identity test covers it: #timer-back, #timer-back-done, #timer-back-unknown.
+
 ## The Hardware page (16 Nov 2026)
 - The request, relayed by Brett: "I want the other menus to be redesigned to have a consistent theme to BrewDay. Begin
   with hardware menu. Ask questions before beginning if any". Then, to me: "Reorganize and refactor hardware like you
@@ -79,6 +98,24 @@
   answer buttons and greyed buttons keep their colours. It also noted UNDO's 44 px box reaching 2 px into the control
   above it; on Hardware that happens only under a wide menu, and the gap under a row's control is now 10 px. The
   measure now also moves the pointer onto every line and button, and looks for see-through boxes over other controls.
+- Brew Day, at Brett's request, the same rule: a choice's, TARGET's and a command button's second line, and a timer
+  row's state, turn Soft Steel under the pointer; a pressed choice, the amber "no target", the timer editor's blue main
+  action, OK on a timer that has run out, that timer's amber state and greyed buttons keep their colours. Measuring
+  every Brew Day moment the same way found three more: the timer editor's blue main action's second line at 4.06:1
+  (now white, as SAVE's), additions already in on the current step at 3.14:1 (now #c9d6e2, 4.98:1; the ✓ still marks
+  them), and a lost connection's smaller OUT and MODE values in Stale Grey at 4.45:1 (now Dim Steel, as their tags).
+- The Settings session's next sweep moved the pointer onto every greyed control, and found them lighting up as if a
+  press would work: a greyed SAVE turned blue with its grey words at 1.6:1, a greyed DELETE dark red, greyed switches
+  and FILE Hover Slate, and ALL OFF red with no connection. Brew Day had the same on its greyed lamps (the recipe's
+  RUNNING lamp in most moments) and ALL OFF. Chosen, for every page: nothing changes under the pointer on a greyed
+  control, and every greyed command looks the same, DELETE's red included, as DESIGN.md's Unavailable rule says.
+  Hardware's ALL OFF had never been greyed at all: its mark was written empty, which counts as available to the look,
+  the tap and screen readers. My pointer pass had measured only text in available controls; a sweep now moves the
+  pointer onto every greyed one and compares its look, and the available ones were checked to look exactly as before.
+- Brett's build measure found Hardware's "empty" in an empty box in the browser's own placeholder grey, 4.41:1 on the
+  box's black. My measure had skipped it: a placeholder isn't text on the page. Chosen: Dim Steel, 7.2:1, and solid,
+  since Firefox fades placeholders. The measure now reads each empty box's placeholder. Settings uses the same box but
+  never shows a placeholder; Brew Day's timer name already had its own grey (7.1:1) and is now solid too.
 
 ## The step list keeps the current step in view, with or without the timers (13 Nov 2026, evening)
 - Brett asked for it for tonight's release: the current step stays in view whether or not CraftBeerPi has the timers.
