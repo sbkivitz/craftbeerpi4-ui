@@ -1,5 +1,66 @@
 # Direction decision log
 
+## The Hardware page (16 Nov 2026)
+- The request, relayed by Brett: "I want the other menus to be redesigned to have a consistent theme to BrewDay. Begin
+  with hardware menu. Ask questions before beginning if any". Then, to me: "Reorganize and refactor hardware like you
+  did for Settings". The Settings session restyled Settings; I followed its way of working: questions, an arrangement
+  to approve, then a mockup in Brew Day's frame. Base: UI main 283b056 (0.5.1.a3.post14, with the kettle settings file).
+- Mode: Operate. Answers: "Now and then, at the desk, to add or change a kettle, probe or switch"; switches "Keep one
+  tap for everything, as today" (against my suggestion of a held press for elements); fermenters "Keep a plain link at
+  the end to today's fermenter list, unchanged".
+- Read before choosing the layout: NN/g on data tables (a human-readable first column, not ids), on toggles, on
+  confirmation dialogs, on conscious mistakes and on forms; Microsoft's list/details pattern (stacked up to 640 px, side
+  by side above); W3C APG's switch (role switch, a label that never changes); MIT 6.813 on learnability; Norman on
+  natural mapping; GT CS 6750's structure principle; id-book on conceptual models.
+- Found in CraftBeerPi: saving a kettle switches its AUTO off and leaves it off; a switch is switched off before it's
+  replaced or deleted. So the page says what saving will switch off, before SAVE.
+- Seven structures, by resonance: list/details by vessel; vessel sheets; all on one pane; the drawing as the index;
+  tables by kind; a wiring view; search first. The seed (c966e2d4) picked the 4th, the drawing as the index, staged as an
+  x-ray of Brew Day's drawing. Settings' list was kept beside it, because the drawing can't show hardware no kettle uses
+  and a phone has no drawing. The arrangement (proposal/HARDWARE-GROUPING.md): "Looks right, build the mockups."
+- Correction from Brett, from Gauge's read-only check of 8 Oct: the rig has exactly four switches (BK_HEAT on GPIO 5,
+  HLT_HEAT on 6, Recirc_PUMP on 7, Wort PUMP on 8), with no pin shared and no leftovers. The test bench's notes I'd used
+  were out of date. The rig data now follows the rig's records of 8 to 10 Oct; its kettles there are the HLT on PIDBoil
+  (10 Oct), the Mash Tun on PID_HERMS and the Boil Kettle on BoilPower, and its probes are Temp_HLT, Temp_Mash and BK.
+  The shared-pin warning stays as a guard while choosing a pin.
+- First look at the mockup, in a window 763 px wide: "No, I want the top Hardware section to be more of a list like
+  Settings. I like the idea of cross-referencing the schematic. Maybe make that pane static and the top pane can
+  scroll. I also need to see the full IDs for the sensors. Having the ... is not optimal". At that width the list had
+  broken into two columns of cards above the drawing, and probe addresses were cut to ten characters.
+  Chosen: from 701 to 1179 px the list is one column and the page scrolls, with the tool row stuck to the top of the
+  window and the drawing docked at the bottom. The drawing lights the part a line points at and the part open. A fixed
+  split was tried first: the list then got only one or two lines, so the frame now scrolls away instead. Names and
+  addresses wrap instead of ending in "…".
+- Second look: "Keep a save-to-file button on each kettle in the list as well". Each kettle's line has FILE, named
+  "Save <kettle> to a file", which also keeps the first part of Brett's kettle-file test as it is.
+- Third look, two messages relayed by Brett: "the existing hardware page has much more functionality and information
+  than yours... GPIO, ability to choose their logic, etc.", then "ok, actually - I like begin able to step into each
+  kettle and set its details.  Still would be nice to see GPIO on the main screen". The design stays. Added: each
+  switch's GPIO pin in a box on its line (on a phone, on its second line, so names keep their width); a probe's type,
+  address and Sensor ID; a kettle's target; a dashed line where a kettle's probe, element or pump is missing, as today's
+  "Actor not Found"; "None" first in the kind menus, as today's "---"; each kettle control keeping its own settings, as
+  today's form does; a name being needed; and the item's wiring in its header ("ELEMENT · GPIO 6"). The item's own rows
+  now come before the settings file, so the control and the kind are in view when an item opens, and a phone opens an
+  item at its own top.
+- Checked against today's page: read on 8012 without pressing anything (every table, every form by its own link, the
+  forms for a new item). proposal/HARDWARE-TODAY.md lists each item and where it is now. More taps than today: delete
+  (3, not 2), add (2, not 1), a plugin's whole note (under MORE), fermenters (behind the link), and SAVE's new question.
+- Empty settings, relayed by Brett from an earlier request: shown as empty with what the control uses ("Empty: PIDBoil
+  uses 100 %"); before SAVE, a note naming each with its value, answered FILL IN AND SAVE, SAVE WITH THEM EMPTY or BACK;
+  in a file's preview, FILL IN THESE VALUES re-plans with fill=1 so they show as changes before LOAD, as Brett's server
+  does. The question took the delete question's red at first (a shared class name); it's amber, like the page's other
+  questions.
+- Checked: every moment at eleven window sizes, and after the third look at five of them (1920×1080, 1366×768,
+  763×1141, 390×844 and 360×740), with no script errors and nothing wider than the window; 85 scripted presses,
+  including Brett's deep-link conditions at 1280×720 (which pass as written: SAVE stays usable with nothing changed),
+  every state of his kettle-file test, and each control keeping its own settings, as his logic-switch test checks. The
+  build notes list what changes in those two tests: nine lines in the kettle-file test, three things in the other.
+- The brewer's answer to the comparison, the GPIO pins and the empty settings: "Looks right: Brett can build it."
+  Handed to Brett as ready to build: proposal/HARDWARE-BUILD-NOTES.md.
+- Found after the hand-off, while writing the list into .impeccable/design.json: the list's switches were 36 px tall and
+  its lines' links 42 px, under the 44 px the build notes promise. Both are 44 px now, so each line is 46 px, 2 px more,
+  and the rig's list is about 18 px longer; it scrolls on its own at every monitor size, as before.
+
 ## The step list keeps the current step in view, with or without the timers (13 Nov 2026, evening)
 - Brett asked for it for tonight's release: the current step stays in view whether or not CraftBeerPi has the timers.
   The list followed the current step only with the timers, since it came in with them.
