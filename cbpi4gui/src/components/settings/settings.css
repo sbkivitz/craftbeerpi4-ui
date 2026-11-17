@@ -128,6 +128,7 @@ select.fld option{background:#101a23;color:var(--text)}
 .numf{display:inline-flex;align-items:stretch;justify-self:start;border:1px solid var(--edge);border-radius:var(--r);background:var(--face);box-shadow:var(--sunk)}
 .numf:focus-within{outline:3px solid var(--focus);outline-offset:2px}
 .numf input{width:9ch;min-height:48px;padding:0 4px 0 14px;border:0;background:transparent;color:var(--text);font:600 22px/1 var(--cond);font-variant-numeric:tabular-nums;outline:0}
+.numf input::placeholder{color:var(--text-3);opacity:1}
 .numf input.wide{width:12ch}
 .numf span{display:flex;align-items:center;padding:0 14px 0 6px;font:600 18px/1 var(--cond);letter-spacing:.04em;color:var(--text-3)}
 .fx{margin:0;font:500 15px/1.35 var(--sans);color:var(--text-2)}

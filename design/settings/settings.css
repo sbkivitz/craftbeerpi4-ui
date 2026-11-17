@@ -46,7 +46,7 @@ html.bare .mock{display:none}
 .link[data-link=lost]{color:#ffc9c4}
 .link[data-link=lost] i{background:transparent;border:3px solid var(--alarm);animation:blink 1s steps(2,start) infinite}
 .alloff{min-height:48px;padding:0 16px;border:2px solid #7d8fa2;border-radius:var(--r);background:var(--panel-2);color:var(--text);font:700 17px/1 var(--cond);letter-spacing:.06em}
-.alloff:hover{border-color:#ff8a80;background:#2b1315}
+.alloff:not([aria-disabled=true]):hover{border-color:#ff8a80;background:#2b1315}
 .alloff[aria-disabled=true]{opacity:.5;cursor:not-allowed}
 .clock{font:600 clamp(26px,2.4vw,40px)/1 var(--cond);font-variant-numeric:tabular-nums;min-width:3.2ch;text-align:right}
 /* on a monitor or laptop only the alarm or prompt gives way to a long message in the title bar (it wraps): ALL OFF keeps
@@ -231,6 +231,9 @@ select.fld option{background:#101a23;color:var(--text)}
 .numf{display:inline-flex;align-items:stretch;justify-self:start;border:1px solid var(--edge);border-radius:var(--r);background:var(--face);box-shadow:var(--sunk)}
 .numf:focus-within{outline:3px solid var(--focus);outline-offset:2px}
 .numf input{width:9ch;min-height:48px;padding:0 4px 0 14px;border:0;background:transparent;color:var(--text);font:600 22px/1 var(--cond);font-variant-numeric:tabular-nums;outline:0}
+/* a number box's placeholder, where one is given: Dim Steel, 7.2:1 on the box (the browser's own grey is 4.4:1), and
+   solid, as Firefox fades it */
+.numf input::placeholder{color:var(--text-3);opacity:1}
 .numf input.wide{width:12ch}
 .numf span{display:flex;align-items:center;padding:0 14px 0 6px;font:600 18px/1 var(--cond);letter-spacing:.04em;color:var(--text-3)}
 .fx{margin:0;font:500 15px/1.35 var(--sans);color:var(--text-2)}
