@@ -82,7 +82,7 @@ Trying it: as on brew day, `?name=…` tries another brewery name and `?brewscri
 
 ### Changing and saving: one SAVE
 
-- A change marks its row: a blue tint (`rgb(42 111 192 / .12)`) and a 2 px inset ring in `--select`, and on the status line "CHANGED · was °F" with UNDO. Changing it back clears it. The group's row says `1 CHANGED`, UNDO says "put back the change" or "put back all 3", and SAVE turns blue: "SAVE · 3 changes".
+- A change marks its row: a blue tint (`rgb(42 111 192 / .12)`) and a 2 px inset ring in `--select`, and on the status line "CHANGED · was °F" with UNDO. That UNDO is a text button (`.lnk`): a box at least 44 px tall and 44 px wide whose `margin-block: -10px` gives back the 20 px it adds, so the 24 px status line keeps its height. The control sits 8 px above the status line, so the box reaches 2 px into the control; a press there goes to UNDO. Changing it back clears it. The group's row says `1 CHANGED`, UNDO says "put back the change" or "put back all 3", and SAVE turns blue, both its lines white: "SAVE · 3 changes".
 - SAVE sends every change at once with `configapi.update(name, value, ok, failed)` (`PUT /config/{name}/`) and waits for every answer. It does not reload the page: the `configupdate` topic already keeps `config` current (`components\data\index.js` line 56).
 - While it waits, each row has the brew-day's waiting signal, a 6 px marching stripe along its top edge, and SAVE reads "Saving… · waiting for CraftBeerPi" with the same stripe. UNDO is greyed.
 - Each answer marks its row: "✓ SAVED 14:32" in `--run`, or in red "DIDN'T SAVE · CraftBeerPi didn't answer, so it may not have it" with a white TRY AGAIN ("send it again"), the row tinted `--fault-bg` with a 2 px `--alarm` ring. A setting that needs a restart adds, in amber, "· on after a restart" or "· used after a restart".
@@ -102,7 +102,7 @@ One at a time, in this order, never a pop-up:
 ### FIND A SETTING
 
 - Every word typed must appear in the setting's name, its key (also with `_` read as spaces), what it does, its group's name, its plugin's name, or its extra words (`syn`). Matches are marked (`#5a4300` behind `#fff3d6`).
-- Rows that don't match, see-also lines, empty parts and empty plates hide. The left column says "N found" for each group, greys a group with "none", and lights the first group with results (none if nothing is found).
+- Rows that don't match, see-also lines, empty parts and empty plates hide. The left column says "N found" for each group, greys a group with "none" (its number, name and summary in Dim Steel, `--text-3`), and lights the first group with results (none if nothing is found).
 - × or Escape clears it. A live region says "9 settings found" or "Nothing found".
 - Nothing found: "NOTHING HERE MATCHES “HYSTERESIS”" and "Try a word from a setting's name, its key or what it does." If the words belong to one kettle's, switch's or probe's own settings (the `ELSEWHERE` pattern in `settings.js`: pid, hysteresis, kp, ki, kd, gain, logic, boil power, threshold, offset, calibrate, gpio, pin), it adds "Settings for one kettle, switch or probe, such as a PID's or the boil power, are kept with it in Hardware." and OPEN HARDWARE.
 
@@ -141,7 +141,8 @@ The `#plugin` moment shows three made-up settings from a plugin the page doesn't
 
 - Each control is named by its plain name (`label for`, or `aria-labelledby` on a radio group) and described by what it does and its status line (`aria-describedby="w-KEY s-KEY"`).
 - Plates are `section`s labelled by their heading; the left column marks the group in view with `aria-current`.
-- Every button and field is at least 44 px tall at every size (measured).
+- Every button and field is at least 44 px tall at every size, a row's UNDO included (measured).
+- Text is at least 4.5:1 against what's behind it (large text 3:1) in every moment at every size (measured). SAVE's second line is white on Selection Blue: 5.1:1, and 4.55:1 under the pointer. A group with nothing found during FIND has its summary in Dim Steel: 5.1:1.
 - With reduced motion: no stripes, flash, glow or smooth scrolling.
 
 ### Tokens
@@ -175,8 +176,9 @@ Your answer (11 Nov): you fix 1 in the build, check 3 then, and take 2 to Amber,
 - TRY: each sound plays its whole burst (4, 5, 3 and 3 pulses, counted in the page), and its line says "playing" until the burst ends. FIND "ping" finds Timer alarm sound.
 - The frame against Amber's `brew-day.html?bare#mash` (11 Nov, evening): 13 window sizes (your five, the phone at 3×, and 768×1024, 1000×800, 1180×820, 1179×820, 1023×768, 701×900, 700×900), each with the default name, four `?name=` names, a blank name and `?brewscribe=none`. Every part of the title bar, event line and tabs has the same position and size (exact, not rounded), the same computed styles, words and attributes, and the same pixels, apart from the event's words and the two lit tabs. `#offline` the same, with ALL OFF dimmed in place. The only pixels that ever differed were single edge pixels a few shades apart, which came and went between runs of the same two pages; I counted differences of 24 levels or less as that noise.
 - After the sync: the 13 moments at seven sizes have no script errors and nothing wider than the window. All nine groups still fit on the left at 1366×768, with the frame 8 px taller. BREWSCRIBE with changes doesn't ask; HARDWARE still does. ALL OFF offline answers "No connection. Controls are paused." A saved Brewery name shows in the title bar, and in the browser tab's title.
+- After the 16 Nov fixes: the 13 moments at seven sizes, and on a phone every group opened on its own, each scrolled so every row was in view. Nothing to press is under 44 px, no text is under its contrast minimum, and there are no script errors. Rows, status lines and page heights are the same as before to the hundredth of a pixel in all 100 views. The only pixels that changed are SAVE's second line, the UNDO text (4 px further right, inside its wider box) and, during FIND, the summaries of groups with nothing found.
 
-### Settled with you (11–13 Nov)
+### Settled with you (11–16 Nov)
 
 1. Settings saves go in the last-event line: see "Changing and saving".
 2. The catalogue: `cbpi4gui\src\components\settings\catalog.js`, exporting `M` and `G`.
@@ -186,3 +188,4 @@ Your answer (11 Nov): you fix 1 in the build, check 3 then, and take 2 to Amber,
 6. Your note (12 Nov): the Timer alarm sound's help (`M.BREWDAY_ALARM_SOUND.h`) now covers the alerts too: "What the brew-day screen plays when a timer runs out, every 3 seconds until you answer it. For a new hop alert, question or error, the screen plays just the first two beeps, once." That is 3 lines on a monitor and 4 on a phone, shown whole, and FIND finds the row by "hop alert", "question" and "two beeps". `alarm.js` is now a copy of yours at ab17060; only its opening comment changed, and the sounds are the same. The core rewrites a description only when its version changes, so the new one arrived with post37 (13 Nov): `settings-data.js` now has it, ending "Switching SOUND on at the screen makes no sound." It only shows for a setting `M` doesn't know.
 7. Your note (13 Nov): no file names the brewer, and code comments say what the code does and why, in the present tense: no dates, request quotes, attributions or change tags. The mockup's files follow it, and `alarm.js` is again a copy of yours (at c99dbc7) apart from its exports.
 8. Your note (13 Nov): the repository's commit messages were rewritten, so every commit ID changed. The IDs in these notes are the new ones; `C:\src\personal\cbpi-testbench\COMMIT-ID-MAP.md` lists old and new.
+9. Your note (16 Nov, through Amber): SAVE's second line was 4.0:1 on Selection Blue (3.6:1 under the pointer), and a row's UNDO was a 24 px box that only an invisible `::before` made larger. As on the Hardware page, SAVE's second line is now white (`.cmd.go small`), and UNDO is a 44 px box (`.lnk`, with no `::before`). Measuring every moment found one more of the same kind: during FIND, a group with nothing found had its summary at 3.6:1 (`#6f8194`). It is now Dim Steel (`.gi.none .d`, 5.1:1), as the Hardware page's list has it.

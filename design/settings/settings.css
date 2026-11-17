@@ -121,7 +121,7 @@ html.bare .mock{display:none}
 .gi .chg{display:inline-block;padding:4px 7px;border-radius:4px;background:var(--select);color:#fff;font:700 13px/1 var(--cond);letter-spacing:.06em}
 .gi .fl{display:inline-block;padding:4px 7px;border-radius:4px;background:var(--fault-bg);border:1px solid var(--alarm);color:#ffd0cc;font:700 13px/1 var(--cond);letter-spacing:.06em}
 .gi.none .t,.gi.none .n{color:var(--text-3)}
-.gi.none .d{color:#6f8194}
+.gi.none .d{color:var(--text-3)}
 
 /* FIND A SETTING and SAVE sit above the pane, which scrolls the plates under them */
 .pane{grid-area:pane;min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain;scroll-padding-top:8px}
@@ -138,7 +138,7 @@ html.bare .mock{display:none}
 .cmd small{font:500 13px/1 var(--cond);letter-spacing:.04em;text-transform:none;color:var(--text-3)}
 .cmd:hover{background:var(--hover)}
 .cmd.go{background:var(--select);border-color:var(--select);color:#fff;min-width:150px}
-.cmd.go small{color:#d6e6f8}
+.cmd.go small{color:#fff}
 .cmd.go:hover{background:#3477c8}
 .cmd[aria-disabled=true]{background:var(--panel-2);border-color:var(--edge);color:var(--text-3);cursor:not-allowed}
 .cmd[aria-disabled=true] small{color:var(--text-3)}
@@ -204,8 +204,8 @@ html.bare .mock{display:none}
 .st .later{color:var(--prompt)}
 .st.no{color:#ffd0cc}
 .st .why2{text-transform:none;letter-spacing:.02em;font-weight:500}
-.lnk{position:relative;min-height:24px;padding:0 2px;border:0;background:none;color:var(--text);font:700 15px/1 var(--cond);letter-spacing:.08em;text-transform:uppercase;text-decoration:underline;text-underline-offset:3px}
-.lnk::before{content:"";position:absolute;inset:-10px -8px}
+/* a text button in a line of text: a 44 px box whose margins give back the 20 px it adds, so the line keeps its height */
+.lnk{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;margin-block:-10px;padding:0 6px;border:0;background:none;color:var(--text);font:700 15px/1 var(--cond);letter-spacing:.08em;text-transform:uppercase;text-decoration:underline;text-underline-offset:3px}
 .lnk:hover{color:#fff}
 
 /* controls */
