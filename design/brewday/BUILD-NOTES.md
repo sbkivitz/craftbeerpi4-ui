@@ -4658,6 +4658,56 @@ both times a page that hadn't finished drawing in 20 s while the PC was busy; ta
 - `proposal\PRE-BREW-CHECK.md`: the same words, CHECKING…'s wait, and the three new moments.
 - `.impeccable\decisions\direction-log.md`.
 
+## A recipe started on another screen while START says CHECKING…: ready to build (18 Nov)
+
+Your build agent's addition in post22, `pbDecide` starting nothing for a recipe no longer waiting to start, is now in
+the mockup as it is in your `screen.js`: `pbRun` (line 1191) ends with `delete st.pend["r:check"]; pbDecide();`, and
+`pbDecide` (line 1208) holds what `pbRun` used to decide, with your guard first. Without it the mockup started the
+recipe a second time when the check passed, and told a screen reader "Not started yet" when one didn't.
+
+One more thing in the same place. START kept saying "CHECKING… before it starts" over the running recipe until the
+check answered: under a second as a rule, but up to 6 s while the Pi's clock was slow to answer, and 5 s when
+CraftBeerPi didn't answer the check at all. And a screen reader heard nothing about the START that was held. So:
+
+- `renderAll` (line 1560), where it already closes the box and the panel for a recipe that has begun, also ends
+  CHECKING… if START says it, and says once "The recipe was started on another screen." START shows RUNNING at once.
+- In the demo, `pbRun`'s `answered` returns at once when CHECKING… has ended (line 1198).
+
+### What your build needs
+
+- `renderAll` (your line 1247) becomes:
+
+  ```js
+  if (st.recipe && !pbFresh()) {
+    st.pbOpen = false; st.cmpOpen = false;
+    if (st.pend["r:check"]) { delete st.pend["r:check"]; say("The recipe was started on another screen."); }
+  }
+  ```
+
+- Nothing else live: an answer that comes after finds `checking` false in `pbAsk`, and the late timer returns.
+- The demo's `answered` (your line 811): `if (!st.pend["r:check"]) return;` first.
+
+### Moments whose pictures change
+
+None: no moment has START on CHECKING… for a recipe that has begun.
+
+### Checked
+
+- A start on another screen while START says CHECKING…, five ways: every check passing; the clock not set; the
+  clock's first answer coming 3 s on, set; the clock never answering; CraftBeerPi not answering the check. Before:
+  CHECKING… stayed 0.4 to 6.0 s over the running recipe; the recipe was logged as started a second time in two of
+  them; "Not started yet" was said in the other three. Now, in all five: RUNNING at once, no second start, no box, and
+  "The recipe was started on another screen." said once. No page errors.
+- The 20 click-through runs, with the same results as before.
+- Pictures compared with post22's mockup, all 55 moments at the identity test's five sizes: none of the 275 change.
+
+### Changed
+
+- `proposal\brew-day.js`; this file (this section).
+- `DESIGN.md`: the Pre-brew Check's box following CraftBeerPi.
+- `proposal\PRE-BREW-CHECK.md`: the same, in "What each part needs".
+- `.impeccable\decisions\direction-log.md`.
+
 ## Open questions about the drawing
 
 Both were answered on 10 Nov. The valves have been in the drawing since then; the path after the boil was

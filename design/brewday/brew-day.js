@@ -1194,18 +1194,25 @@ function pbRun() {
   st.pbOpen = false; st.pend["r:check"] = "check"; renderAll();
   const held = Date.now();
   const answered = () => {
+    /* CHECKING… already ended: a recipe started from another screen ends it as soon as it is seen (renderAll) */
+    if (!st.pend["r:check"]) return;
     /* the demo's slow clock answers at clockAt, set */
     if (st.pb.clockWhy === "slow" && st.pb.clockAt && st.t >= st.pb.clockAt) { st.pb.clock = true; st.pb.clockWhy = null; }
     if (!st.pb.noAnswer && st.pb.clockWhy === "slow" && Date.now() - held < PB_CLOCK) { timers.push(setTimeout(answered, 1000)); return; }
-    delete st.pend["r:check"];
-    const items = pbItems(), bad = items.filter(i => !i.ok);
-    if (!bad.length) { logEvent("Checked before starting: probes, clock, reminders", "all passed", "ok"); cmdStart(true); return; }
-    st.pbOpen = true;
-    const words = st.pb.noAnswer ? PB_NONE.replace(/<[^>]+>/g, "") : `Not started yet: ${bad.length} check${bad.length > 1 ? "s" : ""} didn't pass. ${bad.map(i => i.html.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ")).join(" ")}`;
-    say(`${words} START ANYWAY or DON'T START, under START.`);
-    renderAll();
+    delete st.pend["r:check"]; pbDecide();
   };
   timers.push(setTimeout(answered, st.pb.noAnswer ? PB_ASK : 500 + Math.random() * 300));
+}
+/* the check's answer, or none: the recipe starts, or the box says what didn't pass. A recipe started from another screen
+   meanwhile leaves nothing to decide: it starts nothing and says nothing */
+function pbDecide() {
+  if (!pbFresh()) { st.pbOpen = false; renderAll(); return; }
+  const items = pbItems(), bad = items.filter(i => !i.ok);
+  if (!bad.length) { logEvent("Checked before starting: probes, clock, reminders", "all passed", "ok"); cmdStart(true); return; }
+  st.pbOpen = true;
+  const words = st.pb.noAnswer ? PB_NONE.replace(/<[^>]+>/g, "") : `Not started yet: ${bad.length} check${bad.length > 1 ? "s" : ""} didn't pass. ${bad.map(i => i.html.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ")).join(" ")}`;
+  say(`${words} START ANYWAY or DON'T START, under START.`);
+  renderAll();
 }
 /* START ANYWAY: the recipe's line in LOG says what didn't pass, as a start that went past them */
 function pbGo() {
@@ -1545,8 +1552,13 @@ function renderAll() {
   $("#app").toggleAttribute("data-steps", TIGHT && bkNudges());
   $("#plates").innerHTML = ["hlt", "mt", "bk"].map(plateHTML).join("");
   /* the check's box and the probes' panel belong to a recipe not begun: a recipe started from another screen closes
-     them here. Brewing by hand there is no recipe, and the panel stays */
-  if (st.recipe && !pbFresh()) { st.pbOpen = false; st.cmpOpen = false; }
+     them here, and ends CHECKING… if START says it, so START shows the recipe running at once, a screen reader hears
+     why, and the check's answer, when it comes, decides nothing. Brewing by hand there is no recipe, and the panel
+     stays */
+  if (st.recipe && !pbFresh()) {
+    st.pbOpen = false; st.cmpOpen = false;
+    if (st.pend["r:check"]) { delete st.pend["r:check"]; say("The recipe was started on another screen."); }
+  }
   /* the check's box and the probes' panel keep the height they have on screen as they are drawn again, with the box's
      answers at its foot, so a line that gets shorter as CraftBeerPi's answers change (the clock set, a probe back) moves
      no button under a reaching hand. Not across a change of the column's width, where the lines wrap anew */

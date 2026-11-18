@@ -1,5 +1,12 @@
 # Direction decision log
 
+## A recipe started on another screen during CHECKING… (18 Nov 2026)
+- From Brett, after post22: his build agent added a guard so a recipe started from another screen while START says
+  CHECKING… isn't started a second time when the check answers. Taken into the mockup as built (`pbDecide`).
+- Found with it, and chosen: START also kept saying CHECKING… over the running recipe until the answer came, up to
+  6 s with the Pi's clock slow, and a screen reader heard nothing about the START that was held. Now the screen ends
+  CHECKING… as soon as it sees the recipe running, and says once "The recipe was started on another screen."
+
 ## The pre-brew check's other answers (18 Nov 2026)
 - From Brett, after post21: his build agent chose words where CraftBeerPi can answer something the mockup had none for
   (core post45's reasons): a probe with no reading and no time, a clock not confirmed for any reason, a clock not yet
