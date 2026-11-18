@@ -59,7 +59,10 @@ export const api = {
   kettleAction: (kettleId, action, parameter) => post(`/kettle/${id(kettleId)}/action`, { action, parameter }),
   // The level a switch runs at: the brewer's own, which it comes on at by hand.
   power: (actorId, power) => post(`/actor/${id(actorId)}/set_power`, { power }),
-  start: () => post("/step2/start"),
+  // The recipe's steps go with START (their ids, in order): CraftBeerPi 4.7.7.post46 starts only if those are still the
+  // loaded steps and none of them runs, else answers 409 {error: "recipe_changed" or "already_running", name, steps}.
+  // An older CraftBeerPi ignores them.
+  start: (steps) => post("/step2/start", Array.isArray(steps) ? { steps } : undefined),
   // The pre-brew check (core 4.7.7.post45): probes, clock and reminders, changing nothing. An older CraftBeerPi answers
   // 405. Given 30 s, so an answer that comes after the screen has stopped waiting for it (5 s) still fills the box in
   precheck: () => call("GET", "/step2/precheck", undefined, 30000),

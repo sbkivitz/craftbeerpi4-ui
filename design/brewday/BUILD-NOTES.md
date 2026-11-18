@@ -4708,6 +4708,106 @@ None: no moment has START on CHECKING… for a recipe that has begun.
 - `proposal\PRE-BREW-CHECK.md`: the same, in "What each part needs".
 - `.impeccable\decisions\direction-log.md`.
 
+## The check belongs to the recipe START was held on: ready to build (18 Nov)
+
+Your two notes after post23, for post24 together:
+
+- A recipe cleared on another screen, rather than started, while START says CHECKING…, left CHECKING… pending. START
+  was gone, but COMPARE PROBES, with RECIPE BOOK and BREW STEPS once there is no recipe, stayed greyed with "The recipe
+  starts once they pass." until the check answered, up to 6 s, and nothing was said.
+- Another recipe loaded there during CHECKING… is waiting to start too, so the check's answer started it, though START
+  was held on the one before. Your decision: cover it.
+
+The rule now: the check belongs to the recipe START was held on. The screen notes which recipe that is as the hold on
+START, or on START ANYWAY, begins: its steps' ids, its name, and whether it was waiting to start. If another screen
+then starts it, clears it, or puts other steps in its place (another recipe, or the same recipe's steps changed on the
+Brew Steps page), the check ends:
+
+- nothing starts, and the check's answer, when it comes, decides nothing;
+- CHECKING… gives way at once and the box closes, so the box can't come back for the next recipe loaded;
+- a screen reader hears once "The recipe was started on another screen.", "The recipe was cleared on another screen.",
+  "Not started: another recipe was loaded on another screen." or, the name the same, "Not started: the recipe was
+  changed on another screen.";
+- another recipe in its place looks just like the one START was held on but for its name and steps, so those last two
+  sentences also show under START, in the note line, for its usual 6 s.
+
+The same when the one-second hold ends: START or START ANYWAY, held on a recipe that is started, cleared or replaced
+before the second is up, starts nothing. Your live hold already refuses a button that changed under the finger (the
+box gone, START turned RUNNING) with "Not sent: the screen changed while you held it.", but a recipe swapped under a
+START that stays START got through.
+
+In the mockup:
+
+- `recipeKey`, `recipeOn`, `recipeLost`, `lostSay` and `pbEnd` (lines 1106 to 1129);
+- `pbRun` (line 1218) keeps the recipe in `st.pbFor`: the one the hold began on (`heldOn`) or, without a hold, the one
+  shown;
+- `pbDecide` (line 1237) and `pbGo` (line 1249) act only for that recipe, and `pbGo` only while its box is open;
+- `renderAll` (line 1590) ends the check with `pbEnd` as soon as it sees the recipe gone;
+- `holdStart` (line 2379) notes the recipe as START or START ANYWAY is pressed, and starts nothing at the end of the
+  hold if it's gone;
+- `load` (line 2570): a box or CHECKING… a moment opens belongs to the recipe it shows.
+
+### What your build needs
+
+- `recipeKey`: your steps' ids, `M.RECIPE.steps.map(s => s.id).join()`; the demo's steps by name, as in the mockup.
+  `recipeOn` and `lostSay` with `M.RECIPE.name`.
+- `pbRun` (your line 806): `st.pbFor = heldOn || recipeOn();` before CHECKING….
+- `pbDecide` (line 822) starts with `if (recipeLost(st.pbFor)) return renderAll();` in place of your `!pbFresh()`
+  guard, and only then deletes `st.pend["r:check"]`. Its callers no longer delete it first: the demo's `answered`
+  (line 817), `pbAsk` (line 858), its late timer and its no-answer line. The older CraftBeerPi without a check
+  (line 865): `if (recipeLost(st.pbFor)) return renderAll();` before deleting it and `liveStart(true)`.
+- `pbGo` (line 872): `if (!st.pbOpen || recipeLost(st.pbFor)) return renderAll();` first.
+- `renderAll`: your lines 1251 to 1255 become
+
+  ```js
+  const pbGone = st.pend["r:check"] || st.pbOpen ? recipeLost(st.pbFor) : null;
+  if (pbGone) pbEnd(pbGone);
+  if (st.recipe && !pbFresh()) st.cmpOpen = false;
+  ```
+
+- `holdStart` (line 2981): `const on = el.dataset.cmd === "r:start" || el.dataset.cmd === "pb:go" ? recipeOn() :
+  null;` as the hold begins. When the second is up, before your check that the button is still the one held:
+
+  ```js
+  const lost = on && recipeLost(on);
+  if (lost) { if (c === "r:start") lostSay(lost, on); return; } // START ANYWAY's box has said why as it closed
+  ```
+
+  and after your check, `heldOn = on; run(c); heldOn = null;`.
+- The demo's `load`: `if (st.pbOpen || st.pend["r:check"]) st.pbFor = recipeOn();` after a moment's own state.
+
+### What the screen still can't close
+
+START's request doesn't say which recipe it is for. A recipe loaded on another screen that reaches CraftBeerPi just
+before this screen's start, but whose update hasn't reached this screen yet, still starts. That window is the time an
+update takes to arrive, as for START before the check. Only CraftBeerPi could refuse it, with a start that names the
+steps it is for. Your call; nothing in the mockup depends on it.
+
+### Moments whose pictures change
+
+None.
+
+### Checked
+
+- 29 cases. Another recipe loaded, the same recipe's steps changed, the recipe started, and the recipe cleared, each
+  during CHECKING… in the five ways the check can go (all passing, the clock not set, the clock answering 3 s late,
+  the clock never answering, no answer from CraftBeerPi). Then loaded, started and cleared during the hold on START,
+  during the hold on START ANYWAY, and with the box open.
+- Before, in post23's mockup with the cleared change: another recipe or changed steps were started by a passing check
+  (4 of those 10) or given the box; loaded during the hold on START, it was checked and started; during the hold on
+  START ANYWAY, started anyway; with the box open, the box stayed, START ANYWAY and all. Started during either hold,
+  the recipe was started a second time; cleared during either hold, the page stopped with an error.
+- Now, in all 29: nothing starts, no box, no CHECKING… left, the sentence said, and the note under START for another
+  recipe or changed steps. No page errors.
+- The 11 cases from the cleared change and the 20 click-through runs, with the same results as before.
+- Pictures compared with post23's mockup, all 55 moments at the identity test's five sizes: none of the 275 change.
+
+### Changed
+
+- `proposal\brew-day.js`; this file (this section).
+- `DESIGN.md` and `proposal\PRE-BREW-CHECK.md`: the check belongs to the recipe START was held on.
+- `.impeccable\decisions\direction-log.md`.
+
 ## Open questions about the drawing
 
 Both were answered on 10 Nov. The valves have been in the drawing since then; the path after the boil was

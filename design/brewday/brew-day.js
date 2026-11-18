@@ -775,7 +775,7 @@ const ICON = {
   bell: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a6 6 0 0 0-6 6v4.5L4 16v1.5h16V16l-2-3.5V8a6 6 0 0 0-6-6zm-2.5 17a2.5 2.5 0 0 0 5 0z"/></svg>',
   warn: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 1.8 23 21.5H1z"/><path d="M12 8.5v6M12 17.5v.5" stroke="#6e1414" stroke-width="2.6" stroke-linecap="round"/></svg>'
 };
-let st, timers = [], noteTimers = {}, hold = null;
+let st, timers = [], noteTimers = {}, hold = null, heldOn = null;
 
 /* a running kettle logic owns its actors; the mash tun's PID_HERMS owns the HLT element and the wort pump */
 function applyLocks() {
@@ -1100,6 +1100,33 @@ function resetConfirmHTML() {
    passed and START ANYWAY to START, in their places. The switches are the brewer's to check */
 const PB_WAIT = "CraftBeerPi is checking the probes, the clock and the reminders. The recipe starts once they pass.";
 const pbFresh = () => { const r = st.recipe; return !!r && r.state === "ready" && !r.held && r.cur === 0; };
+/* the recipe a START was held on, as the hold began: its steps, by CraftBeerPi's ids where they have them (the demo's
+   have none, so their names stand in), its name, and whether it was waiting to start. The check, CHECKING… and the
+   check's box belong to it (st.pbFor) */
+const recipeKey = () => RECIPE.steps.map(s => s.id ?? s.n).join("|");
+const recipeOn = () => ({key: recipeKey(), name: RECIPE.name, fresh: pbFresh()});
+/* what has become of that recipe on another screen: started, cleared, or another loaded in its place (other steps,
+   another recipe's or the same recipe's edited on the Brew Steps page). Nothing while it is still the one shown */
+function recipeLost(on = {key: recipeKey(), name: RECIPE.name, fresh: true}) {
+  if (!st.recipe) return "cleared";
+  if (recipeKey() !== on.key) return "loaded";
+  return on.fresh && !pbFresh() ? "started" : null;
+}
+/* said once, as another screen's change ends a START. The screen itself shows a recipe started (RUNNING) or cleared (no
+   recipe); another in its place looks just like the one START was held on but for its name and steps, so that is also
+   said under START */
+function lostSay(why, on) {
+  const words = why === "started" ? "The recipe was started on another screen." : why === "cleared" ? "The recipe was cleared on another screen."
+    : `Not started: ${on && on.name === RECIPE.name ? "the recipe was changed" : "another recipe was loaded"} on another screen.`;
+  say(words);
+  if (why === "loaded") timers.push(setTimeout(() => note("r", words), 0));
+}
+/* the check ended by another screen: CHECKING… gives way at once, the box closes, nothing starts, and the check's answer,
+   when it comes, decides nothing (pbRun's answered, pbDecide) */
+function pbEnd(why) {
+  delete st.pend["r:check"]; st.pbOpen = false;
+  lostSay(why, st.pbFor);
+}
 const VWHOSE = {hlt: "the hot liquor tank's", mt: "the mash tun's", bk: "the boil kettle's"};
 const VTHE = v => VWHOSE[v].slice(0, -2);
 /* a part of the check CraftBeerPi couldn't work out (its "error"): that part says so, and the other two still answer */
@@ -1191,22 +1218,25 @@ const PB_CLOCK = 6000;
 function pbRun() {
   if (st.pend["r:check"] || st.pend["r:start"]) return;
   cmpDone(true);
+  st.pbFor = heldOn || recipeOn();
   st.pbOpen = false; st.pend["r:check"] = "check"; renderAll();
   const held = Date.now();
   const answered = () => {
-    /* CHECKING… already ended: a recipe started from another screen ends it as soon as it is seen (renderAll) */
+    /* CHECKING… already ended: a recipe started, cleared or loaded on another screen ends it as soon as it is seen
+       (renderAll, pbEnd) */
     if (!st.pend["r:check"]) return;
     /* the demo's slow clock answers at clockAt, set */
     if (st.pb.clockWhy === "slow" && st.pb.clockAt && st.t >= st.pb.clockAt) { st.pb.clock = true; st.pb.clockWhy = null; }
     if (!st.pb.noAnswer && st.pb.clockWhy === "slow" && Date.now() - held < PB_CLOCK) { timers.push(setTimeout(answered, 1000)); return; }
-    delete st.pend["r:check"]; pbDecide();
+    pbDecide();
   };
   timers.push(setTimeout(answered, st.pb.noAnswer ? PB_ASK : 500 + Math.random() * 300));
 }
-/* the check's answer, or none: the recipe starts, or the box says what didn't pass. A recipe started from another screen
-   meanwhile leaves nothing to decide: it starts nothing and says nothing */
+/* the check's answer, or none: the recipe starts, or the box says what didn't pass. Only for the recipe START was held
+   on: started, cleared or replaced on another screen meanwhile, the check ends there (renderAll, pbEnd) */
 function pbDecide() {
-  if (!pbFresh()) { st.pbOpen = false; renderAll(); return; }
+  if (recipeLost(st.pbFor)) return renderAll();
+  delete st.pend["r:check"];
   const items = pbItems(), bad = items.filter(i => !i.ok);
   if (!bad.length) { logEvent("Checked before starting: probes, clock, reminders", "all passed", "ok"); cmdStart(true); return; }
   st.pbOpen = true;
@@ -1214,8 +1244,10 @@ function pbDecide() {
   say(`${words} START ANYWAY or DON'T START, under START.`);
   renderAll();
 }
-/* START ANYWAY: the recipe's line in LOG says what didn't pass, as a start that went past them */
+/* START ANYWAY: the recipe's line in LOG says what didn't pass, as a start that went past them. Only while its box is
+   open, for the recipe START was held on */
 function pbGo() {
+  if (!st.pbOpen || recipeLost(st.pbFor)) return renderAll();
   const bad = pbItems().filter(i => !i.ok);
   st.pbOpen = false;
   cmdStart(true, st.pb.noAnswer ? "started anyway: the check got no answer" : bad.length ? `started anyway: ${bad.map(i => i.cav).join(", ")}` : "");
@@ -1551,14 +1583,13 @@ function renderAll() {
   /* the boil power's steps in a row of their own: on one screen the drawing gives up their height (brew-day.css) */
   $("#app").toggleAttribute("data-steps", TIGHT && bkNudges());
   $("#plates").innerHTML = ["hlt", "mt", "bk"].map(plateHTML).join("");
-  /* the check's box and the probes' panel belong to a recipe not begun: a recipe started from another screen closes
-     them here, and ends CHECKING… if START says it, so START shows the recipe running at once, a screen reader hears
-     why, and the check's answer, when it comes, decides nothing. Brewing by hand there is no recipe, and the panel
-     stays */
-  if (st.recipe && !pbFresh()) {
-    st.pbOpen = false; st.cmpOpen = false;
-    if (st.pend["r:check"]) { delete st.pend["r:check"]; say("The recipe was started on another screen."); }
-  }
+  /* the check belongs to the recipe START was held on (st.pbFor): started, cleared or another loaded in its place on
+     another screen, the check ends here (pbEnd), so CHECKING… gives way and the box closes at once, it can't come back
+     for the next recipe loaded, and the check's answer, when it comes, decides nothing. The probes' panel closes once a
+     recipe has begun; brewing by hand there is no recipe, and the panel stays */
+  const pbGone = st.pend["r:check"] || st.pbOpen ? recipeLost(st.pbFor) : null;
+  if (pbGone) pbEnd(pbGone);
+  if (st.recipe && !pbFresh()) st.cmpOpen = false;
   /* the check's box and the probes' panel keep the height they have on screen as they are drawn again, with the box's
      answers at its foot, so a line that gets shorter as CraftBeerPi's answers change (the clock set, a probe back) moves
      no button under a reaching hand. Not across a change of the column's width, where the lines wrap anew */
@@ -2348,7 +2379,16 @@ const HOLD_MS = 1000;
 function holdStart(el) {
   if (hold) return;
   el.classList.add("holding");
-  hold = {el, cmd: el.dataset.cmd, timer: setTimeout(() => { const c = hold.cmd; el.classList.remove("holding"); hold = null; run(c); }, HOLD_MS)};
+  /* START, and START ANYWAY in the check's box, act on the recipe they were held on: which one, as the press begins */
+  const on = el.dataset.cmd === "r:start" || el.dataset.cmd === "pb:go" ? recipeOn() : null;
+  hold = {el, cmd: el.dataset.cmd, timer: setTimeout(() => {
+    const c = hold.cmd; el.classList.remove("holding"); hold = null;
+    /* started, cleared or another loaded on another screen while the finger was on it: nothing starts. START ANYWAY's
+       box has said why as it closed (pbEnd) */
+    const lost = on && recipeLost(on);
+    if (lost) { if (c === "r:start") lostSay(lost, on); return; }
+    heldOn = on; run(c); heldOn = null;
+  }, HOLD_MS)};
 }
 function holdEnd(early) {
   if (!hold) return;
@@ -2526,6 +2566,8 @@ function load(name) {
   const open = st.open, base = st.base || key;
   delete st.open; delete st.base;
   Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, logOpen: false, pbOpen: false, cmpOpen: false}, open);
+  /* a box or CHECKING… a moment opens belongs to the recipe it shows, as one START opens does */
+  if (st.pbOpen || st.pend["r:check"]) st.pbFor = recipeOn();
   /* CraftBeerPi's answers to the pre-brew check: all pass, unless a moment says otherwise */
   if (!st.pb) st.pb = {clock: true, none: {}, adds: {n: RECIPE.steps[4].adds.length, missed: []}};
   if (st.v.bk.bp == null) st.v.bk.bp = 45; // the boil kettle's Boil_Power setting, read from its props
