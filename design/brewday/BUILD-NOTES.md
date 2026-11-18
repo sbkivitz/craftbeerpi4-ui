@@ -4510,6 +4510,154 @@ same 11 change in all three, only in the recipe column, and no others.
 - `.impeccable\design.json`, regenerated, with two new samples (Pre-brew Check, Compare Probes);
   `.impeccable\decisions\direction-log.md`; and the surface brief.
 
+## The pre-brew check's other answers, CHECKING… waiting for the clock, and the box while the fonts load: ready to build (18 Nov)
+
+Your build agent had to choose words where CraftBeerPi can answer something the mockup had no words for. Taken one by
+one, with what I added where the same rule applied: every line that didn't pass says what is wrong and what to do, and
+what to do has to be right. All of it is in the mockup's `pbItems` (line 1119), `PB_ERR` (1106), `pbRun` with
+`PB_CLOCK` (1190), `cmpRead` (1239), `cmpVerdict` (1241) and `cmpHTML` (1292), and in DESIGN.md's Pre-brew Check.
+
+### Your five points
+
+1. **No time for a probe: kept, as built.** "The boil kettle's probe, Boil Temp, gives no reading. Check its plug and
+   cable." But a kettle with no probe, or one CraftBeerPi no longer has, isn't a plug or a cable: it's a setting, so it
+   says so in the Hardware page's own words ("None chosen", "Not found"):
+   - `no_probe`: "**No probe is chosen for the boil kettle.** Choose one in Hardware."
+   - `missing`: "**The boil kettle's probe isn't found:** CraftBeerPi no longer has it. Choose one in Hardware."
+   - two or more of those: "**2 kettles need a probe chosen in Hardware:** the mash tun (none chosen) and the boil
+     kettle (not found)."
+   - Then, on the same line, any probe that gives no reading, in the words it has now. LOG's started-anyway reasons:
+     "no probe was chosen for the boil kettle", "the boil kettle's probe wasn't found", "2 kettles had no probe chosen".
+   - A kettle the screen doesn't show is named by its name, as now: "No probe is chosen for Kettle 4."
+2. **The clock "for any reason": only for `not_synchronized`.** Its words fit timedatectl's plain no, the usual one just
+   after the Pi starts, when waiting a minute puts it right. `unconfirmed` (timedatectl failing, timing out after its
+   5 s, or answering neither yes nor no) is different: waiting may not help, and checking the network won't. So:
+   "**The Pi didn't say whether its clock is set.** If it has been on and online for a few minutes, you can start
+   anyway. A clock set during a rest can cut the rest short." LOG: "the Pi's clock wasn't confirmed". I didn't tell the
+   brewer to compare the title bar's clock: in your build it is the screen's own time (`daySeconds()`, the phone's or
+   the PC's), so it is right whatever the Pi's is.
+3. **`no_answer_yet`: START waits for the answer, and only then "The clock hasn't been checked yet: the Pi is slow to
+   answer."** CraftBeerPi answers `no_answer_yet` only until timedatectl's first answer since it started, which can
+   take a few seconds on a Pi that has just started: the first START of a brew day, when the clock is also the most
+   likely not to be set yet. In the box, that short line grew into "isn't set yet" or "didn't say" at the next ask,
+   5 s on, and the box grew with it: START ANYWAY, DON'T START, SOUND and + TIMER went down 67 px on a phone and on
+   monitors from 1180 to 1600 px wide, 45 px from 1680 px up and 22 px from 768 to 1024 px; where they went 67 px,
+   DON'T START landed where SOUND had been. Your build does the same with "The clock wasn't checked." (`pbAsk` decides
+   on the first answer, and the poll 5 s later brings the longer words). So
+   START stays on CHECKING… while the clock's part says `no_answer_yet`, and asks again, for up to 6 s from the hold
+   (`PB_CLOCK`, in the mockup's `pbRun`). CraftBeerPi's own wait (CLOCK_WAIT, 2 s) spaces the asks, and timedatectl
+   gives up after its 5 s, so the answer is in by then. Only if it still isn't does the box open with "**The clock
+   hasn't been checked yet:** the Pi is slow to answer.", "yet" because the next ask fills it in where it is. If that
+   answer is "not set", the box still grows then, as for any new failure while it's open; it takes a Pi slower than
+   timedatectl's own 5 s limit. LOG keeps "the clock wasn't checked". The no-answer state's three lines, "The clock
+   wasn't checked." and the rest, stay as they are: there the first line says why.
+4. **Single counts: kept,** with one more: two additions read "Both boil additions have a reminder.", not "All 2 boil
+   additions have a reminder." (your `R.n > 1` branch). In full: "All 4 …", "Both …", "The boil addition has a
+   reminder.", "The boil has no additions to remind you of."; "All 3 probes give a reading.", "Both probes give a
+   reading.", "The probe gives a reading.", "There are no kettles to check."
+5. **Amounts: kept, and now in the mockup's demo:** `BIG_MISSED` (line 28) is `[["1.50 oz Citra", 5], ["1.00 oz
+   Amarillo", 0]]`, as the import names them. One addition: the amount's number and unit stay together, the space after
+   a leading number made `&nbsp;` (after `esc`): `n.replace(/^([\d.,/]+) /, "$1&nbsp;")`. "1.50 oz Citra at 5 min and
+   1.00 oz Amarillo at 0 min" wraps between words, never inside "1.50 oz".
+
+### Also decided
+
+- **A part CraftBeerPi couldn't work out** (its `error`): your words "The probes weren't checked." gave no reason when
+  that part alone failed, because the first line then says "1 check didn't pass". Now: "**The probes weren't
+  checked:** CraftBeerPi ran into a problem." (or the clock, or the reminders), `PB_ERR`. LOG as you have it.
+- **COMPARE PROBES with a kettle that has no probe:** its row reads "– –" and, under the name, only "NO PROBE CHOSEN" or
+  "PROBE NOT FOUND" in amber (no probe name, no offset); the sentence starts with "No probe is chosen for the boil
+  kettle: choose one in Hardware." or "The boil kettle's probe isn't found: choose one in Hardware."; with two or more,
+  "2 kettles need a probe chosen in Hardware.". Then the rest of the sentence as now. Your `cmpRead` needs each
+  kettle's reason from the check, as the box does.
+- **"All 3 agree: they read the same."** where the spread shows as 0.0, in place of "All 3 agree, 0.0 °F apart at most."
+  Every simulated probe reads 68 °F, so that is what the brewer sees on 8012. "Both agree: …" and "The other two agree:
+  …" the same way.
+- **The box's first line when every check passes** is now "**Not started yet:** every check passes.", in place of
+  "**Every check passes now.** Not started yet." Found with the new moments: the old words need 305 px at the box's
+  17 px, and took two lines on monitors from 1180 to about 1580 px wide, and on phones narrower than 390 px, where "Not
+  started yet: 1 check didn't pass." took one. So as the slow clock's answer came, or a probe was chosen, the box grew
+  by about 1.4 px and DON'T START, SOUND and + TIMER moved down with it. The new words need 270 px, and the first line
+  has at least 278 px at every size from a 360 px phone up (282 px on monitors from 1180 to 1480 px wide), so they
+  always fit on one line, as "1 check didn't pass." (262 px) does. They also start like the box's other first lines.
+
+### What your build needs
+
+- `pbNorm`: keep each kettle's `reason`, and the clock's: `clock: {ok, why}` with `why` "slow" for `no_answer_yet`,
+  "unsure" for `unconfirmed`, nothing for `not_synchronized`; and `error` for a part that has one, kept apart from
+  `no_answer_yet`, which is now a reason and not an error.
+- `pbItems`, `cmpRead`, `cmpVerdict` and `cmpHTML` as in the mockup.
+- `pbAsk`: when an answer comes while START says CHECKING… and its clock's reason is `no_answer_yet`, keep CHECKING…
+  and ask again, until 6 s have passed since the hold (the mockup looks again every second); then decide with what it
+  has. Each ask keeps its own 5 s limit (PB_ASK) for the no-answer state.
+- The demo: `st.pb.why` (a vessel's reason, `{bk: "no_probe"}`), `st.pb.clockWhy` ("slow" or "unsure"), `st.pb.error`
+  (`{probes: true}`; no moment uses it), `BIG_MISSED` with amounts, and three new moments, first in the strip after
+  `#check-noanswer`: `#check-noprobe`, `#check-slow` (the clock still unanswered after START waited 6 s; it answers 5 s
+  on, set, and the box follows) and `#check-unsure`. The tick that sets the clock at `clockAt` also clears `clockWhy`
+  (line 2440), and the demo's `pbRun` takes a slow clock's answer at `clockAt` while it waits.
+
+### The box's height while the fonts load
+
+Your build agent was right: the mockup kept a height measured while the page's fonts were still loading. It now skips
+that as your build does (`fontsIn`, line 1555): a height measured while `document.fonts.status` is "loading" isn't
+kept. Nothing else changes, so the mockup and the product should agree on it without the identity test leaving the
+kept height out.
+
+### Your bench tests
+
+- The pre-brew e2e test, if it reads the agreeing sentence on a simulator: "All 3 agree: they read the same."
+- A test that waits for "Every check passes now." gets "Not started yet: every check passes."
+- A test that reads the clock's line for `no_answer_yet` or `unconfirmed`, or a probe line for `no_probe` or `missing`,
+  gets the new words.
+- A test that holds START while the clock's reason is `no_answer_yet` sees CHECKING… for up to 6 s, then the recipe
+  start or the box with the clock's answer; the box with "The clock hasn't been checked yet" only after 6 s with none.
+
+### Moments whose pictures change
+
+Compared with post21's mockup, as the identity test takes them, all 55 moments at its five sizes, in the default,
+`?bk=today` and `?graphs=none` (post21 has 52 of them):
+
+- `#check-now`: its first line. At 1920 px and on the phone only the words change; at 1440×900 and 1180×900 the line
+  now takes one line instead of two, so the box is 22 px shorter and the column under it moves up.
+- `#check-adds` and `#check-many`: the additions' amounts. On the 390 px phone the line takes one more line and the page
+  is 22 px longer.
+- And the three new moments.
+
+No others. In my run, `#boiling` at 1180×900 and `#handhold` on the phone in `?bk=today` came out different once,
+both times a page that hadn't finished drawing in 20 s while the PC was busy; taken again, they match.
+
+### Checked
+
+- Every moment, all 55, at 17 sizes from 360 to 1920 px wide, 1180×820 and 1180×900 included; and the pre-brew
+  moments, `#reset-done` and `#manual` again after the last change to the box's words, at those sizes and 900×1200: no
+  word split across lines, no text under its contrast minimum, with or without the pointer on it, no box over another,
+  no script errors. Under 44 px, only KEEP BOILING, SOUND and the boil power button, as documented.
+- The box's first line has at least 278 px at 70 window sizes from 360 to 1920 px wide. "Not started yet: every check
+  passes." needs 270 px, "Not started yet: 1 check didn't pass." 262 px, and the old words 305 px.
+- What moves with the box open and in view, at 15 sizes from 360 to 1920 px wide: the slow clock answering "set", a
+  probe chosen for the boil kettle, the unconfirmed clock confirmed, the clock set, a probe back, a late answer that
+  passes everything, and the reminders coming right. Nothing moves; START ANYWAY becomes START in its place. The slow
+  clock answering "not set" or "not confirmed" moves the four buttons 22 to 67 px, DON'T START to where SOUND was at 9
+  of the 15 sizes: what CHECKING… now waits out.
+- The box while the fonts load: the font files held back 2.5 s, the screen drawn again while they load and again once
+  they are in, at 900×1200, 1440×900, 1180×900 and 390×844, in `#probes-off`, `#probes-apart`, `#probes-none`,
+  `#check-many`, `#check-clock`, `#check-noprobe` and `#check-unsure`. No box ends taller than its content. Post21's
+  mockup, the same way: 10 did, by 22 to 41 px, `#probes-off` at 900×1200 by 22 px, as your build agent found.
+- COMPARE PROBES' sentence for 22 sets of readings: the 18 there were, and the same readings, the boil kettle with no
+  probe chosen, with its probe not found, and the mash tun and boil kettle both without one.
+- Clicked through, 20 runs: the 17 there were, with the new words, and three more, each holding START before the
+  clock's first answer. Answered "set" 3 s on: CHECKING… waits, no box, and the recipe starts with "all passed".
+  Answered "not set" about 2 s on: the box opens with "isn't set yet", and the slow line never shows. Never answered:
+  the box opens 7.8 s after START was pressed, with the slow line. No page errors.
+
+### Changed
+
+- `proposal\brew-day.js` and `proposal\brew-day.html`; this file (this section).
+- `DESIGN.md`: the Pre-brew Check's words, CHECKING… waiting for the clock's first answer, the box keeping its height,
+  and what COMPARE PROBES says.
+- `proposal\PRE-BREW-CHECK.md`: the same words, CHECKING…'s wait, and the three new moments.
+- `.impeccable\decisions\direction-log.md`.
+
 ## Open questions about the drawing
 
 Both were answered on 10 Nov. The valves have been in the drawing since then; the path after the boil was

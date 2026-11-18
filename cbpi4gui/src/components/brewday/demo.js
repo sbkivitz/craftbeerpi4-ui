@@ -5,7 +5,8 @@
 // notarget-hlt, timers, timer-done, timer-back, timer-back-done, timer-back-unknown, timer-new, timer-names,
 // timer-nonames, timers-hand, sound-allow, byhand, byhand-past, stopped, reset, reset-done, and the pre-brew check's
 // prebrew, probes, probes-apart, probes-off, probes-none, checking, check-clock, check-now, check-probe, check-adds,
-// check-many and check-noanswer) runs on this, so it can be compared with the mockup pixel for pixel.
+// check-many, check-noanswer, check-noprobe, check-slow and check-unsure) runs on this, so it can be compared with the
+// mockup pixel for pixel.
 
 const RECIPE = {
   name: "Craftbeerpi Test Recipe v5",
@@ -27,9 +28,10 @@ const RECIPE = {
    use it (sparge4: the screen's demo recipe then has it as step 4); every other moment keeps the MashStep. */
 const SPARGE_STEP = {n: "Sparge", type: "SpargeStep", temp: 168, min: 40, k: "hlt"};
 /* the boil's additions as the demo recipe has them, and a recipe with eight, whose import kept the first six for the boil
-   step's reminders (longest first) and named the last two in a warning: Citra at 5 minutes, Amarillo at the end */
+   step's reminders (longest first) and named the last two in a warning, amount first: Citra at 5 minutes, Amarillo at
+   the end */
 const BIG_ADDS = [[60, "Centennial", "1.00 oz"], [30, "Cascade", "1.00 oz"], [20, "Willamette", "2.00 oz"], [15, "Whirlfloc tablet", "1"], [15, "Yeast nutrient", "1 tsp"], [10, "Citra", "1.00 oz"]];
-const BIG_MISSED = [["Citra", 5], ["Amarillo", 0]];
+const BIG_MISSED = [["1.50 oz Citra", 5], ["1.00 oz Amarillo", 0]];
 const WFY = "WAITING FOR YOU";
 const VNAME = {hlt: "Hot liquor tank", mt: "Mash tun", bk: "Boil kettle"};
 const KNAME = {hlt: "HLT", mt: "Mash Tun", bk: "Boil Kettle"}; // the kettles' names in CraftBeerPi, which its own messages use
@@ -553,8 +555,12 @@ const SCENES = {
      #checking: START held, CraftBeerPi checking. #check-clock: the Pi's clock not set yet (it sets itself 30 s on, and
      the box follows: #check-now). #check-probe: the boil kettle's probe silent for 3 min. #check-adds: a recipe with
      eight boil additions, two without a reminder. #check-many: the clock and the reminders both. #check-noanswer:
-     CraftBeerPi gave no answer to the check within 5 s. pb is CraftBeerPi's answer, as the mockup keeps it: the clock
-     set or not (clockAt: when it gets set), how long each probe has given no reading (none), and the boil's additions */
+     CraftBeerPi gave no answer to the check within 5 s. #check-noprobe: no probe chosen for the boil kettle in Hardware
+     (no_probe). #check-slow: the Pi's clock still unanswered after START waited 6 s for it (no_answer_yet; the answer
+     comes 5 s on, set, and the box follows). #check-unsure: the Pi didn't say whether its clock is set (unconfirmed).
+     pb is CraftBeerPi's answer, as the mockup keeps it: the clock set or not (clockAt: when it gets set; clockWhy: "slow"
+     or "unsure"), how long each probe has given no reading (none), a kettle with no probe in Hardware (why), and the
+     boil's additions */
   prebrew: () => pbMorning(),
   probes: () => Object.assign(pbMorning(), {open: {cmpOpen: true}}),
   "probes-apart": () => { const s = pbMorning(); Object.assign(s.v.hlt, {pv: 63.6}); Object.assign(s.v.mt, {pv: 67.5}); Object.assign(s.v.bk, {pv: 60.7}); return Object.assign(s, {open: {cmpOpen: true}}); },
@@ -566,7 +572,10 @@ const SCENES = {
   "check-probe": () => { const s = pbMorning(); s.v.bk.pv = null; s.pb.none.bk = 180; return Object.assign(s, {pbLast: {bk: 61.4}, gap: {bk: 180}, open: {pbOpen: true}}); },
   "check-adds": () => { const s = pbMorning(); s.pb.adds = {n: 8, missed: BIG_MISSED}; return Object.assign(s, {adds5: BIG_ADDS, open: {pbOpen: true}}); },
   "check-many": () => { const s = pbMorning(); s.pb.clock = false; s.pb.adds = {n: 8, missed: BIG_MISSED}; return Object.assign(s, {adds5: BIG_ADDS, open: {pbOpen: true}}); },
-  "check-noanswer": () => { const s = pbMorning(); s.pb.noAnswer = true; return Object.assign(s, {open: {pbOpen: true}}); }
+  "check-noanswer": () => { const s = pbMorning(); s.pb.noAnswer = true; return Object.assign(s, {open: {pbOpen: true}}); },
+  "check-noprobe": () => { const s = pbMorning(); s.v.bk.pv = null; s.pb.why = {bk: "no_probe"}; return Object.assign(s, {pbLast: {bk: 61.4}, gap: {bk: 9 * 3600}, open: {pbOpen: true}}); },
+  "check-slow": () => { const s = pbMorning(); s.pb.clock = false; s.pb.clockWhy = "slow"; s.pb.clockAt = s.t + 5; return Object.assign(s, {open: {pbOpen: true}}); },
+  "check-unsure": () => { const s = pbMorning(); s.pb.clock = false; s.pb.clockWhy = "unsure"; return Object.assign(s, {open: {pbOpen: true}}); }
 };
 /* brew day's morning, for the pre-brew check: 07:41, the recipe loaded at 07:38 and not begun, every vessel empty and at
    the garage's temperature since the night before, nothing on and no targets set. Each probe has an offset set in

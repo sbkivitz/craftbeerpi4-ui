@@ -672,6 +672,9 @@ const PB_WAIT = "CraftBeerPi is checking the probes, the clock and the reminders
 // a recipe none of whose steps has begun: loaded, or after RESET TO STEP 1; not START carrying on after a STOP or a power cut
 const pbFresh = () => { const r = st.recipe; return !!r && r.state === "ready" && !r.held && r.cur === 0; };
 const VWHOSE = {hlt: "the hot liquor tank's", mt: "the mash tun's", bk: "the boil kettle's"};
+const VTHE = v => VWHOSE[v].slice(0, -2);
+/* a part of the check CraftBeerPi couldn't work out (its "error"): that part says so, and the other two still answer */
+const PB_ERR = {probes: "<b>The probes weren't checked:</b> CraftBeerPi ran into a problem.", clock: "<b>The clock wasn't checked:</b> CraftBeerPi ran into a problem.", adds: "<b>The reminders weren't checked:</b> CraftBeerPi ran into a problem."};
 const cap = s => s[0].toUpperCase() + s.slice(1);
 const andList = a => (a.length < 3 ? a.join(" and ") : `${a.slice(0, -1).join(", ")} and ${a[a.length - 1]}`);
 const pbFor = s => s >= 60 ? `${Math.round(s / 60)}&nbsp;min` : `${Math.round(s)}&nbsp;s`;
@@ -687,62 +690,96 @@ const MK = {
 const PB_PARTS = {probes: "The probes weren't checked.", clock: "The clock wasn't checked.", adds: "The reminders weren't checked."};
 const pbNoAnswer = () => !!(st.pb && st.pb.noAnswer);
 /* CraftBeerPi's answer as the checks need it: {noAnswer}, or {probes, clock, adds} with {error} for a part it couldn't
-   work out. Live, st.pb is pbNorm's; the demo's is the mockup's own (the clock set or not, how long each silent probe has
-   given no reading, the boil's additions), its probes read from the faceplates */
+   work out. Live, st.pb is pbNorm's; the demo's is the mockup's own (the clock set or not and why, how long each silent
+   probe has given no reading, a kettle with no probe in Hardware, the boil's additions), its probes read from the
+   faceplates */
 function pbAnswer() {
   const P = st.pb;
   if (!P || P.noAnswer || !DEMO_MODE) return P;
-  return {probes: {kettles: ["hlt", "mt", "bk"].map(v => ({v, probe: DEMO.PROBE[v], ok: st.v[v].pv != null, for: P.none[v] || 0}))},
-    clock: {ok: !!P.clock}, adds: {n: P.adds.n, missed: P.adds.missed, holds: 6, steps: 1}};
+  const E = P.error || {}, why = P.why || {}, unset = v => why[v] === "no_probe" || why[v] === "missing";
+  return {probes: E.probes ? {error: true} : {kettles: ["hlt", "mt", "bk"].map(v => ({v, probe: unset(v) ? "" : DEMO.PROBE[v], ok: st.v[v].pv != null, why: why[v] || null, for: P.none[v] ?? null}))},
+    clock: E.clock ? {error: true} : {ok: !!P.clock, why: P.clockWhy || null},
+    adds: E.adds ? {error: true} : {n: P.adds.n, missed: P.adds.missed, holds: 6, steps: 1}};
 }
-/* GET /step2/precheck's answer (cbpi/http_endpoints/http_step.py). Each kettle is matched to its vessel on this screen by
-   its id; one the screen doesn't show is named by its name in CraftBeerPi. A probe's reasons all give no reading here:
-   never, stale, not_a_number and out_of_range with how long where CraftBeerPi knows it; no_probe, missing and unreadable
-   without. The clock counts as set by CraftBeerPi's rule (synchronized, or no_timedatectl on a computer with its own
-   clock); not_synchronized and unconfirmed count as not set; no_answer_yet, timedatectl not answering in time, as not
-   checked */
+/* GET /step2/precheck's answer (cbpi/http_endpoints/http_step.py, cbpi/controller/precheck_controller.py). Each kettle
+   is matched to its vessel on this screen by its id; one the screen doesn't show is named by its name in CraftBeerPi.
+   Each kettle keeps its reason (why): no_probe, none chosen in Hardware, and missing, a probe CraftBeerPi no longer has,
+   are settings to put right there; never, stale, not_a_number and out_of_range give no reading, with how long where
+   CraftBeerPi knows it, and unreadable without. The clock counts as set by CraftBeerPi's rule (synchronized, or
+   no_timedatectl on a computer with its own clock); not set, its why says which: nothing for not_synchronized,
+   timedatectl's plain no; "unsure" for unconfirmed, timedatectl failing or answering neither yes nor no (system_clock.
+   clock_answer); "slow" for no_answer_yet, timedatectl not answering the first time it was asked, within CraftBeerPi's
+   2 s wait. A part CraftBeerPi couldn't work out has an error, kept apart from those */
 function pbNorm(d) {
   const P = d.probes, C = d.clock, R = d.reminders, bad = x => !x || typeof x !== "object" || x.error != null;
   const vOf = k => ["hlt", "mt", "bk"].find(v => M.K && M.K[v] && M.K[v].id === k.kettle_id) || null;
   return {
     probes: bad(P) || !Array.isArray(P.kettles) ? {error: true}
-      : {kettles: P.kettles.filter(k => k && typeof k === "object").map(k => ({v: vOf(k), name: String(k.kettle ?? ""), probe: k.probe == null ? "" : String(k.probe), ok: k.ok === true, for: num(k.no_reading_for)}))},
-    clock: bad(C) || C.reason === "no_answer_yet" ? {error: true} : {ok: C.ok === true},
+      : {kettles: P.kettles.filter(k => k && typeof k === "object").map(k => ({v: vOf(k), name: String(k.kettle ?? ""), probe: k.probe == null ? "" : String(k.probe), ok: k.ok === true, why: k.ok === true || k.reason == null ? null : String(k.reason), for: num(k.no_reading_for)}))},
+    clock: bad(C) ? {error: true} : {ok: C.ok === true, why: C.ok === true ? null : C.reason === "no_answer_yet" ? "slow" : C.reason === "unconfirmed" ? "unsure" : null},
     adds: bad(R) ? {error: true} : {n: num(R.additions) ?? 0, missed: (Array.isArray(R.without_reminder) ? R.without_reminder : []).filter(x => x && typeof x === "object").map(x => [String(x.name ?? ""), num(x.minutes)]),
       holds: num(R.per_boil_step) ?? 6, steps: num(R.boil_steps) ?? 1}
   };
 }
 const pbWhose = k => k.v ? VWHOSE[k.v] : `${esc(k.name)}'s`;
+const pbThe = k => k.v ? VTHE(k.v) : esc(k.name);
+const pbUnset = why => why === "no_probe" || why === "missing";
 const pbMin = x => x == null ? "– –" : String(+x.toFixed(1));
 const pbCount = n => ["one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve"][n - 1] || String(n);
+/* an addition's name as the import's warning gives it, amount first ("1.50 oz Citra"): the amount's number and unit
+   stay together on a line */
+const pbAmount = n => esc(n).replace(/^([\d.,/]+) /, "$1&nbsp;");
 function pbItems() {
   const A = pbAnswer();
   /* no answer within PB_ASK: nothing was checked, so each check says so in its own place, and an answer that comes
      later fills them in where they are */
   if (!A || A.noAnswer) return Object.keys(PB_PARTS).map(key => ({key, html: PB_PARTS[key]}));
+  /* the probes. A kettle with no probe in Hardware (no_probe: none chosen; missing: one CraftBeerPi no longer has) is a
+     setting to put right there, said in the Hardware page's own words. Any other probe without a reading is a plug or a
+     cable to check, with how long it has given none where CraftBeerPi knows it */
   let probes;
-  if (A.probes.error) probes = {html: PB_PARTS.probes, cav: "the probes weren't checked"};
+  if (A.probes.error) probes = {html: PB_ERR.probes, cav: "the probes weren't checked"};
   else {
     const K = A.probes.kettles, dead = K.filter(k => !k.ok), n = K.length;
-    if (!dead.length) probes = {ok: true, html: n > 2 ? `All ${n} probes give a reading.` : n === 2 ? "Both probes give a reading." : n ? "The probe gives a reading." : "There are no kettles to check."};
-    else if (dead.length === 1) {
-      const k = dead[0], name = k.probe ? `, ${esc(k.probe)},` : "";
-      probes = {html: k.for != null ? `<b>${cap(pbWhose(k))} probe${name} gives no reading,</b> and hasn't for ${pbFor(k.for)}. Check its plug and cable.`
-        : `<b>${cap(pbWhose(k))} probe${name} gives no reading.</b> Check its plug and cable.`, cav: `${pbWhose(k)} probe gave no reading`};
-    } else probes = {html: `<b>${dead.length} probes give no reading:</b> ${andList(dead.map(k => `${pbWhose(k)}${k.probe ? ` (${esc(k.probe)})` : ""}`))}. Check their plugs and cables.`, cav: `${dead.length} probes gave no reading`};
+    const unset = dead.filter(k => pbUnset(k.why)), silent = dead.filter(k => !pbUnset(k.why)), said = [], cavs = [];
+    if (unset.length === 1) {
+      const k = unset[0], none = k.why === "no_probe";
+      said.push(none ? `<b>No probe is chosen for ${pbThe(k)}.</b> Choose one in Hardware.` : `<b>${cap(pbWhose(k))} probe isn't found:</b> CraftBeerPi no longer has it. Choose one in Hardware.`);
+      cavs.push(none ? `no probe was chosen for ${pbThe(k)}` : `${pbWhose(k)} probe wasn't found`);
+    } else if (unset.length) {
+      said.push(`<b>${unset.length} kettles need a probe chosen in Hardware:</b> ${andList(unset.map(k => `${pbThe(k)} (${k.why === "no_probe" ? "none chosen" : "not found"})`))}.`);
+      cavs.push(`${unset.length} kettles had no probe chosen`);
+    }
+    if (silent.length === 1) {
+      const k = silent[0], name = k.probe ? `, ${esc(k.probe)},` : "";
+      said.push(k.for != null ? `<b>${cap(pbWhose(k))} probe${name} gives no reading,</b> and hasn't for ${pbFor(k.for)}. Check its plug and cable.`
+        : `<b>${cap(pbWhose(k))} probe${name} gives no reading.</b> Check its plug and cable.`);
+      cavs.push(`${pbWhose(k)} probe gave no reading`);
+    } else if (silent.length) {
+      said.push(`<b>${silent.length} probes give no reading:</b> ${andList(silent.map(k => `${pbWhose(k)}${k.probe ? ` (${esc(k.probe)})` : ""}`))}. Check their plugs and cables.`);
+      cavs.push(`${silent.length} probes gave no reading`);
+    }
+    probes = !dead.length ? {ok: true, html: n > 2 ? `All ${n} probes give a reading.` : n === 2 ? "Both probes give a reading." : n ? "The probe gives a reading." : "There are no kettles to check."}
+      : {html: said.join(" "), cav: cavs.join(", ")};
   }
   /* the clock: core post44's rule (cbpi/api/system_clock.py). The rig's Pi has no clock board yet, so its time is only
      trusted once timedatectl says it was set from the internet; Windows, as on the simulators, always counts as set. A
-     step's timer counts on that clock, so a clock set while a rest's timer runs moves the rest's end */
-  const clock = A.clock.error ? {html: PB_PARTS.clock, cav: "the clock wasn't checked"} : A.clock.ok ? {ok: true, html: "The clock is set."}
+     step's timer counts on that clock, so a clock set while a rest's timer runs moves the rest's end. Not set, by its
+     why (pbNorm): timedatectl's plain no, as just after the Pi starts, which a minute's wait puts right; "unsure", which
+     waiting may not change; "slow", timedatectl not answering yet, which the next ask fills in. The title bar's clock is
+     this screen's own, so it can't show whether the Pi's is right */
+  const C = A.clock;
+  const clock = C.error ? {html: PB_ERR.clock, cav: "the clock wasn't checked"} : C.ok ? {ok: true, html: "The clock is set."}
+    : C.why === "slow" ? {html: "<b>The clock hasn't been checked yet:</b> the Pi is slow to answer.", cav: "the clock wasn't checked"}
+    : C.why === "unsure" ? {html: "<b>The Pi didn't say whether its clock is set.</b> If it has been on and online for a few minutes, you can start anyway. A clock set during a rest can cut the rest short.", cav: "the Pi's clock wasn't confirmed"}
     : {html: "<b>The Pi's clock isn't set yet.</b> It comes from the internet a minute after the Pi starts; if not, check the Pi's network. Set during a rest, it can cut the rest short.", cav: "the Pi's clock wasn't set"};
   /* the reminders: the boil step holds six (Hop_1 to Hop_6), longest first, and an import names any it had to leave out
-     (core post38); CraftBeerPi keeps those with the recipe for this check. Minutes as the step list gives them: before
-     the end of the boil */
+     (core post38) as its warning named them, amount first; CraftBeerPi keeps those with the recipe for this check.
+     Minutes as the step list gives them: before the end of the boil */
   const R = A.adds, miss = R.missed || [];
-  const adds = R.error ? {html: PB_PARTS.adds, cav: "the reminders weren't checked"}
-    : !miss.length ? {ok: true, html: R.n > 1 ? `All ${R.n} boil additions have a reminder.` : R.n ? "The boil addition has a reminder." : "The boil has no additions to remind you of."}
-    : {html: `<b>${miss.length} of ${R.n} boil additions ${miss.length === 1 ? "has" : "have"} no reminder:</b> ${andList(miss.map(([n, m]) => `${esc(n)} at ${pbMin(m)}&nbsp;min`))} (${R.steps > 1 ? "each" : "the"} boil step holds ${pbCount(R.holds)}). Watch the clock for ${miss.length === 1 ? "it" : "them"}, or set a timer.`, cav: `${miss.length} addition${miss.length === 1 ? " had" : "s had"} no reminder`};
+  const adds = R.error ? {html: PB_ERR.adds, cav: "the reminders weren't checked"}
+    : !miss.length ? {ok: true, html: R.n > 2 ? `All ${R.n} boil additions have a reminder.` : R.n === 2 ? "Both boil additions have a reminder." : R.n ? "The boil addition has a reminder." : "The boil has no additions to remind you of."}
+    : {html: `<b>${miss.length} of ${R.n} boil additions ${miss.length === 1 ? "has" : "have"} no reminder:</b> ${andList(miss.map(([n, m]) => `${pbAmount(n)} at ${pbMin(m)}&nbsp;min`))} (${R.steps > 1 ? "each" : "the"} boil step holds ${pbCount(R.holds)}). Watch the clock for ${miss.length === 1 ? "it" : "them"}, or set a timer.`, cav: `${miss.length} addition${miss.length === 1 ? " had" : "s had"} no reminder`};
   return [Object.assign({key: "probes"}, probes), Object.assign({key: "clock"}, clock), Object.assign({key: "adds"}, adds)];
 }
 /* the answer box, in the recipe column under START, like NEXT STEP's and RESET's questions: the three checks always in
@@ -751,24 +788,38 @@ function pbItems() {
 const PB_NONE = "<b>Not started yet:</b> CraftBeerPi didn't answer the check, so nothing was checked. Hold START to try again.";
 function pbHTML() {
   const items = pbItems(), bad = items.filter(i => !i.ok).length, off = st.link === "lost" ? PAUSED : "";
-  const head = pbNoAnswer() ? PB_NONE : bad ? `<b>Not started yet:</b> ${bad} check${bad > 1 ? "s" : ""} didn't pass.` : "<b>Every check passes now.</b> Not started yet.";
+  const head = pbNoAnswer() ? PB_NONE : bad ? `<b>Not started yet:</b> ${bad} check${bad > 1 ? "s" : ""} didn't pass.` : "<b>Not started yet:</b> every check passes.";
   const li = i => `<li class="${i.ok ? "ok" : "no"}"><span class="mk">${i.ok ? MK.ok : MK.no}</span><p><span class="sr">${i.ok ? "Passed: " : pbNoAnswer() ? "" : "Didn't pass: "}</span>${i.html}</p></li>`;
   return `<div class="confirm pbc" role="group" aria-labelledby="pb-t"><p id="pb-t">${head}</p><ul class="pbl">${items.map(li).join("")}</ul>
     <div>${b("yes", bad ? "START ANYWAY" : "START", off ? "" : "hold to start", {cmd: "pb:go", hold: true, why: off})}${b("", "DON'T START", "", {cmd: "pb:no", why: off})}</div></div>`;
 }
 /* START on a recipe not begun: the check first, while START says CHECKING…. CraftBeerPi answers in under a second; with
    no answer in PB_ASK the box says so and offers the same two answers. An older CraftBeerPi without the check (any answer
-   but 200: core 4.7.7.post44 answers 405) starts at once, as before it */
-const PB_ASK = 5000, PB_POLL = 5000;
+   but 200: core 4.7.7.post44 answers 405) starts at once, as before it.
+   The clock's first answer since CraftBeerPi started can be slow: CraftBeerPi asks timedatectl, which can take a few
+   seconds the first time after the Pi starts, and until it answers the check's clock says no_answer_yet ("slow"). START
+   keeps CHECKING… and asks again while it does, for up to PB_CLOCK from the hold, so the box opens with the clock's
+   answer, not with a short line that grows when the answer comes and moves the box's buttons down. CraftBeerPi's own
+   wait for that answer (CLOCK_WAIT, 2 s) spaces the asks, and timedatectl gives up after 5 s. pbHeld: when it began */
+const PB_ASK = 5000, PB_POLL = 5000, PB_CLOCK = 6000;
+let pbHeld = 0;
 function pbRun() {
   if (st.pend["r:check"] || st.pend["r:start"]) return;
   cmpDone(true);
-  st.pbOpen = false; st.pend["r:check"] = "check"; renderAll();
-  if (!DEMO_MODE) { pbAsk(true); return; }
-  timers.push(setTimeout(() => { delete st.pend["r:check"]; pbDecide(); }, st.pb.noAnswer ? PB_ASK : 500 + Math.random() * 300));
+  st.pbOpen = false; st.pend["r:check"] = "check"; pbHeld = Date.now(); renderAll();
+  if (!DEMO_MODE) { pbAsk(); return; }
+  const answered = () => {
+    // the demo's slow clock answers at clockAt, set
+    if (st.pb.clockWhy === "slow" && st.pb.clockAt && st.t >= st.pb.clockAt) { st.pb.clock = true; st.pb.clockWhy = null; }
+    if (!st.pb.noAnswer && st.pb.clockWhy === "slow" && Date.now() - pbHeld < PB_CLOCK) { timers.push(setTimeout(answered, 1000)); return; }
+    delete st.pend["r:check"]; pbDecide();
+  };
+  timers.push(setTimeout(answered, st.pb.noAnswer ? PB_ASK : 500 + Math.random() * 300));
 }
 const pbPlain = s => s.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
 function pbDecide() {
+  // a recipe started from another screen meanwhile: nothing is left to decide
+  if (!pbFresh()) { st.pbOpen = false; return renderAll(); }
   const bad = pbItems().filter(i => !i.ok);
   if (!bad.length) { logEvent("Checked before starting: probes, clock, reminders", "all passed", "ok"); return DEMO_MODE ? cmdStart(true) : liveStart(true); }
   st.pbOpen = true;
@@ -776,15 +827,16 @@ function pbDecide() {
   say(`${words} START ANYWAY or DON'T START, under START.`);
   return renderAll();
 }
-/* the check, live: one request at a time. The first, as START is held, may answer after PB_ASK: the box then already says
-   nothing was checked, and the answer fills it in. While the box or COMPARE PROBES is open it is asked again every
-   PB_POLL. pbBusy: a request on its way; pbAt: when the last was sent; pbNone: CraftBeerPi answered without a check */
+/* the check, live: one request at a time. Each asked while START says CHECKING… may answer after PB_ASK: the box then
+   already says nothing was checked, and the answer fills it in. While the box or COMPARE PROBES is open it is asked
+   again every PB_POLL. pbBusy: a request on its way; pbAt: when the last was sent; pbNone: CraftBeerPi answered without
+   a check */
 let pbBusy = false, pbAt = 0, pbNone = false;
-async function pbAsk(first) {
+async function pbAsk() {
   if (pbBusy) return;
   pbBusy = true; pbAt = Date.now();
   const g = gen;
-  const late = first ? setTimeout(() => {
+  const late = st.pend["r:check"] ? setTimeout(() => {
     if (g !== gen || !st.pend["r:check"]) return;
     delete st.pend["r:check"]; st.pb = {noAnswer: true}; pbDecide();
   }, PB_ASK) : 0;
@@ -795,7 +847,14 @@ async function pbAsk(first) {
   if (res.ok && res.data && typeof res.data === "object" && !Array.isArray(res.data)) {
     pbNone = false;
     st.pb = pbNorm(res.data);
-    if (checking) { delete st.pend["r:check"]; pbDecide(); return; }
+    if (checking) {
+      // the clock not answered yet: START keeps CHECKING… and asks again, a second at least after the last ask
+      if (st.pb.clock.why === "slow" && Date.now() - pbHeld < PB_CLOCK) {
+        timers.push(setTimeout(() => { if (g === gen && st.pend["r:check"]) pbAsk(); }, Math.max(0, 1000 - (Date.now() - pbAt))));
+        return;
+      }
+      delete st.pend["r:check"]; pbDecide(); return;
+    }
     if (st.pbOpen || st.cmpOpen) renderAll();
     return;
   }
@@ -834,16 +893,24 @@ function pbGo() {
    screen that wrote them, and a gap learned over weeks would also learn a probe slowly going wrong */
 const pbLim = () => M.U === "°C" ? {tol: 1.1, room: 5.5, each: 0.5, lo: 1.5, hi: 49, ice: 0} : {tol: 2.0, room: 10.0, each: 0.9, lo: 35, hi: 120, ice: 32};
 const KSHORT = {hlt: "HLT", mt: "mash tun", bk: "boil kettle"};
-const VTHE = v => VWHOSE[v].slice(0, -2);
 const pbSensor = v => { const k = M.K && M.K[v], S = last && last.sensors; return k && k.sensor && Array.isArray(S) ? S.find(x => x && x.id === k.sensor) || null : null; };
 const probeName = v => DEMO_MODE ? DEMO.PROBE[v] : String((pbSensor(v) || {}).name || "");
 const probeOff = v => DEMO_MODE ? (st.poff || {})[v] || 0 : num(((pbSensor(v) || {}).props || {}).offset) || 0;
-const pbDead = v => { const A = !DEMO_MODE && st.pb && !st.pb.noAnswer && !st.pb.probes.error && st.pb.probes; return !!(A && A.kettles.some(k => k.v === v && !k.ok)); };
-const cmpRead = () => ["hlt", "mt", "bk"].filter(v => DEMO_MODE || (M.K && M.K[v])).map(v => { const pv = st.v[v].pv, off = probeOff(v); return {v, off, val: pv == null || pbDead(v) ? null : pv - off}; });
+/* a vessel's kettle in CraftBeerPi's check, live: whether its probe gives a reading, and why not (pbNorm) */
+const pbKettle = v => { const A = !DEMO_MODE && st.pb && !st.pb.noAnswer && !st.pb.probes.error && st.pb.probes; return A ? A.kettles.find(k => k.v === v) || null : null; };
+const pbDead = v => { const k = pbKettle(v); return !!(k && !k.ok); };
+const pbWhy = v => DEMO_MODE ? ((st.pb || {}).why || {})[v] || null : (k => k && !k.ok ? k.why : null)(pbKettle(v));
+/* each probe's own reading; a kettle with no probe in Hardware (why: the check's no_probe or missing) has neither a
+   reading nor an offset */
+const cmpRead = () => ["hlt", "mt", "bk"].filter(v => DEMO_MODE || (M.K && M.K[v])).map(v => { const pv = st.v[v].pv, why = pbWhy(v), unset = pbUnset(why), off = unset ? 0 : probeOff(v); return {v, why: unset ? why : null, off, val: pv == null || unset || pbDead(v) ? null : pv - off}; });
 const fOff = x => `${x > 0 ? "+" : "−"}${Math.abs(x).toFixed(Math.abs(x * 10 - Math.round(x * 10)) < 1e-6 ? 1 : 2)}&nbsp;${M.U}`;
 function cmpVerdict(R) {
   const L = pbLim(), U = M.U, got = R.filter(r => r.val != null), dead = R.filter(r => r.val == null), f = x => `${x.toFixed(1)}&nbsp;${U}`;
-  const lead = dead.length ? `${cap(andList(dead.map(r => VWHOSE[r.v])))} probe${dead.length > 1 ? "s give" : " gives"} no reading: check ${dead.length > 1 ? "their plugs and cables" : "its plug and cable"}. ` : "";
+  /* first what can't be compared: a kettle with no probe in Hardware, in the check's words, then a probe with no reading */
+  const unset = dead.filter(r => r.why), silent = dead.filter(r => !r.why);
+  const lead = (unset.length === 1 ? (unset[0].why === "no_probe" ? `No probe is chosen for ${VTHE(unset[0].v)}: choose one in Hardware. ` : `${cap(VWHOSE[unset[0].v])} probe isn't found: choose one in Hardware. `)
+    : unset.length ? `${unset.length} kettles need a probe chosen in Hardware. ` : "")
+    + (silent.length ? `${cap(andList(silent.map(r => VWHOSE[r.v])))} probe${silent.length > 1 ? "s give" : " gives"} no reading: check ${silent.length > 1 ? "their plugs and cables" : "its plug and cable"}. ` : "");
   const nr = dead.length ? "no reading" : "";
   if (got.length < 2) return {tone: "no", dead: dead.length, log: nr, text: lead + "Not enough readings to compare."};
   /* in ice water a probe's window shows the ice's temperature plus its offset */
@@ -863,7 +930,7 @@ function cmpVerdict(R) {
   const vals = got.map(r => r.val), spread = Math.max(...vals) - Math.min(...vals);
   if (spread <= L.tol + 1e-9) {
     const who = dead.length ? `The other ${got.length === 2 ? "two" : got.length}` : got.length === 2 ? "Both" : `All ${got.length}`;
-    return {tone: dead.length ? "no" : "ok", dead: dead.length, log: nr || "agree", text: `${lead}${who} agree, ${f(spread)} apart at most.`};
+    return {tone: dead.length ? "no" : "ok", dead: dead.length, log: nr || "agree", text: `${lead}${who} agree${f(spread) === f(0) ? ": they read the same" : `, ${f(spread)} apart at most`}.`};
   }
   const room = spread <= L.room + 1e-9;
   const V = {tone: room && !dead.length ? "near" : "no", dead: dead.length, room, log: nr || (room ? `${spread.toFixed(1)} ${U} apart` : "a probe looks off")};
@@ -894,9 +961,10 @@ function cmpHTML(byHand) {
   const R = cmpRead(), V = cmpVerdict(R), offs = R.some(r => r.off), L = pbLim(), U = M.U;
   const row = r => {
     const dead = r.val == null, wild = (V.wild || []).includes(r.v), odd = V.odd === r.v, amber = dead || wild || (odd && !V.room);
-    const tag = dead ? "no reading" : wild ? "looks off" : odd ? (V.room ? (V.warm ? "warmer" : "cooler") : "looks off") : "";
-    const sub = esc(probeName(r.v)) + (r.off ? ` · offset ${fOff(r.off)}` : "");
-    return `<li${amber ? ' class="odd"' : ""}><span class="cn">${M.VNAME[r.v]}</span><span class="cp">${sub}${tag ? ` · <span class="ct${amber ? "" : " near"}">${tag}</span>` : ""}</span><span class="cr">${dead ? "– –" : r.val.toFixed(1)}<span class="u">${U}</span></span></li>`;
+    const tag = r.why ? (r.why === "no_probe" ? "no probe chosen" : "probe not found") : dead ? "no reading" : wild ? "looks off" : odd ? (V.room ? (V.warm ? "warmer" : "cooler") : "looks off") : "";
+    // a kettle with no probe in Hardware: no probe's name, no offset, only what is wrong
+    const sub = (r.why ? [] : [esc(probeName(r.v))].filter(Boolean).concat(r.off ? [`offset ${fOff(r.off)}`] : [])).concat(tag ? [`<span class="ct${amber ? "" : " near"}">${tag}</span>`] : []).join(" · ");
+    return `<li${amber ? ' class="odd"' : ""}><span class="cn">${M.VNAME[r.v]}</span><span class="cp">${sub}</span><span class="cr">${dead ? "– –" : r.val.toFixed(1)}<span class="u">${U}</span></span></li>`;
   };
   return `<section class="cmp${byHand ? " byh" : ""}" aria-labelledby="cp-h"><div class="cph"><h3 id="cp-h">Compare probes</h3>${b("cmdbtn cpdone", "DONE", "adds them to LOG", {cmd: "cmp:done"})}</div>
     <p class="cpi">With every vessel empty and at room temperature.${offs ? " Each reading is the probe's own, without its offset." : ""}</p>
@@ -918,7 +986,7 @@ function cmpDone(log) {
    earlier answer isn't used meanwhile */
 function cmpOpen() {
   st.pbOpen = false; st.cmpOpen = true;
-  if (!DEMO_MODE) { st.pb = null; if (!pbNone) pbAsk(false); }
+  if (!DEMO_MODE) { st.pb = null; if (!pbNone) pbAsk(); }
   renderAll();
 }
 /* the questions about the brew that wait for you, which a reset takes down (StepController.reset_all; BrewScribe its own):
@@ -3069,7 +3137,7 @@ function demoTick() {
   }
   const r = st.recipe;
   /* the pre-brew check's box follows CraftBeerPi while it is open: here, the Pi's clock set from the internet */
-  if (st.pbOpen && st.pb.clockAt && !st.pb.clock && st.t >= st.pb.clockAt) { st.pb.clock = true; say("The clock is set now. Every check passes."); renderAll(); }
+  if (st.pbOpen && st.pb.clockAt && !st.pb.clock && st.t >= st.pb.clockAt) { st.pb.clock = true; st.pb.clockWhy = null; say("The clock is set now. Every check passes."); renderAll(); }
   const pz = root.querySelector("#pz");
   if (pz && st.a.bkEl.paused) pz.textContent = mmss(pausedFor());
   /* CraftBeerPi's warning, 5 s after a kettle's AUTO started with no target. The boil kettle never gets one:
@@ -3151,7 +3219,7 @@ function liveTick() {
   if (last && last.timer && last.timer.running) { st.timer = timerNow(last.timer); const o = $("#tm-out"); if (o) setText(o, mmss(st.timer.left)); }
   if (M.TIMERS) liveTmTick();
   // the pre-brew check's box, and COMPARE PROBES, follow CraftBeerPi's check while open
-  if ((st.pbOpen || st.cmpOpen) && !pbBusy && !(st.cmpOpen && pbNone) && Date.now() - pbAt >= PB_POLL) pbAsk(false);
+  if ((st.pbOpen || st.cmpOpen) && !pbBusy && !(st.cmpOpen && pbNone) && Date.now() - pbAt >= PB_POLL) pbAsk();
   // a pause counts on the brewing clock, from when BoilPower stamped it
   if (st.a.bkEl.paused) {
     syncBrewClock();

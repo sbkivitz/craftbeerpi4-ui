@@ -45,7 +45,8 @@ Pressed, it opens COMPARE PROBES in its place, with DONE beside the title:
   offset if it has one ("offset +4.0 °F"), and the probe's own reading in the faceplates' red. The readings follow the
   probes while it's open.
 - One sentence saying what the readings show. It goes by how far apart the highest and lowest are:
-  - **Up to 2.0 °F: they agree.** "All 3 agree, 1.1 °F apart at most." A green ring and tick.
+  - **Up to 2.0 °F: they agree.** "All 3 agree, 1.1 °F apart at most." A green ring and tick. Where the readings are
+    the same: "All 3 agree: they read the same."
   - **More than 2.0 °F, up to 10 °F: likely where the vessels sit.** "The boil kettle reads up to 3.8 °F below the
     other two. That's likely where it sits, not its probe. To be sure, put the probe in ice water: with its +1.0 °F
     offset it should read 33.0 °F, ±0.9 °F. If it doesn't, correct its offset in Hardware." A plain ring with an "i",
@@ -59,7 +60,10 @@ Pressed, it opens COMPARE PROBES in its place, with DONE beside the title:
     at once, look at what they share: one bad probe or plug on their cable can do this. Unplug them one at a time to
     find it." Amber, as above.
   - **A probe gives no reading.** "The mash tun's probe gives no reading: check its plug and cable. The other two agree,
-    0.9 °F apart at most." An amber disc with "!"; its row reads "– –" and "NO READING".
+    0.9 °F apart at most." An amber disc with "!"; its row reads "– –" and "NO READING". A kettle with no probe chosen
+    in Hardware, or with one CraftBeerPi no longer has, starts the sentence instead: "No probe is chosen for the boil
+    kettle: choose one in Hardware." Its row reads "NO PROBE CHOSEN" or "PROBE NOT FOUND", with no probe name or
+    offset.
 - Under it, the rule in small print: "They agree within 2.0 °F: each probe is accurate to ±0.9 °F. Where a vessel sits
   can put it up to 10 °F from the others; more than that, a probe looks off."
 
@@ -134,7 +138,8 @@ Read on 17 Nov, without touching the rig: the 25 Oct brew day's logs, which Gaug
 ### Holding START on a recipe not begun
 
 START fills orange for a second as now. Then it says CHECKING… over "before it starts", with the marching stripes, for
-under a second while CraftBeerPi answers.
+under a second while CraftBeerPi answers. The first time after CraftBeerPi starts, it can take up to about 6 s while
+the Pi answers about its clock.
 
 - **Everything passes:** the recipe starts exactly as today. LOG gets one extra line before "Recipe started":
   "Checked before starting: probes, clock, reminders · all passed".
@@ -157,16 +162,24 @@ under a second while CraftBeerPi answers.
   passed over: "Recipe started · confirmed · started anyway: the Pi's clock wasn't set".
 - **DON'T START** closes the box, and nothing changes. Escape does the same.
 - **The box follows CraftBeerPi while it's open.** When the clock gets set a minute after the Pi starts, its line turns
-  to "✓ The clock is set.", the top line to "Every check passes now. Not started yet.", and START ANYWAY becomes START,
+  to "✓ The clock is set.", the top line to "Not started yet: every check passes.", and START ANYWAY becomes START,
   in the same place. It never starts by itself.
 
 The other failures read:
 
 - "**The boil kettle's probe, Boil Temp, gives no reading,** and hasn't for 3 min. Check its plug and cable."
   (Two or more: "**2 probes give no reading:** the mash tun's (Mash Temp) and the boil kettle's (Boil Temp). Check their
-  plugs and cables.")
-- "**2 of 8 boil additions have no reminder:** Citra at 5 min and Amarillo at 0 min (the boil step holds six). Watch
-  the clock for them, or set a timer."
+  plugs and cables.") Where CraftBeerPi doesn't know for how long, the line stops at "gives no reading."
+- "**No probe is chosen for the boil kettle.** Choose one in Hardware." For a probe CraftBeerPi no longer has: "**The
+  boil kettle's probe isn't found:** CraftBeerPi no longer has it. Choose one in Hardware."
+- "**The Pi didn't say whether its clock is set.** If it has been on and online for a few minutes, you can start
+  anyway. A clock set during a rest can cut the rest short." The first time CraftBeerPi asks after it starts, the Pi
+  can take a few seconds to answer, so START stays on CHECKING… for up to 6 s for it. Only if it still hasn't answered:
+  "**The clock hasn't been checked yet:** the Pi is slow to answer." The box asks again 5 s later and fills it in.
+- "**2 of 8 boil additions have no reminder:** 1.50 oz Citra at 5 min and 1.00 oz Amarillo at 0 min (the boil step
+  holds six). Watch the clock for them, or set a timer."
+- A check CraftBeerPi couldn't work out says so in its place, for example "**The probes weren't checked:** CraftBeerPi
+  ran into a problem." The other two still answer.
 
 ### What it doesn't do, on purpose
 
@@ -206,7 +219,7 @@ Revised after his note about the boil kettle's probe and the rig's own data, and
 
 | Part | Needs | Notes |
 |---|---|---|
-| CHECKING… on START, the amber box, START ANYWAY and DON'T START, the box following CraftBeerPi, the LOG lines | React UI | `pbRun`, `pbItems`, `pbHTML`, `pbGo` in the mockup's `brew-day.js`. The box polls the check every 5 s while it's open. With an older CraftBeerPi that has no check, START starts as today. If the check gets no answer in 5 s, the box says "Not started yet: CraftBeerPi didn't answer the check, so nothing was checked. Hold START to try again.", and each check says in its place that it wasn't checked ("The probes weren't checked."), so a late answer fills them in where they are; the same two answers, and START ANYWAY then logs "started anyway: the check got no answer". A recipe started from another screen closes the box and the panel. COMPARE PROBES is greyed while the check runs. |
+| CHECKING… on START, the amber box, START ANYWAY and DON'T START, the box following CraftBeerPi, the LOG lines | React UI | `pbRun`, `pbItems`, `pbHTML`, `pbGo` in the mockup's `brew-day.js`. The box polls the check every 5 s while it's open. With an older CraftBeerPi that has no check, START starts as today. If the check gets no answer in 5 s, the box says "Not started yet: CraftBeerPi didn't answer the check, so nothing was checked. Hold START to try again.", and each check says in its place that it wasn't checked ("The probes weren't checked."), so a late answer fills them in where they are; the same two answers, and START ANYWAY then logs "started anyway: the check got no answer". A recipe started from another screen closes the box and the panel. COMPARE PROBES is greyed while the check runs. While the clock's part says `no_answer_yet` (the Pi hasn't answered yet), START stays on CHECKING… and asks again, for up to 6 s from the hold. |
 | The check itself | Server | One request the screen makes on START, for example `GET /step2/precheck`. It answers three things. **Probes:** for each kettle's probe, whether it gives a reading: a number, published, no older than its own limit (`SensorController.get_sensor_value` already gives `value`, `age` and `max_age`), and one a kettle can have; and how long it hasn't. **Clock:** `system_clock_trusted()`, as the timers use it, asked in a thread and kept, not run on every request. **Reminders:** how many boil additions the recipe has, and which have none. |
 | Keeping the additions without a reminder | Server | Today the import names them once, in its warning ("No reminder for: …"), and then forgets them. The import keeps that list with the mash profile, and it goes when the profile is cleared or another recipe is imported. A recipe built by hand counts the boil step's own Hop_1 to Hop_6, so it never has any. |
 | COMPARE PROBES and its panel | React UI | `cmpHTML`, `cmpVerdict`, `cmpDone`. The readings are the faceplates' own, less each probe's offset: the `offset` in its settings, which the Hardware page already loads (0 for a sensor that has none). Which probe gives no reading comes from the same check. It keeps nothing between comparisons, so it needs no server change. |
@@ -259,7 +272,9 @@ the rig's own readings from 25 Oct, the boil kettle 3.8 °F cooler · `#probes-o
 `#probes-none` one probe with no reading · `#checking` START held · `#check-clock` the clock not set yet (it gets set
 30 s later in the live page) · `#check-now` every check passes now · `#check-probe` a probe with no reading ·
 `#check-adds` eight additions, two without a reminder · `#check-many` the clock and the reminders · `#check-noanswer`
-no answer from CraftBeerPi in 5 s.
+no answer from CraftBeerPi in 5 s · `#check-noprobe` no probe chosen for the boil kettle · `#check-slow` the Pi's clock
+still unanswered after START waited 6 s for it (the answer comes 5 s later in the live page) · `#check-unsure` the Pi
+didn't say whether its clock is set.
 
 ## Where it came from
 

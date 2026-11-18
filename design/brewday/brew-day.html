@@ -21,7 +21,8 @@ FORM: Brewhouse touch panel with process-mimic plumbing; layout B (D3); seed fad
 
 This is a mockup with demo data. It does not talk to CraftBeerPi.
 Pre-brew check (PRE-BREW-CHECK.md): #prebrew, #probes, #probes-apart, #probes-off, #probes-none, #checking,
-#check-clock, #check-now, #check-probe, #check-adds, #check-many and #check-noanswer, first in the strip.
+#check-clock, #check-now, #check-probe, #check-adds, #check-many, #check-noanswer, #check-noprobe, #check-slow and
+#check-unsure, first in the strip.
 Scenes: #mash (default), #sparge, #hop, #boilpower, #heatup, #pause, #boiling, #hold, #fail, #manual, #offline, #notarget,
 #notarget-hlt, and the rest in the strip. #sparge-ready and #boil-hold show the pumps CraftBeerPi switches off so their
 hoses can move. #byhand and #byhand-past show an element on by hand in MANUAL, before and after it passes its target.
@@ -62,7 +63,7 @@ whirlpool.html shows them side by side; ?focus=rig is for that page.
 <body>
 <nav class="mock" id="mock" aria-label="Mockup scenes (not part of the design)">
   <strong>Mockup with demo data.</strong> Show:
-  <span class="lay">Pre-brew check: <a href="#prebrew">Ready, before you fill</a> <a href="#probes">Probes side by side</a> <a href="#probes-apart">One a few degrees cooler</a> <a href="#probes-off">One probe looks off</a> <a href="#probes-none">A probe with no reading</a> <a href="#checking">START held: checking</a> <a href="#check-clock">Clock not set yet</a> <a href="#check-now">Clock set: every check passes</a> <a href="#check-probe">A probe gives no reading</a> <a href="#check-adds">Additions without a reminder</a> <a href="#check-many">Two checks didn't pass</a> <a href="#check-noanswer">No answer from CraftBeerPi</a></span>
+  <span class="lay">Pre-brew check: <a href="#prebrew">Ready, before you fill</a> <a href="#probes">Probes side by side</a> <a href="#probes-apart">One a few degrees cooler</a> <a href="#probes-off">One probe looks off</a> <a href="#probes-none">A probe with no reading</a> <a href="#checking">START held: checking</a> <a href="#check-clock">Clock not set yet</a> <a href="#check-now">Clock set: every check passes</a> <a href="#check-probe">A probe gives no reading</a> <a href="#check-adds">Additions without a reminder</a> <a href="#check-many">Two checks didn't pass</a> <a href="#check-noanswer">No answer from CraftBeerPi</a> <a href="#check-noprobe">No probe chosen</a> <a href="#check-slow">Clock: slow to answer</a> <a href="#check-unsure">Clock not confirmed</a></span>
   <a href="#mash">Mid-mash</a>
   <a href="#stopped">Stopped</a>
   <a href="#reset">RESET asks first</a>

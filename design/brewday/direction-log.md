@@ -1,5 +1,35 @@
 # Direction decision log
 
+## The pre-brew check's other answers (18 Nov 2026)
+- From Brett, after post21: his build agent chose words where CraftBeerPi can answer something the mockup had none for
+  (core post45's reasons): a probe with no reading and no time, a clock not confirmed for any reason, a clock not yet
+  answered, single counts, and addition names with their amounts. He asked whether to keep or change them, and flagged
+  that the mockup kept the box's height from before its fonts loaded.
+- Chosen (my call, within the approved design: every line that didn't pass says what is wrong and what to do, and what
+  to do has to be right):
+  - A kettle with no probe in Hardware (no_probe, missing) is a setting, not a cable: "No probe is chosen for the boil
+    kettle. Choose one in Hardware." / "The boil kettle's probe isn't found: CraftBeerPi no longer has it. …", in the
+    Hardware page's own words. A probe with no reading and no known time drops "and hasn't for …", as built.
+  - The clock: not_synchronized keeps its words. unconfirmed gets its own, since waiting may not help and the network
+    isn't the problem: "The Pi didn't say whether its clock is set. If it has been on and online for a few minutes, you
+    can start anyway. A clock set during a rest can cut the rest short." Not chosen: telling the brewer to compare the
+    title bar's clock, which in the build is the screen's own time, right whatever the Pi's is.
+  - no_answer_yet: START stays on CHECKING… and asks again for up to 6 s, so the box opens with the clock's answer.
+    Found while measuring: shown in the box, the short line grew into "isn't set yet" at the next ask, 5 s on, and the
+    box's four buttons dropped 22-67 px, DON'T START to where SOUND had been on a phone and from 1180 to 1600 px wide.
+    CraftBeerPi only says no_answer_yet before timedatectl's first answer since it started, so this is the first START
+    after the Pi starts, when the clock is the most likely not to be set. Post21 does the same. Only if the 6 s run
+    out: "The clock hasn't been checked yet: the Pi is slow to answer.", which the next answer fills in.
+  - Counts as built, plus "Both boil additions have a reminder."; names with amounts, number and unit kept together.
+  - Also: a part CraftBeerPi couldn't work out says "… weren't checked: CraftBeerPi ran into a problem."; COMPARE
+    PROBES uses the same Hardware words for a kettle with no probe; and "All 3 agree: they read the same." where they
+    are 0.0 apart, which is what every simulated probe shows.
+- The kept height: a height measured while the fonts are loading isn't kept, as the build already does. Found while
+  checking the new moments: "Every check passes now. Not started yet." took a second line on monitors from 1180 to
+  about 1580 px wide and on phones under 390 px, so the box grew about 1.4 px as a check came right. Now "Not started
+  yet: every check passes.", which fits on one line at every size from a 360 px phone up.
+- New moments #check-noprobe, #check-slow and #check-unsure; #check-adds and #check-many show the amounts.
+
 ## The pre-brew check (17 Nov 2026)
 - Brett's job, from the ideas interview's item 3 ("Later"): before a recipe starts, check that every probe reads a
   number and that the probes agree when they're at the same temperature, that the clock is right, and that every
