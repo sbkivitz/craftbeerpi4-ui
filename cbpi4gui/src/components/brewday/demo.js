@@ -3,8 +3,9 @@
 // mode (?demo=mash, sparge, sparge-heat, sparge-ready, sparge-run, sparge-batch, boil-hold, hop, boilpower, heatup, pause,
 // pause-long, boiling, hold, whirlpool, finished, keepboil, letfall, bktarget, handhold, fail, manual, offline, notarget,
 // notarget-hlt, timers, timer-done, timer-back, timer-back-done, timer-back-unknown, timer-new, timer-names,
-// timer-nonames, timers-hand, sound-allow, byhand, byhand-past, stopped, reset or reset-done) runs on this, so it can be
-// compared with the mockup pixel for pixel.
+// timer-nonames, timers-hand, sound-allow, byhand, byhand-past, stopped, reset, reset-done, and the pre-brew check's
+// prebrew, probes, probes-apart, probes-off, probes-none, checking, check-clock, check-now, check-probe, check-adds,
+// check-many and check-noanswer) runs on this, so it can be compared with the mockup pixel for pixel.
 
 const RECIPE = {
   name: "Craftbeerpi Test Recipe v5",
@@ -25,9 +26,14 @@ const RECIPE = {
    the water is ready), asks "Sparge started", then leaves both pumps to the brewer. The sparge-… moments and boil-hold
    use it (sparge4: the screen's demo recipe then has it as step 4); every other moment keeps the MashStep. */
 const SPARGE_STEP = {n: "Sparge", type: "SpargeStep", temp: 168, min: 40, k: "hlt"};
+/* the boil's additions as the demo recipe has them, and a recipe with eight, whose import kept the first six for the boil
+   step's reminders (longest first) and named the last two in a warning: Citra at 5 minutes, Amarillo at the end */
+const BIG_ADDS = [[60, "Centennial", "1.00 oz"], [30, "Cascade", "1.00 oz"], [20, "Willamette", "2.00 oz"], [15, "Whirlfloc tablet", "1"], [15, "Yeast nutrient", "1 tsp"], [10, "Citra", "1.00 oz"]];
+const BIG_MISSED = [["Citra", 5], ["Amarillo", 0]];
 const WFY = "WAITING FOR YOU";
 const VNAME = {hlt: "Hot liquor tank", mt: "Mash tun", bk: "Boil kettle"};
 const KNAME = {hlt: "HLT", mt: "Mash Tun", bk: "Boil Kettle"}; // the kettles' names in CraftBeerPi, which its own messages use
+const PROBE = {hlt: "HLT Temp", mt: "Mash Temp", bk: "Boil Temp"}; // the probes' names in CraftBeerPi, as the Hardware page shows them
 const VACT = {hlt: ["hltEl", "hltPump"], mt: ["wortPump"], bk: ["bkEl"]};
 const ACT = {
   hltEl: {name: "HLT ELEMENT", kind: "heat", v: "hlt"},
@@ -540,8 +546,44 @@ const SCENES = {
     s.recipe = {state: "ready", cur: 0, left: 0, adds: []};
     s.events.unshift(["14:32:58", "Recipe reset to step 1", "confirmed", "ok"]);
     return s;
-  }
+  },
+  /* the pre-brew check (pbMorning). #prebrew: COMPARE PROBES under START. #probes, #probes-apart, #probes-off,
+     #probes-none: the probes side by side, agreeing; the boil kettle 3.8 °F cooler than the others, as one by a door
+     can be; the boil kettle's 17.5 °F low, more than its spot explains; the mash tun's giving no reading for 4 min.
+     #checking: START held, CraftBeerPi checking. #check-clock: the Pi's clock not set yet (it sets itself 30 s on, and
+     the box follows: #check-now). #check-probe: the boil kettle's probe silent for 3 min. #check-adds: a recipe with
+     eight boil additions, two without a reminder. #check-many: the clock and the reminders both. #check-noanswer:
+     CraftBeerPi gave no answer to the check within 5 s. pb is CraftBeerPi's answer, as the mockup keeps it: the clock
+     set or not (clockAt: when it gets set), how long each probe has given no reading (none), and the boil's additions */
+  prebrew: () => pbMorning(),
+  probes: () => Object.assign(pbMorning(), {open: {cmpOpen: true}}),
+  "probes-apart": () => { const s = pbMorning(); Object.assign(s.v.hlt, {pv: 63.6}); Object.assign(s.v.mt, {pv: 67.5}); Object.assign(s.v.bk, {pv: 60.7}); return Object.assign(s, {open: {cmpOpen: true}}); },
+  "probes-off": () => { const s = pbMorning(); s.v.bk.pv = 45.0; return Object.assign(s, {open: {cmpOpen: true}}); },
+  "probes-none": () => { const s = pbMorning(); s.v.mt.pv = null; s.pb.none.mt = 240; return Object.assign(s, {pbLast: {mt: 65.5}, gap: {mt: 240}, open: {cmpOpen: true}}); },
+  checking: () => Object.assign(pbMorning(), {open: {pend: {"r:check": "check"}}}),
+  "check-clock": () => { const s = pbMorning(); s.pb.clock = false; s.pb.clockAt = s.t + 30; return Object.assign(s, {open: {pbOpen: true}}); },
+  "check-now": () => Object.assign(pbMorning(), {open: {pbOpen: true}}),
+  "check-probe": () => { const s = pbMorning(); s.v.bk.pv = null; s.pb.none.bk = 180; return Object.assign(s, {pbLast: {bk: 61.4}, gap: {bk: 180}, open: {pbOpen: true}}); },
+  "check-adds": () => { const s = pbMorning(); s.pb.adds = {n: 8, missed: BIG_MISSED}; return Object.assign(s, {adds5: BIG_ADDS, open: {pbOpen: true}}); },
+  "check-many": () => { const s = pbMorning(); s.pb.clock = false; s.pb.adds = {n: 8, missed: BIG_MISSED}; return Object.assign(s, {adds5: BIG_ADDS, open: {pbOpen: true}}); },
+  "check-noanswer": () => { const s = pbMorning(); s.pb.noAnswer = true; return Object.assign(s, {open: {pbOpen: true}}); }
 };
+/* brew day's morning, for the pre-brew check: 07:41, the recipe loaded at 07:38 and not begun, every vessel empty and at
+   the garage's temperature since the night before, nothing on and no targets set. Each probe has an offset set in
+   Hardware (poff), as a rig's can: the mash probe, at the HERMS coil's outlet, +4.0 °F, so the mash tun shows 4 °F
+   above the others while its probe reads alike. The graphs show the night (pbDay) */
+function pbMorning() {
+  return {
+    t: 7 * 3600 + 41 * 60 + 12, link: "ok", age: 0, banner: null, pbDay: true,
+    v: {hlt: {pv: 61.5, sv: null, own: null, mode: "manual"}, mt: {pv: 65.5, sv: null, mode: "manual"}, bk: {pv: 61.4, sv: null, mode: "manual"}},
+    poff: {hlt: 0.23, mt: 4.0, bk: 1.0},
+    a: {hltEl: {on: false, pct: 0}, hltPump: {on: false}, wortPump: {on: false}, bkEl: {on: false, pct: 0}},
+    fill: {mtLiq: false, bk: false},
+    recipe: {state: "ready", cur: 0, left: 0, adds: []},
+    pb: {clock: true, none: {}, adds: {n: 4, missed: []}},
+    events: [["07:38:40", "Craftbeerpi Test Recipe v5 loaded", "confirmed", "ok"]]
+  };
+}
 /* the versions' line (screen.js verHTML): made up and fixed, as the mockup's, so the pictures don't change with each
    build. ver "release" (?ver=release): an installed release's, the release numbers only; "none": no line */
 const versions = ver => ver === "none" ? null : ver === "release" ? {ui: "0.5.1.a3.post12", built: "", cbpi: "4.7.7.post36"}
@@ -619,8 +661,16 @@ function gRun(runs, t) {
 }
 const gWob = (t, k) => 0.16 * Math.sin(t / 47 + k) + 0.09 * Math.sin(t / 13.7 + 2.3 * k) + 0.05 * Math.sin(t / 5.1 + 1.7 * k);
 
-function gDemo(scene, now) {
+function gDemo(scene, now, x = {}) {
   const E = 30 * 3600;
+  /* the pre-brew moments (#prebrew, #probes…, #check…): the night before in the garage, every vessel empty and slowly
+     warming with the morning, each probe ending on its own reading (one silent for a while ends on its last); nothing
+     heated, so no SV and no OUT. DAY is the last 8 hours, as with no recipe begun. x: the moment's own readings (pv) and a
+     silent probe's last one (last) */
+  if (x.pbDay) {
+    const keys = v => { const r = x.pv[v] ?? (x.last || {})[v]; return [[now - 8 * 3600, r - 2.4], [now - 3 * 3600, r - 1.1, "s"], [now - 900, r, "s"], [now, r, "h"]]; };
+    return {start: now - 8 * 3600, steps: [], hlt: {pv: keys("hlt"), out: [[0, E, 0]]}, mt: {pv: keys("mt")}, bk: {pv: keys("bk"), out: [[0, E, 0]]}};
+  }
   /* mash, sparge, fail, offline: recipe started 12:40; MashIn, malt in at 13:27, Protein Rest, Saccharification from 14:09 */
   const hltMash = [[hms(12, 40), 64.0], [hms(13, 1), 129.0, "l"], [hms(13, 6), 131.4, "e"], [hms(13, 27, 5), 131.4, "h"], [hms(13, 30), 128.6, "s"],
     [hms(13, 37), 131.4, "e"], [hms(14, 9, 40), 131.4, "h"], [hms(14, 16, 30), 153.0, "l"], [hms(14, 19), 154.4, "e"]];
@@ -785,9 +835,9 @@ function gDemo(scene, now) {
   };
 }
 /* one row every 10 s up to now, the moment's own time: [time, PV, SV or null, OUT % or null]. The small wobble fades
-   out at now, so each line ends on the reading its faceplate shows. */
-function history(scene, now) {
-  const d = gDemo(scene, now), end = d.until || now, seed = {hlt: 1.3, mt: 2.9, bk: 4.4};
+   out at now, so each line ends on the reading its faceplate shows. x: for the pre-brew moments (gDemo) */
+function history(scene, now, x) {
+  const d = gDemo(scene, now, x), end = d.until || now, seed = {hlt: 1.3, mt: 2.9, bk: 4.4};
   const h = {start: d.start, steps: d.steps.map(s => s.slice()), v: {}};
   ["hlt", "mt", "bk"].forEach(v => {
     const s = d[v], rows = [];
@@ -802,7 +852,7 @@ function history(scene, now) {
   return h;
 }
 
-export { RECIPE, SPARGE_STEP, VNAME, KNAME, VACT, ACT, HERMS_DELTA, BOIL_TH, BOOK, SCENES, history, noTargetBanner, pauseBanner, spargeBanner, boilHoldBanner, boilStartLine, tfmt, tBanner, byHandBanner, versions };
+export { RECIPE, SPARGE_STEP, BIG_ADDS, VNAME, KNAME, PROBE, VACT, ACT, HERMS_DELTA, BOIL_TH, BOOK, SCENES, history, noTargetBanner, pauseBanner, spargeBanner, boilHoldBanner, boilStartLine, tfmt, tBanner, byHandBanner, versions };
 
 // Not the mockup's: two moments of the screen's own, for checking how the title bar holds what CraftBeerPi
 // really asks. Not compared with the mockup.

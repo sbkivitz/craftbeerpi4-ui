@@ -243,6 +243,44 @@ html.bare .mock{display:none}
 .confirm div{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .confirm button{min-height:54px;border-radius:var(--r);border:1px solid var(--edge);background:var(--panel-2);font:700 18px/1 var(--cond);letter-spacing:.05em}
 .confirm .yes{background:#f4f6f8;color:#10161c;border-color:#f4f6f8}
+/* the pre-brew check: the question box, with a line for each check in the brewer's order (probes, clock, reminders),
+   marked in its place: a filled Prompt Amber disc with "!" where it didn't pass, a green ring with a tick where it did.
+   START ANYWAY is held, as START is, so it says so under its name and fills orange as it is held */
+.pbc{grid-template-rows:auto 1fr auto;align-content:stretch}
+.pbc .pbl{display:grid;align-content:start;gap:8px;margin:0;padding:0;list-style:none}
+.pbc .pbl li{display:grid;grid-template-columns:24px minmax(0,1fr);column-gap:9px;align-items:start}
+.pbc .mk,.cpv .mk{display:block;width:24px;height:24px;margin-top:-1px}
+.mk svg{display:block;width:100%;height:100%}
+.pbc .no .mk,.cpv.no .mk{color:var(--prompt)}
+.pbc .ok .mk,.cpv.ok .mk{color:var(--run)}
+.cpv.near .mk{color:var(--text-2)}
+.pbc .pbl p{font-size:16px;line-height:1.4}
+.pbc .pbl .ok p{color:#e2d6bd}
+.pbc .yes{position:relative;overflow:hidden}
+.pbc .yes small{position:relative;display:block;margin-top:4px;font:500 13px/1.1 var(--cond);letter-spacing:.04em;color:#3a4652}
+.pbc button[aria-disabled=true]{cursor:not-allowed;color:var(--text-3)}
+.pbc .yes[aria-disabled=true]{background:var(--panel-2);border-color:var(--edge)}
+/* COMPARE PROBES, and the probes side by side: a row for each probe like a small PID window, its reading in Process Red;
+   DONE beside the title. Brewing by hand, the button has its own row under RECIPE BOOK and BREW STEPS */
+.cpbtn{min-height:54px}
+.handlinks .cpbtn{grid-column:1/-1}
+.cmp{display:grid;grid-template-rows:auto auto auto auto 1fr;align-content:stretch;gap:10px;padding:12px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2)}
+.cph{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:center}
+.cmp h3{margin:0;font:700 20px/1.05 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+.cmp .cpdone{min-height:48px;min-width:96px;padding:4px 12px}
+.cmp p{margin:0}
+.cpi{font:500 15px/1.35 var(--sans);color:var(--text-2)}
+.cpl{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.cpl li{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;row-gap:1px;align-items:center;padding:6px 12px;border:1px solid #1d2a36;border-radius:var(--r);background:var(--face)}
+.cpl li.odd{border:2px solid var(--prompt);padding:5px 11px}
+.cpl .cn{font:600 17px/1.1 var(--cond);letter-spacing:.04em;text-transform:uppercase}
+.cpl .cp{grid-column:1;font:500 14px/1.2 var(--cond);letter-spacing:.03em;color:var(--text-3)}
+.cpl .ct{font-weight:600;color:var(--prompt);text-transform:uppercase;letter-spacing:.05em}
+.cpl .ct.near{color:var(--text-2)}
+.cpl .cr{grid-column:2;grid-row:1/3;font:600 30px/1 var(--cond);color:var(--pv);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.cpl .cr .u{margin-left:2px;font-size:15px;vertical-align:top}
+.cpv{display:grid;grid-template-columns:24px minmax(0,1fr);column-gap:9px;align-items:start;font:500 16px/1.4 var(--sans)}
+.cpn{font:500 14px/1.35 var(--sans);color:var(--text-2)}
 .steps{flex:1;min-height:0;overflow:auto;margin:0;padding:0 2px 0 0;list-style:none;display:flex;flex-direction:column;gap:6px;overscroll-behavior:contain}
 /* the versions (verHTML): the quietest words on the screen, last in the recipe column whatever comes before it. Each part
    keeps whole; where the column is narrow the CraftBeerPi part goes on a line of its own */
@@ -492,6 +530,11 @@ html.bare .mock{display:none}
    than shrinking to a sliced row. The header still says which step runs, and alerts still come in the title bar. All
    back when it closes */
 @media (min-width:1180px){.recipe[data-tedit] :is(.steps,.book,.handlinks){display:none}}
+/* the pre-brew check's box and the probes side by side do the same */
+@media (min-width:1180px){.recipe[data-pb] :is(.steps,.book,.handlinks){display:none}}
+/* where the column is short, the probes' panel scrolls in it, as the step list whose room it takes does, rather than
+   making the page longer (The One Screen Rule) */
+@media (min-width:1180px){.recipe[data-pb] .cmp{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}}
 /* the versions' line steps aside too while a timer's editor is open, and while something in the column waits for you
    (NEXT STEP's or RESET's question, a timer's alarm): on a monitor the column has no room to spare then, and the line is
    the least needed thing in it */
@@ -506,7 +549,7 @@ html.bare .mock{display:none}
   .steps{overflow:visible}
   .book ul{overflow:visible}
   /* stacked, the timers come before the steps (or the recipe book), so they are not seven steps down */
-  [data-timers=new] .recipe .steps,[data-timers=new] .recipe .book,[data-timers=new] .recipe .handlinks{order:2}
+  [data-timers=new] .recipe .steps,[data-timers=new] .recipe .book,[data-timers=new] .recipe .handlinks,[data-timers=new] .recipe .cmp.byh{order:2}
   [data-timers=new] .recipe .tmrs{order:1}
   [data-layout=b] .recipe{order:2}
   [data-layout=b] .main{grid-template-columns:minmax(0,1fr)}

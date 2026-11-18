@@ -64,6 +64,8 @@ same. The section at the end has the detail.
 | Rest timer when brewing by hand: one timer, shared by every screen | Server and React UI | Chosen on 9 Nov. The server keeps the time left and whether it is running; START TIMER, PAUSE TIMER and ±5 MIN are commands to it, and every open screen shows the same countdown. At zero the server raises a CraftBeerPi notification, which shows on every screen and stays until answered, as hop alerts have since the S2 fix. Since 11 Nov the screen has up to four named timers instead (see "Timers" below), and keeps this one rest timer only for an older CraftBeerPi. |
 | Barlow and Barlow Condensed fonts | React UI | Bundle the font files with the UI build. The Pi may have no internet on brew day; the mockup loads them from Google Fonts. |
 | An HLT pump in the simulator | Simulator configuration | The rig already has one: `Recirc_PUMP` on GPIO 7, which is also the HLT kettle's agitator (the brewer confirmed the pump mapping on 9 Oct). The simulator has `Mash Pump` and `Glycol Pump` but no HLT pump; Brett plans to add one when he builds this. |
+| The pre-brew check: START held on a recipe not begun checks that every probe gives a reading, the clock is set and every boil addition has a reminder; if one doesn't pass, an amber box under START with START ANYWAY (held) and DON'T START | Server and React UI | Approved 17 Nov. One check request on START (core 4.7.7.post45, Brett's), and the import keeping the additions it couldn't give a reminder. See "The pre-brew check" below. |
+| COMPARE PROBES: the probes' own readings side by side before filling, judged at three levels | React UI | Approved 17 Nov, after the rig's own readings. Needs each probe's `offset` from its settings; no server change. See "The pre-brew check" below. |
 
 ## What this screen does not fix
 
@@ -4316,6 +4318,197 @@ this one, all 40 moments at your five sizes. Only the line under a window change
   change" table).
 - `DESIGN.md`: the line under the window, and The Mode Tells The Truth Rule.
 - `.impeccable\design.json`, regenerated, and `.impeccable\decisions\direction-log.md`.
+
+## The pre-brew check: ready to build (17 Nov, evening)
+
+Approved by the brewer on 17 Nov: "I didn't really get a good feel for what was implemented but I'm sure it's good.
+Proceed". He then noted "BK probe is closer to the door than the HLT/MT probes and may be a bit cooler via physics",
+and asked for it to be checked against the rig ("look at my data from actual brew day with gauge"). COMPARE PROBES
+changed for both, and shown the result he chose "Yes, go ahead (Recommended)". The reasoning, the decisions and what
+the rig's logs showed are in `proposal\PRE-BREW-CHECK.md`; DESIGN.md has the Pre-brew Check section and The Warn, Never
+Block Rule. The mockup's moments are first in the strip: `brew-day.html#prebrew`.
+
+### START on a recipe not begun
+
+- **When:** START held on a recipe none of whose steps has begun: loaded, or after RESET TO STEP 1. The mockup's test is
+  `pbFresh` (line 1096); in your build it is the same test that greys NEXT STEP with "not started". Not when START
+  carries on after a STOP or a power cut, and not START THE BOIL. The Brew Steps page's own start doesn't check.
+- **While CraftBeerPi answers:** START is pending: CHECKING… over "before it starts", the marching stripes, and tapped,
+  `PB_WAIT`: "CraftBeerPi is checking the probes, the clock and the reminders. The recipe starts once they pass."
+  COMPARE PROBES is greyed with the same words. An open COMPARE PROBES is logged and closed first (`cmpDone`).
+- **All pass:** LOG gets "Checked before starting: probes, clock, reminders · all passed" (Running Green), then the
+  recipe starts exactly as now, STARTING… and "Recipe started · confirmed".
+- **Otherwise:** nothing starts, and the box opens under START (`pbHTML`, line 1135): the `.confirm` box NEXT STEP's
+  question uses, with class `pbc`. First line: "**Not started yet:** 1 check didn't pass." (or "2 checks didn't pass").
+  Then a list, always all three, always in this order, each with its mark (`MK`, line 1105, inline SVG):
+  - passed, a Running Green ring and tick and one line in `#e2d6bd`: "All 3 probes give a reading.", "The clock is
+    set.", "All 4 boil additions have a reminder." ("The boil has no additions to remind you of." with none);
+  - not passed, a Prompt Amber disc with a dark "!", its first words bold:
+    - "**The boil kettle's probe, Boil Temp, gives no reading,** and hasn't for 3 min. Check its plug and cable."
+      Two or more: "**2 probes give no reading:** the mash tun's (Mash Temp) and the boil kettle's (Boil Temp). Check
+      their plugs and cables." The time is "40 s" under a minute, else whole minutes.
+    - "**The Pi's clock isn't set yet.** It comes from the internet a minute after the Pi starts; if not, check the
+      Pi's network. Set during a rest, it can cut the rest short."
+    - "**2 of 8 boil additions have no reminder:** Citra at 5 min and Amarillo at 0 min (the boil step holds six).
+      Watch the clock for them, or set a timer." One: "has", "it".
+  - Under them, START ANYWAY (`.yes`, Answer White, "hold to start", held for one second exactly as START, Space and
+    Enter included) and DON'T START. Neither is focused or drawn as the default. With every check passing (see below)
+    START ANYWAY reads START.
+  - For screen readers the box is `role=group` named by its first line, and each line starts with a hidden "Passed: "
+    or "Didn't pass: ". When it opens, the live region says the first line, the lines that didn't pass, and "START
+    ANYWAY or DON'T START, under START."
+- **START ANYWAY** starts the recipe with its usual line, plus what it went past: "Recipe started · confirmed · started
+  anyway: the Pi's clock wasn't set". The others read "the boil kettle's probe gave no reading", "2 probes gave no
+  reading", "2 additions had no reminder", joined with ", ". **DON'T START** and Escape close the box and change nothing.
+- **While it is open,** poll the check every 5 s and redraw: a check that comes right turns its line to passed in its
+  place, the first line to "**Every check passes now.** Not started yet.", and START ANYWAY to START. It never starts
+  by itself. The mockup sets the clock 30 s on in `#check-clock` (line 2383) to show it.
+- **It keeps its height.** Before the recipe column is drawn again, `renderAll` (line 1498) measures the box or panel on
+  screen; if the new one has the same class and the column the same width, it gets that height as its `min-height`. The
+  box is a grid with rows `auto 1fr auto`, so its answers stay at its foot. So a line that gets shorter moves nothing.
+  A new failure while it is open makes it taller: there is more to say.
+- **No answer in 5 s:** the first line is "**Not started yet:** CraftBeerPi didn't answer the check, so nothing was
+  checked. Hold START to try again.", and each check says in its place that it wasn't checked ("The probes weren't
+  checked.", "The clock wasn't checked.", "The reminders weren't checked."), with the amber disc and no hidden prefix.
+  An answer that comes later fills them in where they are, so nothing moves if they pass. START ANYWAY logs "started
+  anyway: the check got no answer". START held again checks again.
+- **An older CraftBeerPi** that has no check (404): START starts at once, as today.
+- **A recipe started from another screen** closes the box (and COMPARE PROBES): `renderAll`, line 1494.
+- **No connection:** both answers are paused with "No connection. Controls are paused.", as every control is.
+- **On a monitor (1180 px and wider)** the open box, or the open panel, takes the step list's room, as a timer's editor
+  does: `.recipe[data-pb]` hides `.steps`, `.book` and `.handlinks` (brew-day.css). Where the column is too short for
+  the whole panel, the panel scrolls in it, as the step list does (`.recipe[data-pb] .cmp{flex:0 1 auto;min-height:0;
+  overflow:auto}`), so the page never grows: at 1920×950 all of the sentence shows and the small print is 63 px below;
+  at 1440×900 and 1180×900 the rows and the sentence's first lines show. Without it the page grew by 44 px at 1920×950
+  and 176 px at 1440×900. The box never scrolls, so its answers always show; with two checks failed it fits at
+  1440×900, and under 900 px tall the page scrolls a little, as it does anyway. Where the page stacks, the panel
+  opened while brewing by hand keeps the order the buttons had (`.recipe .cmp.byh{order:2}`).
+- **A notice, not an alarm:** no sound, nothing in the title bar, and only on the screen where START was held.
+
+### COMPARE PROBES
+
+- **The button:** a command button, "COMPARE PROBES" with "before you fill" under it, 54 px tall (`.cpbtn`). On a recipe
+  not begun it is under START, STOP and NEXT STEP, across the column. Brewing by hand it is at the end of the column,
+  under RECIPE BOOK and BREW STEPS, across both (`.handlinks .cpbtn{grid-column:1/-1}`). Not shown once a recipe has
+  begun, and not while the check's box is open.
+- **The panel** (`cmpHTML`, line 1237) opens in its place: "COMPARE PROBES" (Title capitals) with DONE ("adds them to
+  LOG") beside it; "With every vessel empty and at room temperature.", plus " Each reading is the probe's own, without
+  its offset." if any probe has one; a row per vessel on PID Window Black: the vessel's name, then its probe's name in
+  CraftBeerPi and its offset, "Mash Temp · offset +4.0 °F" (two decimals only where it has them: "+0.23 °F"), and at
+  the right the probe's own reading in Process Red, 600 30px, tabular. Then the sentence with its 24px mark, and the
+  rule in small print: "They agree within 2.0 °F: each probe is accurate to ±0.9 °F. Where a vessel sits can put it up
+  to 10 °F from the others; more than that, a probe looks off." The readings follow the probes while it is open.
+- **Each probe's own reading** is its value less the `offset` in its settings (OneWire's `offset`, which core adds after
+  converting to the brewery's unit, so it is in °F or °C as the readings are). 0 for a sensor with no `offset`. The
+  rig's are HLT +0.23, mash +4.0 and boil kettle +1.0 °F; the simulators' are 0, so on them nothing about offsets shows.
+- **The sentence** (`cmpVerdict`, line 1190), in this order. "Spread" is the highest own reading less the lowest.
+  1. Probes with no reading first: "The mash tun's probe gives no reading: check its plug and cable. ", then the rest
+     of the sentence about the others. Fewer than two readings: "Not enough readings to compare."
+  2. A reading below 35 °F or above 120 °F, whatever the others read: that probe looks off. "The boil kettle's probe
+     reads 185.0 °F on its own, hotter than any room. Check its plug and cable, then put it in ice water: with its
+     +1.0 °F offset it should read 33.0 °F, ±0.9 °F." Every probe with a reading like that: "All three probes read
+     32.0 °F on their own, colder than any room. When every probe is wrong at once, look at what they share: one bad
+     probe or plug on their cable can do this. Unplug them one at a time to find it."
+  3. Spread up to 2.0 °F: "All 3 agree, 1.1 °F apart at most." (Running Green tick.)
+  4. Spread up to 10 °F: likely where they sit (Soft Steel ring with "i"; the sentence in the plain colour). With one
+     probe the other two agree without: "The boil kettle reads up to 3.8 °F below the other two. That's likely where it
+     sits, not its probe. To be sure, put the probe in ice water: with its +1.0 °F offset it should read 33.0 °F,
+     ±0.9 °F. If it doesn't, correct its offset in Hardware." ("above" if it reads higher; with no offset, "it should
+     read 32.0 °F".) Its row says COOLER or WARMER in Soft Steel. Otherwise: "They read up to 6.0 °F apart. That's
+     likely where the vessels sit, not their probes. To be sure, put each probe in ice water: each should read 32.0 °F
+     plus its offset, ±0.9 °F." With two readings: "The hot liquor tank and the boil kettle read 3.7 °F apart. …"
+  5. Further apart: a probe looks off (amber disc). "The boil kettle's probe looks off: it reads up to 17.5 °F below
+     the other two. Where it sits can't explain that much. Check its plug and cable, then put it in ice water: …";
+     with two: "…read 17.3 °F apart, so a probe looks off. Where they sit can't explain that much. Check their plugs
+     and cables, then put each probe in ice water: …"; with no single one: "No two agree: they read up to 14.0 °F
+     apart. Where they sit can't explain that much. Are the vessels all empty? If so, put each probe in ice water: …"
+  A probe that gives no reading, or looks off, gets a 2px Prompt Amber edge on its row and "NO READING" or "LOOKS OFF"
+  in Prompt Amber capitals; its reading reads "– –". With a probe giving no reading the mark is amber whatever the
+  others do.
+- **DONE**, or START held while the panel is open, logs what was compared: "Probes compared, without offsets: HLT 63.4,
+  mash tun 63.5, boil kettle 59.7 °F" (", without offsets" only when a probe has one; "no reading" for a probe without
+  one), with "agree" in Running Green, "3.8 °F apart" in the plain colour, or "a probe looks off", "every probe looks
+  off" or "no reading" in light red. Escape closes it without a line.
+- **It keeps nothing between comparisons**, and learns nothing from earlier ones: LOG keeps eight lines per screen, and
+  a learned difference would also learn a probe slowly going wrong.
+
+### In °C
+
+2.0 °F is 1.1 °C; 10 °F is 5.5 °C; below 35 °F and above 120 °F are below 1.5 °C and above 49 °C; ±0.9 °F is ±0.5 °C;
+the ice-water reading is 0.0 °C plus the offset. The spread and readings show one decimal in either unit.
+
+### What the server answers
+
+Your core 4.7.7.post45. What the screen uses from the check:
+- **Probes:** for each brewhouse kettle's own probe (not a fermenter's), whether it gives a reading: a number, published,
+  no older than its own `max_age`, and one a kettle can have (−127 and 900 and over count as none); and, if not, for
+  how long. Your core already refuses the all-zero scratchpad (`_scratchpad_is_empty`), so the 11 Oct fault, every
+  probe at 0 °C plus its offset, now shows here as no reading.
+- **Clock:** `system_clock_trusted()`, asked in a thread and kept, not run on every request.
+- **Reminders:** how many boil additions the recipe has, and the name and minutes of each that has none, which the
+  import keeps with the mash profile until it is cleared or another recipe is imported.
+- The screen asks once on START and every 5 s while the box is open. COMPARE PROBES needs nothing new: the readings are
+  the faceplates', and which probe gives no reading comes from the same answer.
+
+### Your bench tests
+
+- START held in `test_e2e_brewday.py` line 551, `test_e2e_brewday_reset.py` line 75 and `test_e2e_recipe_pumps.py`
+  line 574: they see CHECKING… for a moment before STARTING…, and one more LOG line before "Recipe started". On the
+  simulators every check passes: Windows' clock counts as set, the probes read, and the test recipes have six
+  additions or fewer.
+- `test_boil_reminder_limit.py` imports seven hops: a test that then starts the recipe gets the box, and needs START
+  ANYWAY.
+- Nothing on the simulators has an offset, so a test of the offsets needs one set, for example +4.0 on Mash Temp.
+
+### The moments
+
+New, first in the strip: `#prebrew` (each probe with the rig's offsets), `#probes`, `#probes-apart` (the rig's own
+readings from the evening of 25 Oct: shown HLT 63.6, mash 67.5, boil kettle 60.7 °F), `#probes-off`, `#probes-none`,
+`#checking`, `#check-clock`, `#check-now`, `#check-probe`, `#check-adds`, `#check-many` and `#check-noanswer`. They
+share `pbMorning` (line 606). `graphs.js` has a flat night for them (`st.pbDay`); that is demo history only.
+
+### Moments whose pictures change
+
+Compared as your identity test does (animations off, the page clock stopped, software drawing), post20's mockup against
+this one, all 40 earlier moments at your five sizes, in the default, with `?bk=today` and with `?graphs=none`: the
+same 11 change in all three, only in the recipe column, and no others.
+- `#reset-done`: COMPARE PROBES ("before you fill") under START, STOP and NEXT STEP, so the step list starts 62 px
+  lower.
+- The 10 moments brewing by hand, `#manual`, `#timers-hand`, `#sound-allow`, `#byhand`, `#byhand-past`, `#notarget`,
+  `#notarget-hlt`, `#handhold`, `#bktarget` and `#finished`: COMPARE PROBES across the column under RECIPE BOOK and
+  BREW STEPS, where the recipe book's list gives up the room on a monitor. On a 390×844 phone these pages are 62 px
+  longer.
+
+### Checked
+
+- Every moment, all 52, at 17 sizes from 360 to 1920 px wide, 1180×820 and 1180×900 included: no word split across
+  lines, no text under its contrast minimum, with or without the pointer on it, no box over another, no script errors.
+  Under 44 px, only KEEP BOILING, SOUND and the boil power button, as documented.
+- COMPARE PROBES' sentence for 18 sets of readings: all three agreeing, exactly 2.0 °F and 10.0 °F apart (the lower
+  level), one cooler or warmer, one far out, 185 °F, all three at 32 °F (the rig's 11 Oct readings without offsets),
+  no single odd one, one or two or three with no reading, and the rig's 25 Oct readings.
+- What moves under a reaching hand, at 1920×1080, 1920×950, 1440×900, 1366×768, 1180×900, 1180×820, 960×1080 and
+  390×844: the clock set, a probe back, a probe coming right in the panel, and a late answer that passes move nothing,
+  and START ANYWAY becomes START in its place. A new failure, a late answer with one, or a probe dropping out while
+  the panel is open make the box or the panel taller, so the timers below it move down (21 to 67 px): there is more to
+  say, and nothing lands where a button was.
+- Page height with the box or the panel open: no taller than the window on any monitor 900 px tall or more.
+- Clicked through, 14 ways: START held with everything passing; let go early; START ANYWAY held and tapped; DON'T
+  START; the clock set 30 s on; COMPARE PROBES and DONE; Escape; START held with the panel open; Space held on START;
+  no answer, then START ANYWAY, then START held again (5 s of CHECKING…); a recipe started elsewhere, with the box and
+  with the panel open, and by hand; COMPARE PROBES while CHECKING…. No page errors.
+- The Impeccable detector on `brew-day.css`: the same findings as before, the intentional stripe on `.nudge.sending`,
+  and Quiet Cream, now in DESIGN.md.
+
+### Changed
+
+- `proposal\brew-day.js`, `proposal\brew-day.css`, `proposal\brew-day.html` and `proposal\graphs.js` (LF, as it was);
+  `proposal\PRE-BREW-CHECK.md`, new; and this file (this section, and two rows of the "Change by change" table).
+- `DESIGN.md`: the colours (Process Red, Running Green, Prompt Amber, Soft Steel), the Recipe Column, the Pre-brew Check
+  (new), The Held Heat Rule (START ANYWAY), The Warn, Never Block Rule (new), the Do's and Don'ts, and eight components
+  in its front matter.
+- `.impeccable\design.json`, regenerated, with two new samples (Pre-brew Check, Compare Probes);
+  `.impeccable\decisions\direction-log.md`; and the surface brief.
 
 ## Open questions about the drawing
 

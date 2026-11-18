@@ -189,6 +189,39 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .confirm div{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 :where(html.bd-page) .confirm button{min-height:54px;border-radius:var(--r);border:1px solid var(--edge);background:var(--panel-2);font:700 18px/1 var(--cond);letter-spacing:.05em}
 :where(html.bd-page) .confirm .yes{background:#f4f6f8;color:#10161c;border-color:#f4f6f8}
+:where(html.bd-page) .pbc{grid-template-rows:auto 1fr auto;align-content:stretch}
+:where(html.bd-page) .pbc .pbl{display:grid;align-content:start;gap:8px;margin:0;padding:0;list-style:none}
+:where(html.bd-page) .pbc .pbl li{display:grid;grid-template-columns:24px minmax(0,1fr);column-gap:9px;align-items:start}
+:where(html.bd-page) .pbc .mk,:where(html.bd-page) .cpv .mk{display:block;width:24px;height:24px;margin-top:-1px}
+:where(html.bd-page) .mk svg{display:block;width:100%;height:100%}
+:where(html.bd-page) .pbc .no .mk,:where(html.bd-page) .cpv.no .mk{color:var(--prompt)}
+:where(html.bd-page) .pbc .ok .mk,:where(html.bd-page) .cpv.ok .mk{color:var(--run)}
+:where(html.bd-page) .cpv.near .mk{color:var(--text-2)}
+:where(html.bd-page) .pbc .pbl p{font-size:16px;line-height:1.4}
+:where(html.bd-page) .pbc .pbl .ok p{color:#e2d6bd}
+:where(html.bd-page) .pbc .yes{position:relative;overflow:hidden}
+:where(html.bd-page) .pbc .yes small{position:relative;display:block;margin-top:4px;font:500 13px/1.1 var(--cond);letter-spacing:.04em;color:#3a4652}
+:where(html.bd-page) .pbc button[aria-disabled=true]{cursor:not-allowed;color:var(--text-3)}
+:where(html.bd-page) .pbc .yes[aria-disabled=true]{background:var(--panel-2);border-color:var(--edge)}
+:where(html.bd-page) .cpbtn{min-height:54px}
+:where(html.bd-page) .handlinks .cpbtn{grid-column:1/-1}
+:where(html.bd-page) .cmp{display:grid;grid-template-rows:auto auto auto auto 1fr;align-content:stretch;gap:10px;padding:12px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2)}
+:where(html.bd-page) .cph{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:center}
+:where(html.bd-page) .cmp h3{margin:0;font:700 20px/1.05 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+:where(html.bd-page) .cmp .cpdone{min-height:48px;min-width:96px;padding:4px 12px}
+:where(html.bd-page) .cmp p{margin:0}
+:where(html.bd-page) .cpi{font:500 15px/1.35 var(--sans);color:var(--text-2)}
+:where(html.bd-page) .cpl{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+:where(html.bd-page) .cpl li{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;row-gap:1px;align-items:center;padding:6px 12px;border:1px solid #1d2a36;border-radius:var(--r);background:var(--face)}
+:where(html.bd-page) .cpl li.odd{border:2px solid var(--prompt);padding:5px 11px}
+:where(html.bd-page) .cpl .cn{font:600 17px/1.1 var(--cond);letter-spacing:.04em;text-transform:uppercase}
+:where(html.bd-page) .cpl .cp{grid-column:1;font:500 14px/1.2 var(--cond);letter-spacing:.03em;color:var(--text-3)}
+:where(html.bd-page) .cpl .ct{font-weight:600;color:var(--prompt);text-transform:uppercase;letter-spacing:.05em}
+:where(html.bd-page) .cpl .ct.near{color:var(--text-2)}
+:where(html.bd-page) .cpl .cr{grid-column:2;grid-row:1/3;font:600 30px/1 var(--cond);color:var(--pv);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+:where(html.bd-page) .cpl .cr .u{margin-left:2px;font-size:15px;vertical-align:top}
+:where(html.bd-page) .cpv{display:grid;grid-template-columns:24px minmax(0,1fr);column-gap:9px;align-items:start;font:500 16px/1.4 var(--sans)}
+:where(html.bd-page) .cpn{font:500 14px/1.35 var(--sans);color:var(--text-2)}
 :where(html.bd-page) .steps{flex:1;min-height:0;overflow:auto;margin:0;padding:0 2px 0 0;list-style:none;display:flex;flex-direction:column;gap:6px;overscroll-behavior:contain}
 :where(html.bd-page) .ver{order:9;display:flex;flex-wrap:wrap;column-gap:14px;margin:auto 0 0;font:500 12px/1.3 var(--cond);letter-spacing:.02em;color:var(--text-3)}
 :where(html.bd-page) .ver span{white-space:nowrap}
@@ -416,6 +449,12 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .recipe[data-tedit] :is(.steps,:where(html.bd-page) .book,:where(html.bd-page) .handlinks){display:none}
 }
 @media (min-width:1180px){
+:where(html.bd-page) .recipe[data-pb] :is(.steps,:where(html.bd-page) .book,:where(html.bd-page) .handlinks){display:none}
+}
+@media (min-width:1180px){
+:where(html.bd-page) .recipe[data-pb] .cmp{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}
+}
+@media (min-width:1180px){
 :where(html.bd-page) .recipe:is([data-tedit],:where(html.bd-page) [data-asking]) .ver{display:none}
 }
 @media (min-width:1180px){
@@ -427,7 +466,7 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .rig{min-height:0;aspect-ratio:1200/470}
 :where(html.bd-page) .steps{overflow:visible}
 :where(html.bd-page) .book ul{overflow:visible}
-:where(html.bd-page)[data-timers=new] .recipe .steps,:where(html.bd-page)[data-timers=new] .recipe .book,:where(html.bd-page)[data-timers=new] .recipe .handlinks{order:2}
+:where(html.bd-page)[data-timers=new] .recipe .steps,:where(html.bd-page)[data-timers=new] .recipe .book,:where(html.bd-page)[data-timers=new] .recipe .handlinks,:where(html.bd-page)[data-timers=new] .recipe .cmp.byh{order:2}
 :where(html.bd-page)[data-timers=new] .recipe .tmrs{order:1}
 :where(html.bd-page)[data-layout=b] .recipe{order:2}
 :where(html.bd-page)[data-layout=b] .main{grid-template-columns:minmax(0,1fr)}

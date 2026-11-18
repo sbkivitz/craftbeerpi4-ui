@@ -1,5 +1,47 @@
 # Direction decision log
 
+## The pre-brew check (17 Nov 2026)
+- Brett's job, from the ideas interview's item 3 ("Later"): before a recipe starts, check that every probe reads a
+  number and that the probes agree when they're at the same temperature, that the clock is right, and that every
+  addition in the recipe has a reminder. No element or pump test: the brewer checks the switches himself. A failed
+  check warns and lets him start anyway; it never blocks. It must not claim to catch a probe stuck on an old reading.
+  The open question was when it runs, since probes only agree at the same temperature. With no answer, Brett decided:
+  three checks when START is held on a recipe, and COMPARE PROBES as its own control, used before filling.
+- Read first: ISA-18.2 (an unmet start condition isn't an alarm: it needs nothing until someone tries to start) and
+  process-control permissive displays (the unmet condition in words where the start command is, the met ones quiet);
+  NASA's electronic checklist trials (Palmer and Degani, 1991: automatic checking can stop people checking themselves,
+  so check only what can be sensed and say no more than was checked); Norman, chapter 5 (checklists catch lapses);
+  NN/g on confirmations (name the consequence, no default); WCAG 2.5.2 (lifting early does nothing).
+- Chosen (The Warn, Never Block Rule): START says CHECKING… while CraftBeerPi answers. All pass: the recipe starts, with
+  "Checked before starting: probes, clock, reminders · all passed" in LOG. Otherwise NEXT STEP's amber box under START:
+  "Not started yet: 1 check didn't pass.", all three checks in the brewer's order, each marked (a green ring and tick,
+  or an amber disc with "!" and what to do), then START ANYWAY, held as START is, and DON'T START, no default. The box
+  follows CraftBeerPi and keeps its height, so a clock set a minute after the Pi starts turns its line to passed, and
+  START ANYWAY to START, without moving anything. No sound and nothing in the title bar. A probe "gives a reading",
+  never "works". No answer in 5 s says so and offers the same two answers; a recipe started elsewhere closes the box.
+- The brewer approved it: "I didn't really get a good feel for what was implemented but I'm sure it's good. Proceed".
+  Then: "BK probe is closer to the door than the HLT/MT probes and may be a bit cooler via physics". As proposed,
+  anything over 2.0 °F named a probe as off in amber, so his good boil kettle probe would have been blamed. Revised:
+  three levels. Within 2.0 °F they agree (two DS18B20s at ±0.9 °F each can be 1.8 °F apart). Up to 10 °F apart is
+  likely where a vessel sits, said in the plain colour with the ice-water test for certainty. Further apart, a probe
+  looks off, in amber. CraftBeerPi doesn't know where vessels sit, so the words hold for any brewery.
+- He then asked: "look at my data from actual brew day with gauge". Read without touching the rig: the 25 Oct brew
+  day's raw logs and the 11 Oct probe-fault evidence, with Gauge's notes. Found: the rig's probes carry offsets, HLT
+  +0.23, mash +4.0 and boil kettle +1.0 °F. On the evening of 25 Oct, without offsets, the HLT and mash probes read
+  within 0.1 °F of each other and the boil kettle 3.8 °F lower; with offsets the mash tun shows 4 °F high, so a
+  comparison with offsets in would never agree on this rig. On 11 Oct one bad HLT branch made all three probes read
+  0 °C plus their offsets (32.2, 36.0, 33.0 °F), fresh; core now refuses that reading, so it shows as no reading.
+  So the comparison now uses each probe's own reading, without its offset (shown on its row), and a reading below
+  35 °F or above 120 °F means a probe looks off even when all three agree. The ice-water line gives the number the
+  probe's window will show: 32.0 °F plus its offset. He chose "Yes, go ahead (Recommended)".
+- Not chosen: one 2.0 °F limit (blames the door, and the offset, on every brew day); learning each probe's usual
+  difference from LOG (Brett's idea, my call: LOG keeps eight lines on the screen that wrote them, and a learned
+  difference would also learn a probe slowly going wrong); comparing with offsets in; a switch test (his own rule).
+- Not found in the data: a time when all three vessels sat empty and cold together, so nothing on the rig tests the
+  10 °F level; nothing seen comes near it.
+- He said he didn't get a good feel from the pictures, so show it to him on 8012 once Brett builds it: load a recipe,
+  press COMPARE PROBES, then hold START.
+
 ## Every line under a window on one line (17 Nov 2026, morning)
 - Found by the build agent, measuring post19: at 1180 px the boil kettle's "Below a boil · back to full power at
   207.0 °F" took two lines, and all three faceplates' AUTO/MANUAL rows sat 18 px lower until it shortened, because the

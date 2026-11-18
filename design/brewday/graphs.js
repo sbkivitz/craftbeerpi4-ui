@@ -184,6 +184,13 @@ function gDemo(scene) {
     d.mt.pv.push([hms(16, 31, 10), 146.9, "s"]);
     return d;
   }
+  /* the pre-brew moments (#prebrew, #probes…, #check…): the night before in the garage, every vessel empty and slowly
+     warming with the morning, each probe ending on its own reading (one silent for a while ends on its last); nothing
+     heated, so no SV and no OUT. DAY is the last 8 hours, as with no recipe begun */
+  if (st.pbDay) {
+    const keys = v => { const x = st.v[v].pv ?? (st.pbLast || {})[v]; return [[st.t - 8 * 3600, x - 2.4], [st.t - 3 * 3600, x - 1.1, "s"], [st.t - 900, x, "s"], [st.t, x, "h"]]; };
+    return {start: st.t - 8 * 3600, steps: [], hlt: {pv: keys("hlt"), out: [[0, E, 0]]}, mt: {pv: keys("mt")}, bk: {pv: keys("bk"), out: [[0, E, 0]]}};
+  }
   /* manual, no recipe: strike water heated by hand from 08:30 and moved to the mash tun at 09:25; the HLT refilled,
      heated by hand again, then on its own AUTO to 168 °F from 09:58 */
   if (scene === "manual") return {

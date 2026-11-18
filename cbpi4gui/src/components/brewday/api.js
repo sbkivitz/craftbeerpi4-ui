@@ -60,6 +60,9 @@ export const api = {
   // The level a switch runs at: the brewer's own, which it comes on at by hand.
   power: (actorId, power) => post(`/actor/${id(actorId)}/set_power`, { power }),
   start: () => post("/step2/start"),
+  // The pre-brew check (core 4.7.7.post45): probes, clock and reminders, changing nothing. An older CraftBeerPi answers
+  // 405. Given 30 s, so an answer that comes after the screen has stopped waiting for it (5 s) still fills the box in
+  precheck: () => call("GET", "/step2/precheck", undefined, 30000),
   stop: () => post("/step2/stop"),
   next: () => post("/step2/next"),
   // Every step back to not started; refused with 409 while a step runs.
