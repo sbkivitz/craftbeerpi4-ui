@@ -1127,6 +1127,35 @@ function pbEnd(why) {
   delete st.pend["r:check"]; st.pbOpen = false;
   lostSay(why, st.pbFor);
 }
+/* the check's box and the probes' panel keep, as they are drawn again, the tallest their contents have needed since they
+   opened at this column width, with the box's answers at its foot, so a line that gets shorter as CraftBeerPi's answers
+   change (the clock set, a probe back) moves no button under a reaching hand. pbKeep: {cls, w, h}, the box's class, the
+   recipe column's width and that height. Every height is measured without the one kept, so the box is never taller than
+   its contents have needed; none is kept across a change of the column's width, where the lines wrap anew, nor measured
+   while the fonts are still loading, which the lines lose once they come */
+let pbKeep = null;
+/* the box on screen as it is about to be drawn again: the height its contents need now, at the column's width now */
+function pbMeasure() {
+  const kp = $("#recipe .pbc, #recipe .cmp");
+  if (!kp || (document.fonts && document.fonts.status === "loading")) return null;
+  const kept = kp.style.minHeight;
+  kp.style.minHeight = "";
+  const m = {cls: kp.className, w: $("#recipe").clientWidth, h: kp.getBoundingClientRect().height};
+  kp.style.minHeight = kept;
+  return m;
+}
+/* after it is drawn again (before: pbMeasure's, from just before): the tallest of what its contents need, at this width */
+function pbFit(before = null) {
+  const kp = $("#recipe .pbc, #recipe .cmp");
+  if (!kp) { pbKeep = null; return; }
+  kp.style.minHeight = "";
+  if (document.fonts && document.fonts.status === "loading") { pbKeep = null; return; }
+  const w = $("#recipe").clientWidth, need = kp.getBoundingClientRect().height;
+  const at = m => (m && m.cls === kp.className && m.w === w ? m.h : 0);
+  const h = Math.max(need, at(pbKeep), at(before));
+  if (h > need) kp.style.minHeight = `${h}px`;
+  pbKeep = {cls: kp.className, w, h};
+}
 const VWHOSE = {hlt: "the hot liquor tank's", mt: "the mash tun's", bk: "the boil kettle's"};
 const VTHE = v => VWHOSE[v].slice(0, -2);
 /* a part of the check CraftBeerPi couldn't work out (its "error"): that part says so, and the other two still answer */
@@ -1590,15 +1619,8 @@ function renderAll() {
   const pbGone = st.pend["r:check"] || st.pbOpen ? recipeLost(st.pbFor) : null;
   if (pbGone) pbEnd(pbGone);
   if (st.recipe && !pbFresh()) st.cmpOpen = false;
-  /* the check's box and the probes' panel keep the height they have on screen as they are drawn again, with the box's
-     answers at its foot, so a line that gets shorter as CraftBeerPi's answers change (the clock set, a probe back) moves
-     no button under a reaching hand. Not across a change of the column's width, where the lines wrap anew */
-  const was = $("#recipe .pbc, #recipe .cmp"), wasK = was ? was.className : "", wasH = was ? was.getBoundingClientRect().height : 0, wasW = $("#recipe").clientWidth;
-  /* not a height measured while the fonts are still loading, which the lines lose once they come */
-  const fontsIn = !document.fonts || document.fonts.status !== "loading";
-  $("#recipe").innerHTML = recipeHTML() + verHTML();
-  const kp = $("#recipe .pbc, #recipe .cmp");
-  if (kp && wasH && fontsIn && kp.className === wasK && $("#recipe").clientWidth === wasW) kp.style.minHeight = `${wasH}px`;
+  /* the check's box or the probes' panel as it is on screen, before the column is drawn again (pbFit) */
+  const before = pbMeasure();
   /* while a timer's editor is open, the one-screen layout gives it the step list's room (by hand, the recipe book's) */
   $("#recipe").toggleAttribute("data-tedit", TIMERS === "new" && !!st.tedit);
   /* and while something in it waits for you (NEXT STEP's or RESET's question, a timer's alarm), the versions' line steps
@@ -1606,6 +1628,8 @@ function renderAll() {
   $("#recipe").toggleAttribute("data-asking", !!(st.confirmNext || st.confirmReset || st.pbOpen || st.cmpOpen || (TIMERS === "new" && st.tmrs.some(t => t.state === "done"))));
   /* the pre-brew check's box and the probes side by side take the step list's room on one screen, as a timer's editor does */
   $("#recipe").toggleAttribute("data-pb", !!(st.pbOpen || st.cmpOpen));
+  $("#recipe").innerHTML = recipeHTML() + verHTML();
+  pbFit(before);
   $("#now").innerHTML = nowHTML();
   if (TIMERS === "new") {
     /* a timer that has run out and not been answered: its row, the title bar and a frame round the whole screen pulse
@@ -2555,7 +2579,7 @@ setInterval(() => {
 
 /* ---------- scenes ---------- */
 function load(name) {
-  timers.forEach(clearTimeout); timers = []; holdEnd(false);
+  timers.forEach(clearTimeout); timers = []; holdEnd(false); pbKeep = null;
   const key = SCENES[name] ? name : "mash";
   st = SCENES[key]();
   /* the #sparge-… moments and #boil-hold run a recipe whose step 4 is a SpargeStep; every other moment keeps the MashStep */
@@ -2689,5 +2713,6 @@ window.addEventListener("hashchange", () => load(location.hash.slice(1)));
 load(location.hash.slice(1));
 new ResizeObserver(drawRig).observe($("#rig"));
 /* the faceplates' width crossing 276 px inside moves the boil power's steps and a box's keys between one row and two;
-   the recipe column going under the brewhouse, or back beside it, decides whether the steps' row keeps its place */
-new ResizeObserver(() => { if (platesTight() !== TIGHT || mainStacked() !== STACKED) renderAll(); }).observe($("#plates"));
+   the recipe column going under the brewhouse, or back beside it, decides whether the steps' row keeps its place; and
+   a new width for the recipe column, which changes with the faceplates', drops the check box's kept height (pbFit) */
+new ResizeObserver(() => { if (platesTight() !== TIGHT || mainStacked() !== STACKED || (pbKeep && $("#recipe").clientWidth !== pbKeep.w)) renderAll(); }).observe($("#plates"));

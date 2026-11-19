@@ -4363,10 +4363,14 @@ Block Rule. The mockup's moments are first in the strip: `brew-day.html#prebrew`
 - **While it is open,** poll the check every 5 s and redraw: a check that comes right turns its line to passed in its
   place, the first line to "**Every check passes now.** Not started yet.", and START ANYWAY to START. It never starts
   by itself. The mockup sets the clock 30 s on in `#check-clock` (line 2383) to show it.
-- **It keeps its height.** Before the recipe column is drawn again, `renderAll` (line 1498) measures the box or panel on
-  screen; if the new one has the same class and the column the same width, it gets that height as its `min-height`. The
-  box is a grid with rows `auto 1fr auto`, so its answers stay at its foot. So a line that gets shorter moves nothing.
-  A new failure while it is open makes it taller: there is more to say.
+- **It keeps its height.** While the recipe column keeps its width, the box or panel keeps the tallest height its
+  contents have needed, as its `min-height`: `pbMeasure` takes the height its contents need just before the column is
+  drawn again and `pbFit` just after, each with the kept height lifted, and `pbFit` keeps the tallest of those measured
+  at that width for that class (`pbKeep`). The box is a grid with rows `auto 1fr auto`, so its answers stay at its foot.
+  So a line that gets shorter moves nothing. A new failure while it is open makes it taller: there is more to say. At
+  another width of the column (a window resized, a phone turned, or the window 1×1 for a moment while Chromium takes a
+  full-page picture) the lines wrap anew and nothing is kept: the box is as tall as its contents there, and a change of
+  the column's width draws it again. No height is kept while the page's fonts are still loading (M105).
 - **No answer in 5 s:** the first line is "**Not started yet:** CraftBeerPi didn't answer the check, so nothing was
   checked. Hold START to try again.", and each check says in its place that it wasn't checked ("The probes weren't
   checked.", "The clock wasn't checked.", "The reminders weren't checked."), with the amber disc and no hidden prefix.
@@ -4806,6 +4810,76 @@ None.
 
 - `proposal\brew-day.js`; this file (this section).
 - `DESIGN.md` and `proposal\PRE-BREW-CHECK.md`: the check belongs to the recipe START was held on.
+- `.impeccable\decisions\direction-log.md`.
+
+## CraftBeerPi refuses a start for other steps (core post46): in the notes (18 Nov)
+
+What the post24 section left to you under "What the screen still can't close" is closed in core 4.7.7.post46 and
+post24, with `already_running` added at my suggestion. Now in DESIGN.md's Pre-brew Check and PRE-BREW-CHECK.md's "What
+each part needs". Nothing for the build to change, and nothing in the mockup: its demo talks to no CraftBeerPi.
+
+- START's request names the steps START was held on: `POST /step2/start` with `{"steps": [ids]}`, every step of that
+  recipe in order (`liveStart`, `on.ids`).
+- CraftBeerPi's answers (`http_start`):
+  - 409 `{"error": "recipe_changed", "name": <the loaded recipe's name, or null>, "steps": [its ids]}`, checked first:
+    the loaded recipe's steps aren't those. The same recipe loaded again from the Recipe Book counts: its steps get new
+    ids.
+  - 409 `{"error": "already_running", "name", "steps"}`: the steps match, but one runs already.
+  - 400 `{"error": "bad_body", "detail"}`: a body that is neither empty nor a JSON object. Nothing starts.
+  - No body, or a JSON object without steps: whatever is loaded starts, as before, for older screens and other pages.
+- On a 409 the screen does what it does when it sees the change itself (`startRefused`): nothing started, so LOG gets
+  no line; CHECKING… ends and the box closes; and it says once, from CraftBeerPi's answer, since it hasn't heard of
+  the change: no steps, "The recipe was cleared on another screen."; the same name, "Not started: the recipe was
+  changed on another screen."; another name, "Not started: another recipe was loaded on another screen.", also under
+  START; `already_running`, "The recipe was started on another screen."
+- A 400 is a fault between the screen and CraftBeerPi, not a brew-day event: "The recipe did not start.", as for any
+  start that fails.
+
+### Checked
+
+Your bench, on post24 and core post46: the pre-brew e2e test 314/314 (226/314 on post23), with the 29 cases and the
+four refusals; identity 433/433, no page errors; on 8000 a START naming the wrong steps got 409 `recipe_changed`, and
+nothing started. I read `http_start` in core 26a9a118 and `startRefused` in your 01719a1 against these notes.
+
+### Changed
+
+- `DESIGN.md`: the Pre-brew Check's box following CraftBeerPi.
+- `proposal\PRE-BREW-CHECK.md`: a row for START naming its steps in "What each part needs".
+- This file (this section) and `.impeccable\decisions\direction-log.md`. `brew-day.js` and the rest as in post24.
+
+## The check box's kept height belongs to the column's width (M105): in the mockup (18 Nov)
+
+Your fix in UI 6930290, now in the mockup as built, so the identity test agrees however a full-page picture lands. The
+mockup had the same fault: it measured the box with its kept height applied, and kept that height whenever the class
+and the column's width matched within one redraw, so a height from another width stayed for good. At 900×1200,
+`#check-noanswer` stayed 694.8 px tall after a 1×1 moment, where it needs 209.9 px, and `#check-many` 387.8 px after
+1280 px wide and back, where it needs 253.5 px. Now 209.9 and 253.5.
+
+- `pbKeep`, `pbMeasure` and `pbFit`, as in your screen.js, after `pbEnd`: every height measured without the one kept;
+  a height kept only at the column width and for the class it was measured at; none while the fonts are still loading.
+  `fontsIn` is gone (see "The box's height while the fonts load", above): the two functions check the fonts
+  themselves.
+- `renderAll` sets `data-tedit`, `data-asking` and `data-pb` before it draws the recipe column again, as your screen.js
+  does, so `pbFit` measures the box in the layout it is shown in: on a monitor, under `data-pb`, where a panel too tall
+  for the column scrolls in it.
+- The faceplates' ResizeObserver also draws again when the recipe column's width isn't `pbKeep`'s.
+- `load` clears `pbKeep`, as `createBrewDay` does, so a moment never starts with another's height.
+
+### Checked
+
+- Your 11 checks from test_ui_prebrew_box_height.py, run on the mockup's `brew-day.html`: 11/11. The mockup as in
+  post24: 8/11, the same three failing as on post24.
+- Identity against the mockup as in post24: 220 pictures at 1920×1080, 1280×800, 900×1200 and 390×844, none changed.
+- The pre-brew click-through and the page's height with the box or panel open, at 1920×950, 1440×900, 1180×900 and
+  1280×800: as before. The fonts held back 2.5 s while the screen draws again: no box taller than its contents, in 96
+  loads.
+
+### Changed
+
+- `brew-day.js`.
+- `DESIGN.md`: the Pre-brew Check's kept height, at the column's width. `.impeccable\design.json`: the check box's
+  description, the same.
+- This file: "It keeps its height" in the pre-brew check's notes, and this section.
 - `.impeccable\decisions\direction-log.md`.
 
 ## Open questions about the drawing

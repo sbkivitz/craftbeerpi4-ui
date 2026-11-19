@@ -1,5 +1,15 @@
 # Direction decision log
 
+## The check box keeps a height only at its own width (18 Nov 2026, night)
+- From Brett (DEFECTS M105, UI 6930290): the pre-brew check's box could stay far too tall. The screen measured it with
+  its kept height applied, so the kept height could only grow, and a moment at another width kept that width's height
+  for good. While Chromium takes a full-page picture the window is 1x1 for an instant: the recipe column was 88 px
+  wide, and the box stayed 695 px tall where it needs 210. Resizing the window, or turning a phone, did the same.
+- Taken into the mockup as built: every height measured without the kept one; a height kept only at the column width
+  it was measured at, where the box still keeps the tallest so nothing moves as it asks again; and the column's
+  attributes set before it is drawn again, as the build does. DESIGN.md's Pre-brew Check now says what the build notes
+  already said: the box keeps its height while the column keeps its width.
+
 ## The check belongs to the recipe START was held on (18 Nov 2026)
 - From Brett, after post22: his build agent added a guard so a recipe started from another screen while START says
   CHECKING… isn't started a second time when the check answers. Taken into the mockup as built (`pbDecide`).
@@ -16,6 +26,9 @@
   a clear during the hold. Other steps in its place end the check like a start or a clear, and "Not started: another
   recipe was loaded on another screen." (or "the recipe was changed", the name the same) is also shown under START,
   since nothing else on the screen shows it. Left to Brett: CraftBeerPi refusing a start for steps it no longer has.
+- Closed by Brett in core 4.7.7.post46 and post24: the start names its steps, and CraftBeerPi answers 409
+  `recipe_changed` or `already_running`; the screen then says what it says when it sees the change itself, with no
+  LOG line. `already_running` was my suggestion, so a start that did nothing isn't logged as "Recipe started".
 
 ## The pre-brew check's other answers (18 Nov 2026)
 - From Brett, after post21: his build agent chose words where CraftBeerPi can answer something the mockup had none for
