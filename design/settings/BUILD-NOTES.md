@@ -26,7 +26,7 @@ His answers, in order:
 - The strip along the top steps through moments: `#top`, `#boil`, `#find-lid`, `#find-key`, `#find-none`, `#changes`, `#saving`, `#saved`, `#failed`, `#leave`, `#cloud`, `#plugin`, `#offline`. `?bare` hides the strip.
 - Everything on the page comes from two tables at the top of `settings.js`. With option A they are the page's catalogue: port them as they are to `cbpi4gui\src\components\settings\catalog.js`, exporting `M` and `G` (your answer, 11 Nov).
   - `M`, one entry per setting: `n` plain name, `h` what it does, `syn` extra words for FIND, `ctl` control (when its type isn't enough), `order` and `lab` (option order and labels), `blank` (what a blank choice is called), `unit`, `restart` (`"on"`: only turning it on needs a restart; `"next"` and `"any"`: any change does), `dep` (its main switch and the value that makes it count), `adv`, `secret`, `cloud` and `hc` (InfluxDB Cloud's names and wording), `calc` (a worked-out line under it), `keep` (labels keep their case).
-  - `G`, the nine groups in brewing order: `id`, `name`, `sum` (one line under the heading), `see` (a setting from another group shown here), and `parts`, each with an optional heading `h` and its `rows` in order.
+  - `G`, the groups in brewing order: `id`, `name`, `sum` (one line under the heading), `see` (a setting from another group shown here), and `parts`, each with an optional heading `h` and its `rows` in order. Nine, and a tenth, Phone alerts, where its plugin is installed: see "Phone alerts" at the end.
 
 ### The frame
 
@@ -193,3 +193,148 @@ Your answer (11 Nov): you fix 1 in the build, check 3 then, and take 2 to Amber,
 9. Your note (16 Nov, through Amber): SAVE's second line was 4.0:1 on Selection Blue (3.6:1 under the pointer), and a row's UNDO was a 24 px box that only an invisible `::before` made larger. As on the Hardware page, SAVE's second line is now white (`.cmd.go small`), and UNDO is a 44 px box (`.lnk`, with no `::before`). Measuring every moment found one more of the same kind: during FIND, a group with nothing found had its summary at 3.6:1 (`#6f8194`). It is now Dim Steel (`.gi.none .d`, 5.1:1), as the Hardware page's list has it.
 10. Amber's decision (16 Nov), for both pages: under the pointer, Dim Steel text in a line or button turns Soft Steel, as under Accessibility. The Hardware rule's `.cmd.go.idle` part is left out: Settings greys SAVE when nothing has changed, so it has no idle SAVE for it to match. Moving the pointer onto everything found one more: a greyed SAVE (nothing changed, or no connection) turned Selection Blue under the pointer, its grey words at 1.6:1, because `.cmd.go:hover` outweighs `.cmd[aria-disabled=true]`. It now stays grey (`.cmd.go:not([aria-disabled=true]):hover`). And, as on the Hardware page, a control sits 10 px above its status line (`.row .ct`), so a row's UNDO stops at the control's edge instead of reaching 2 px into it.
 11. Amber's decision (16 Nov), for every page: nothing changes under the pointer on a greyed control. The title bar's ALL OFF, greyed while the connection is lost, lit red under the pointer; it now stays as it is (`.alloff:not([aria-disabled=true]):hover`), as on the brew-day screen. That is a frame rule, so `port.mjs` leaves it out: the built page takes it from `components\brewday\brewday.css` (line 32 at 32154c8), with the brew-day screen's own change. And a number box's placeholder, where one is given, is Dim Steel at full strength (`.numf input::placeholder`, 7.2:1 on the box, where the browser's own grey is 4.4:1), as on the Hardware page. No box on this page has a placeholder, so nothing on screen changes; the rule keeps the box the same on both pages.
+
+## Phone alerts: designed 18 Nov, approved by the brewer on 20 Nov
+
+For cbpi4-PushOver 0.0.10.post2 (a8dfe9d, branch `phone-alerts`) with core 4.7.7.post47, as 8000 and 8012 run them. The brewer wasn't available for questions on 18 Nov, so seven choices were mine; `GROUPING.md` lists them under "Phone alerts: the choices you approved (20 Nov)".
+
+His answer on 20 Nov, when you showed him the mockup at `#phone-on` and asked whether he approved the seven choices:
+
+- He picked "Yes, but I want to change something". Asked what, he wrote: "Alerts look good - eager to test ntfy". So the design stands as it is.
+- The first real ntfy alert to his phone: "Let's do this later".
+
+What sets the wording, from the brewer through you:
+
+- "I don't like paying for things that are otherwise available for free. Let's build out ntfy." So ntfy comes first and is the default; Pushover is the alternative.
+- "I don't really plan on leaving the brewery on a brew day...." So the group is a second signal, a buzz for when he's across the room or the boil is loud, and it says the screens stay the alarm. It doesn't offer brewing from elsewhere.
+- No ntfy server of his own: `ntfy_server` stays at https://ntfy.sh, under Optional.
+
+### Where it is
+
+- Group 7 of 10, Phone alerts, between Timers and alerts and Logs and data. It shows only where `phone_alerts_service` exists (`needs` in `G`), so a CraftBeerPi without the plugin keeps its nine groups, numbered as now.
+- Where `phone_alerts_service` doesn't exist, any of the group's settings that do exist show as settings the page doesn't know: by key, with CraftBeerPi's own description, under their plugin's name, as on the page today. The original cbpi4-PushOver (0.0.10, on PyPI) has two of them under the same names, `pushover_user` and `pushover_token`, and no `phone_alerts_service`. Until 20 Nov the mockup claimed both for the hidden group, so they showed nowhere. Now `away(k)` is true for a setting that only a hidden group lists: `meta()` ignores `M` for it, `partsOf()` lists it under its plugin (`known()` in place of `KNOWN`), and `rowHTML()` gives it no step band.
+- The strip's second line steps through eight moments: `#phone` (not set up), `#phone-made` (MAKE ONE pressed: a topic shown and spelled out, not saved), `#phone-on` (saved and on), `#phone-sent` (a test alert sent), `#phone-refused` (ntfy.sh refused the topic), `#phone-unreachable` (a timer test that couldn't reach ntfy.sh), `#pushover` (Pushover chosen, a timer test sent) and `#pushover-nophone` (Pushover took it, but no phone is logged in).
+- `settings-data.js` now has the 12 settings and `cbpi4-PushOver_update` as 8012 serves them (69 settings), with the secrets blank.
+
+### The plate, top to bottom
+
+1. **The header**: the group's name and summary, and a lamp with words for whether alerts are on, by what CraftBeerPi has saved (`phoneState()`): "On · through ntfy.sh" (the saved server's host), "On · through Pushover", "Off · no topic yet", "Off · needs the user key and the API token" (or only the one missing), "Off · the topic can't be used", "Off · the server address can't be used". The same words are the group's line in the list on the left, in place of its first four names. These follow the plugin's own rules, so the lamp is lit exactly when the plugin would send.
+2. **Send them through** (`phone_alerts_service`): ntfy and Pushover as two segments, with a line under them about the chosen one (`means`): what it costs, and what it can do on an iPhone.
+3. **Turning it on**: the chosen service's steps, numbered. ntfy: 1 Get the ntfy app, 2 Topic, 3 Subscribe to the topic, 4 Send a test. Pushover: 1 A Pushover account and app, 2 User key, 3 API token, 4 Critical Alerts, for timers, 5 Send a test. The steps that aren't settings are rows of their own, from the group's `how`, with links that open in a new tab (`go`), or the test.
+4. **Optional** ("most brewers leave these"), ntfy only: Tapping an alert opens (`ntfy_link`), Access token (`ntfy_token`) and ntfy server (`ntfy_server`), the last two marked Advanced.
+5. **What reaches your phone**: the five switches. Until phone alerts are set up on the page, they're greyed and the part's heading says "used once phone alerts are set up"; then "each one beeps on the brew-day screen too". Run-out timers has a help line for each service (`hs`). The part ends with what is never sent: "Not sent: the alarms the brew-day screen raises by itself, such as No connection, a command that didn't go through, or ALL OFF not finishing."
+
+### Rows and controls
+
+- The other service's rows are hidden (`.row.other`), with their values kept. FIND still finds them, greyed, with "Used when phone alerts go through Pushover." A part with none of the chosen service's rows is hidden too. Choosing the other service redraws the plate at once: steps renumbered, help lines and notes changed.
+- A step's number sits on a dark band at the left of its row (`.row.step`, `.row .sn`), like the numbers in the group list. Screen readers hear "Step 2".
+- The four secrets (topic, access token, user key, API token) are masked, with SHOW and HIDE, as InfluxDB's password is. A blank one says what that means on its status line (`unset`): "No topic: phone alerts are off", "None: ntfy.sh needs none".
+- The topic has MAKE ONE ("a random one", or "a new one, in its place") and COPY ("to paste in the app"). MAKE ONE puts a new topic in the box, shown, as a change that SAVE saves. While the topic is shown, it is also spelled out in fours under the box ("To type it": `cbpi-` `k7mq` `3xa9` …), for typing it into the phone. Screen readers skip that line, since the box has the same.
+- Tapping an alert opens has THIS CRAFTBEERPI, which fills in the address the page came from (`location.origin + "/"`).
+- Links out (the App Store, pushover.net) are buttons with a small arrow-out mark, and "(opens in a new tab)" for screen readers.
+
+### What SAVE checks
+
+Blocking, on a changed value (`invalid()`: the row turns red and SAVE waits):
+
+- a topic that isn't 1 to 64 letters, digits, - and _: "A topic can hold only letters, digits, - and _." or "A topic can be 64 characters at most."
+- a link or a server that doesn't start http:// or https://: "A web address starts with http:// or https://."
+
+These are the plugin's own rules (`TOPIC` and `LINK` in its `__init__.py`), so nothing saved here is refused by it.
+
+Notes that don't block (`warnOf()`, on the row's grey line):
+
+- a topic under 16 characters: "Short topics are easy to guess: MAKE ONE gives a long, random one."
+- a Pushover key that isn't 30 letters and digits: how many it has, or that it has other characters.
+- a link to the computer the page is open on (localhost, 127.x, [::1]): the phone can't open it.
+- a server other than https://ntfy.sh: an iPhone gets its alerts late, or not at all, unless that server passes them on to ntfy.sh.
+- a topic, server or link already saved (some other way) that the plugin can't use: what is wrong with it.
+
+### The test
+
+- Two buttons in the Send a test step: TEST ALERT ("like a hop alert") and TEST TIMER ("like a run-out timer"). They ask `POST /phone-alerts/test?kind=alert` and `?kind=timer`.
+- The test goes through what CraftBeerPi has saved, so the buttons are greyed, with the reason as their second line (`testOff()`), when:
+  - there is no connection ("no connection");
+  - the page's values would set alerts up but aren't saved, or a phone alerts setting other than the five switches has a change not saved ("save first");
+  - it isn't set up ("set up first").
+
+  Pressing a greyed one says the whole reason, such as "Fill in the topic and SAVE first: the test uses what CraftBeerPi has saved."
+- While it waits: the pressed button shows the marching stripe and "Sending…" over "up to 10 s", both are greyed, and the step's status line says "Sending through ntfy.sh…". The buttons change in place (`paintTest()`), so the pressed one keeps its focus.
+- The answer goes on the step's status line, with what to do under it, and the service's own words (`detail`) under that in small type. It also goes in the last-event line, "Phone alerts: test alert sent through ntfy" (confirmed) or "Phone alerts: test timer alert didn't go, couldn't reach ntfy.sh" (failed), and screen readers hear "The test is sent" or "The test didn't go".
+
+The answers (`testWords()`), as the status line, then what it says under it:
+
+- **200, an alert, ntfy**: "✓ Sent 14:32 · through ntfy.sh". "Not on your phone within a minute? The topic in the ntfy app must be exactly the one above, and the app's notifications must be allowed: on the iPhone, Settings, Notifications, ntfy. If it still doesn't come, remove the topic in the app and add it again."
+- **200, a timer, ntfy**: "✓ Sent 14:32 · as a run-out timer's alert". "A real one comes again every 2 minutes, 10 more times at most, until you answer the timer on a screen. On an iPhone it makes a sound only with the ringer on and no Focus."
+- **200, an alert, Pushover**: "✓ Sent 14:32 · through Pushover". "Not on your phone within a minute? The Pushover app must be logged in to the same account, with its notifications allowed."
+- **200, a timer, Pushover**: "✓ Sent 14:32 · as a run-out timer's alert". "Pushover repeats it once, in about a minute, then it stops. With the phone on silent, it sounds only with Critical Alerts on for emergency priority (step 4)."
+- **502 refused, field topic**: "Didn't send · ntfy.sh refused the topic". "Someone else may have reserved it there. MAKE ONE for a new topic, subscribe to it in the ntfy app, SAVE, and test again."
+- **502 refused, field token, ntfy**: "Didn't send · ntfy.sh refused the access token". "Check the token, or leave it blank: ntfy.sh needs none."
+- **502 refused, field user**: "Didn't send · Pushover doesn't know the user key". "Copy it again from your dashboard at pushover.net: 30 letters and digits."
+- **502 refused, field token, Pushover**: "Didn't send · Pushover doesn't know the API token". "Copy it again from CraftBeerPi's application at pushover.net/apps."
+- **502 refused, no field**: "Didn't send · ntfy.sh refused it" (or Pushover). "What it said is below."
+- **502 no_devices**: "Didn't arrive · no phone is logged in to this Pushover account". "Log in to the Pushover app on your iPhone with the same account, then test again."
+- **429 limit, ntfy**: "Not sent · ntfy.sh's limit for this network". "ntfy.sh takes 250 alerts a day from one internet address, and only a few a minute. Try again in a few minutes. If this comes back, today's 250 are used up, and alerts are lost until they free up."
+- **429 limit, Pushover**: "Not sent · Pushover's monthly limit". "Pushover takes 10,000 alerts a month for each account, and refuses more until the 1st."
+- **504 unreachable**: "Didn't send · couldn't reach ntfy.sh" (or Pushover). "Check the Pi's internet. Without it, phone alerts are lost; the screens still alarm."
+- **409 not_set_up**: "Didn't send · not set up", and what `testOff()` would say.
+- **No answer from CraftBeerPi** (the request failed, or none came): "Didn't send · no answer from CraftBeerPi". "The test may or may not have gone. Check the connection, then try again." The plugin gives up on the service after 10 s, so wait a little longer than that, say 15 s, before saying so.
+
+A 400 can't come from these two buttons; it would read "Didn't send · it didn't go". A refusal that names a setting also marks that row red: "Refused in the test at 14:32 · see Send a test". That goes when the row is changed. Saving any setting the test goes by (`TESTED`: the service, the topic, the access token, the server and the two Pushover keys) clears the last answer and the red row, since they're out of date then.
+
+### What it needs from CraftBeerPi
+
+Nothing new. Plugin 0.0.10.post2 has both endpoints:
+
+- `POST /phone-alerts/test?kind=alert|timer`, answering `{sent, reason, field, detail, service, kind}`, as above.
+- `GET /phone-alerts/topic`, answering `{"topic": "cbpi-…"}`: use it for MAKE ONE. The mockup makes the topic in the page (`newTopic()`: the same 24 characters from the same 32, lower case and without l, o, 0 and 1) only because a page opened from a file has no CraftBeerPi to ask.
+
+The 12 settings save with SAVE like any other. Because the catalogue names them, they don't show under Plugins, and `cbpi4-PushOver_update` (source `hidden`) stays hidden. The rig needs the plugin before the group shows there.
+
+### COPY over plain http
+
+The Pi serves the page over http, where browsers don't offer `navigator.clipboard` (it needs https, or the computer the browser runs on). So COPY uses it where it can, and otherwise copies from a hidden text box with `document.execCommand("copy")`, which browsers still allow on a press (`legacyCopy()`). If neither works, it says "This browser won't copy here: SHOW the topic, then select it and copy it." After a copy, its second line reads "copied" for 2 s.
+
+### What it can't do, and says so on the page
+
+- ntfy on an iPhone sounds only with the ringer on and no Focus, and nothing repeats until acknowledged: each repeat of a run-out timer's alert is another notification, and they stay on the phone after he answers on a screen. The service's line, the timers' help and the timer test's answer say so.
+- The iPhone's ntfy app can't be subscribed from a link or a QR code: it has no URL scheme or universal link (ntfy-ios 1.7.0). The topic has to be typed or pasted, hence COPY and the spelled-out topic. Topics are case-sensitive and the app's topic box doesn't capitalise, so MAKE ONE's topics are lower case.
+- Two open ntfy iPhone bugs the test can bring to light: notifications that appear only once the app is opened (ntfy issue #2117; removing and re-adding the topic usually fixes it, which the sent answer suggests), and no sound on iOS 26.2 and later (#1562).
+- What the plugin can't send: the alarms the brew-day screen raises by itself. The last part's closing line says so.
+
+### For page.js
+
+`port.mjs` carries the catalogue (the 12 entries in `M`, and the group with its `how` steps in `G`) and the CSS without any change to it. The logic is in `settings.js`, to build in `page.js`:
+
+- after `ELSEWHERE`: `EXT`, `HOWS`, `isHow`, `KNOWN`, `NEEDS`, `away()`, `known()`, `STEPS`, `PHONE`, `SVC`, `TESTED`, `svcOf`, `svcNow`, `TOPIC_OK`, `WEB`, `hostOf`, `ntfyHost`, `FIELD`, `phoneState()` and `phoneReady()`;
+- `meta()` (falls back to `HOWS`, and ignores `M` for a setting `away()` marks), `partsOf()` (`known()`), `gs()` (leaves out a group whose `needs` setting is missing), `invalid()`, `warnOf()`, `helpOf()` (`hs`) and `shown()` (`blank`, `other`);
+- drawing: `ctlHTML()` (the `means` line; MAKE ONE, COPY and the spelled-out topic; THIS CRAFTBEERPI; links out), `rowHTML()` (the step's band, not for a setting `away()` marks), `howHTML()`, `plateHTML()` (`data-steps`, `data-pl` and `data-off`, the lamp, `foot`), `giHTML()` (the lamp's words; FIND counts the steps too) and `stHTML()`;
+- the test: `testOff()`, `testHTML()`, `testWords()`, `eventOf()`, `settleTest()`, `runTest()` and `paintTest()`. `WILL` and the 1.2 s wait stand in for the plugin's answer;
+- `newTopic()`, `legacyCopy()`, `copyText()`, `applySvc()`, `paintRow()` (greyed by `on` and `svc`; the notes, `hs`, `means`, the spelled-out topic and the test's lines), `paintAll()`, `paintChrome()` (the lamp, the test), `paintFind()`, `setDraft()`, `settle()`, `rebuild()`, and the click handler's `data-test`, `data-make`, `data-copy` and `data-here`.
+
+`port.mjs`'s comments and `catalog.js`'s heading say `G` has nine groups; it has ten now, the tenth shown only with the plugin.
+
+### The CSS
+
+A block before "searching" in `settings.css`: `.row.step`, `.row .sn`, `.row.other` and `.part.other`, `.phd .pst` and `.pst`, `.part .foot`, `.gos` and `.tools`, `.cmd.out`, `.cmd .ext`, `.spell`, `.tests`, `.tfx` and `.det`; the 701–1179 px and phone rules for `.row.step` and `.row .sn`. No new colours or tokens: the band is the group list's, the sizes are the page's own.
+
+Two changes reach the page without the plugin too, in the mockup and the build alike:
+
+- At 820 px tall or less, the list's rows sit 2 px apart instead of 5, with 6 px of padding above and below it, so ten groups fit at 1366×768 (the last ends at 743 of 749 px). Your pictures at 1366×768 and 1024×768 change by those few pixels.
+- From 701 to 1179 px wide, FIND and SAVE stay at the top of the window, and a group opened from the list landed with its heading under them: the heading at 15–42 px, under a 72 px bar, so its name, number and summary (and Phone alerts' lamp) were hidden. The built page does the same today, for every group. Now `.plate{scroll-margin-top:80px}`, at those widths only, lands each group 8 px under the bar, as a monitor's pane does (`scroll-padding-top:8px`). Checked at 701×900, 768×1024, 1024×768, 1119×1440 and 1179×820: every heading lands below the bar, and the list still marks the group opened. Your pictures of `#boil` and `#plugin` at 1024×768 and 768×1024 change: the group sits 69 to 80 px lower in the window.
+
+### Checked
+
+- My 51 checks of the phone alerts (`phonecheck.py`), at 1920×950 and on a 390×844 touch phone: steps and their numbers for each service, the lamp and the list's line, MAKE ONE, COPY, SHOW, the spelled-out topic, THIS CRAFTBEERPI, the checks and notes, each test answer, the red row after a refusal, FIND finding the hidden service's rows, the keyboard on the service choice, and a CraftBeerPi without the plugin (nine groups). All pass, with no script errors.
+- On 20 Nov, after `away()`: all 21 moments, at 1920×1080 and on a 390×844 phone, are byte-for-byte the same page as before it, and so is a CraftBeerPi with no phone settings at all. With the original plugin's two settings, the page has nine groups, and Plugins lists "cbpi4-PushOver" ("named by their keys") with both as text boxes and CraftBeerPi's descriptions. FIND "pushover" finds them, and a change to either saves, on a monitor and on a phone, with no script errors. `phonecheck.py` and `smoke2.py` pass. The frame against `brew-day.html?bare#mash`, whose `brew-day.js` changed late on 18 Nov: at the 13 sizes with the 6 addresses, the comparison reads line for line as it did on 18 Nov.
+- Also: a topic or server saved some other way that the plugin can't use turns the lamp off with the reason, marks the row, and greys the test with what to do; putting it right on the page changes "set up first" to "save first". Switching off one of the five switches doesn't hold up the test; changing the link does, since the test alert carries it.
+- The 21 moments (the 13 and the 8) at seven sizes: nothing to press under 44 px, no text under its contrast minimum, nothing wider than the window or past its plate's edge, and no script errors. Each of the 49 UNDO boxes, scrolled to the middle, overlaps nothing.
+- The pointer moved onto every button, link, box and group line in those views, 14,530 times: no text under its contrast minimum, no greyed control that changes, and the open group keeps its colours. All 7,248 controls in the 21 moments (on the phone, and at 1366×768, 1024×768 and 768×1024), each scrolled to the middle, can be reached at their centre and edges; the only things ever over them are the phone's save bar and tabs, before scrolling.
+- The frame against `brew-day.html?bare#mash`, at the 13 window sizes with the 6 addresses, drawn without the graphics card: every part's position and size, computed styles, words and attributes match. So do the pixels, apart from a few at rounded corners at 1024, 1179, 700 and 390 px wide: 15 to 31 pixels, 1 or 2 shades apart, and 9 pixels at most 22 apart at the last tab's corner at 1024×768. The 16 Nov files in your `design\settings` show exactly the same, and every computed property of the frame's parts is the same on both pages, so they come from how the browser draws each whole page, not from the frame. They are within the 24 shades I've counted as drawing noise since 11 Nov.
+- The long Brewery name box, the sound help and the clicked-through checks still pass.
+- `port.mjs` (main's, unchanged) on a scratch copy: main's mockup files give exactly the product's `catalog.js`, `settings.css`, `settings-frame.css` and `demo-data.js`. Mine give a `catalog.js` that loads, with 65 settings in `M` for °C and °F and ten groups, every row of the phone group named in `M` or its `how`; a `settings.css` with the new rules and the laptop-height change; and the same `settings-frame.css`.
+- Impeccable's checker: nothing new. Its notes are the ones above (the two stripes, and colours and sizes from `brew-day.css` and the tokens), which the new rules reuse.
+
+### Changed in the worktree, all uncommitted
+
+`proposal\settings.js`, `settings.css`, `settings.html`, `settings-data.js`, `GROUPING.md` and this file.
