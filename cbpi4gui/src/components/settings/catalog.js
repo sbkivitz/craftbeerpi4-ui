@@ -4,7 +4,8 @@
 // The page's catalogue, kept in the web page: M, what it knows about each setting - its plain
 // name n, what it does h, extra words for FIND syn, its control ctl, option order and labels, what blank means,
 // unit, restart, its main switch dep, adv, secret, InfluxDB Cloud's names cloud and hc, a worked-out line calc, keep -
-// and G, the nine groups in brewing order. A setting it doesn't list still shows, by its key (page.js).
+// and G, the ten groups in brewing order, the tenth, Phone alerts, shown only where its plugin is installed (needs).
+// A setting it doesn't list still shows, by its key (page.js).
 
 /* M, for a page whose TEMP_UNIT is °F (F true) or °C */
 export function catalog(F) {
@@ -70,7 +71,24 @@ export function catalog(F) {
 
     MIN_MEMORY: {n: "Warn when free memory falls below", unit: "MB", h: "CraftBeerPi needs about this much to run properly."},
     max_dashboard_number: {n: "Free-form dashboards", ctl: "select", h: "How many the Dashboard page offers."},
-    slow_pipe_animation: {n: "Slow the dashboard's pipe animation", h: "At full speed it can take nearly all of the Pi's CPU."}
+    slow_pipe_animation: {n: "Slow the dashboard's pipe animation", h: "At full speed it can take nearly all of the Pi's CPU."},
+
+    /* phone alerts (the cbpi4-PushOver plugin). svc: shown only while that service is chosen; means: a line under the
+       control saying what the chosen value means; hs: what it does, through each service; on: used once phone alerts are
+       set up; topic, link, len: checks on what is typed; blank and other: what a status line calls an empty or a hidden
+       value */
+    phone_alerts_service: {n: "Send them through", order: ["ntfy", "Pushover"], keep: 1, h: "Where CraftBeerPi sends its phone alerts. Either way they leave from the Pi, over the internet: if the Pi or its internet stops, so do they, and the screens show No connection.", means: {ntfy: "Free, with no account. On an iPhone its alerts make a sound only with the ringer on and no Focus.", Pushover: "$4.99 once, after a 30-day trial. Its timer alerts repeat until you acknowledge them on the phone, and can sound with it on silent."}, syn: "phone iphone push notification notifications ntfy pushover service app"},
+    ntfy_topic: {n: "Topic", svc: "ntfy", secret: 1, topic: 1, blank: "no topic", other: "another topic", unset: "No topic: phone alerts are off", h: "The ntfy app on your phone shows the alerts sent to this topic, so it must be the same here and in the app. On ntfy.sh the topic is the password: anyone who knows it can read your alerts. Keep it long, random and to yourself.", syn: "ntfy channel subscribe password secret"},
+    ntfy_link: {n: "Tapping an alert opens", svc: "ntfy", link: 1, blank: "the ntfy app", h: "A web page your phone opens when you tap an alert, such as the brew-day screen on your home network. Blank opens the ntfy app.", syn: "click link url address web page brew day"},
+    ntfy_token: {n: "Access token", svc: "ntfy", secret: 1, adv: 1, blank: "none", other: "another token", unset: "None: ntfy.sh needs none", h: "Only for a topic reserved with a paid ntfy.sh account: a token starting tk_. Otherwise leave it blank.", syn: "tk_ bearer reserved account"},
+    ntfy_server: {n: "ntfy server", svc: "ntfy", adv: 1, server: "https://ntfy.sh", h: "Leave it at https://ntfy.sh. An iPhone gets its ntfy alerts through ntfy.sh, even from a server of your own.", syn: "url upstream self-hosted host"},
+    pushover_user: {n: "User key", svc: "Pushover", secret: 1, len: 30, other: "another key", h: "On your dashboard at pushover.net once you've logged in, and in the Pushover app's settings: 30 letters and digits.", syn: "pushover user key account"},
+    pushover_token: {n: "API token", svc: "Pushover", secret: 1, len: 30, other: "another token", h: "Create an application for CraftBeerPi at pushover.net/apps/build, then copy its API Token/Key: 30 letters and digits.", go: [["pushover.net", "your applications", "https://pushover.net/apps/build"]], syn: "pushover api token application key"},
+    phone_alerts_timers: {n: "Run-out timers", on: 1, hs: {ntfy: "An urgent alert, sent again every 2 minutes, 10 more times at most, until you answer the timer on a screen. Each one stays on the phone after you answer.", Pushover: "An emergency alert, repeated every minute until you acknowledge it on the phone, for up to 50 minutes. Answering the timer on a screen stops it too."}, syn: "timer alarm run out emergency urgent repeat"},
+    phone_alerts_additions: {n: "Boil additions", on: 1, h: "The boil's hop and first-wort reminders: one alert each.", syn: "hop hops addition reminder first wort"},
+    phone_alerts_questions: {n: "Questions", on: 1, h: "When CraftBeerPi asks something and waits for your answer on a screen: one alert each.", syn: "question prompt asks"},
+    phone_alerts_errors: {n: "Errors", on: 1, h: "Such as a step that failed, or an element left on by hand past its target: one alert each.", syn: "error fault failed"},
+    phone_alerts_warnings: {n: "Warnings", on: 1, h: "The warnings the brew-day screen beeps for: one alert each.", syn: "warning caution"}
   };
   return M;
 }
@@ -88,6 +106,24 @@ export const G = [
     parts: [{h: "In imported recipes", rows: ["steps_whirlpool_temp", "steps_cooldown", "steps_cooldown_temp", "steps_cooldown_sensor", "steps_cooldown_actor"]}]},
   {id: "timers", name: "Timers and alerts", sum: "What you see and hear while you brew",
     parts: [{rows: ["BREWDAY_TIMER_NAMES", "BREWDAY_ALARM_SOUND", "PLAY_BUZZER", "NOTIFY_ON_ERROR"]}]},
+  /* only where the phone alerts plugin is installed (needs). Its index line and header say whether alerts are on
+     (state). how: the setup steps that aren't settings, each a row of its own: go, links to open in a new tab; test,
+     the test's buttons. A part with steps numbers its rows, the chosen service's only; off: what a part's note says
+     while phone alerts aren't set up; foot: a closing line under a part */
+  {id: "phone", name: "Phone alerts", needs: "phone_alerts_service", state: true,
+    sum: "A buzz on your phone when the brew-day screen beeps, for when you're across the room. The screens stay the alarm.",
+    how: {
+      how_ntfy_app: {svc: "ntfy", n: "Get the ntfy app", h: "Free, from the App Store, on your iPhone. When it asks, allow its notifications.", go: [["App Store", "the ntfy app", "https://apps.apple.com/us/app/ntfy/id1625396347"]], syn: "install download iphone"},
+      how_ntfy_subscribe: {svc: "ntfy", n: "Subscribe to the topic", h: "In the ntfy app, tap +, enter the topic exactly as it is above, and tap Subscribe; leave Use another server off. With this page open on the phone, COPY the topic and paste it in.", syn: "subscribe app"},
+      how_pushover_account: {svc: "Pushover", n: "A Pushover account and app", h: "Sign up at pushover.net, or in the Pushover app on your iPhone, and allow its notifications. Free for 30 days from adding the phone, then $4.99 once, in the app.", go: [["pushover.net", "sign up", "https://pushover.net/signup"], ["App Store", "the Pushover app", "https://apps.apple.com/us/app/pushover-notifications/id506088175"]], syn: "account sign up install trial price"},
+      how_pushover_critical: {svc: "Pushover", n: "Critical Alerts, for timers", h: "So a run-out timer sounds with the phone on silent: in the Pushover app's settings, turn on Critical Alerts for emergency priority. iOS asks once to allow them.", syn: "critical silent mute focus emergency"},
+      how_test: {n: "Send a test", test: 1, h: "It goes through what CraftBeerPi has saved, whatever the switches under What reaches your phone say, and should be on your phone in a few seconds.", syn: "test try check send"}
+    },
+    parts: [{rows: ["phone_alerts_service"]},
+      {h: "Turning it on", steps: 1, rows: ["how_ntfy_app", "ntfy_topic", "how_ntfy_subscribe", "how_pushover_account", "pushover_user", "pushover_token", "how_pushover_critical", "how_test"]},
+      {h: "Optional", pl: "most brewers leave these", rows: ["ntfy_link", "ntfy_token", "ntfy_server"]},
+      {h: "What reaches your phone", pl: "each one beeps on the brew-day screen too", off: "used once phone alerts are set up", rows: ["phone_alerts_timers", "phone_alerts_additions", "phone_alerts_questions", "phone_alerts_errors", "phone_alerts_warnings"],
+        foot: "Not sent: the alarms the brew-day screen raises by itself, such as No connection, a command that didn't go through, or ALL OFF not finishing."}]},
   {id: "logs", name: "Logs and data", sum: "What CraftBeerPi keeps and sends",
     parts: [{h: "Log files", rows: ["CSVLOGFILES", "SENSOR_LOG_MAX_BYTES", "SENSOR_LOG_BACKUP_COUNT", "PID_LOGGING"]}, {h: "InfluxDB", rows: ["INFLUXDB", "INFLUXDBCLOUD", "INFLUXDBADDR", "INFLUXDBNAME", "INFLUXDBUSER", "INFLUXDBPWD", "INFLUXDBMEASUREMENT"]}, {h: "MQTT", rows: ["MQTTUpdate"]}]},
   {id: "plugins", name: "Plugins", sum: "Each plugin's settings, under its name", plugins: true},

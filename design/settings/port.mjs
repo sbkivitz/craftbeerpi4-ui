@@ -4,9 +4,9 @@
 //
 // It writes, under cbpi4gui/src/components/settings:
 //
-// - catalog.js: the mockup's two tables, M (what the page knows about each setting) and G (the nine groups), with
-//   PLUGIN, PLUGIN_ORDER and ELSEWHERE, as they are in settings.js. M names temperatures in TEMP_UNIT, so it comes
-//   from catalog(F): F is true when TEMP_UNIT is °F.
+// - catalog.js: the mockup's two tables, M (what the page knows about each setting) and G (the ten groups, the tenth,
+//   Phone alerts, shown only where its plugin is installed), with PLUGIN, PLUGIN_ORDER and ELSEWHERE, as they are in
+//   settings.js. M names temperatures in TEMP_UNIT, so it comes from catalog(F): F is true when TEMP_UNIT is °F.
 // - demo-data.js: settings-data.js (the simulator's settings, read once), for ?demo=, as CFG and THINGS.
 // - settings.css: the page's own rules, for its shadow root. The page draws inside a shadow root so the brew-day
 //   screen's rules for .plate, .seg, .note, .st and the rest (the same names, other things) can't reach it, and its
@@ -53,7 +53,8 @@ const write = (name, text) => { writeFileSync(join(OUT, name), text); console.lo
 // The page's catalogue, kept in the web page: M, what it knows about each setting - its plain
 // name n, what it does h, extra words for FIND syn, its control ctl, option order and labels, what blank means,
 // unit, restart, its main switch dep, adv, secret, InfluxDB Cloud's names cloud and hc, a worked-out line calc, keep -
-// and G, the nine groups in brewing order. A setting it doesn't list still shows, by its key (page.js).
+// and G, the ten groups in brewing order, the tenth, Phone alerts, shown only where its plugin is installed (needs).
+// A setting it doesn't list still shows, by its key (page.js).
 
 /* M, for a page whose TEMP_UNIT is °F (F true) or °C */
 export function catalog(F) {
