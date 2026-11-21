@@ -24,9 +24,9 @@
 // - Leaving by a tab, MORE's list, OPEN SYSTEM or OPEN HARDWARE with changes not saved asks first, in the note at the
 //   top; closing or reloading the browser tab can only get the browser's own question.
 // - TRY plays the brew-day screen's own alarm (brewday/alarm.js).
-// - Phone alerts ask the cbpi4-PushOver plugin itself: MAKE ONE puts in the topic GET /phone-alerts/topic makes, and TEST
-//   ALERT and TEST TIMER ask POST /phone-alerts/test?kind=alert or ?kind=timer, waiting TEST_MS for the answer. With
-//   ?demo= the test only pretends, with the answer its scene gives (WILL), as SAVE does.
+// - TEST ALERT and TEST TIMER ask the cbpi4-PushOver plugin itself, POST /phone-alerts/test?kind=alert or ?kind=timer,
+//   waiting TEST_MS for the answer. With ?demo= the test only pretends, with the answer its scene gives (WILL), as SAVE
+//   does.
 import axios from "axios";
 import { catalog, G, PLUGIN, PLUGIN_ORDER, ELSEWHERE } from "./catalog";
 import * as DEMO from "./demo-data";
@@ -418,16 +418,14 @@ function paintTest() {
   tmp.innerHTML = testHTML();
   $$("[data-test]", tmp).forEach(n => { const o = $(`[data-test="${n.dataset.test}"]`, t); if (o.outerHTML !== n.outerHTML) { o.className = n.className; o.innerHTML = n.innerHTML; if (n.hasAttribute("aria-disabled")) o.setAttribute("aria-disabled", "true"); else o.removeAttribute("aria-disabled"); } });
 }
-/* MAKE ONE: the plugin's own new topic (GET /phone-alerts/topic), shown, as it has to be typed into the ntfy app; it is a
-   change, saved with SAVE */
-async function makeTopic(k) {
-  const g = gen;
-  let topic = null;
-  try { topic = (await axios.get("/phone-alerts/topic", {timeout: SAVE_MS})).data.topic; } catch (e) { topic = null; }
-  if (g !== gen || !st) return;
-  if (typeof topic !== "string" || !topic.trim()) return toast("CraftBeerPi didn't answer with a topic. Check the connection, then try again.");
+/* MAKE ONE: the page makes the topic itself, so it works with no connection and can't fail: cbpi- and 24 random letters
+   and digits, as /phone-alerts/topic makes one, lower case and without l, o, 0 and 1, which are easily mistaken for one
+   another on a phone. crypto.getRandomValues is there over plain http too */
+const newTopic = () => { const from = "abcdefghijkmnpqrstuvwxyz23456789", a = new Uint32Array(24); crypto.getRandomValues(a); return "cbpi-" + [...a].map(x => from[x % 32]).join(""); };
+/* the new topic is shown, as it has to be typed into the ntfy app; it is a change, saved with SAVE */
+function makeTopic(k) {
   st.shown[k] = true;
-  setDraft(k, topic.trim());
+  setDraft(k, newTopic());
   rebuild(k);
   const n = $(`[data-make="${k}"]`);
   if (n) n.focus({preventScroll: true});
