@@ -205,7 +205,7 @@ His answer on 20 Nov, when you showed him the mockup at `#phone-on` and asked wh
 
 Built: web UI 0.5.1.a3.post27 (da7a754, `main.e3c82b45.js`), the tip of `main` and `brewday-graphs`; installed, not pushed. The design files went in byte for byte (0cdc6a3), and `page.js` makes MAKE ONE's topic in the page (10d7306). Your tests on it: `test_ui_phone_alerts.py` 102/102, Settings identity 152/152, brew-day identity 433/433, `test_e2e_settings.py` 79/79 and `test_plugin_versions.py` 30/30. On 8012, two presses of MAKE ONE gave two topics of the right form, with no request sent; both were undone, so `ntfy_topic` is still blank.
 
-The first build, post26 (edefff4, `main.7d1b4192.js`), passed your identity test 152/152 and your live test 93/93, including the original plugin from PyPI showing nine groups with its two keys under Plugins. It raised two questions, settled at the end of this section; post26 fails the phone alerts test's new MAKE ONE checks (98/102).
+The first build, post26 (edefff4, `main.7d1b4192.js`), passed your identity test 152/152 and your live test 93/93, including the original plugin from PyPI showing nine groups with its two keys under Plugins. It raised two questions, settled at the end of this section. Against the phone alerts test as it is now, post26 passes 98 of 102. The 4 it fails are new checks for MAKE ONE: two that no topic is asked of CraftBeerPi, and two that MAKE ONE still makes one with the connection lost, the topic then waiting for SAVE once CraftBeerPi is back. Its checks of the topic's form pass, since the plugin's topics have the same form.
 
 What sets the wording, from the brewer through you:
 
