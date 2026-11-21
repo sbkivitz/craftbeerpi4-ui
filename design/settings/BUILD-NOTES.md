@@ -203,7 +203,9 @@ His answer on 20 Nov, when you showed him the mockup at `#phone-on` and asked wh
 - He picked "Yes, but I want to change something". Asked what, he wrote: "Alerts look good - eager to test ntfy". So the design stands as it is.
 - The first real ntfy alert to his phone: "Let's do this later".
 
-Built: web UI 0.5.1.a3.post26 (edefff4, `main.7d1b4192.js`), installed on 8000 and 8012, not pushed. It holds these files byte for byte. Your identity test passes 152/152, and your live test 93/93, including the original plugin from PyPI showing nine groups with its two keys under Plugins. Two questions from the build are settled at the end of this section.
+Built: web UI 0.5.1.a3.post27 (da7a754, `main.e3c82b45.js`), the tip of `main` and `brewday-graphs`; installed, not pushed. The design files went in byte for byte (0cdc6a3), and `page.js` makes MAKE ONE's topic in the page (10d7306). Your tests on it: `test_ui_phone_alerts.py` 102/102, Settings identity 152/152, brew-day identity 433/433, `test_e2e_settings.py` 79/79 and `test_plugin_versions.py` 30/30. On 8012, two presses of MAKE ONE gave two topics of the right form, with no request sent; both were undone, so `ntfy_topic` is still blank.
+
+The first build, post26 (edefff4, `main.7d1b4192.js`), passed your identity test 152/152 and your live test 93/93, including the original plugin from PyPI showing nine groups with its two keys under Plugins. It raised two questions, settled at the end of this section; post26 fails the phone alerts test's new MAKE ONE checks (98/102).
 
 What sets the wording, from the brewer through you:
 
@@ -338,7 +340,7 @@ Two changes reach the page without the plugin too, in the mockup and the build a
 
 ### Settled with you (20 Nov)
 
-1. MAKE ONE makes the topic in the page, as above, and doesn't ask `GET /phone-alerts/topic`. My 18 Nov note said to ask it; that was a mistake. Asking adds a way to fail that the approved mockup doesn't have, and up to 10 s (`SAVE_MS`) with nothing on the button to show a wait. So MAKE ONE needs no words for failing, and the note at `page.js` line 428 goes. With no connection, the new topic waits on the page for SAVE like any change, as the `#offline` note says. Checked in Chromium at a plain-http address that isn't the computer the browser runs on, as the Pi's address is for a phone, on a desktop and a touch phone: `isSecureContext` is false, `crypto.getRandomValues` is there (`crypto.randomUUID` and `navigator.clipboard` aren't), and the topics match `^cbpi-[a-km-np-z2-9]{24}$`. Your `negative_controls.py` (line 4370) looks for the request, so it changes too.
+1. MAKE ONE makes the topic in the page, as above, and doesn't ask `GET /phone-alerts/topic`. My 18 Nov note said to ask it; that was a mistake. Asking adds a way to fail that the approved mockup doesn't have, and up to 10 s (`SAVE_MS`) with nothing on the button to show a wait. So MAKE ONE needs no words for failing, and the note that was at `page.js` line 428 went in post27 (10d7306). With no connection, the new topic waits on the page for SAVE like any change, as the `#offline` note says. Checked in Chromium at a plain-http address that isn't the computer the browser runs on, as the Pi's address is for a phone, on a desktop and a touch phone: `isSecureContext` is false, `crypto.getRandomValues` is there (`crypto.randomUUID` and `navigator.clipboard` aren't), and the topics match `^cbpi-[a-km-np-z2-9]{24}$`. Your `negative_controls.py` looked for the request; its control is now `phone-page-make-one-https-only` (bench 8994f81): a page that takes the letters from `crypto.randomUUID`, which a plain-http page doesn't have. Your bench detects it.
 2. A test's last answer goes when a setting it went by gets a new saved value from any screen, as `page.js` line 936 has it; "The test" above now says so. The mockup can't show another screen's save, so its code stays as it is.
 
 ### Changed in the worktree, all uncommitted
