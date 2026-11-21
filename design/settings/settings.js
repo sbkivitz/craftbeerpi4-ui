@@ -475,8 +475,9 @@ function paintTest() {
   tmp.innerHTML = testHTML();
   $$("[data-test]", tmp).forEach(n => { const o = $(`[data-test="${n.dataset.test}"]`, t); if (o.outerHTML !== n.outerHTML) { o.className = n.className; o.innerHTML = n.innerHTML; if (n.hasAttribute("aria-disabled")) o.setAttribute("aria-disabled", "true"); else o.removeAttribute("aria-disabled"); } });
 }
-/* MAKE ONE: a topic as /phone-alerts/topic makes one, cbpi- and 24 random letters and digits, lower case and without l,
-   o, 0 and 1, which are easily mistaken for one another on a phone */
+/* MAKE ONE: the page makes the topic itself, so it works with no connection and can't fail: cbpi- and 24 random letters
+   and digits, as /phone-alerts/topic makes one, lower case and without l, o, 0 and 1, which are easily mistaken for one
+   another on a phone. crypto.getRandomValues is there over plain http too */
 const newTopic = () => { const from = "abcdefghijkmnpqrstuvwxyz23456789", a = new Uint32Array(24); crypto.getRandomValues(a); return "cbpi-" + [...a].map(x => from[x % 32]).join(""); };
 /* COPY: the clipboard where the browser allows it (https, or this computer), else the older way, which works over plain
    http as the Pi serves the page */

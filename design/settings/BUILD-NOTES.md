@@ -194,7 +194,7 @@ Your answer (11 Nov): you fix 1 in the build, check 3 then, and take 2 to Amber,
 10. Amber's decision (16 Nov), for both pages: under the pointer, Dim Steel text in a line or button turns Soft Steel, as under Accessibility. The Hardware rule's `.cmd.go.idle` part is left out: Settings greys SAVE when nothing has changed, so it has no idle SAVE for it to match. Moving the pointer onto everything found one more: a greyed SAVE (nothing changed, or no connection) turned Selection Blue under the pointer, its grey words at 1.6:1, because `.cmd.go:hover` outweighs `.cmd[aria-disabled=true]`. It now stays grey (`.cmd.go:not([aria-disabled=true]):hover`). And, as on the Hardware page, a control sits 10 px above its status line (`.row .ct`), so a row's UNDO stops at the control's edge instead of reaching 2 px into it.
 11. Amber's decision (16 Nov), for every page: nothing changes under the pointer on a greyed control. The title bar's ALL OFF, greyed while the connection is lost, lit red under the pointer; it now stays as it is (`.alloff:not([aria-disabled=true]):hover`), as on the brew-day screen. That is a frame rule, so `port.mjs` leaves it out: the built page takes it from `components\brewday\brewday.css` (line 32 at 32154c8), with the brew-day screen's own change. And a number box's placeholder, where one is given, is Dim Steel at full strength (`.numf input::placeholder`, 7.2:1 on the box, where the browser's own grey is 4.4:1), as on the Hardware page. No box on this page has a placeholder, so nothing on screen changes; the rule keeps the box the same on both pages.
 
-## Phone alerts: designed 18 Nov, approved by the brewer on 20 Nov
+## Phone alerts: designed 18 Nov, approved by the brewer and built by Brett on 20 Nov
 
 For cbpi4-PushOver 0.0.10.post2 (a8dfe9d, branch `phone-alerts`) with core 4.7.7.post47, as 8000 and 8012 run them. The brewer wasn't available for questions on 18 Nov, so seven choices were mine; `GROUPING.md` lists them under "Phone alerts: the choices you approved (20 Nov)".
 
@@ -202,6 +202,8 @@ His answer on 20 Nov, when you showed him the mockup at `#phone-on` and asked wh
 
 - He picked "Yes, but I want to change something". Asked what, he wrote: "Alerts look good - eager to test ntfy". So the design stands as it is.
 - The first real ntfy alert to his phone: "Let's do this later".
+
+Built: web UI 0.5.1.a3.post26 (edefff4, `main.7d1b4192.js`), installed on 8000 and 8012, not pushed. It holds these files byte for byte. Your identity test passes 152/152, and your live test 93/93, including the original plugin from PyPI showing nine groups with its two keys under Plugins. Two questions from the build are settled at the end of this section.
 
 What sets the wording, from the brewer through you:
 
@@ -280,14 +282,13 @@ The answers (`testWords()`), as the status line, then what it says under it:
 - **409 not_set_up**: "Didn't send · not set up", and what `testOff()` would say.
 - **No answer from CraftBeerPi** (the request failed, or none came): "Didn't send · no answer from CraftBeerPi". "The test may or may not have gone. Check the connection, then try again." The plugin gives up on the service after 10 s, so wait a little longer than that, say 15 s, before saying so.
 
-A 400 can't come from these two buttons; it would read "Didn't send · it didn't go". A refusal that names a setting also marks that row red: "Refused in the test at 14:32 · see Send a test". That goes when the row is changed. Saving any setting the test goes by (`TESTED`: the service, the topic, the access token, the server and the two Pushover keys) clears the last answer and the red row, since they're out of date then.
+A 400 can't come from these two buttons; it would read "Didn't send · it didn't go". A refusal that names a setting also marks that row red: "Refused in the test at 14:32 · see Send a test". That goes when the row is changed. The last answer and the red row go once a setting the test goes by (`TESTED`: the service, the topic, the access token, the server and the two Pushover keys) gets a new saved value, from this page's SAVE or another screen's, since they're about the old one. A save that leaves the value as it was (`same()`) changes nothing. Nothing goes while a test is waiting: its answer, when it comes, is about the test that went.
 
 ### What it needs from CraftBeerPi
 
-Nothing new. Plugin 0.0.10.post2 has both endpoints:
+Nothing new. The test asks plugin 0.0.10.post2's `POST /phone-alerts/test?kind=alert|timer`, which answers `{sent, reason, field, detail, service, kind}`, as above.
 
-- `POST /phone-alerts/test?kind=alert|timer`, answering `{sent, reason, field, detail, service, kind}`, as above.
-- `GET /phone-alerts/topic`, answering `{"topic": "cbpi-…"}`: use it for MAKE ONE. The mockup makes the topic in the page (`newTopic()`: the same 24 characters from the same 32, lower case and without l, o, 0 and 1) only because a page opened from a file has no CraftBeerPi to ask.
+MAKE ONE doesn't ask CraftBeerPi: the page makes the topic itself (`newTopic()`), so it works at once, with no connection and with `?demo=`, and can't fail. It is the kind of topic the plugin's `GET /phone-alerts/topic` makes: `cbpi-` and 24 characters from the plugin's own 32 (`SUGGEST_FROM`: lower case, without l, o, 0 and 1), from `crypto.getRandomValues`, which browsers offer over plain http too. That address stays for anyone who opens it by hand, as `ntfy_topic`'s description says.
 
 The 12 settings save with SAVE like any other. Because the catalogue names them, they don't show under Plugins, and `cbpi4-PushOver_update` (source `hidden`) stays hidden. The rig needs the plugin before the group shows there.
 
@@ -334,6 +335,11 @@ Two changes reach the page without the plugin too, in the mockup and the build a
 - The long Brewery name box, the sound help and the clicked-through checks still pass.
 - `port.mjs` (main's, unchanged) on a scratch copy: main's mockup files give exactly the product's `catalog.js`, `settings.css`, `settings-frame.css` and `demo-data.js`. Mine give a `catalog.js` that loads, with 65 settings in `M` for °C and °F and ten groups, every row of the phone group named in `M` or its `how`; a `settings.css` with the new rules and the laptop-height change; and the same `settings-frame.css`.
 - Impeccable's checker: nothing new. Its notes are the ones above (the two stripes, and colours and sizes from `brew-day.css` and the tokens), which the new rules reuse.
+
+### Settled with you (20 Nov)
+
+1. MAKE ONE makes the topic in the page, as above, and doesn't ask `GET /phone-alerts/topic`. My 18 Nov note said to ask it; that was a mistake. Asking adds a way to fail that the approved mockup doesn't have, and up to 10 s (`SAVE_MS`) with nothing on the button to show a wait. So MAKE ONE needs no words for failing, and the note at `page.js` line 428 goes. With no connection, the new topic waits on the page for SAVE like any change, as the `#offline` note says. Checked in Chromium at a plain-http address that isn't the computer the browser runs on, as the Pi's address is for a phone, on a desktop and a touch phone: `isSecureContext` is false, `crypto.getRandomValues` is there (`crypto.randomUUID` and `navigator.clipboard` aren't), and the topics match `^cbpi-[a-km-np-z2-9]{24}$`. Your `negative_controls.py` (line 4370) looks for the request, so it changes too.
+2. A test's last answer goes when a setting it went by gets a new saved value from any screen, as `page.js` line 936 has it; "The test" above now says so. The mockup can't show another screen's save, so its code stays as it is.
 
 ### Changed in the worktree, all uncommitted
 

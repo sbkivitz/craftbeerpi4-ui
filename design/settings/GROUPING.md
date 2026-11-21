@@ -206,7 +206,7 @@ Open `C:\src\personal\craftbeerpi4-ui-settings\proposal\settings.html` in a brow
 | Brewery name at the top of the screen | Web page, done | the brew-day title bar shows it since 11 Nov (Amber's change M74), and Settings uses the same title bar |
 | Saves in the last-event line | Web page | Brett confirmed the event line can take them (11 Nov) |
 | Phone alerts: the group, its names, steps and words | Web page | the plugin's settings and its test are in cbpi4-PushOver 0.0.10.post2; the rig needs that plugin too |
-| Phone alerts: MAKE ONE | Web page | asks the plugin's GET /phone-alerts/topic |
+| Phone alerts: MAKE ONE | Web page | the page makes the topic itself, so it works even with no connection |
 | Phone alerts: TEST ALERT, TEST TIMER and their answers | Web page | ask the plugin's POST /phone-alerts/test, which says why a test didn't go |
 | Phone alerts: COPY, THIS CRAFTBEERPI, the checks on a topic, an address or a key | Web page | |
 
