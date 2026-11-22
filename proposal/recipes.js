@@ -519,6 +519,18 @@ function unloadAskHTML() {
     : "Unload the recipe and brew by hand? It isn't in the Recipe Book, so it can't be loaded again. Kettles, pumps and timers stay as they are.";
   return `<div class="confirm" role="group" aria-labelledby="ask-t" id="ask"><p id="ask-t">${text}</p><div class="acts"><button type="button" class="yes" data-yes="unload">Unload</button><button type="button" data-no>${b.begun ? `Stay at step ${b.cur + 1}` : "Don't unload"}</button></div></div>`;
 }
+/* a brew step as CraftBeerPi's book_data() keeps it (server change 8): the recipe, not this brew. A BrewStart's day,
+   which Brew Day sets as a date so that a START after midnight still means the same morning, goes in as Tomorrow with
+   its time; its grain temperature goes in blank, since Brew Day asks where the grain is for every brew. CraftBeerPi
+   also puts the strike water back to its temperature before USE; this mockup has no USE, so nothing here does. */
+function bookStep(s) {
+  delete s.status;
+  if (s.type === "BrewStart" && s.props) {
+    if (s.props.Mode === "Date") Object.assign(s.props, {Mode: "Tomorrow", StartDate: ""});
+    s.props.Grain_Temp = "";
+  }
+  return s;
+}
 function toBookHTML() {
   const L = st.loaded, r = book(L.file);
   const name = L.name ? `${L.name}, ${new Date(D.TODAY).getUTCDate()} ${MON[new Date(D.TODAY).getUTCMonth()]}` : "";
@@ -1022,7 +1034,7 @@ document.addEventListener("click", e => {
       // change 4), so LOAD and UNLOAD know they can be loaded again
       return later(() => {
         delete st.pend.tobook;
-        const steps = clone(st.loaded.steps).map(s => { delete s.status; return s; });
+        const steps = clone(st.loaded.steps).map(bookStep);
         if (ds.yes === "replace") { const r = book(st.loaded.file); Object.assign(r, {steps, modified: todayAt(st.clock)}); delete r.imported_from; event(`${r.name} replaced in the Recipe Book`, "confirmed", "ok"); }
         else { const f = "new" + (KEY++); st.book.push({file: f, name: nm, author: D.CONFIG.AUTHOR, steps, modified: todayAt(st.clock)}); st.loaded.file = f; st.loaded.name = nm; if (st.bs) st.bs.doc.name = st.bs.orig.name = nm; event(`${nm} saved in the Recipe Book`, "confirmed", "ok"); }
         render();
