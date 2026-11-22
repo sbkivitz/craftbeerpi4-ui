@@ -440,6 +440,73 @@ html.bare .mock{display:none}
 .trow[data-state=done] .toff{margin-bottom:0;color:var(--prompt-ink)}
 .tmrs[data-editing] .trow:not(.editing) .toff{display:none}
 .tplus{min-height:56px}
+/* the proposal (?trow=new, TIMER-REMOVE.md). A timer's row on two lines: the left part, the button that opens its
+   editor, lies behind the whole row, with the name and its state on the first line and the time on the second, beside
+   REMOVE and START or PAUSE. So two buttons fit the narrowest column (310 px inside, 1180 to 1480 px wide) without
+   cutting a name. The second line is as tall as the buttons, in the row and in the button behind it, so the time and the
+   buttons line up */
+.trow.tr2{grid-template-rows:auto 56px;row-gap:2px}
+.tr2 .tsel{grid-column:1/-1;grid-row:1/3;grid-template-rows:auto 56px;row-gap:2px;min-height:0;padding:0 8px}
+.tr2 .tsel .tn{grid-column:1;grid-row:1}
+.tr2 .tsel .ts{grid-column:2;grid-row:1;text-align:right}
+.tr2 .tsel .tt{grid-column:1;grid-row:2}
+.trow.tr2:not([data-state=done]) .tbtn{grid-column:2;grid-row:2;position:relative;z-index:1}
+.trow.tr2 .cmdbtn{min-width:84px}
+/* REMOVE is quieter than START or PAUSE beside it, so the button pressed most stands out and the two don't read as a
+   pair of equals: Soft Steel lettering at 600 on a Hairline Slate edge, Panel White under the pointer. Its UNDO makes a
+   slip cheap, so it needs no colour of alarm */
+.trow .trm{border-color:var(--line)}
+.trow .trm .lb{font-weight:600;color:var(--text-2)}
+.trow .trm:not([aria-disabled=true]):hover .lb{color:var(--text)}
+.trow .trm[aria-disabled=true] .lb{color:var(--text-3)}
+.tr2 .toff{grid-row:3;margin:0 0 4px}
+.tmrs[data-editing] .tr2:not(.editing){grid-template-rows:auto}
+.tmrs[data-editing] .tr2:not(.editing) .tsel{grid-row:1;grid-template-rows:auto;min-height:44px}
+.tmrs[data-editing] .tr2:not(.editing) .tsel .tt{grid-column:2;grid-row:1}
+/* a timer just removed, for 10 s: its place and height kept, on Panel Slate, its name and "removed" in Dim Steel, and
+   UNDO where its two buttons were */
+.trow.tgone{grid-template-rows:auto 56px;row-gap:2px;min-height:95px;background:var(--panel)}
+.tgone .tgn{grid-column:1;grid-row:1/3;display:grid;align-content:center;gap:4px;margin:0;padding:0 8px;color:var(--text-3)}
+.tgone .tn{font:600 20px/1.15 var(--cond);letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tgone .ts{font:600 14px/1.2 var(--cond);letter-spacing:.05em}
+.trow.tgone .tbtn{grid-column:2;grid-row:2}
+.trow.tgone .tundo{min-width:var(--tw,176px)}
+/* + TIMER in the heading, beside SOUND */
+.tmrs .thr{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px}
+.tmrs .tplus2{min-height:44px;min-width:0;padding:4px 14px}
+/* the proposal's recipe column (?col=new, RECIPE-COLUMN.md). A recipe not begun, and brewing by hand: OTHER RECIPE (or
+   CHOOSE A RECIPE) beside COMPARE PROBES, in the row COMPARE PROBES had to itself */
+.nbrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.nbrow .cmdbtn{min-height:54px;padding-inline:6px}
+/* the recipe book in the column: the book's rows, the loaded one saying what it is doing where LOAD would be, then ALL
+   RECIPES and CLOSE. On one screen it takes the step list's room, its list scrolling where it must */
+.rbox{display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:8px;min-height:0}
+.rbox h3{margin:4px 0 0;font:700 20px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+.rbox ul{display:grid;align-content:start;gap:6px;min-height:0;margin:0;padding:0;list-style:none;overflow:auto;overscroll-behavior:contain}
+.rbox li{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:center;padding:8px 8px 8px 12px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel-2)}
+.rbox .bn{font:600 19px/1.15 var(--cond);letter-spacing:.02em}
+.rbox .bd{grid-column:1;font:500 15px/1.3 var(--cond);color:var(--text-2)}
+.rbox li .cmdbtn{grid-column:2;grid-row:1/3;min-height:48px;min-width:84px}
+.rbox .rbst{grid-column:2;grid-row:1/3;display:grid;justify-items:end;gap:2px;font:600 13px/1.2 var(--cond);letter-spacing:.06em;color:var(--text-2);text-align:right}
+.rbox .rbf{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (min-width:1180px){.recipe[data-pb] .rbox{flex:0 1 auto}}
+/* the timers folded into one line, where the current step wouldn't be whole beside them on one screen: a tap opens them */
+.tstrip{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;width:100%;min-height:56px;padding:8px 12px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);color:var(--text);font:600 18px/1.25 var(--cond);letter-spacing:.02em;text-align:left;cursor:pointer;touch-action:manipulation}
+.tstrip:hover{background:#253545}
+.tstrip .tl,.tstrip .tso{font:700 15px/1 var(--cond);letter-spacing:.08em;color:var(--text-2)}
+.tstrip .tsi{display:flex;flex-wrap:wrap;gap:2px 14px;flex:1 1 auto;min-width:0}
+.tstrip .tsi b{font-weight:600;font-variant-numeric:tabular-nums}
+.tstrip .d{color:var(--prompt)}
+.tstrip .r{color:var(--text-3)}
+.tstrip:hover .r{color:var(--text-2)}
+.tstrip .tso{margin-left:auto}
+.tmrs.tfold[data-state=done] .tstrip{border-color:var(--prompt);background:var(--prompt-bg)}
+.tmrs.tfold[data-state=done] .tstrip::after{content:"";pointer-events:none;position:absolute;inset:-2px;border:2px solid var(--prompt);border-radius:calc(var(--r) + 1px);box-shadow:0 0 18px rgb(255 178 30/.55);animation:ring 1s ease-in-out infinite alternate}
+@media (prefers-reduced-motion:reduce){.tmrs.tfold[data-state=done] .tstrip::after{animation:none!important}}
+/* opened from their line, the timers take the step list's room and the strike water box's, and CLOSE takes the line's
+   place at the column's foot, so the button pressed to open them is the one that closes them */
+.tmrs .tclose{min-height:56px}
+@media (min-width:1180px){.recipe[data-tbox] :is(.steps,.sw,.nbrow){display:none}.recipe[data-tbox] .tmrs{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}.recipe[data-tbox] .tmrs>*{flex:none}.recipe[data-tbox] .tmrs .tclose{margin-top:auto}}
 .tedit{display:grid;gap:8px;margin-top:8px;padding:14px 12px 12px;border:2px solid var(--select);border-radius:var(--r);background:var(--panel)}
 /* the editor's title sits in its top border, as a legend does */
 .tedit .tet{justify-self:start;margin:-26px 0 -2px -4px;padding:0 6px;background:var(--panel);font:700 17px/1.2 var(--cond);letter-spacing:.06em;text-transform:uppercase}
@@ -629,7 +696,7 @@ html.bare .mock{display:none}
 @media (min-width:1180px){.recipe[data-pb] .sw.open{display:flex;flex-direction:column;flex:0 1 auto;min-height:0}.recipe[data-pb] .sw.open .swhead{flex:none}.recipe[data-pb] .swdet{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}}
 /* only the scrolling box gives up height: everything else in the column keeps its size, so nothing above the box
    moves when it opens (COMPARE PROBES' button would otherwise lose a pixel or two where its words are big) */
-@media (min-width:1180px){.recipe[data-pb]>:not(.cmp):not(.sw){flex-shrink:0}}
+@media (min-width:1180px){.recipe[data-pb]>:not(.cmp):not(.sw):not(.rbox){flex-shrink:0}}
 /* where the page scrolls, the strike water box's head stays at the top of the screen while its details pass under it,
    so USE or BACK TO and CLOSE are always in reach */
 @media (max-width:1179.98px){.sw.open .swhead{position:sticky;top:0;z-index:2}}

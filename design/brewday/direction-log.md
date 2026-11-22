@@ -1,5 +1,67 @@
 # Direction decision log
 
+## The strike water box's words for the server contract's gaps (22 Nov 2026)
+- Brett's approved server contract (strike-api.md) found states the design hadn't worded: BrewStart's grain
+  temperature, saved on Brew Steps, out of range or not a number; the model failing; and what would raise USE most
+  coming minutes after USE. He asked too whether the box should give BrewStart's Campden dose for the HLT's water.
+- Chosen: the grain's sentence in the buttons' place ("BrewStart's grain temperature is 150.0 °F, warmer than any
+  room. The forecast can't use it.") beside GRAIN, "change it", which opens the grain's box; a failed forecast says
+  there's no USE, that the strike water stays as planned and that LOG says why, with LOG's line in light red once; a
+  sentence in NOT MEASURED YET until the levers come; the Campden dose on FROM YOU's water line and in its LOG line,
+  as BrewStart rounds it; the optional refusals for a screen that hadn't caught up in the refused USE's form.
+- Changed after sending: the grain's sentence lost "Give the grain's temperature again, or leave it to the boil
+  kettle's probe.", which the grain's box already says, so the box stays 179 px and the current step whole at
+  1180 × 860, 1280 × 800 and 1366 × 768.
+- Not chosen: keeping the last figures greyed after a failure (they were for other numbers, and nothing is coming to
+  replace them); an alarm in the title bar for it (nothing waits for the brewer).
+
+## The boil kettle's MANUAL heats at the boil power; proposed (22 Nov 2026)
+- The brewer, on 22 Nov: "I don't know if the Manual function on the boil kettle makes sense". Then, from 8012:
+  "the manual power seems stuck at 70% and I don't see an intuitive way to change it. In fact, I got confused, thinking
+  I was using the BoilPower plugin but I wasn't." Brett's rules for the answer: the window never shows a power the
+  element isn't running at, and the level it runs at is settable where he looks; boil power settable at any time;
+  colour, not size.
+- Found: leaving AUTO, BoilPower switches the element off. By hand it then heats at the brewer's own level that
+  CraftBeerPi keeps for each element (`manual_power`), which AUTO never changes, and which only the old Dashboard's
+  button sets. Brew Day's switch and the Hardware page's both use it. With the current BoilPower the window's framed
+  number sets the boil power in MANUAL too, so the window said BOIL 45 % while OUT said 70 %.
+- Proposed, not approved (?bkman=new, proposal/BOIL-MANUAL.md, boil-manual.html): MANUAL stays, and heats at the boil
+  power. The framed number reads HAND in MANUAL; the line says the power ("MANUAL · heats at 45 % by hand", "Heating
+  by hand at 45 %"); −5 %, −1 %, +1 % and +5 % stay in MANUAL; LOG says "BOIL ELEMENT on at 45 %". A held press still
+  turns the element on. BoilPower keeps the element's own level at the boil power while AUTO isn't running, so the
+  Hardware page's switch agrees.
+- Not chosen: AUTO | OFF with no MANUAL (AUTO stops heating without a probe reading, so a failed probe would end the
+  boil); a level of its own in MANUAL (two numbers in one place, as on 8012). The cost, left to the brewer: a power
+  set by hand is the one AUTO boils at next.
+
+## The recipe column: timers that fold, OTHER RECIPE, the book folded by hand; proposed (22 Nov 2026)
+- The brewer, through Brett: timers and recipe steps compete for room, and he wants a better layout rather than the
+  known limit; brewing by hand, the recipe section hidden but the timers kept; and a way to choose another recipe while
+  one is loaded but not begun, with a begun one never swapped by a slip.
+- Proposed, not approved (?col=new, proposal/RECIPE-COLUMN.md, column.html): on one screen the timers fold into one
+  line where the current step wouldn't be whole beside them, open in the step list's room with CLOSE in the line's
+  place, and unfold by themselves; OTHER RECIPE beside COMPARE PROBES on a recipe not begun, opening the recipe book in
+  place, its LOAD one tap; brewing by hand, the book folds behind CHOOSE A RECIPE and the timers have the column.
+- Measured with two timers: the current step whole in every moment at every size from 1180 × 860 to 1920 × 1080; as
+  built it was cut, or not shown at all, during the strike water steps on all but the largest window.
+- Not chosen: OTHER RECIPE and COMPARE PROBES in the greyed STOP's and NEXT STEP's places (places that would change
+  what they do with the recipe's state). Left to the brewer: whether the timers should always be one line on a monitor.
+- Agreed with Robin, the recipe pages' designer: the word LOAD, one row for a recipe in both places, the loaded one in
+  the column's status words, one tap for a recipe not begun, and no way on Brew Day to swap one that has begun.
+
+## Stopping and removing a timer, proposed (22 Nov 2026)
+- The brewer on the rig with post25: "need to stop/clear/remove". The timers gave him only PAUSE; REMOVE was in the box
+  a tap on the timer's name opens, which nothing on the row shows. Brett asked for stopping, clearing and removing to be
+  visible from the timer itself, the rest being mine to design.
+- Proposed, not approved (?trow=new, proposal/TIMER-REMOVE.md, timers.html): REMOVE on every timer's row beside START
+  or PAUSE, one tap, its row kept in place for 10 s with UNDO where its buttons were; BACK TO its full time in the
+  timer's box; + TIMER in the TIMERS heading; rows on two lines, so two buttons fit the 310 px column.
+- Not chosen: STOP on counting rows and REMOVE on stopped ones (two words for one place, and REMOVE under the finger
+  that had just pressed STOP); a question before removing (pressed out of habit); a strip of timers beside the drawing
+  (the drawing is 150-190 px tall on those windows, its floor 140).
+- Measured with two timers: they take 250 px against 264, so the step list gains 14 px. During the strike water steps
+  it is still far too short; the layout proposal the brewer asked for takes that up next.
+
 ## The strike water figures rebuilt from the model's fix (22 Nov 2026)
 - Brett's helper fixed the warm-grain jump found on 20 Nov (bench 6f3c001): a case counts as made worse only once it
   goes more than 0.04 °F higher than with water heated only to the rest, and the search also tries the step above its
