@@ -1,0 +1,121 @@
+/* The two other layouts (other-layouts.html), on top of recipes.css: its tokens, frame, buttons, step rows and lamps.
+   Everything here is these two pictures' own, apart from the drawing's rules, which are brew-day.css's for layout B's
+   line drawing, as hardware.css has them. */
+:root{--liquor:#46b8ea;--wort:#e9b33b;--heat:#ff7b1c}
+
+/* ---------- the drawing: brew-day.css's rules for layout B's line drawing, as they are there ---------- */
+.coil>*{fill:none;stroke:#a7b6c5;stroke-width:4.5;transition:stroke .3s}
+.coil.on>*{stroke:var(--wort)}
+.element{fill:none;stroke:#3b4957;stroke-width:5;stroke-linejoin:round;stroke-linecap:round}
+.element.on{stroke:var(--heat);filter:url(#glow)}
+.ln .pf{fill:none;stroke:#3e4c5a;stroke-width:9;stroke-linejoin:round;stroke-linecap:round}
+.ln .pd{fill:none;stroke:none;stroke-width:4;stroke-linecap:round;stroke-dasharray:.01 23.99}
+.ln .ch{display:none;fill:none;stroke:#0a1016;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.valve path{fill:#3b4b5b;stroke:#8193a5;stroke-width:2}
+.rigbox .tag{font:600 18px var(--cond);letter-spacing:.06em;fill:var(--text-3);display:inline;padding:0;border-radius:0;background:none}
+.p-base{fill:#2a3642}
+.p-ring{fill:#24303c;stroke:#93a3b4;stroke-width:3}
+.p-tri{fill:#93a3b4}
+.pump.on .p-tri{fill:#0a1016}
+.p-name{font:700 21px var(--cond);letter-spacing:.06em;fill:#c3cfda}
+.p-st{font:600 18px var(--cond);letter-spacing:.06em;fill:var(--text-3)}
+.pump.on .p-st{fill:var(--run)}
+.rig-line .v-shell{fill:#1b2833;stroke:#b9c6d2;stroke-width:3;stroke-linejoin:round}
+.rig-line .v-line{fill:none;stroke:#b9c6d2;stroke-width:3;stroke-linecap:round}
+.rig-line .v-name{font:700 24px var(--cond);letter-spacing:.06em;fill:#c3cfda;text-anchor:middle}
+.rig-line .v-dots circle{fill:#7f90a2}
+.rig-line .coil>*{stroke:#6f8194;stroke-width:3.5}
+.rig-line .element{stroke:#6f8194;stroke-width:3.5}
+.rig-line .element.on{stroke:var(--heat)}
+.rig-line .ln-o{display:none}
+.rig-line .ln .pf{stroke:#4a5a6b;stroke-width:5}
+.rig-line .ln .pd{stroke-width:2.2;stroke-dasharray:5 19}
+.rig-line .valve path{fill:#1b2833;stroke:#b9c6d2;stroke-width:2.5;stroke-linejoin:round}
+.rig-line .p-ring{fill:#1b2833;stroke:#b9c6d2}
+.rig-line .p-tri{fill:#b9c6d2}
+.rig-line .p-base{fill:none;stroke:#b9c6d2;stroke-width:2.5}
+
+/* ---------- both: the book down the left, as Settings' and Hardware's lists are; the recipe's head over the right ---------- */
+.alt .bcol{gap:8px}
+.find.mini{flex:none;max-width:none;margin:0}
+.find.mini input{min-height:52px;padding-left:136px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.two .cmd{min-width:0;min-height:56px;padding:6px 6px}
+.blist{flex:1;min-height:0;overflow:auto;margin:0;padding:0 2px 0 0;list-style:none;display:grid;align-content:start;gap:6px;overscroll-behavior:contain}
+.bl{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;row-gap:2px;align-items:center;min-height:62px;padding:8px 8px 8px 12px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel-2)}
+.bl[aria-current=true]{background:var(--active);border-color:var(--active-edge)}
+.bl .bn{grid-column:1;font:600 19px/1.15 var(--cond);letter-spacing:.02em;overflow-wrap:break-word}
+.bl .bd{grid-column:1;font:500 15px/1.3 var(--cond);letter-spacing:.02em;color:var(--text-2)}
+.bl[aria-current=true] .bd,.bl[aria-current=true] .lch .on,.bl[aria-current=true] .lch .st2{color:var(--active-ink)}
+.bl .cmd,.bl .lch{grid-column:2;grid-row:1/3}
+.bl .cmd{min-height:48px;min-width:84px;padding:4px 10px;font-size:18px}
+.alt .tool.rhead{gap:16px}
+.rh{margin-right:auto;min-width:0}
+.rh h1{margin:0;font:700 clamp(24px,2vw,32px)/1.05 var(--cond);letter-spacing:.03em;text-transform:uppercase}
+.rh .rmeta{margin:5px 0 0}
+.rbtns{display:grid;grid-template-columns:repeat(3,minmax(128px,1fr));gap:8px;flex:none}
+.rbtns .cmd{min-height:62px;min-width:0}
+.alt .tool{min-height:70px}
+
+/* ---------- by vessel: the drawing, then each vessel's steps under it ---------- */
+/* the drawing gives up height first, as on Brew Day, so the steps under it stay in view */
+.rigbox{height:clamp(200px,calc(100dvh - 720px),300px);padding-top:8px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);overflow:hidden}
+.rigbox svg{display:block;width:100%;height:100%}
+.vcols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px}
+.vcol{display:flex;flex-direction:column;gap:6px;min-width:0;padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.vcol h2{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin:0 0 4px;font:700 22px/1.05 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+.vcol h2 small{font:600 15px/1 var(--cond);letter-spacing:.06em;color:var(--text-3)}
+.vcol .steps{flex:none;overflow:visible}
+/* the steps here are list items themselves, not buttons inside them, so they keep Brew Day's row grid */
+.vcol .steps>li.step{display:grid}
+.vfoot{margin:10px 2px 0;font:500 15px/1.4 var(--sans);color:var(--text-2)}
+
+/* ---------- the brew sheet: its numbers in small windows across its head, then a ruled table ---------- */
+.sheet{padding:14px 18px 12px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.nums{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:0 0 12px}
+.nums div{padding:8px 12px;border:1px solid #1d2a36;border-radius:var(--r);background:var(--face);box-shadow:var(--sunk)}
+.nums dt{font:600 14px/1 var(--cond);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+.nums dd{margin:6px 0 0;font:600 22px/1.15 var(--cond);letter-spacing:.02em;font-variant-numeric:tabular-nums;color:var(--text)}
+.bsht{width:100%;border-collapse:collapse;font:500 17px/1.3 var(--cond);letter-spacing:.02em;color:var(--text)}
+.bsht th{padding:8px 10px;border-bottom:1px solid var(--edge);font:600 14px/1.1 var(--cond);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);text-align:left;white-space:nowrap}
+.bsht td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.bsht tbody tr:hover td{background:rgb(37 53 69/.45)}
+.bsht td.n{width:46px;font:700 22px/1 var(--cond);text-align:center;color:var(--text-2);background:rgb(0 0 0/.18)}
+.bsht td.t{font:600 19px/1.2 var(--cond);white-space:nowrap}
+.bsht td.k,.bsht td.v{color:var(--text-2);white-space:nowrap}
+.bsht td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.bsht td.say{color:var(--text-2)}
+.bsht .adds{display:grid;grid-template-columns:auto auto minmax(0,1fr);margin:0;column-gap:12px;font-size:17px}
+.bsht .adds span:nth-child(3n){color:var(--text-3)}
+.sfoot{margin:10px 2px 0;font:500 15px/1.4 var(--sans);color:var(--text-2)}
+
+/* 900 to 1179 px: the recipe's buttons go under its name */
+@media (max-width:1179px){
+  .alt .tool.rhead{flex-wrap:wrap}
+  .rbtns{flex:1 1 100%}
+  .nums{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+/* 899 px and narrower: the recipe open on its own, with the way back to the book at its top; no drawing, as on Brew
+   Day; the vessels one above another; the sheet's rows as blocks, each value with its column's name */
+@media (max-width:899px){
+  .alt{grid-template-areas:"tool" "pane"}
+  .alt .bcol{display:none}
+  .alt .tool.rhead{flex-direction:column;align-items:stretch;gap:10px;position:static;margin:0;padding:0;background:none}
+  .rbtns{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .rbtns .cmd{min-height:58px;font-size:18px}
+  .rh h1{font-size:24px}
+  .rigbox{display:none}
+  .vcols{grid-template-columns:minmax(0,1fr);margin-top:0}
+  .nums{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .nums{grid-auto-flow:dense}
+  .nums div:nth-child(2){grid-column:1/-1}
+  .sheet{padding:12px}
+  .bsht thead{display:none}
+  .bsht,.bsht tbody,.bsht tr,.bsht td{display:block}
+  .bsht tr{position:relative;min-height:58px;padding:8px 0 8px 54px;border-bottom:1px solid var(--line)}
+  .bsht td{padding:2px 0;border:0;white-space:normal}
+  .bsht td.n{position:absolute;left:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;width:44px;border-radius:4px}
+  .bsht td.k,.bsht td.v,.bsht td.num{display:inline-block;margin-right:12px;font-size:16px}
+  .bsht td.k::before,.bsht td.v::before,.bsht td.num::before{content:attr(data-l) " ";font:600 13px/1 var(--cond);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+  .bsht td.k::before{content:none}
+}

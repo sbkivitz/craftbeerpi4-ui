@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en" data-layout="b">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Recipe book · the other two layouts (mockup)</title>
+<!--
+The two other layouts the design tool dealt for the Recipe book, drawn for comparison with recipes.html: one moment
+each, a recipe open, the same recipe and state as recipes.html#book (Craftbeerpi Test Recipe v5, on Brew day, ready to
+start). ?layout=vessel draws the steps by vessel under the brewhouse drawing; ?layout=sheet draws the recipe as a brew
+sheet, one ruled table of steps. The book is the list down the left in both, as Settings' and Hardware's lists are.
+Static pictures only: the buttons do nothing. recipes.html stays the clickable mockup.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="recipes.css">
+<link rel="stylesheet" href="other-layouts.css">
+</head>
+<body>
+<div class="app" id="app" data-link="ok">
+  <header class="topbar">
+    <p class="brand"><span class="bname">EBrews - Simulator</span></p>
+    <div class="banner" data-tone="ok"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M6.5 12.5l3.5 3.5 7-8" fill="none" stroke="#0a1016" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="msg">No alarms</span></div>
+    <p class="link" data-link="ok"><i aria-hidden="true"></i><span id="link-t">Connected</span></p>
+    <button class="alloff" type="button">ALL OFF</button>
+    <p class="clock">07:41</p>
+  </header>
+
+  <section class="status" aria-label="The last event">
+    <div class="event"><span class="line"><time>07:38:40</time>Craftbeerpi Test Recipe v5 loaded · <span class="res ok">confirmed</span></span><button type="button" class="logbtn">LOG</button></div>
+  </section>
+
+  <nav class="tabs" aria-label="Screens">
+    <a href="#tab" data-tab="Brew day">Brew day</a>
+    <a href="#tab" data-tab="Brew steps"><span class="long">Brew steps</span><span class="short">Steps</span></a>
+    <a href="#tab" data-tab="Recipe book" aria-current="page"><span class="long">Recipe book</span><span class="short">Recipes</span></a>
+    <a href="#tab" data-tab="Analytics">Analytics</a>
+    <a href="#tab" data-tab="Hardware">Hardware</a>
+    <a href="#tab" data-tab="Settings">Settings</a>
+    <a href="#tab" data-tab="More">More</a>
+    <a href="#tab" data-tab="BrewScribe" class="ext"><span class="lbl">Brew<wbr><span class="nw">Scribe<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M5 1.8H2.4a.6.6 0 0 0-.6.6v7.2c0 .3.3.6.6.6h7.2c.3 0 .6-.3.6-.6V7M7.2 1.8h3v3M10.2 1.8 5.6 6.4"/></svg></span></span><span class="sr"> (opens in its own tab)</span></a>
+  </nav>
+
+  <main class="main alt" id="main"></main>
+</div>
+<script src="recipes-data.js"></script>
+<script src="recipes-catalog.js"></script>
+<script src="rig.js"></script>
+<script src="other-layouts.js"></script>
+</body>
+</html>
