@@ -1,0 +1,104 @@
+/* What the Recipe book and Brew steps pages know about each kind of step: its plain name (n), what it does (h), where
+   + STEP lists it (g), and its settings in groups (parts), each with a plain name, a line on what it does, its unit and
+   what blank means. CraftBeerPi's own names stay under each one in small type. A kind or a setting this page doesn't
+   know (a plugin's) still shows, by CraftBeerPi's name and its own description. Every kind's settings are the ones the
+   simulator's CraftBeerPi declares (GET /step2/). */
+"use strict";
+window.CBPI_STEP_CATALOG = (() => {
+  const AUTO = {n: "Switch AUTO on", h: "Yes: the step switches the vessel's AUTO on, and off again when it ends. No: nothing heats for it, and you run the vessel by hand.", opts: {Yes: "YES", No: "NO"}};
+  const VESSEL = {n: "Vessel", h: "The vessel it heats.", blank: "None chosen"};
+  const PROBE = {n: "Probe", h: "Blank: the vessel's own probe.", blank: "The vessel's own"};
+  return {
+    /* + STEP's groups, in brewing order */
+    GROUPS: [["mash", "Mash"], ["sparge", "Sparge"], ["boil", "Boil"], ["after", "After the boil"], ["any", "Any time"]],
+    KINDS: {
+      MashInStep: {n: "Mash in", g: "mash", h: "Heats the strike water, then waits for you to add the malt.",
+        parts: [{rows: ["Kettle", "Sensor", "Temp", "AutoMode"]},
+          {h: "When the water is ready", rows: ["Notification", "Stop_Pump_At_Strike"]},
+          {h: "Heating past the strike for the grain", note: "Leave all three blank to heat to the strike temperature only.", rows: ["Grain_Kg", "Grain_Sensor", "Mash_Water"]}],
+        p: {Kettle: VESSEL, Sensor: PROBE,
+          Temp: {n: "Strike temperature", unit: "deg", h: "The water is heated to this before the malt goes in."},
+          AutoMode: AUTO,
+          Notification: {n: "Message", h: "What it says when the water is ready. It waits for your answer."},
+          Stop_Pump_At_Strike: {n: "Stop the pump at strike", h: "Yes: the pump stops once the water is hot, so the malt goes into still water. It starts again at NEXT STEP.", opts: {Yes: "YES", No: "NO"}},
+          Grain_Kg: {n: "Grain", unit: "kg", h: "With the grain's temperature and the mash water, it heats past the strike so the mash lands on it."},
+          Grain_Sensor: {n: "Grain temperature", h: "A probe in the room, where the grain sits.", blank: "None"},
+          Mash_Water: {n: "Mash water", unit: "L"}}},
+      MashStep: {n: "Mash rest", g: "mash", h: "Heats the mash to a temperature and holds it there. Also the mash out.",
+        parts: [{rows: ["Kettle", "Sensor", "Temp", "Timer", "AutoMode"]}],
+        p: {Kettle: VESSEL, Sensor: PROBE,
+          Temp: {n: "Temperature", unit: "deg"},
+          Timer: {n: "Minutes", unit: "min", h: "Counted once the mash is at temperature."},
+          AutoMode: AUTO}},
+      SpargeStep: {n: "Sparge", g: "sparge", h: "Heats the sparge water, waits while you set the hoses and start the sparge, then times it.",
+        parts: [{rows: ["Kettle", "Sensor", "Temp", "Timer", "Mash_Tun", "Notification"]}],
+        p: {Kettle: {n: "Vessel", h: "The vessel that heats the sparge water: the HLT.", blank: "None chosen"}, Sensor: {n: "Probe", h: "Blank: the HLT's own.", blank: "The vessel's own"},
+          Temp: {n: "Sparge water", unit: "deg", h: "Heated to this and held until you press Sparge started. Blank: the HLT is left alone."},
+          Timer: {n: "Minutes", unit: "min", h: "Counted from Sparge started. 0: until NEXT STEP."},
+          Mash_Tun: {n: "Mash tun", h: "Its AUTO goes off as the step starts, and its pump with it, so the pumps are yours.", blank: "None chosen"},
+          Notification: {n: "Message", h: "What it says when the water is ready. Blank: to set the hoses and start the pumps."}}},
+      BoilStep: {n: "Boil", g: "boil", h: "Boils for a time and reminds you of up to six additions.",
+        parts: [{rows: ["Kettle", "Sensor", "Temp", "Timer", "LidAlert", "AutoMode"]}, {h: "Additions", adds: true}],
+        p: {Kettle: VESSEL, Sensor: PROBE,
+          Temp: {n: "Boil temperature", unit: "deg", h: "Where the wort boils. The boil's minutes are counted from here."},
+          Timer: {n: "Minutes", unit: "min"},
+          LidAlert: {n: "Lid reminder", h: "Yes: a reminder as the wort nears the boil. It says what Settings has for it.", opts: {Yes: "YES", No: "NO"}},
+          AutoMode: AUTO,
+          First_Wort: {n: "First wort", opts: {Yes: "YES", No: "NO"}},
+          First_Wort_text: {n: "First wort addition"}}},
+      WhirlpoolStep: {n: "Whirlpool", g: "after", h: "A timed stand in the boil kettle.",
+        parts: [{rows: ["Kettle", "Temp", "Timer"]}],
+        p: {Kettle: {n: "Vessel", h: "The vessel the wort stands in: the boil kettle.", blank: "None chosen"},
+          Temp: {n: "Whirlpool temperature", unit: "deg", h: "If the wort falls 3.6 °F below it, you're asked whether to heat it back. Blank: never asked."},
+          Timer: {n: "Minutes", unit: "min", h: "How long the stand lasts."}}},
+      CooldownStep: {n: "Cool down", g: "after", h: "Waits until the wort has cooled to a temperature.",
+        parts: [{rows: ["Kettle", "Sensor", "Temp", "Actor"]}],
+        p: {Kettle: {n: "Vessel", blank: "None chosen"}, Sensor: {n: "Probe", h: "The probe it watches.", blank: "None chosen"},
+          Temp: {n: "Cool to", unit: "deg", h: "A notification when the wort gets there."},
+          Actor: {n: "Cooling water", h: "A switch for a valve or pump, on while it cools.", blank: "None"}}},
+      NotificationStep: {n: "Message", g: "any", h: "Says something, then waits for you or moves on.",
+        parts: [{rows: ["Notification", "AutoNext"]}],
+        p: {Notification: {n: "Message"},
+          AutoNext: {n: "Then", h: "Wait: it waits for your answer. Move on: the next step starts at once.", opts: {No: "WAIT", Yes: "MOVE ON"}}}},
+      WaitStep: {n: "Wait", g: "any", h: "Waits a number of minutes.", parts: [{rows: ["Timer"]}], p: {Timer: {n: "Minutes", unit: "min"}}},
+      ToggleStep: {n: "Switch on or off", g: "any", h: "Switches a pump, valve or element on or off, and moves on.",
+        parts: [{rows: ["Actor", "toggle_type"]}],
+        p: {Actor: {n: "Switch", blank: "None chosen"}, toggle_type: {n: "To", opts: {On: "ON", Off: "OFF"}}}},
+      ActorStep: {n: "Run a switch", g: "any", h: "Runs a switch for a number of minutes, then switches it off.",
+        parts: [{rows: ["Actor", "Timer"]}],
+        p: {Actor: {n: "Switch", blank: "None chosen"}, Timer: {n: "Minutes", unit: "min"}}},
+      BrewStart: {n: "BrewStart", g: "any", h: "Has the water hot by a set time, or starts the next step at one.",
+        parts: [{rows: ["Timing", "Mode", "StartDate", "StartTime"]}, {h: "The water", rows: ["Heat_Kettle", "Ready_Temp", "Volume", "Volume_Unit", "Heater_Watts"]}, {h: "Reminders", rows: ["NotifyBefore", "Campden_Reminder", "AutoNext"]}],
+        p: {Timing: {n: "Timing", h: "Ready by: the water is hot by the time, heating as early as it needs to. Start at: the next step begins at the time.", opts: {"Ready by": "READY BY", "Start at": "START AT"}},
+          Mode: {n: "Day", h: "Today and Tomorrow count from when you start the brew.", opts: {Today: "TODAY", Tomorrow: "TOMORROW", Date: "DATE"}},
+          StartDate: {n: "Date", h: "Only when Day is Date."},
+          StartTime: {n: "Time"},
+          Heat_Kettle: {n: "Vessel", h: "The vessel with the element, holding all the strike and sparge water.", blank: "None chosen"},
+          Ready_Temp: {n: "Water temperature", unit: "deg", h: "How hot the water must be by the time."},
+          Volume: {n: "Water", unit: "vol", h: "All the water in the vessel. Also sets the Campden dose."},
+          Volume_Unit: {n: "Water in", opts: {gal: "GAL", L: "L"}},
+          Heater_Watts: {n: "Element", unit: "W", h: "Volts × amps, measured if you can."},
+          NotifyBefore: {n: "Notice before", unit: "min", h: "A notification this long before the start, or before heating with Ready by. Blank: 15. 0: none."},
+          Campden_Reminder: {n: "Campden reminder", h: "Yes: saving the step shows the Campden dose for the water.", opts: {Yes: "YES", No: "NO"}},
+          AutoNext: {n: "Then", h: "Move on: the next step begins at the time. Wait: it waits for NEXT STEP.", opts: {Yes: "MOVE ON", No: "WAIT"}}}}
+    },
+    /* what each of a step's settings is, as CraftBeerPi declares it (its type and choices), for every kind above */
+    TYPES: {
+      MashInStep: {Temp: "number", Sensor: "sensor", Kettle: "kettle", Notification: "text", AutoMode: ["Yes", "No"], Grain_Kg: "number", Grain_Sensor: "sensor", Mash_Water: "number", Stop_Pump_At_Strike: ["Yes", "No"]},
+      MashStep: {Timer: "number", Temp: "number", Sensor: "sensor", Kettle: "kettle", AutoMode: ["Yes", "No"]},
+      SpargeStep: {Timer: "number", Temp: "number", Kettle: "kettle", Sensor: "sensor", Mash_Tun: "kettle", Notification: "text"},
+      BoilStep: {Timer: "number", Temp: "number", Sensor: "sensor", Kettle: "kettle", LidAlert: ["Yes", "No"], AutoMode: ["Yes", "No"], First_Wort: ["Yes", "No"], First_Wort_text: "text",
+        Hop_1: "number", Hop_1_text: "text", Hop_2: "number", Hop_2_text: "text", Hop_3: "number", Hop_3_text: "text", Hop_4: "number", Hop_4_text: "text", Hop_5: "number", Hop_5_text: "text", Hop_6: "number", Hop_6_text: "text"},
+      CooldownStep: {Temp: "number", Sensor: "sensor", Actor: "actor", Kettle: "kettle"},
+      WaitStep: {Timer: "number"},
+      WhirlpoolStep: {Timer: "number", Temp: "number", Kettle: "kettle"},
+      ToggleStep: {toggle_type: ["On", "Off"], Actor: "actor"},
+      ActorStep: {Timer: "number", Actor: "actor"},
+      NotificationStep: {Notification: "text", AutoNext: ["Yes", "No"]},
+      BrewStart: {Timing: ["Start at", "Ready by"], Mode: ["Today", "Tomorrow", "Date"], StartDate: "date", StartTime: "time", Heat_Kettle: "kettle", Ready_Temp: "number", Volume: "number", Volume_Unit: ["gal", "L"], Heater_Watts: "number", Campden_Reminder: ["No", "Yes"], NotifyBefore: "number", AutoNext: ["Yes", "No"]}
+    },
+    /* what a new step of each kind starts with: CraftBeerPi's own defaults for it, so a new step heats as it should */
+    START: {MashInStep: {AutoMode: "Yes", Stop_Pump_At_Strike: "Yes"}, MashStep: {AutoMode: "Yes"}, BoilStep: {AutoMode: "Yes", LidAlert: "Yes", First_Wort: "No"},
+      NotificationStep: {AutoNext: "No"}, ToggleStep: {toggle_type: "On"}, BrewStart: {Timing: "Ready by", Mode: "Today", Volume_Unit: "gal", Campden_Reminder: "No", AutoNext: "Yes"}}
+  };
+})();
