@@ -1,4 +1,4 @@
-/* What the Recipe book and Brew steps pages know about each kind of step: its plain name (n), what it does (h), where
+/* What the Recipe Book and Brew Steps pages know about each kind of step: its plain name (n), what it does (h), where
    + STEP lists it (g), and its settings in groups (parts), each with a plain name, a line on what it does, its unit and
    what blank means. CraftBeerPi's own names stay under each one in small type. A kind or a setting this page doesn't
    know (a plugin's) still shows, by CraftBeerPi's name and its own description. Every kind's settings are the ones the
@@ -71,8 +71,8 @@ window.CBPI_STEP_CATALOG = (() => {
         parts: [{h: "When", rows: ["Timing", "Mode", "StartDate", "StartTime"], when: true},
           {h: "The water", rows: ["Ready_Temp", "Volume", "Volume_Unit", "Grain_Temp", "Campden_Reminder"], fill: true},
           {h: "The HLT and the notice", rows: ["Heat_Kettle", "Heater_Watts", "NotifyBefore", "AutoNext"]}],
-        p: {Timing: {n: "Timing", h: "Ready by: the water is hot by the time, heating starting as early as it needs to. Start at: the next step begins at the time.", opts: {"Ready by": "READY BY", "Start at": "START AT"}},
-          Mode: {n: "Day", h: "Today and Tomorrow count from when START is pressed.", opts: {Today: "TODAY", Tomorrow: "TOMORROW", Date: "DATE"}},
+        p: {Timing: {n: "Timing", h: "Ready by: the water is hot by the time, heating starting as early as it needs to. Start at: the next step begins at the time.", opts: {"Ready by": "READY BY", "Start at": "START AT"}, blankAs: "Start at"},
+          Mode: {n: "Day", h: "Today and Tomorrow count from when START is pressed.", opts: {Today: "TODAY", Tomorrow: "TOMORROW", Date: "DATE"}, blankAs: "Today"},
           StartDate: {n: "Date"},
           StartTime: {n: "Time", h: "Ready by: when the water must be hot. Start at: when the next step begins."},
           Heat_Kettle: {n: "Vessel", h: "The vessel with the element, holding all the strike and sparge water.", blank: "None chosen"},
@@ -82,9 +82,10 @@ window.CBPI_STEP_CATALOG = (() => {
           Grain_Temp: {n: "Grain temperature", unit: "deg", h: "Only for grain that spends the night away from the boil kettle. Blank: the boil kettle's probe.", blank: "The boil kettle's probe"},
           Heater_Watts: {n: "Element", unit: "W", h: "Volts × amps, measured if you can. Ready by works out from it when to start heating."},
           NotifyBefore: {n: "Notice before", unit: "min", h: "A notification this long before heating starts, or before the start. Blank: 15. 0: none.", blank: "15"},
-          Campden_Reminder: {n: "Campden reminder", h: "Yes: saving the step shows the Campden dose for the water.", opts: {Yes: "YES", No: "NO"}},
-          AutoNext: {n: "Then", h: "Move on: the next step begins at the time. Wait: it waits for NEXT STEP.", opts: {Yes: "MOVE ON", No: "WAIT"}}},
-        /* which settings show, as the plugin's own form shows them (its show_if): any one of the conditions is enough */
+          Campden_Reminder: {n: "Campden reminder", h: "Yes: saving the step shows the Campden dose for the water.", opts: {Yes: "YES", No: "NO"}, blankAs: "No"},
+          AutoNext: {n: "Then", h: "Move on: the next step begins at the time. Wait: it waits for NEXT STEP.", opts: {Yes: "MOVE ON", No: "WAIT"}, blankAs: "Yes"}},
+        /* which settings show, as the plugin's own form shows them (its show_if): any one of the conditions is enough.
+           A blank setting counts as its blankAs, as the plugin reads it: no Timing is Start at */
         show: {StartDate: [{Mode: ["Date"]}], Heat_Kettle: [{Timing: ["Ready by"]}], Ready_Temp: [{Timing: ["Ready by"]}], Heater_Watts: [{Timing: ["Ready by"]}],
           Volume: [{Timing: ["Ready by"]}, {Campden_Reminder: ["Yes"]}], Volume_Unit: [{Timing: ["Ready by"]}, {Campden_Reminder: ["Yes"]}],
           Grain_Temp: [{Timing: ["Ready by"]}, {Campden_Reminder: ["Yes"]}], AutoNext: [{Timing: ["", "Start at"]}]}}
