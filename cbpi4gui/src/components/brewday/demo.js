@@ -6,9 +6,10 @@
 // timer-nonames, timers-hand, sound-allow, byhand, byhand-past, stopped, reset, reset-done, and the pre-brew check's
 // prebrew, probes, probes-apart, probes-off, probes-none, checking, check-clock, check-now, check-probe, check-adds,
 // check-many, check-noanswer, check-noprobe, check-slow and check-unsure, and the strike water's sw-plan, sw-forecast,
-// sw-volume, sw-grain-edit, sw-grain, sw-hot, sw-used, sw-working, sw-working-open, sw-reworking, sw-levers, sw-refused,
-// sw-refused-moved, sw-failed, sw-tunprobe, sw-wait, sw-heat, sw-move, sw-late, sw-doughin, sw-hand, sw-novol,
-// sw-missing, sw-noprobe and sw-grain-bad) runs on this, so it can be compared with the mockup pixel for pixel.
+// sw-volume, sw-grain-edit, sw-grain, sw-hot, sw-used, sw-backhot, sw-working, sw-working-open, sw-reworking, sw-levers,
+// sw-refused, sw-refused-moved, sw-failed, sw-tunprobe, sw-wait, sw-heat, sw-move, sw-late, sw-doughin, sw-hand,
+// sw-novol, sw-missing, sw-noprobe, sw-grain-bad and sw-interval) runs on this, so it can be compared with the mockup
+// pixel for pixel.
 import { swModel, SW_MORNING, SW_LEVER_S } from "./strike-demo";
 
 const RECIPE = {
@@ -583,7 +584,8 @@ const SCENES = {
      The night before: #sw-plan, the recipe loaded and not begun, its strike water at the rest, as under Kal's way,
      and USE offered; #sw-forecast, the box opened out with FORECAST; #sw-volume, the HLT's water being changed there;
      #sw-grain-edit, the grain's temperature being given there, for grain kept indoors; #sw-grain, given on BrewStart;
-     #sw-hot, the strike water typed in too hot, so the mash would go over its rest; #sw-used, USE pressed. CraftBeerPi
+     #sw-hot, the strike water typed in too hot, so the mash would go over its rest; #sw-used, USE pressed; #sw-backhot,
+     USE pressed on a plan typed on Brew Steps as 185 °F, so BACK TO would pass the ceiling and is greyed. CraftBeerPi
      working USE out: #sw-working, the recipe just loaded and nothing worked out yet, and #sw-working-open with FORECAST
      open; #sw-reworking, the HLT's water just changed, the last figures shown until the new ones come; #sw-levers, USE
      worked out for the new water and FORECAST waiting for what would raise it most. #sw-refused: USE pressed on a
@@ -597,8 +599,8 @@ const SCENES = {
      imported, without the flow, and the HLT heating the strike water on its own AUTO. With a number missing: #sw-novol,
      BrewStart without a water volume; #sw-missing, a recipe built on Brew Steps, with no grain weight or mash water;
      #sw-noprobe, the boil kettle's probe giving no reading; #sw-grain-bad, BrewStart's grain temperature saved on Brew
-     Steps as 150 °F. swd: the moment's numbers, which the demo's stand-in for CraftBeerPi works the box's state out from
-     (strike-demo.js) */
+     Steps as 150 °F; #sw-interval, the mash tun's control interval set to 2.5 s. swd: the moment's numbers, which the
+     demo's stand-in for CraftBeerPi works the box's state out from (strike-demo.js) */
   "sw-plan": () => swDay(21 * 3600 + 12 * 60 + 5, {}),
   "sw-forecast": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {open: {swOpen: true}}),
   "sw-volume": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {open: {swOpen: true, swVol: {val: 13.5}}}),
@@ -671,7 +673,16 @@ const SCENES = {
   "sw-novol": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.vol = null; return s; },
   "sw-missing": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.from = null; return s; },
   "sw-noprobe": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.v.bk.pv = null; s.pb.none.bk = 300; return Object.assign(s, {pbLast: {bk: 61.4}, gap: {bk: 300}}); },
-  "sw-grain-bad": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.grain = 150; return s; }
+  "sw-grain-bad": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.grain = 150; return s; },
+  /* the strike water step's temperature typed on Brew Steps as 185 °F, and USE pressed at 21:12:31. The model's
+     answers stop at a 175 °F strike, so BACK TO's 185 °F can't be charted: the moment is the box closed */
+  "sw-backhot": () => {
+    const s = swDay(21 * 3600 + 12 * 60 + 40, {used: true});
+    s.swd.was = 185;
+    s.events[0] = ["21:12:31", `Strike water set to ${s.swd.plan.toFixed(1)} °F, was 185.0 °F`, "confirmed", "ok"];
+    return s;
+  },
+  "sw-interval": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.interval = 2.5; return s; }
 };
 /* ---------- the strike water's moments ----------
    The brewer's own flow (the rig page, 9b) in front of the recipe: BrewStart waits for Ready by on the HLT, then a

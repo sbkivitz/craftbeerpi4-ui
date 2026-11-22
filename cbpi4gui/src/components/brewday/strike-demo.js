@@ -6,9 +6,10 @@
 // the mockup's numbers and answers, and the screen draws the demo's moments and CraftBeerPi's alike.
 import { SW_MODEL } from "./strike-model";
 
-/* a figure more than this above the rest is too far to trust (MashInStep.MAX_STRIKE_RISE_C, 15 °C); a room's reading is
-   35-120 °F, as COMPARE PROBES counts one */
-const SW_MAX_RISE = 27, ROOM_LO = 35, ROOM_HI = 120;
+/* a figure more than this above the rest is too far to trust (MashInStep.MAX_STRIKE_RISE_C, 15 °C), and so is one over
+   MashInStep's ceiling, the hottest strike water the box sets (MAX_STRIKE_ABS_C, 82 °C); a room's reading is 35-120 °F,
+   as COMPARE PROBES counts one */
+const SW_MAX_RISE = 27, SW_CEIL = 179.6, ROOM_LO = 35, ROOM_HI = 120;
 /* how long after USE CraftBeerPi takes to work out which unmeasured numbers would raise it most (the levers), in the
    demo, in seconds: eleven more plans, about 40 s on a PC and 3 to 6 minutes on the Pi. USE doesn't wait for them */
 export const SW_LEVER_S = 60;
@@ -17,6 +18,10 @@ export const SW_LEVER_S = 60;
 export const campdenTablets = v => Math.max(1, Math.ceil(v / 20 * 4 - 1e-9)) / 4;
 /* a grain temperature the forecast can use: a number a room can have. BrewStart's, saved on Brew Steps, can be anything */
 const swGrainOk = t => typeof t === "number" && Number.isFinite(t) && t >= ROOM_LO && t <= ROOM_HI;
+/* the mash tun's SampleTime as PID_HERMS runs it: from 1 to 60 s as it is set, otherwise its own 5 s. The forecast
+   replays its decisions in whole seconds, so it can use any but a fraction from 1 to 60 s */
+const swRuns = s => typeof s === "number" && Number.isFinite(s) && s >= 1 && s <= 60 ? s : 5;
+const swIntervalOk = s => Number.isInteger(swRuns(s));
 /* the guesses, in the design's order (SW_GUESS), and each one's unit as the API names it */
 const GUESSES = [["next_min", "min"], ["tun_share", "share"], ["tun_loss", "W/K"], ["transfer_f", "F"], ["coil_ua", "W/K"],
   ["dough_min", "min"], ["flow", "L/min"], ["grain_c", "cal/g C"], ["hlt_loss", "share"], ["hlt_steel", "kg"], ["probe_lag", "s"]];
@@ -99,8 +104,9 @@ export const SW_MORNING = SW_MODEL.morning;
 /* ---------- the state, as CraftBeerPi's GET /step2/strike sends it ---------- */
 /* d, the moment's numbers as the mockup keeps them (its st.sw): the recipe's numbers (from), the HLT's water and the
    grain's temperature given by hand (vol, grain; with BrewStart they are its step's), where the mash probe sits (probe),
-   the strike water before the first USE (was), the numbers the last answer was worked out from (has), and CraftBeerPi
-   working one out (work: since, why) */
+   the mash tun's control interval (interval: the rig's 2 s unless the moment sets one), the strike water before the
+   first USE (was), the numbers the last answer was worked out from (has), and CraftBeerPi working one out (work: since,
+   why) */
 const swGal = F => +(F.forGrain + (F.dead || 0)).toFixed(2);
 /* the numbers CraftBeerPi works USE out from now, as its answer keeps them; none while one is missing */
 export function swNow(st, M) {
@@ -119,9 +125,10 @@ function strikeInputs(st, M) {
   const given = bi >= 0 ? S[bi].grain ?? null : d.grain ?? null, vol = bi >= 0 ? S[bi].vol ?? null : d.vol ?? null;
   /* a grain temperature that isn't a number is sent as none (typed null), with miss "grain" */
   const typed = given == null || !Number.isFinite(given) ? null : given;
-  const gal = F && F.grainLb && F.forGrain ? swGal(F) : null;
+  const gal = F && F.grainLb && F.forGrain ? swGal(F) : null, interval = d.interval === undefined ? 2 : d.interval;
   let miss = null;
   if (gal == null) miss = "recipe";
+  else if (!swIntervalOk(interval)) miss = "sample_time";
   else if (room == null) miss = "probe";
   else if (room < ROOM_LO || room > ROOM_HI) miss = "room";
   else if (given != null && !swGrainOk(given)) miss = "grain";
@@ -130,7 +137,7 @@ function strikeInputs(st, M) {
   const campden = bi >= 0 && S[bi].campden && vol != null && vol > 0 ? campdenTablets(vol) : null;
   const inputs = {rest, planned: planned ?? null, vol, vol_from: bi >= 0 ? "brewstart" : "brewday", left: vol != null && gal != null ? +(vol - gal).toFixed(2) : null,
     campden, room, room_why: room == null ? "stale" : null, typed, grain: typed ?? room, grain_from: typed != null ? "you" : "probe", probe: d.probe || "coil"};
-  return {S, bi, si, mi, F, gal, miss, inputs};
+  return {S, bi, si, mi, F, gal, miss, inputs, sample: swRuns(interval)};
 }
 /* the recipe's place: "plan" before the strike water is heated, "heat" while the strike water step runs, "moved" once the
    water is in the mash tun; brewing by hand (no strike water step) "moved" once MashIn on the mash tun has started. None
@@ -144,7 +151,7 @@ function strikePhase(st, si, mi) {
 export function strikeState(st, M) {
   const s = strikeInputs(st, M);
   if (!s) return null;
-  const d = st.swd, {S, bi, si, mi, F, gal, inputs} = s, phase = strikePhase(st, si, mi);
+  const d = st.swd, {S, bi, si, mi, F, gal, inputs, sample} = s, phase = strikePhase(st, si, mi);
   let miss = s.miss, answer = null;
   const A = !miss && d.has ? d.has : null;
   if (A) {
@@ -152,7 +159,7 @@ export function strikeState(st, M) {
     const numbers = {rest, strike_vol: gal, vol: A.vol, vol_from: inputs.vol_from, room: A.room, grain: A.grain, grain_from: inputs.grain_from, probe: A.probe};
     answer = {plan: `demo:${A.grain}|${A.vol}|${A.probe}|${A.room}`, at: d.at ?? st.t, took: 18.4, runs: 230, rule: "no worse", numbers, use: Mo.use,
       rest_peak: Mo.fc(rest).peak, forecasts: [], levers: null, levers_status: "far"};
-    if (Mo.use - rest > SW_MAX_RISE) miss = "far";
+    if (Mo.use - rest > SW_MAX_RISE || Mo.use > SW_CEIL) miss = "far";
     else {
       /* the strikes the box shows: as planned, USE, BACK TO's (the strike water before the first USE, or the rest), the
          rest, and BeerSmith's */
@@ -184,14 +191,14 @@ export function strikeState(st, M) {
      changes */
   const failed = d.failed && !A && !d.work && swSameIn(swNow(st, M), d.failed.for) ? {at: d.failed.at, detail: d.failed.detail} : null;
   return {
-    version: 1, unit: "F", vol_unit: "gal", mass_unit: "lb", now: st.t, scale: 1, received: Date.now(),
+    version: 1, unit: "F", vol_unit: "gal", mass_unit: "lb", ceiling: SW_CEIL, now: st.t, scale: 1, received: Date.now(),
     recipe: F ? {name: M.RECIPE.name, steps: ids, grain: F.grainLb, strike_vol: gal, for_grain: F.forGrain, dead: F.dead || 0, tun: F.tunLb ?? null, tun_heat: F.tunLb ? 0.12 : null,
       beersmith: F.bs ? {strike: F.bs, grain: F.bsGrain ?? null, tun: F.bsTun ?? null} : null, lacks: []}
       : {name: M.RECIPE.name, steps: ids, grain: null, strike_vol: null, for_grain: null, dead: null, tun: null, tun_heat: null, beersmith: null,
         lacks: ["grain", "water", "tun", "infuse_temp", "grain_temp", "tun_temp"]},
     applies: phase != null, off: phase != null ? null : "malt_in", phase, by: si >= 0 ? "step" : "hand",
     step_ids: {brewstart: bi >= 0 ? ids[bi] : null, strike: si >= 0 ? ids[si] : null, mash_in: ids[mi]},
-    inputs, rig: {through_coil: true, still_probe: 0.0}, guesses, miss, was: d.was ?? null,
+    inputs, rig: {through_coil: true, still_probe: 0.0}, sample_time: sample, guesses, miss, was: d.was ?? null,
     working: d.work ? {since: d.work.since, why: d.work.why === "load" ? "recipe" : d.work.why} : null, failed, answer
   };
 }

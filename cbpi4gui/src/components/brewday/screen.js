@@ -1086,12 +1086,16 @@ function brewQuestions() {
    water to the rest before the malt. A recipe without the brewer's flow in front (no strike water step) has the box only
    while it waits to start and the HLT heats the strike water by hand; there USE sets the HLT's target, as SET would */
 /* the limits, in the brewery's unit: within half a degree the strike water is USE's (SW_SAME); a room's reading is
-   35-120 °F; a figure more than 27 °F above the rest is too far to trust; with the pump stopped, a Mash Tun reading 3 °F
-   over the forecast isn't the mash */
+   35-120 °F; a figure more than 27 °F above the rest is too far to trust, and so is one over MashInStep's ceiling, the
+   hottest strike water the box sets; with the pump stopped, a Mash Tun reading 3 °F over the forecast isn't the mash */
 const swC = () => M.U === "°C";
 const swHalf = () => swC() ? 0.3 : 0.5;
 const swRoom = () => swC() ? [1.5, 49] : [35, 120];
 const swRise = () => swC() ? 15 : 27;
+/* the ceiling, as CraftBeerPi sends it in its state; one that doesn't send it has MashInStep's own, 179.6 °F (82 °C).
+   A temperature is over it as CraftBeerPi counts it, to 0.1, the figure its button shows */
+const swCeil = () => num(st.sw && st.sw.ceiling) ?? (swC() ? 82 : 179.6);
+const swOverCeil = T => T != null && Math.round(T * 10) > Math.round(swCeil() * 10);
 const swDough = () => swC() ? 1.7 : 3;
 const swVU = () => (st.sw && st.sw.vol_unit) || "gal";
 const swMU = () => (st.sw && st.sw.mass_unit) || "lb";
@@ -1119,15 +1123,16 @@ const swStillProbe = () => Math.min(1, Math.max(0, num(st.sw && st.sw.rig && st.
    last it worked out (with the numbers it came from, A). While it works USE out again (work: since, why) that answer is
    still shown, for the numbers it came from (stale); with none yet (wait), there is nothing to show but that it is
    working. Failed: it couldn't work one out for these numbers, and nothing is coming until a number changes. A forecast
-   is found by its strike, to 0.1 (fc); one CraftBeerPi hasn't sent yet is none */
+   is found by its strike, to 0.1 (fc); one CraftBeerPi hasn't sent yet is none. A USE over the ceiling is too far even
+   where CraftBeerPi doesn't say so, as with an answer it kept from an older version: it is never offered */
 function swNumbers() {
   const S = st.sw, R = S.recipe || {}, I = S.inputs || {}, A = S.answer;
   const N = {plan: I.planned ?? null, rest: I.rest, room: I.room ?? null, typed: I.typed ?? null, grain: I.grain ?? null, vol: I.vol ?? null,
-    left: I.left ?? null, step: S.by === "step", gal: R.strike_vol ?? null, probe: I.probe || "coil", R};
+    left: I.left ?? null, step: S.by === "step", gal: R.strike_vol ?? null, probe: I.probe || "coil", interval: S.sample_time ?? null, R};
   if (S.miss && S.miss !== "far") return Object.assign(N, {miss: S.miss});
   N.work = S.working || null;
   if (!A) return Object.assign(N, S.failed && !N.work ? {failed: S.failed} : {wait: true});
-  if (S.miss === "far" || A.use == null) return Object.assign(N, {miss: "far", strike: A.use});
+  if (S.miss === "far" || A.use == null || swOverCeil(A.use)) return Object.assign(N, {miss: "far", strike: A.use});
   /* the levers come a few minutes after USE: "working" while they are still coming, "ready" with them, and none come for
      this answer once they failed, were overtaken by new numbers, or USE is too far above the rest */
   const L = A.levers || null, lvs = A.levers_status || (L ? "ready" : null);
@@ -1207,7 +1212,15 @@ const SW_MISS = {
      GRAIN beside it opens the grain's box, whose own line says what to give */
   grain: N => `${swBrewStart() ? "BrewStart's grain temperature" : "The grain's temperature"} ${Number.isFinite(N.typed) ? `is ${N.typed.toFixed(1)}&nbsp;${M.U}, ${N.typed > swRoom()[1] ? "warmer" : "colder"} than any room` : "isn't a number"}. The forecast can't use it.`,
   vol: () => "How much water is in the HLT, strike and sparge? The forecast needs it.",
-  far: N => `It works out at ${swT(N.strike)}, more than ${swRise()}&nbsp;${M.U} above the rest: too far to trust. Check the grain weight and the water in BeerSmith.`
+  /* too far to offer: more than 27 °F above the rest; or within that, over the ceiling, which only a rest above
+     152.6 °F can bring */
+  far: N => N.strike - N.rest <= swRise() && swOverCeil(N.strike)
+    ? `It works out at ${swT(N.strike)}, over ${swT(swCeil())}: too hot for strike water. Check the grain weight and the water in BeerSmith.`
+    : `It works out at ${swT(N.strike)}, more than ${swRise()}&nbsp;${M.U} above the rest: too far to trust. Check the grain weight and the water in BeerSmith.`,
+  /* the mash tun's control interval (PID_HERMS's SampleTime), as the Hardware page names it and the values it offers:
+     CraftBeerPi asks for it only for a fraction from 1 to 60 s, which the forecast's replay can't step through. "isn't
+     a number" is a safety net: PID_HERMS runs one that isn't at its default */
+  sample_time: N => `The mash tun's control interval ${num(N.interval) != null ? `is ${num(N.interval)}&nbsp;s` : "isn't a number"}. The forecast can't use it: set it to 2 or 5&nbsp;s in Hardware.`
 };
 /* CraftBeerPi's work on USE failed for these numbers: no USE, the strike water as it is, and where to read why (LOG has
    its line, swFailLog) */
@@ -1499,15 +1512,18 @@ function swHTML() {
   /* USE, or once it is in use BACK TO, in one place. While the HLT heats the strike water, a temperature below the
      water's is greyed: the HLT can't cool it, and the step would ask for the water at once, hotter than the box says.
      While CraftBeerPi works USE out, USE is greyed, with the last figure if there is one: CraftBeerPi refuses a figure
-     worked out from numbers that have changed since. BACK TO is never hotter, so it stays */
+     worked out from numbers that have changed since. BACK TO is never hotter, so it stays, unless the plan it goes
+     back to is over the ceiling, which the box doesn't set: then it's greyed and says so, and by hand that the HLT's
+     own TARGET can still set it */
   const alt = swAlt(N), used = alt != null && N.plan != null && Math.abs(N.plan - N.strike) < swHalf(), U = M.U;
   let act = "";
   if (N.wait && phase !== "moved") act = b("cmdbtn swuse", `USE –&nbsp;–&nbsp;${U}`, "working it out", {cmd: "sw:use", why: SW_WORKING});
   else if (alt != null) {
     const H = st.v.hlt, water = (phase === "heat" && st.recipe.state === "running") || (!N.step && H.mode === "auto") ? H.pv : null;
     const cool = T => water != null && T < water - swHalf() ? `The water is already at ${water.toFixed(1)} ${U}, above ${T.toFixed(1)} ${U}, and the HLT can't cool it.` : "";
+    const hot = T => swOverCeil(T) ? `${T.toFixed(1)} ${U} is over ${+swCeil().toFixed(1)} ${U}, too hot for strike water, so BACK TO can't set it.${N.step ? "" : " TARGET can set the HLT to it."}` : "";
     const stale = N.stale ? `Not yet: ${swWhy(N)}, and CraftBeerPi is working USE out again. ${N.strike.toFixed(1)} ${U} was for ${swWas(N)}.` : "";
-    act = used ? b("cmdbtn", pend ? "SENDING…" : `BACK TO ${alt.toFixed(1)}&nbsp;${U}`, st.sw.was != null ? "as it was" : "the rest", {cmd: "sw:back", why: why || cool(alt)})
+    act = used ? b("cmdbtn", pend ? "SENDING…" : `BACK TO ${alt.toFixed(1)}&nbsp;${U}`, st.sw.was != null ? "as it was" : "the rest", {cmd: "sw:back", why: why || hot(alt) || cool(alt)})
       : b("cmdbtn swuse", pend ? "SENDING…" : `USE ${alt.toFixed(1)}&nbsp;${U}`, N.stale ? "working it out" : N.step ? "aims under the rest" : "as the HLT's target", {cmd: "sw:use", why: why || stale || cool(alt)});
   }
   /* with the pump stopped for the dough-in, a Mash Tun reading more than 3 °F over the top of where the forecast lands
@@ -1619,14 +1635,18 @@ function swApplied(a, how) {
     : `Strike water set to ${to.toFixed(1)} ${U}${from != null ? `, was ${from.toFixed(1)} ${U}` : ""}`;
 }
 /* why CraftBeerPi refused a strike water call from a screen that hadn't caught up with it, as START's refusal says it:
-   the water already in the mash tun (409 moved), the box no longer applying (409 off, why), or the recipe changed on
+   the water already in the mash tun (409 moved), the box no longer applying (409 off, why), the recipe changed on
    another screen (409 recipe_changed, decided from its name and steps as START's is: none, cleared; the same name,
-   changed; another, another loaded). None for an answer that isn't one of these: the call has failed */
+   changed; another, another loaded), or USE or BACK TO over the ceiling (400 too_hot, with CraftBeerPi's own figure).
+   None for an answer that isn't one of these: the call has failed. sample_time is for a CraftBeerPi that sends the
+   mash tun's control interval as off rather than as a number missing */
 const SW_OFF = {no_recipe: "no recipe is loaded now", malt_in: "the malt is already in", not_herms: "the mash tun no longer runs PID_HERMS",
-  no_mash_in: "the recipe's first mash tun step isn't MashIn now", no_mash_tun: "CraftBeerPi doesn't find the mash tun now", no_hlt: "CraftBeerPi doesn't find the HLT now"};
+  sample_time: "the forecast can't use the mash tun's control interval now", no_mash_in: "the recipe's first mash tun step isn't MashIn now",
+  no_mash_tun: "CraftBeerPi doesn't find the mash tun now", no_hlt: "CraftBeerPi doesn't find the HLT now"};
 function swWhyNot(d) {
   if (d.error === "moved") return "the strike water is already in the mash tun";
   if (d.error === "off") return SW_OFF[d.why] || "the strike water helper doesn't apply now";
+  if (d.error === "too_hot") return `it's over ${+(num(d.max) ?? swCeil()).toFixed(1)} ${M.U}, too hot for strike water`;
   if (d.error !== "recipe_changed") return "";
   const steps = Array.isArray(d.steps) ? d.steps : [];
   if (!steps.length) return "the recipe was cleared on another screen";
@@ -1637,9 +1657,10 @@ const swNotApplied = (what, d) => (why => why ? `${what} wasn't applied: ${why}.
 /* a strike water call to CraftBeerPi, as exec sends a command: its button says SENDING… or SETTING… until CraftBeerPi
    answers. label: the LOG line if it goes through as sent; o.ok(answer) gives the line in CraftBeerPi's own figures. A
    refusal the call knows (o.refused(answer, status) gives its words) logs nothing and is said under the box for 6 s;
-   the box then follows the state that comes with it, or, where none does (recipe_changed), the state asked for
-   afresh. Anything else (no answer, an error that isn't one of its refusals) has failed: LOG says so, in light red, and
-   the title bar's alarm says what is still in force (o.fail) */
+   the box then follows the state that comes with it, or, where none does, the state asked for afresh after
+   recipe_changed; too_hot changes nothing, so the box stays as it is. Anything else (no answer, an error that isn't
+   one of its refusals) has failed: LOG says so, in light red, and the title bar's alarm says what is still in force
+   (o.fail) */
 function swExec(key, dir, label, request, o) {
   return exec(key, dir, label, request, {
     quiet: true,
