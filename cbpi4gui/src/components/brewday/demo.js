@@ -10,8 +10,8 @@
 // check-many, check-noanswer, check-noprobe, check-slow and check-unsure, and the strike water's sw-plan, sw-forecast,
 // sw-volume, sw-grain-edit, sw-grain, sw-hot, sw-used, sw-backhot, sw-working, sw-working-open, sw-reworking, sw-levers,
 // sw-refused, sw-refused-moved, sw-failed, sw-tunprobe, sw-wait, sw-heat, sw-move, sw-late, sw-doughin, sw-hand,
-// sw-novol, sw-missing, sw-noprobe, sw-grain-bad and sw-interval) runs on this, so it can be compared with the mockup
-// pixel for pixel.
+// sw-novol, sw-missing, sw-noprobe, sw-grain-bad and sw-interval, and the one clock's sim-clock and sim-clock-1x) runs
+// on this, so it can be compared with the mockup pixel for pixel.
 import { swModel, SW_MORNING, SW_LEVER_S } from "./strike-demo";
 
 const RECIPE = {
@@ -577,6 +577,14 @@ const SCENES = {
   /* LOAD in the by-hand list over a finished recipe the Recipe Book doesn't have (Rye Pale Ale, built on Brew Steps):
      it asks first, as its steps would be gone */
   "load-notinbook": () => Object.assign(SCENES.finished(), {base: "finished", recipeName: "Rye Pale Ale", open: {confirmLoad: 0}}),
+  /* a simulator at 60× (SIM_TIME_SCALE), as 8012 runs: the #sw-plan night before on its clock, 21:12 on Thursday 26 Nov
+     while it is Sunday 22 Nov on the screen's own. Everything on CraftBeerPi's clock runs 60 times as fast, the title
+     bar's clock included, which says the date and the speed beside the time; past its midnight the date moves on, and
+     LOG's lines from the day before say theirs. #sim-clock-1x: the same evening on a simulator at 1×, its clock the
+     screen's, so the title bar shows the time alone, as on the rig. sim: the speed, CraftBeerPi's date at the moment's
+     midnight (day0) and the screen's (pc) */
+  "sim-clock": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {base: "sw-plan", sim: {scale: 60, day0: "2026-11-26", pc: "2026-11-22"}}),
+  "sim-clock-1x": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {base: "sw-plan", sim: {scale: 1, day0: "2026-11-22", pc: "2026-11-22"}}),
   "unload-held": () => Object.assign(SCENES["boil-hold"](), {base: "boil-hold", open: {confirmUnload: true}}),
   "unload-running": () => Object.assign(mash(), {base: "mash", open: {tap: "r:unload"}}),
   "unload-wait": () => Object.assign(SCENES["sw-wait"](), {base: "sw-wait", open: {tap: "r:unload"}}),

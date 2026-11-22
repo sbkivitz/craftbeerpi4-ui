@@ -103,7 +103,10 @@ const ICON = {
 };
 const LAYOUT = "b"; // the mockup's layout B (D3)
 const ACTS = ["hltEl", "hltPump", "wortPump", "bkEl"];
-const daySeconds = (d = new Date()) => d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
+/* a moment's seconds since its local midnight, and its local date: always of a time given, CraftBeerPi's (brewNow), so
+   nothing on Brew Day reads the PC's clock for a time it shows (DESIGN.md, The One Clock Rule) */
+const daySeconds = d => d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
+const ymdOf = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const pctOf = (left, min) => Math.max(0, Math.min(100, Math.round(100 * (1 - left / (min * 60)))));
 const EVENTS_KEY = "cbpi.brewday.events";
 const EVENTS_KEEP_MS = 12 * 3600 * 1000;
@@ -349,24 +352,93 @@ const bkHolding = () => st.v.bk.mode === "auto" && bkHoldT() != null;
    screen can't read it: live, it tells from the element running below full power while the wort is below the boil point
    (applyLive), as design/brewday/BUILD-NOTES.md says */
 const bkLatched = () => { const V = st.v.bk; return V.mode === "auto" && bkHoldT() == null && (V.latched ?? V.pv >= boilFrom()); };
-/* CraftBeerPi's brewing clock, in its own seconds (the wall clock on the rig, SIM_TIME_SCALE times as fast in a simulation),
-   which BoilPower stamps a pause with (Paused_At), so every screen counts the same pause. While the heat is paused, a log
-   window that reads no logs says where it is, once a minute; until the first answer, the graphs' history's clock. */
-let bclk = null, bclkAt = 0;
+/* CraftBeerPi's clock (cbpi.api.clock), in its own seconds: the wall clock on the rig, SIM_TIME_SCALE times as fast on a
+   simulator. Every time Brew Day shows is on it (DESIGN.md, The One Clock Rule): the title bar, LOG, the boil's pause,
+   which BoilPower stamps on it (Paused_At), so every screen counts the same pause. A log window that reads no logs says
+   where it is and how fast it runs: asked as the page opens, once a minute and again as the connection comes back, and
+   counted on from the last answer at its speed. Null until the first answer: no other clock stands in for it. */
+let bclk = null, bclkAt = 0, bclkBusy = false;
+const BCLK_MS = 60000;
+// until the first answer, asked again every 5 s while connected: one that failed (CraftBeerPi starting) leaves no clock
+const BCLK_RETRY_MS = 5000;
 function brewNow() {
-  if (bclk) return bclk.srv + (Date.now() - bclk.at) / 1000 * bclk.scale;
-  return H ? H.now() + H.day() : null;
+  return bclk ? bclk.srv + (Date.now() - bclk.at) / 1000 * bclk.scale : null;
 }
-async function syncBrewClock() {
-  if (DEMO_MODE || Date.now() - bclkAt < 60000) return;
-  bclkAt = Date.now();
+async function syncBrewClock(now = false) {
+  if (DEMO_MODE || bclkBusy || (!now && Date.now() - bclkAt < (bclk ? BCLK_MS : BCLK_RETRY_MS))) return;
+  bclkAt = Date.now(); bclkBusy = true;
   const g = gen;
   let res = null;
   try { res = await api.logWindow([], null, null); } catch (e) { res = null; }
+  if (g !== gen) return;
+  bclkBusy = false;
   const d = res && res.ok && res.data;
-  if (g !== gen || !d || typeof d !== "object" || !(num(d.now) > 0)) return;
+  if (!d || typeof d !== "object" || !(num(d.now) > 0)) return;
+  const first = !bclk;
   bclk = {srv: num(d.now), at: Date.now(), scale: num(d.scale) > 0 ? num(d.scale) : 1};
+  if (first) clockKnown();
   schedule();
+}
+/* lines this page logged before CraftBeerPi first said where its clock is take their time from that answer, counted back
+   by the real time since each (e[5]). "Connecting to CraftBeerPi" (e[5] 0) has none, and neither has a line kept from
+   an earlier page that never had one: CraftBeerPi may have restarted since */
+function clockKnown() {
+  let changed = false;
+  for (const e of st.events) {
+    if (e[0] !== "" || !(e[5] >= st.openedAt)) continue;
+    const d = new Date((bclk.srv + (e[5] - bclk.at) / 1000 * bclk.scale) * 1000);
+    e[0] = hhmmss(daySeconds(d)); e[8] = ymdOf(d); changed = true;
+  }
+  if (changed) saveEvents();
+}
+/* the title bar's clock: CraftBeerPi's time of day (t), its date (day: weekday, day and month; ymd) and its speed, and
+   whether that date isn't the screen's own (other); null while it isn't known. The demo's is a moment's st.t; a
+   simulator's moment (st.sim) has its speed and a date of its own: day0 its date at st.t 0, pc the screen's */
+const DOW = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"], MON3 = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+const DOW_SAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"], MON_SAY = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const NO_TIME = "– –:– –";
+/* how many of CraftBeerPi's seconds go by in a real second: SIM_TIME_SCALE on a simulator, else 1 */
+const SC = () => DEMO_MODE ? (st && st.sim ? st.sim.scale : 1) : bclk ? bclk.scale : 1;
+function demoDay(t) { const d = new Date(st.sim.day0 + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + Math.floor(t / 86400)); return d; }
+function clockNow() {
+  if (DEMO_MODE) {
+    const s = st.sim;
+    if (!s) return {t: st.t, other: false, scale: 1};
+    const d = demoDay(st.t), ymd = d.toISOString().slice(0, 10);
+    return {t: st.t, day: {w: d.getUTCDay(), d: d.getUTCDate(), m: d.getUTCMonth()}, ymd, other: ymd !== s.pc, scale: s.scale};
+  }
+  const e = brewNow();
+  if (e == null) return null;
+  const d = new Date(e * 1000), ymd = ymdOf(d);
+  return {t: daySeconds(d), day: {w: d.getDay(), d: d.getDate(), m: d.getMonth()}, ymd, other: ymd !== ymdOf(new Date()), scale: bclk.scale};
+}
+/* the clock with what the title bar adds to the time, or null for the time alone: on the rig, and on a simulator at 1×
+   on the screen's own date */
+function clockTag() {
+  const c = clockNow();
+  return c && (c.other || c.scale !== 1) ? c : null;
+}
+function clockSet() {
+  const el = $("#clock");
+  if (!el) return;
+  const c = clockNow(), g = c && (c.other || c.scale !== 1) ? c : null;
+  if (!g) { el.removeAttribute("data-sim"); const s = c ? hhmm(c.t) : NO_TIME; if (el.childElementCount || el.textContent !== s) el.textContent = s; return; }
+  const {day, other, scale} = g;
+  /* the weekday and SPEED give way on a phone (.lg), so the brewery's name keeps its room */
+  const line = [other ? `<span class="lg">${DOW[day.w]} </span>${day.d} ${MON3[day.m]}` : "", scale !== 1 ? `${scale}×<span class="lg"> SPEED</span>` : ""].filter(Boolean).join(" · ");
+  const said = `CraftBeerPi's clock${other ? `, ${DOW_SAY[day.w]} ${day.d} ${MON_SAY[day.m]}` : ""}${scale !== 1 ? `, running ${scale} times as fast` : ""}`;
+  const html = `<span class="ct">${hhmm(g.t)}</span><span class="cd" aria-hidden="true">${line}</span><span class="sr">${said}</span>`;
+  if (el.innerHTML !== html) el.innerHTML = html;
+  el.setAttribute("data-sim", "");
+}
+/* while the title bar adds a date or a speed, a LOG line from another of CraftBeerPi's days says its date, as
+   "26 Nov 23:58:40" (e[8]: CraftBeerPi's date as the line was logged). A line kept from a build before has none, and
+   shows none; the demo's own lines are on its moment's first day. On the rig LOG shows times alone */
+function logDate(e) {
+  const g = clockTag(), on = e[8] || (DEMO_MODE && st.sim ? st.sim.day0 : null);
+  if (!g || !on || on === g.ymd) return "";
+  const [, m, d] = on.split("-").map(Number);
+  return `${d} ${MON_SAY[m - 1].slice(0, 3)} `;
 }
 function pausedFor() {
   const el = st.a.bkEl, now = DEMO_MODE ? st.t : brewNow();
@@ -1873,9 +1945,10 @@ function bannerHTML() {
   const act = acts.map(y => b(y.sec ? "act sec" : "act", busy && (acts.length === 1 || busy === y.dir || busy === y.cmd) ? "SENDING…" : esc(y.label), y.hold && !busy ? "hold to start" : "", {cmd: y.cmd, why: busy ? WAIT : "", hold: y.hold})).join("");
   return `${x.tone === "prompt" ? ICON.bell : x.tone === "connecting" ? ICON.wait : ICON.warn}<span class="msg"><b>${esc(x.title)}${x.more ? ` · ${x.more} more waiting` : ""}</b>${esc(x.text).replace("{age}", `<span id="ban-age">${st.age}</span>`)}</span>${act}`;
 }
-/* an event with no result word (the connection coming and going) has no " · " after it */
+/* an event with no result word (the connection coming and going) has no " · " after it; one with no time yet
+   ("Connecting to CraftBeerPi", or a line before CraftBeerPi has said where its clock is) has no time */
 function eventHTML() {
-  const e = st.events[0], row = e => `<time>${e[0]}</time>${esc(e[1])}${e[2] ? ` · <span class="res ${e[3]}">${esc(e[2])}</span>` : ""}${e[4] ? ` · <span class="res">${esc(e[4])}</span>` : ""}`;
+  const e = st.events[0], row = e => `${e[0] ? `<time>${logDate(e)}${e[0]}</time>` : ""}${esc(e[1])}${e[2] ? ` · <span class="res ${e[3]}">${esc(e[2])}</span>` : ""}${e[4] ? ` · <span class="res">${esc(e[4])}</span>` : ""}`;
   return `<span class="line">${row(e)}</span><button type="button" class="logbtn" data-cmd="log" aria-expanded="${!!st.logOpen}" aria-controls="log">LOG</button>${st.logOpen ? `<ol class="log" id="log" aria-label="Recent events">${st.events.slice(0, 8).map(e => `<li>${row(e)}</li>`).join("")}</ol>` : ""}`;
 }
 const needleAngle = pv => -120 + 240 * (Math.min(220, Math.max(50, pv)) - 50) / 170;
@@ -2021,7 +2094,8 @@ function renderAll() {
   $("#app").toggleAttribute("data-editing", !!st.edit);
   $("#link").dataset.link = hello ? "connecting" : st.link;
   setText($("#link-t"), hello ? "Connecting…" : lost ? "No connection" : "Connected");
-  setText($("#clock"), hhmm(st.t));
+  if (!DEMO_MODE) { const c = clockNow(); st.t = c ? c.t : null; }
+  clockSet();
   const ho = $("#alloff");
   setText(ho, st.pend.alloff ? "SWITCHING OFF…" : "ALL OFF");
   if (lost || st.pend.alloff) { ho.setAttribute("aria-disabled", "true"); ho.dataset.why = lost ? PAUSED : WAIT; } else { ho.removeAttribute("aria-disabled"); delete ho.dataset.why; }
@@ -2106,7 +2180,7 @@ const bannerKey = x => x ? [x.tone, x.title, x.text, x.cmd || "", (x.acts || [])
 /* ---------- the temperature graphs (graphs.js) ---------- */
 // What the graphs draw. Their clock: the demo's, or CraftBeerPi's brewing clock, which a simulation runs faster. Its
 // times are seconds since a midnight, and a span can reach back past it, so the labels wrap round the day.
-const graphNow = () => H ? H.now() : daySeconds();
+const graphNow = () => H ? H.now() : (e => e == null ? 0 : daySeconds(new Date(e * 1000)))(brewNow());
 // a graph's clock labels: live, the local time at that moment, so a day with a daylight-saving change (23 or 25 hours)
 // is labelled right; the mockup's demo counts from its midnight
 const ghhmm = t => H && !DEMO_MODE ? hhmm(daySeconds(new Date((H.day() + t) * 1000)))
@@ -2158,11 +2232,14 @@ function schedule() {
 function toast(text) { const t = $("#toast"); t.textContent = text; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3800); }
 // shared: a line for every tab (the Settings and Hardware pages'), marked so another tab open on this device adds it
 // (onStorage).
-// q: the CraftBeerPi notification a "waiting for you" line is about, so the line can say what became of it (questionGone)
+// q: the CraftBeerPi notification a "waiting for you" line is about, so the line can say what became of it (questionGone).
+// A line's time is CraftBeerPi's (The One Clock Rule), with its date kept beside it (e[8], for logDate); before
+// CraftBeerPi has said where its clock is, it has none until it does (clockKnown). e[5], the real time, keeps the lines
+// and groups a burst.
 function logEvent(what, res, tone, cav = "", shared = false, q = null) {
-  if (DEMO_MODE) { st.events.unshift([hhmmss(st.t), what, res, tone, cav]); return; }
-  st.t = daySeconds();
-  st.events.unshift([hhmmss(st.t), what, res, tone, cav, Date.now(), ...(q != null ? [shared ? 1 : 0, String(q)] : shared ? [1] : [])]);
+  if (DEMO_MODE) { st.events.unshift([hhmmss(st.t % 86400), what, res, tone, cav, null, 0, null, st.sim ? demoDay(st.t).toISOString().slice(0, 10) : null]); return; }
+  const e = brewNow(), d = e == null ? null : new Date(e * 1000);
+  st.events.unshift([d ? hhmmss(daySeconds(d)) : "", what, res, tone, cav, Date.now(), shared ? 1 : 0, q != null ? String(q) : null, d ? ymdOf(d) : null]);
   if (st.events.length > 50) st.events.length = 50;
   saveEvents();
 }
@@ -3368,7 +3445,8 @@ function tmTick() {
   if (!st.banner) { const d = st.tmrs.find(t => t.state === "done"); if (d) { st.banner = DEMO.tBanner(d, st.tmrs); changed = true; } }
   if (changed) renderAll();
   else { const m = $("#tml-t"); if (m) m.innerHTML = tmlText(); }
-  if (st.tmrs.some(t => t.state === "done") && st.t % 3 === 0) ring();
+  // the beep while a timer's alarm waits is the screen's own: every 3 real seconds, at any speed of the demo's clock
+  if (st.tmrs.some(t => t.state === "done") && st.t % (3 * SC()) === 0) ring();
 }
 function tmShow(t) {
   setText($("#tt-" + t.id), tfmt(t.left));
@@ -3479,7 +3557,7 @@ function blankMoment() {
   const v = {}, a = {};
   ROLES.forEach(x => { v[x] = {pv: null, sv: null, own: null, mode: "manual"}; });
   ACTS.forEach(x => { a[x] = {on: false, pct: 0}; });
-  return {t: daySeconds(), link: "lost", age: null, banner: null, v, a, recipe: null, timer: {left: 3600, running: false},
+  return {t: null, link: "lost", age: null, banner: null, v, a, recipe: null, timer: {left: 3600, running: false},
     tmrs: [], names: [], tedit: null, snd: soundInit(),
     events: loadEvents(), pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, logOpen: false,
     sw: null, swOpen: false, swVol: null, swGrain: null,
@@ -3806,6 +3884,8 @@ function observe(prev, snap) {
   if (!prev) return firstLines(snap);
   if (prev.connected && !snap.connected) logEvent(LOST, "trying again", "bad");
   if (!prev.connected && snap.connected && everConnected) {
+    // CraftBeerPi's clock may have moved meanwhile: restarted, set by the network, or at another SIM_TIME_SCALE
+    syncBrewClock(true);
     logEvent("Connection to CraftBeerPi back", "", "");
     if (!PAGE && !st.recipe) loadBook();
     // a plugin comes or goes with a restart: ask again whether BrewScribe is there
@@ -4171,16 +4251,19 @@ function gOut(v) {
 }
 const gRow = (v, t) => [t, st.v[v].pv, gDriven(v) && st.v[v].sv != null ? st.v[v].sv : null, gOut(v)];
 function graphTick() {
-  if (!st.hist || st.t % 10) return;
+  // a row every 10 real seconds, at any speed of the demo's clock, as the readings reach the live screen
+  if (!st.hist || st.t % (10 * SC())) return;
   if (st.link !== "lost") ["hlt", "mt", "bk"].forEach(v => st.hist.v[v].push(gRow(v, st.t)));
   drawGraphs();
 }
+/* one of CraftBeerPi's seconds a tick: a real second, or a SIM_TIME_SCALE-th of one in a simulator's moment (st.sim) */
 function demoTick() {
   st.t++;
-  $("#clock").textContent = hhmm(st.t);
+  clockSet();
   if (GRAPHS) graphTick();
   if (st.link === "lost") {
-    st.age++;
+    // how long since the last reading is the screen's own wait, so it counts real seconds
+    if (st.t % SC() === 0) st.age++;
     root.querySelectorAll(".age").forEach(n => { n.textContent = `Last reading ${st.age} s ago`; });
     const ba = $("#ban-age"); if (ba) ba.textContent = st.age;
     return;
@@ -4259,8 +4342,11 @@ function demoTick() {
   if (M.TIMERS) tmTick();
 }
 function liveTick() {
-  st.t = daySeconds();
-  setText($("#clock"), hhmm(st.t));
+  const c = clockNow();
+  st.t = c ? c.t : null;
+  clockSet();
+  // where CraftBeerPi's clock is: once a minute while connected, and every 5 s until it first says
+  if (st.link !== "lost") syncBrewClock();
   if (st.oldAt && Date.now() >= st.oldAt) oldLines();
   if (st.link === "lost") {
     // the graphs go grey, and a dark stretch grows over the time with no readings
@@ -4283,9 +4369,8 @@ function liveTick() {
   if (swFcGap && !swFcGap.dropped && Date.now() - swFcGap.at >= SW_FC_WAIT) { swFcGap.dropped = true; renderAll(); }
   // the pre-brew check's box, and COMPARE PROBES, follow CraftBeerPi's check while open
   if ((st.pbOpen || st.cmpOpen) && !pbBusy && !(st.cmpOpen && pbNone) && Date.now() - pbAt >= PB_POLL) pbAsk();
-  // a pause counts on the brewing clock, from when BoilPower stamped it
+  // a pause counts on CraftBeerPi's clock, from when BoilPower stamped it
   if (st.a.bkEl.paused) {
-    syncBrewClock();
     const pz = $("#pz"); if (pz) setText(pz, mmss(pausedFor()));
   }
   if (H) {
@@ -4395,8 +4480,10 @@ export function createBrewDay(el, o = {}) {
     // the timers until CraftBeerPi says it has none (applyLive)
     M.TIMERS = true;
     if (GRAPHS) { H = createHistory(); st.hist = H.hist; }
-    // shown until the first connection, and never kept: e[5] is 0
-    if (!st.events.length) st.events.unshift([hhmmss(st.t), "Connecting to CraftBeerPi", "", "", "", 0]);
+    // shown until the first connection, and never kept: e[5] is 0. It has no time: CraftBeerPi hasn't said its clock yet
+    if (!st.events.length) st.events.unshift(["", "Connecting to CraftBeerPi", "", "", "", 0]);
+    // where CraftBeerPi's clock is, as the page opens
+    syncBrewClock(true);
   }
   renderAll();
   /* a moment can show a greyed button tapped: its reason in its note line (tap: #unload-running, #unload-wait) */
@@ -4414,7 +4501,22 @@ export function createBrewDay(el, o = {}) {
   // the Settings and Hardware pages' lines from another tab (onStorage), so a save there shows here
   if (!DEMO_MODE) window.addEventListener("storage", onStorage);
   // the Settings page's demo stands still, as its mockup's title bar does
-  const ticker = setInterval(() => { if (gen === myGen && st && !(DEMO_MODE && PAGE)) (DEMO_MODE ? demoTick : liveTick)(); }, 1000);
+  const tock = () => gen === myGen && st && !(DEMO_MODE && PAGE);
+  /* a tick a second; a simulator's moment (st.sim) runs the demo's clock, and everything on it, SIM_TIME_SCALE times as
+     fast: every 50 ms the seconds due by the real time since it began, so the page keeps up at any size */
+  const sc = DEMO_MODE && st.sim ? st.sim.scale : 1;
+  let ticker;
+  if (sc === 1) ticker = setInterval(() => { if (tock()) (DEMO_MODE ? demoTick : liveTick)(); }, 1000);
+  else {
+    const t0 = performance.now();
+    let done = 0;
+    ticker = setInterval(() => {
+      if (!tock()) return;
+      const due = Math.floor((performance.now() - t0) / 1000 * sc), n = Math.min(due - done, sc);
+      for (let i = 0; i < n && tock(); i++) demoTick();
+      done = Math.max(done + n, due - sc);
+    }, 50);
+  }
   const ro = PAGE ? null : new ResizeObserver(drawRig);
   if (ro) ro.observe($("#rig"));
   /* the faceplates' width crossing 276 px inside moves the boil power's steps and a box's keys between one row and two;
@@ -4461,7 +4563,7 @@ export function createBrewDay(el, o = {}) {
     delete html.dataset.timers;
     if (actx) { try { actx.close().catch(() => {}); } catch (e) { /* already closed */ } }
     actx = null;
-    H = null; bclk = null; bclkAt = 0;
+    H = null; bclk = null; bclkAt = 0; bclkBusy = false;
     if (root) root.innerHTML = "";
     root = null; st = null; gen++;
     teardown = () => {};
@@ -4476,6 +4578,8 @@ export function createBrewDay(el, o = {}) {
       if (H) H.steps(snap.steps);
       if (snap.connected && !everConnected) {
         if (st.events[0] && st.events[0][5] === 0) st.events.shift();
+        // the page's own ask for CraftBeerPi's clock may have gone before CraftBeerPi could answer
+        if (!bclk) syncBrewClock(true);
         /* a fresh page says it's connected when nothing is kept, or when the newest line kept is a lost connection. That
            line can come from the page this one replaced, logged as it closed, and nothing else would follow it, as this
            page never lost its own connection, and the tab would show "Connection to CraftBeerPi lost · trying again"
