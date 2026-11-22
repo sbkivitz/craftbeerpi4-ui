@@ -98,4 +98,6 @@ export const api = {
   strikeBack: (temp, steps) => post("/step2/strike", { do: "back", temp, steps }),
   strikeWater: (vol, steps) => post("/step2/strike/water", { vol, steps }),
   strikeGrain: (grain, steps) => post("/step2/strike/grain", { grain, steps }),
+  // Its whole state, as the websocket's topic "strike" sends it: asked for where a refusal brings none (recipe_changed).
+  strikeState: () => get("/step2/strike"),
 };
