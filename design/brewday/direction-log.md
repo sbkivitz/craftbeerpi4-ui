@@ -28,6 +28,11 @@
   The mash tun's control interval: asked for as a number missing, right after the recipe, rather than `off`, so the
   box says what to set in Hardware instead of vanishing from brew night over one setting. Not chosen: an alarm for
   `too_hot` (nothing waits for the brewer), and hiding the greyed BACK TO (The Say Why Rule).
+- Brett took both: web UI post31, and core post57, which sends `ceiling` and `sample_time` in the state, with `miss`
+  `sample_time` right after `recipe`. The sentence shows only for a fraction from 1 to 60 s, such as 2.5: PID_HERMS
+  runs any other SampleTime it can't use at its 5 s default, with a notice, and the forecast does the same. A strike
+  temperature typed on Brew Steps above the ceiling stays the brewer's own figure, as TARGET's would; the amber MASH
+  line is its warning.
 
 ## The boil kettle's MANUAL heats at the boil power; proposed (22 Nov 2026)
 - The brewer, on 22 Nov: "I don't know if the Manual function on the boil kettle makes sense". Then, from 8012:

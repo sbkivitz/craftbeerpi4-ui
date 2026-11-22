@@ -504,8 +504,9 @@ now." or "CraftBeerPi doesn't find the HLT now." Also:
 - USE or BACK TO over 179.6 °F (400 `too_hot`), which only a screen that hadn't caught up sends, as BACK TO over it is
   greyed and USE over it isn't offered: "BACK TO 185.0 °F wasn't applied: it's over 179.6 °F, too hot for strike
   water." It's a refusal, not a failed command: nothing logged and no alarm. Nothing changed, so the box stays as it is.
-- While CraftBeerPi reports the mash tun's control interval as off rather than as a number missing (below): "USE
-  132.4 °F wasn't applied: the forecast can't use the mash tun's control interval now."
+- With core post56, which reports the mash tun's control interval as off rather than as a number missing (below):
+  "USE 132.4 °F wasn't applied: the forecast can't use the mash tun's control interval now." From post57 a USE refused
+  for it is 409 `missing`, worded as above.
 
 The HLT's water and the grain's temperature, refused the same way, under the box for 6 s, with nothing logged: "The
 HLT's water wasn't set to 16.0 gal: …" and "The grain's temperature wasn't set to 70.0 °F: …" (THE PROBE: "The grain's
@@ -530,11 +531,14 @@ When a number is missing, the reason takes the buttons' place, and each says wha
 - "How much water is in the HLT, strike and sparge? The forecast needs it." with `HLT WATER` / "set it" beside it.
 - "No grain weight or mash water in this recipe, so where the mash lands isn't known. A recipe imported from BeerSmith
   has both." (a recipe built on Brew Steps)
-- "The mash tun's control interval is 2.5 s. The forecast can't use it: set it to 2 or 5 s in Hardware." ("isn't a
-  number" for one that isn't.) The forecast replays PID_HERMS's decisions, so it needs a whole number of seconds, 1 or
-  more; "control interval" and "2 or 5" are the Hardware page's own words for the mash tun's SampleTime. It comes
-  right after the recipe's sentence, as a setting made before brew night. Without it, the box would vanish from brew
-  night for one setting, and nothing would say why.
+- "The mash tun's control interval is 2.5 s. The forecast can't use it: set it to 2 or 5 s in Hardware." It comes only
+  for a fraction from 1 to 60 s, such as 2.5: PID_HERMS runs a SampleTime from 1 to 60 s as it is, but one that's
+  blank, not a number, or outside 1-60 s at its 5 s default, and says so in a notice. The forecast does the same, so
+  for those the box works as usual. The forecast replays PID_HERMS's decisions, so it can't step through a fraction of
+  a second. "Control interval" and "2 or 5" are the Hardware page's own words for the mash tun's SampleTime; 2 and 5
+  are the only choices it offers. "isn't a number" stays only as a safety net. It comes right after the recipe's
+  sentence, as a setting made before brew night. Without it, the box would vanish from brew night for one setting, and
+  nothing would say why.
 - "The boil kettle's probe gives no reading, so the room's temperature isn't known, nor the grain's. Check its plug and
   cable." With the grain's temperature given, without "nor the grain's".
 - "The boil kettle's probe reads 140.0 °F, warmer than any room, so it can't stand for the room or the grain."
@@ -634,8 +638,8 @@ PROBE blanks the grain temperature. Each is changed back the same way, and each 
 | A command that fails | React UI | No answer, or an error that isn't one of the refusals above (400 `bad_body`, 5xx): The Answer At The Button Rule, the alarm saying what is in force ("The strike water did not change. It is still 126.0 °F."), and LOG's "failed: {why}". |
 | The plan's forecast, coming | React UI | While `answer.forecasts` has none for `inputs.planned` (about a second on a Pi after the strike water is changed elsewhere), MASH is `– –` with WORKING OUT, and FORECAST shows the other choice alone; the tag goes after 10 s. The screen never calls `GET /step2/strike/forecast`: nothing in the design needs a forecast before it's set. |
 | The rig's other setups | React UI | `rig.through_coil` false: STRIKE's other words. `rig.still_probe` above 0: PUMP OFF's words, FORECAST's second sentence on what the probe reads, and the dough-in line, shown more than 3 °F outside where the mash lands, above or below. |
-| MashInStep's ceiling, 179.6 °F (82 °C) | React UI | `SW_CEIL` in `brew-day.js`. A USE over it counts as too far (`swNumbers`), so not even an answer kept from before core post56 can offer one; the "too far" sentence's second cause (`SW_MISS.far`); BACK TO to a plan over it greyed, with its reason (`hot` in `swHTML`); 400 `too_hot` as a refusal's note (`swNotApplied`), not a failed command. |
-| The mash tun's control interval | Server, then React UI | CraftBeerPi reports a SampleTime the replay can't step through as `miss` `sample_time`, right after `recipe`, rather than as `off`, which hides the box: so the box's phase has to be worked out with it too (today the check comes before MashIn on the Mash Tun is found). The screen: `SW_MISS.sample_time`, with the mash tun's SampleTime as the Hardware page shows it, from the kettle's settings or sent with the miss. |
+| MashInStep's ceiling, 179.6 °F (82 °C) | React UI | From core post57 CraftBeerPi sends it at the top of the state as `ceiling` (179.6 in °F, 82.0 in °C); `SW_CEIL` in `brew-day.js` stands in for it. A USE over it counts as too far (`swNumbers`), so not even an answer kept from before core post56 can offer one; the "too far" sentence's second cause (`SW_MISS.far`); BACK TO to a plan over it greyed, with its reason (`hot` in `swHTML`); 400 `too_hot` as a refusal's note (`swNotApplied`), not a failed command. |
+| The mash tun's control interval | Server, then React UI | From core post57: `sample_time`, the mash tun's SampleTime in seconds, at the top of the state, and `miss` `sample_time` right after `recipe` for a fraction from 1 to 60 s, the only SampleTime PID_HERMS runs as it is that the replay can't step through. It's a number missing rather than `off`, so the box stays, and its phase is worked out as for any other. The screen: `SW_MISS.sample_time`, worded from `sample_time`; the mockup's `swIntervalOk` follows the same rule. |
 | A grain temperature the forecast can't use, and a failed forecast | React UI | `miss` `grain`: `swGrainOk`, `SW_MISS.grain`, with GRAIN / "change it" opening the grain's box (`swGrain` opens it at the probe's reading). `failed`: `swFailedSays` in the buttons' place, MASH's dashes, and LOG's "Strike water forecast failed: {detail}" once, with "failed" in the failed tone (`bad`). |
 | What would raise USE most, after USE | React UI | `levers` null with an answer: `swList`'s sentence "CraftBeerPi is still working out which of these would raise USE most …" in NOT MEASURED YET, until they come (`swNumbers`' `lvWait`). |
 | The Campden dose | React UI | From the server's `campden` (null with BrewStart's Campden reminder off, or by hand): FROM YOU's water line ("Campden for it: ¾ tablet.") and the HLT water's LOG line (" · Campden 1 tablet"). Written as BrewStart's `format_tablets` writes it (`swCampden` stands in for it). |
@@ -679,11 +683,13 @@ still give USE at the rest itself, the box offers no USE, and FORECAST says why.
 
 For core post56 (22 Nov, morning):
 
-- 22 presses (`sw8_presses.py`): BACK TO 185.0 °F greyed in `#sw-backhot`, its reason under the box when tapped, and
+- 30 presses (`sw8_presses.py`): BACK TO 185.0 °F greyed in `#sw-backhot`, its reason under the box when tapped, and
   nothing sent or logged; by hand, its reason naming TARGET; BACK TO at 179.6 °F itself not greyed; the `too_hot` and
   `sample_time` refusals' words; the "too far" sentence's two causes, and a USE of 181.2 °F on a 158 °F rest giving no
-  USE and the ceiling's sentence; the control interval at 2.5 s, 0 s and not a number, after the recipe's sentence and
-  before the probe's, with 2, 3, 5 and blank usable and 2.5, 0.5 and −2 not; set to 2 s, USE worked out again.
+  USE and the ceiling's sentence; the control interval at 2.5 s, after the recipe's sentence and before the probe's;
+  as PID_HERMS takes it, 1, 2, 3, 5 and 60 s used as they are, blank, not a number, 0, 0.5, −2, 61.5 and 120 run at
+  its 5 s default with the box working as usual, and only 1.5, 2.5 and 59.5 s not usable; "isn't a number" kept as a
+  safety net; set to 2 s, USE worked out again.
 - The two new moments measured from 360 × 740 to 1920 × 1080: `#sw-backhot` is as tall as `#sw-used`, and
   `#sw-interval` no taller than `#sw-noprobe`; at every one-screen size the current step is whole and nothing is wider
   than the screen. BACK TO's reason, while it shows for 6 s at 1180 × 860, leaves the step list short of the current

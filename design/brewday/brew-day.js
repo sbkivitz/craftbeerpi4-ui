@@ -86,8 +86,9 @@ const SW_FROM = {grainLb: 20, forGrain: 7.5, dead: 0.76, tunLb: 33, bs: 134.6, b
    scald the enzymes before anyone noticed (MashInStep.MAX_STRIKE_RISE_C, 15 °C) */
 const SW_MAX_RISE = 27;
 /* the hottest strike water the box sets, °F (MashInStep.MAX_STRIKE_ABS_C, 82 °C), kept safely below what would scald
-   the first grain the water touches. A USE over it is too far to offer, and BACK TO to a plan over it is greyed.
-   MashInStep itself still heats to any temperature typed on Brew Steps */
+   the first grain the water touches; CraftBeerPi sends it in the state as `ceiling`. A USE over it is too far to
+   offer, and BACK TO to a plan over it is greyed. MashInStep itself still heats to any temperature typed on Brew
+   Steps */
 const SW_CEIL = 179.6;
 /* the strike water in use: within half a degree of the worked-out figure, so the grain warming a little through the
    morning doesn't take USE back from BACK TO */
@@ -1827,10 +1828,10 @@ function swGrainOf() { const {S, bi} = swSteps(); return bi >= 0 ? S[bi].grain ?
    The grain's: the brewer's figure, or without one the room's. Nothing stands in for the room: without a reading a
    room can have, the forecast waits for the probe. Nor for a grain temperature saved on BrewStart that no room has or
    that isn't a number: the forecast waits for a new one, or for it to be blanked. Nor for the mash tun's control
-   interval (PID_HERMS's SampleTime, sw.interval; blank is 5 s) when it isn't a whole number of seconds, 1 or more,
-   which the forecast's replay steps through; it comes after the recipe, as a setting made before brew night. What
-   stays in the HLT is its water less the strike water. Where the mash probe sits is the rig's setup (sw.probe): the
-   coil's outlet unless set otherwise */
+   interval (PID_HERMS's SampleTime, sw.interval; CraftBeerPi sends it as `sample_time`) when it is a fraction from 1
+   to 60 s, such as 2.5, which the forecast's replay can't step through; it comes after the recipe, as a setting made
+   before brew night. What stays in the HLT is its water less the strike water. Where the mash probe sits is the rig's
+   setup (sw.probe): the coil's outlet unless set otherwise */
 function swIn() {
   const F = st.sw.from, {S, si, mi} = swSteps(), rest = S[mi].temp, plan = si >= 0 ? S[si].temp : st.v.hlt.sv;
   const room = st.v.bk.pv == null ? null : +(st.v.bk.pv - ((st.poff || {}).bk || 0)).toFixed(1), typed = swGrainOf();
@@ -1847,8 +1848,10 @@ function swIn() {
 /* a grain temperature the forecast can use: a number a room can have, as COMPARE PROBES counts one. BrewStart's, saved
    on Brew Steps, can be anything */
 const swGrainOk = t => typeof t === "number" && Number.isFinite(t) && t >= ROOM_LO && t <= ROOM_HI;
-/* a control interval the forecast can use: blank (the rig's own) or a whole number of seconds, 1 or more */
-const swIntervalOk = s => s == null || (typeof s === "number" && Number.isInteger(s) && s >= 1);
+/* a control interval the forecast can use, as PID_HERMS uses it: from 1 to 60 s as it is, so a fraction there is the
+   one it can't step through; blank, not a number, or outside 1-60 s, PID_HERMS runs at its 5 s default and says so in
+   a notice, and the forecast does the same */
+const swIntervalOk = s => !(typeof s === "number" && Number.isFinite(s) && s >= 1 && s <= 60 && !Number.isInteger(s));
 /* a grain temperature in LOG's words, one that isn't a number included */
 const swGrainSays = t => typeof t === "number" && Number.isFinite(t) ? `${t.toFixed(1)} °F` : "not a number";
 /* the numbers USE is worked out from, as CraftBeerPi keeps them with its answer; none while one is missing. An answer
@@ -1961,7 +1964,8 @@ const SW_MISS = {
   far: N => N.strike - N.rest > SW_MAX_RISE
     ? `It works out at ${swT(N.strike)}, more than ${SW_MAX_RISE}&nbsp;°F above the rest: too far to trust. Check the grain weight and the water in BeerSmith.`
     : `It works out at ${swT(N.strike)}, over ${swT(SW_CEIL)}: too hot for strike water. Check the grain weight and the water in BeerSmith.`,
-  /* the mash tun's control interval, as the Hardware page names it and the values it suggests */
+  /* the mash tun's control interval, as the Hardware page names it and the values it offers. "isn't a number" is a
+     safety net: PID_HERMS runs one that isn't at its default */
   sample_time: N => `The mash tun's control interval ${typeof N.interval === "number" && Number.isFinite(N.interval) ? `is ${+N.interval}&nbsp;s` : "isn't a number"}. The forecast can't use it: set it to 2 or 5&nbsp;s in Hardware.`
 };
 /* CraftBeerPi's work on USE failed for these numbers: no USE, the strike water as it is, and where to read why */
@@ -1973,8 +1977,8 @@ function swFailedSays(N) {
 /* USE or BACK TO refused by a CraftBeerPi that has moved on, reaching a screen that hadn't caught up: the strike water
    already in the mash tun (409 moved), the box no longer applying (409 off, why), or the temperature over the ceiling
    (400 too_hot, which an up-to-date screen never sends, as it greys BACK TO over it). Said under the box for 6 s, as
-   START's refusal is, with nothing logged; the box then follows CraftBeerPi. sample_time is for a CraftBeerPi that
-   reports the control interval as off rather than as a number missing */
+   START's refusal is, with nothing logged; the box then follows CraftBeerPi. sample_time is for core post56, which
+   reports the control interval as off; from post57 it is a number missing */
 const SW_OFF = {
   no_recipe: "no recipe is loaded now",
   malt_in: "the malt is already in",
