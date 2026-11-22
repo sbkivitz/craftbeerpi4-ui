@@ -10,7 +10,7 @@ window.CBPI_STEP_CATALOG = (() => {
   const PROBE = {n: "Probe", h: "Blank: the vessel's own probe.", blank: "The vessel's own"};
   return {
     /* + STEP's groups, in brewing order */
-    GROUPS: [["mash", "Mash"], ["sparge", "Sparge"], ["boil", "Boil"], ["after", "After the boil"], ["any", "Any time"]],
+    GROUPS: [["before", "Before the brew"], ["mash", "Mash"], ["sparge", "Sparge"], ["boil", "Boil"], ["after", "After the boil"], ["any", "Any time"]],
     KINDS: {
       MashInStep: {n: "Mash in", g: "mash", h: "Heats the strike water, then waits for you to add the malt.",
         parts: [{rows: ["Kettle", "Sensor", "Temp", "AutoMode"]},
@@ -67,20 +67,27 @@ window.CBPI_STEP_CATALOG = (() => {
       ActorStep: {n: "Run a switch", g: "any", h: "Runs a switch for a number of minutes, then switches it off.",
         parts: [{rows: ["Actor", "Timer"]}],
         p: {Actor: {n: "Switch", blank: "None chosen"}, Timer: {n: "Minutes", unit: "min"}}},
-      BrewStart: {n: "BrewStart", g: "any", h: "Has the water hot by a set time, or starts the next step at one.",
-        parts: [{rows: ["Timing", "Mode", "StartDate", "StartTime"]}, {h: "The water", rows: ["Heat_Kettle", "Ready_Temp", "Volume", "Volume_Unit", "Heater_Watts"]}, {h: "Reminders", rows: ["NotifyBefore", "Campden_Reminder", "AutoNext"]}],
-        p: {Timing: {n: "Timing", h: "Ready by: the water is hot by the time, heating as early as it needs to. Start at: the next step begins at the time.", opts: {"Ready by": "READY BY", "Start at": "START AT"}},
-          Mode: {n: "Day", h: "Today and Tomorrow count from when you start the brew.", opts: {Today: "TODAY", Tomorrow: "TOMORROW", Date: "DATE"}},
-          StartDate: {n: "Date", h: "Only when Day is Date."},
-          StartTime: {n: "Time"},
+      BrewStart: {n: "BrewStart", g: "before", h: "Has the HLT's water hot by a set time, or starts the next step at one.",
+        parts: [{h: "When", rows: ["Timing", "Mode", "StartDate", "StartTime"], when: true},
+          {h: "The water", rows: ["Ready_Temp", "Volume", "Volume_Unit", "Grain_Temp", "Campden_Reminder"], fill: true},
+          {h: "The HLT and the notice", rows: ["Heat_Kettle", "Heater_Watts", "NotifyBefore", "AutoNext"]}],
+        p: {Timing: {n: "Timing", h: "Ready by: the water is hot by the time, heating starting as early as it needs to. Start at: the next step begins at the time.", opts: {"Ready by": "READY BY", "Start at": "START AT"}},
+          Mode: {n: "Day", h: "Today and Tomorrow count from when START is pressed.", opts: {Today: "TODAY", Tomorrow: "TOMORROW", Date: "DATE"}},
+          StartDate: {n: "Date"},
+          StartTime: {n: "Time", h: "Ready by: when the water must be hot. Start at: when the next step begins."},
           Heat_Kettle: {n: "Vessel", h: "The vessel with the element, holding all the strike and sparge water.", blank: "None chosen"},
           Ready_Temp: {n: "Water temperature", unit: "deg", h: "How hot the water must be by the time."},
-          Volume: {n: "Water", unit: "vol", h: "All the water in the vessel. Also sets the Campden dose."},
+          Volume: {n: "Water", unit: "vol", h: "All the water in the HLT, strike and sparge. Also sets the Campden dose."},
           Volume_Unit: {n: "Water in", opts: {gal: "GAL", L: "L"}},
-          Heater_Watts: {n: "Element", unit: "W", h: "Volts × amps, measured if you can."},
-          NotifyBefore: {n: "Notice before", unit: "min", h: "A notification this long before the start, or before heating with Ready by. Blank: 15. 0: none."},
+          Grain_Temp: {n: "Grain temperature", unit: "deg", h: "Only for grain that spends the night away from the boil kettle. Blank: the boil kettle's probe.", blank: "The boil kettle's probe"},
+          Heater_Watts: {n: "Element", unit: "W", h: "Volts × amps, measured if you can. Ready by works out from it when to start heating."},
+          NotifyBefore: {n: "Notice before", unit: "min", h: "A notification this long before heating starts, or before the start. Blank: 15. 0: none.", blank: "15"},
           Campden_Reminder: {n: "Campden reminder", h: "Yes: saving the step shows the Campden dose for the water.", opts: {Yes: "YES", No: "NO"}},
-          AutoNext: {n: "Then", h: "Move on: the next step begins at the time. Wait: it waits for NEXT STEP.", opts: {Yes: "MOVE ON", No: "WAIT"}}}}
+          AutoNext: {n: "Then", h: "Move on: the next step begins at the time. Wait: it waits for NEXT STEP.", opts: {Yes: "MOVE ON", No: "WAIT"}}},
+        /* which settings show, as the plugin's own form shows them (its show_if): any one of the conditions is enough */
+        show: {StartDate: [{Mode: ["Date"]}], Heat_Kettle: [{Timing: ["Ready by"]}], Ready_Temp: [{Timing: ["Ready by"]}], Heater_Watts: [{Timing: ["Ready by"]}],
+          Volume: [{Timing: ["Ready by"]}, {Campden_Reminder: ["Yes"]}], Volume_Unit: [{Timing: ["Ready by"]}, {Campden_Reminder: ["Yes"]}],
+          Grain_Temp: [{Timing: ["Ready by"]}, {Campden_Reminder: ["Yes"]}], AutoNext: [{Timing: ["", "Start at"]}]}}
     },
     /* what each of a step's settings is, as CraftBeerPi declares it (its type and choices), for every kind above */
     TYPES: {
@@ -95,10 +102,11 @@ window.CBPI_STEP_CATALOG = (() => {
       ToggleStep: {toggle_type: ["On", "Off"], Actor: "actor"},
       ActorStep: {Timer: "number", Actor: "actor"},
       NotificationStep: {Notification: "text", AutoNext: ["Yes", "No"]},
-      BrewStart: {Timing: ["Start at", "Ready by"], Mode: ["Today", "Tomorrow", "Date"], StartDate: "date", StartTime: "time", Heat_Kettle: "kettle", Ready_Temp: "number", Volume: "number", Volume_Unit: ["gal", "L"], Heater_Watts: "number", Campden_Reminder: ["No", "Yes"], NotifyBefore: "number", AutoNext: ["Yes", "No"]}
+      BrewStart: {Timing: ["Start at", "Ready by"], Mode: ["Today", "Tomorrow", "Date"], StartDate: "date", StartTime: "time", Heat_Kettle: "kettle", Ready_Temp: "number", Volume: "number", Volume_Unit: ["gal", "L"], Grain_Temp: "number", Heater_Watts: "number", Campden_Reminder: ["No", "Yes"], NotifyBefore: "number", AutoNext: ["Yes", "No"]}
     },
-    /* what a new step of each kind starts with: CraftBeerPi's own defaults for it, so a new step heats as it should */
+    /* what a new step of each kind starts with: CraftBeerPi's own defaults for it, so a new step heats as it should.
+       A new BrewStart is filled in from the rig instead (brewStartProps in recipes.js) */
     START: {MashInStep: {AutoMode: "Yes", Stop_Pump_At_Strike: "Yes"}, MashStep: {AutoMode: "Yes"}, BoilStep: {AutoMode: "Yes", LidAlert: "Yes", First_Wort: "No"},
-      NotificationStep: {AutoNext: "No"}, ToggleStep: {toggle_type: "On"}, BrewStart: {Timing: "Ready by", Mode: "Today", Volume_Unit: "gal", Campden_Reminder: "No", AutoNext: "Yes"}}
+      NotificationStep: {AutoNext: "No"}, ToggleStep: {toggle_type: "On"}}
   };
 })();

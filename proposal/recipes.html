@@ -14,7 +14,9 @@ plates, Barlow Condensed capitals, Brew Day's numbered step rows, Settings' rows
 CraftBeerPi's name under it in Dim Steel; blue only for where you are, Prompt Amber for a question, Running Green for a
 recipe that is running.
 STORY: The brewer finds the recipe he wants by its name or its numbers, sees its steps as Brew Day will show them, loads
-it with one tap (or answers one question when a brew has begun), and changes a step beside its preview.
+it with one tap (or answers one question when a brew has begun), and changes a step beside its preview. A new step goes
+where its kind belongs; MOVE, then PUT IT HERE, puts any step anywhere in two taps; a recipe without BrewStart offers it
+as step 1, filled in from the rig, with only its time left to set.
 FIRST VIEWPORT: Title bar, last event, tabs with RECIPE BOOK lit. Left: the recipe on Brew day, as Brew Day's recipe
 column shows it, with LOAD, EDIT and COPY in START, STOP and NEXT STEP's places. Right: FIND A RECIPE, + NEW and IMPORT
 over the book, a row per recipe, newest first, its numbers in fixed columns, LOAD at the end of each.
@@ -67,6 +69,12 @@ strip at the top; add ?bare to hide it. Brew Day's own part (OTHER RECIPE in its
   <a href="#to-book">SAVE TO BOOK</a>
   <a href="#steps-none">Nothing loaded</a>
   <a href="#unload">UNLOAD a stopped brew</a>
+  <span class="grp">BrewStart and moving:</span>
+  <a href="#brewstart-add">The night before</a>
+  <a href="#brewstart-added">+ BrewStart tapped</a>
+  <a href="#brewstart-time">Its time set</a>
+  <a href="#move">MOVE the last step</a>
+  <a href="#moved">Moved to step 1</a>
   <span class="grp">And:</span>
   <a href="#offline">Connection lost</a>
   <span>Recipes are the simulator's; House Pale Ale, Oatmeal Stout, Hefeweizen, the BeerSmith files and the Brewfather list are made up.</span>
