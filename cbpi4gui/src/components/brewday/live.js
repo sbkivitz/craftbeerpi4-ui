@@ -182,6 +182,22 @@ export function stepModel(s, roleOf, U, kname = {}) {
   return m;
 }
 
+// The water a recipe needs, all of it through the HLT, strike and sparge, from its import's figures (the recipe's
+// mash_numbers, in litres and kg): what goes into the boil kettle before the boil (boil_l), less anything topped up there
+// (top_up_kettle_l), plus what the grain keeps and what is lost under the mash (lauter_dead_l). The grain's share is the
+// Grain absorption setting's (GRAIN_ABSORPTION, gal/lb for a °F brewery, L/kg for °C), as a BeerXML file has no figure for
+// it. In the brewery's volume unit (gal for °F, L for °C), with the parts the sum is made of; null when the recipe or the
+// setting doesn't give the figures. For a new BrewStart's water, on the Recipe Book, Brew Steps and Brew Day alike.
+const GAL_L = 3.785411784, LB_KG = 0.45359237;
+export function recipeWater(mn, absorption, C) {
+  const a = num(absorption), boil = mn ? num(mn.boil_l) : null, grain = mn ? num(mn.grain_kg) : null;
+  if (boil == null || grain == null || a == null) return null;
+  const F = C === "F", perKg = F ? (a * GAL_L) / LB_KG : a, toU = (l) => (F ? l / GAL_L : l);
+  const before = boil - (num(mn.top_up_kettle_l) || 0), kept = grain * perKg, lost = num(mn.lauter_dead_l) || 0;
+  return { total: toU(before + kept + lost), before: toU(before), kept: toU(kept), lost: toU(lost), unit: F ? "gal" : "L",
+    rate: `${a} ${F ? "gal/lb" : "L/kg"}` };
+}
+
 export function model(snap) {
   const herms = hermsLogics(snap.logic);
   const K = kettleRoles(snap.kettles, snap.config, herms);

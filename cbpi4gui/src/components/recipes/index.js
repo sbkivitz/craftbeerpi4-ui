@@ -1,154 +1,108 @@
-import { Breadcrumbs, Button, Container, Divider, Paper,InputBase, IconButton, Link, List, ListItemButton, ListItemText, ListItemIcon, Tooltip } from "@mui/material";
-import { styled } from '@mui/material/styles';
-import Grid from "@mui/material/Grid";
-import Typography from "@mui/material/Typography";
-import AddIcon from "@mui/icons-material/Add";
-import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { recipeapi } from "../data/recipeapi";
-import { NewRecipeDialog } from "./NewRecipeDialog";
-import SearchIcon from "@mui/icons-material/Search";
-import { CBPiBeerIcon } from "../util/icons/CBPiSensorIcon";
-const PREFIX = 'Recipes';
+import React, { useEffect, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAlert } from "../alert/AlertProvider";
+import { useCBPi } from "../data";
+import "../brewday/fonts/barlow.css";
+import { liveSnap } from "../brewday/BrewDay";
+import { createBrewDay } from "../brewday/screen";
+import { createRecipes } from "./page";
 
-const classes = {
-  root: `${PREFIX}-root`,
-  paper: `${PREFIX}-paper`,
-  input: `${PREFIX}-input`
+const decode = (s) => {
+  try {
+    return decodeURIComponent(s);
+  } catch (e) {
+    // an address that isn't encoded: as it is
+    return s;
+  }
 };
 
-// TODO jss-to-styled codemod: The Fragment root was replaced by div. Change the tag if needed.
-const Root = styled('div')((
-  {
-    theme
-  }
-) => ({
-  [`& .${classes.root}`]: {
-    flexGrow: 1,
-  },
+// The address's view: #/recipes the Recipe Book, #/recipes/<file> that recipe in the column, #/recipe/<file> that recipe
+// being changed and #/upload importing, on the RECIPE BOOK tab; #/mashprofile and #/brewsteps Brew Steps, #/step/<id>
+// that step's settings and #/step its + STEP, on the BREW STEPS tab.
+export const routeOf = (pathname) => {
+  const p = pathname || "";
+  let m;
+  if ((m = /^\/recipes\/(.+)$/.exec(p))) return { mode: "book", kind: "open", file: decode(m[1]) };
+  if (/^\/recipes\/?$/.test(p)) return { mode: "book", kind: "list" };
+  if ((m = /^\/recipe\/(.+)$/.exec(p))) return { mode: "book", kind: "edit", file: decode(m[1]) };
+  if (/^\/upload\/?$/.test(p)) return { mode: "book", kind: "upload" };
+  if ((m = /^\/step\/(.+)$/.exec(p))) return { mode: "steps", kind: "step", id: decode(m[1]) };
+  if (/^\/step\/?$/.test(p)) return { mode: "steps", kind: "add" };
+  return { mode: "steps", kind: "steps" };
+};
 
-  [`& .${classes.paper}`]: {
-    padding: theme.spacing(2),
-    textAlign: "center",
-    color: theme.palette.text.secondary,
-  },
-
-  [`& .${classes.input}`]: {
-    marginLeft: theme.spacing(1),
-    flex: 1,
-  }
-}));
-
-
-
+// The recipe pages: the Recipe Book, a recipe's steps, importing, and Brew Steps, as the recipe pages' mockup
+// (design/recipes) draws them. Each sits in the brew-day screen's frame, the live title bar, last event and tabs with
+// RECIPE BOOK or BREW STEPS lit (screen.js, page "recipes" or "brewsteps"), and the page itself is page.js, the
+// mockup's own code. Like the brew-day screen it isn't drawn by React and sits outside the app's menu bar and page frame,
+// and while it is open the corner stack of notifications is hidden: the title bar shows CraftBeerPi's prompts instead.
+// Every address of one tab shows this one page, which stays open as the address changes between them, so changes not
+// saved stay with it; the other tab's addresses open the other page.
 const Recipes = () => {
-  const [totalList, setTotalList] = useState([]);
-  const [list, setList] = useState([]);
+  const ref = useRef(null);
+  const frame = useRef(null);
+  const page = useRef(null);
+  const { state } = useCBPi();
+  const alert = useAlert();
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false)
-  const [filter, setFilter] = useState("");
-
+  const go = useRef(navigate);
+  go.current = navigate;
+  const location = useLocation();
+  const route = routeOf(location.pathname);
+  const mode = route.mode;
+  const { remove, hideStack, alerts, retiredReason, retiredAnswer, waitingNow, waitingN, seenNow, seenN } = alert;
 
   useEffect(() => {
-    recipeapi.get((data) => {
-      setTotalList(data)
-      setList(data);
+    const title = document.title;
+    // the frame puts the brewery's name first, once CraftBeerPi's settings arrive (screen.js, setBrewery)
+    document.title = `${mode === "steps" ? "Brew Steps" : "Recipe Book"} · CraftBeerPi`;
+    if (hideStack) hideStack(true);
+    frame.current = createBrewDay(ref.current, {
+      page: mode === "steps" ? "brewsteps" : "recipes",
+      navigate: (path) => go.current(path),
+      removeAlert: (id) => remove(id),
     });
-  }, []);
+    page.current = createRecipes(frame.current.host, {
+      frame: frame.current,
+      mode,
+      navigate: (path, options) => go.current(path, options),
+    });
+    return () => {
+      if (page.current) page.current.destroy();
+      if (frame.current) frame.current.destroy();
+      page.current = null;
+      frame.current = null;
+      document.title = title;
+      if (hideStack) hideStack(false);
+    };
+  }, [remove, hideStack, mode]);
 
   useEffect(() => {
-    console.log(filter)
-    if(filter) {
-      setList(totalList.filter(item=> item?.name.includes(filter) ))
+    if (page.current) page.current.route({ ...routeOf(location.pathname), path: location.pathname, state: location.state || null });
+  }, [location.pathname, location.state, location.key, mode]);
+
+  useEffect(() => {
+    if (frame.current) frame.current.update(liveSnap(state, alerts, retiredReason, waitingN ? { ids: waitingNow, n: waitingN } : null, retiredAnswer,
+      seenN ? { ids: seenNow, n: seenN } : null));
+    if (page.current) {
+      page.current.update({
+        connected: !!state.connection,
+        // GET /system/ has answered: a record not in it isn't there
+        loaded: !!state.auth,
+        version: state.version,
+        config: state.config,
+        kettles: state.kettle,
+        sensors: state.sensors,
+        actors: state.actors,
+        steps: state.mashProfile,
+        basic: state.mashBasic,
+        stepTypes: state.stepTypes,
+        bf: state.bf_recipes,
+      });
     }
-    else {
-      setList(totalList)
-    }
-  }, [filter]);
+  }, [state, alerts, retiredReason, retiredAnswer, waitingNow, waitingN, seenNow, seenN, mode]);
 
-  
-
-  const openRecipe = (file) => {
-    navigate("/recipe/" + file);
-  };
-
-  const createRecipe = () => {
-    setOpen(true)
-
-  }
-
-  // Every import is kept here, and says where it came from -
-  // unless the recipe has a description of its own.
-  const secondary = (item) =>
-    item.desc || (item.imported_from ? "Imported from " + item.imported_from : "");
-
-
-  return (
-    (<Root>
-      <Container maxWidth="lg">
-        <Grid container direction="row" justifyContent="space-between" alignItems="center" style={{ marginTop: 10 }}>
-          <Grid item>
-            <Typography variant="h5" gutterBottom>
-              Recipe Book
-            </Typography>
-          </Grid>
-          <Grid item>
-            <Paper component="form" className={classes.root}>
-              <InputBase
-                className={classes.input}
-                value={filter}
-                onChange={(e) => {
-                  setFilter(e.target.value);
-                }}
-                placeholder="Filter"
-                inputProps={{ "aria-label": "filter settings" }}
-              />
-              <IconButton type="submit" className={classes.iconButton} aria-label="search">
-                <SearchIcon />
-              </IconButton>
-            </Paper>
-          </Grid>
-          <Grid item>
-          <Button variant="contained" color="primary" startIcon={<CloudUploadIcon />}
-            onClick={() => navigate("/upload")}>
-            Import recipe
-          </Button>
-          <Tooltip title="Create new recipe">
-            <IconButton variant="contained" onClick={createRecipe}>
-              <AddIcon />
-            </IconButton>
-            </Tooltip>
-            <NewRecipeDialog open={open} setOpen={setOpen}/>
-          </Grid>
-        </Grid>
-        <Breadcrumbs aria-label="breadcrumb">
-          <Link
-            color="inherit"
-            onClick={() => {
-              navigate("/mashprofile");
-            }}
-          >
-            Brew Steps
-          </Link>
-          <Typography color="textPrimary">Recipe Book</Typography>
-        </Breadcrumbs>
-        <Divider style={{ marginBottom: 10, marginTop: 10 }} />
-        <List>
-          {list.map((item) => (
-            <Tooltip key={item.file} title="Click to select recipe">
-            <ListItemButton onClick={() => openRecipe(item.file)}>
-              <ListItemIcon>
-                <CBPiBeerIcon/>
-              </ListItemIcon>
-              <ListItemText primary={item.name || "No Name"} secondary={secondary(item)} />
-            </ListItemButton>
-            </Tooltip>
-          ))}
-        </List>
-        </Container>
-    </Root>)
-  );
+  return <div ref={ref} className="bd-root" />;
 };
 
 export default Recipes;

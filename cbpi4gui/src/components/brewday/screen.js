@@ -136,10 +136,10 @@ const TIMER_RAN_OUT = /^The \d+(?::\d\d){1,2} timer has run out\.$/;
 
 /* ---------- the screen's markup: the mockup's page, after layout B's moves ---------- */
 const MORE = [["#/dashboard", "Dashboard"], ["#/fermenterprofile", "Fermenter profile"], ["#/plugins", "Plugins"], ["#/system", "System"], ["#/about", "About"]];
-/* page: "" the brew-day screen; "settings" or "hardware", its frame (title bar, last event, tabs) round the Settings or
-   Hardware page, whose host (#sp) takes the brewhouse's place and which draws itself (settings/page.js,
-   hardware/page.js) */
-const PAGE_TAB = {settings: "Settings", hardware: "Hardware"};
+/* page: "" the brew-day screen; "settings", "hardware", "recipes" or "brewsteps", its frame (title bar, last event, tabs)
+   round the Settings, Hardware, Recipe Book or Brew Steps page, whose host (#sp) takes the brewhouse's place and which
+   draws itself (settings/page.js, hardware/page.js, recipes/page.js) */
+const PAGE_TAB = {settings: "Settings", hardware: "Hardware", recipes: "Recipe Book", brewsteps: "Brew Steps"};
 function skeleton(demo, page) {
   const h = p => demo ? "#tab" : p;
   const cur = t => (PAGE_TAB[page] || "") === t ? ' aria-current="page"' : "";
@@ -158,8 +158,8 @@ function skeleton(demo, page) {
 
   <nav class="tabs" aria-label="Screens">
     <a href="${h("#/")}" data-tab=""${cur("")}>Brew day</a>
-    <a href="${h("#/mashprofile")}" data-tab="Brew Steps"><span class="long">Brew steps</span><span class="short">Steps</span></a>
-    <a href="${h("#/recipes")}" data-tab="Recipe Book"><span class="long">Recipe book</span><span class="short">Recipes</span></a>
+    <a href="${h("#/mashprofile")}" data-tab="Brew Steps"${cur("Brew Steps")}><span class="long">Brew steps</span><span class="short">Steps</span></a>
+    <a href="${h("#/recipes")}" data-tab="Recipe Book"${cur("Recipe Book")}><span class="long">Recipe book</span><span class="short">Recipes</span></a>
     <a href="${h("#/charting")}" data-tab="Analytics">Analytics</a>
     <a href="${h("#/hardware")}" data-tab="Hardware"${cur("Hardware")}>Hardware</a>
     <a href="${h("#/settings/All")}" data-tab="Settings"${cur("Settings")}>Settings</a>
@@ -364,7 +364,7 @@ let bclk = null, bclkAt = 0, bclkBusy = false;
 const BCLK_MS = 60000;
 // until the first answer, asked again every 5 s while connected: one that failed (CraftBeerPi starting) leaves no clock
 const BCLK_RETRY_MS = 5000;
-function brewNow() {
+export function brewNow() {
   return bclk ? bclk.srv + (Date.now() - bclk.at) / 1000 * bclk.scale : null;
 }
 async function syncBrewClock(now = false) {
@@ -4349,7 +4349,8 @@ const handlers = {
         if (tab.dataset.tab === "BrewScribe") toast("Mockup: this opens BrewScribe in a browser tab of its own, or goes back to that tab if it's open, without reloading it.");
         else if (tab.dataset.tab) toast(tab.dataset.tab === "More" ? "Mockup: MORE holds Fermenter Profile, Plugins, System and About." : `Mockup: this opens the existing ${tab.dataset.tab} page.`);
       } else if (tab.dataset.tab === "More") { e.preventDefault(); toggleMore(tab); }
-      // the page's own tab goes nowhere: Brew day on the brew-day screen, SETTINGS or HARDWARE on those pages
+      // the page's own tab goes nowhere: Brew day on the brew-day screen, SETTINGS, HARDWARE, RECIPE BOOK or BREW STEPS
+      // on those pages
       else if (tab.getAttribute("aria-current") === "page") e.preventDefault();
       return;
     }
@@ -4723,9 +4724,9 @@ export function createBrewDay(el, o = {}) {
       if (snap.connected) everConnected = true;
       schedule();
     },
-    /* for the Settings and Hardware pages (page "settings" or "hardware"): its host; the last-event line, the screen
-       reader's line and the toast, which it shares; MORE's list; and in the Settings page's demo, the title bar's
-       connection and last events, from its mockup */
+    /* for the Settings, Hardware and recipe pages (page "settings", "hardware", "recipes" or "brewsteps"): its host;
+       the last-event line, the screen reader's line and the toast, which it shares; MORE's list; and in the Settings
+       page's demo, the title bar's connection and last events, from its mockup */
     host: PAGE ? $("#sp") : null,
     log(what, res, tone, cav = "") { if (gen === myGen && st) { logEvent(what, res, tone, cav, true); schedule(); } },
     say(text, urgent) { if (gen === myGen && st) say(text, urgent); },

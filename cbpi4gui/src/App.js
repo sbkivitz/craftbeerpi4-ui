@@ -6,7 +6,6 @@ import { HashRouter as Router, Routes, Route, Outlet } from "react-router-dom";
 import "./App.css";
 import About from "./components/about";
 import ConnectionBanner from "./components/util/ConnectionBanner";
-import Upload from "./components/upload";
 import CBPiSystem from "./components/system";
 import {Dashboard2 , FixDashboard} from "./components/dashboard/Dashboard";
 import BrewDay from "./components/brewday/BrewDay";
@@ -14,14 +13,11 @@ import Hardware from "./components/hardware";
 import Fermenters from "./components/hardware/Fermenters";
 import FermenterForm from "./components/hardware/FermenterForm";
 import Plugins from "./components/plugins";
-import MashProfile from "./components/mashprofile";
 import FermenterProfile from "./components/fermenterprofile";
 import Settings from "./components/settings";
-import StepForm from "./components/mashprofile/StepForm";
 import FermenterStepForm from "./components/fermenterprofile/FermenterStepForm";
 import Recipes from "./components/recipes";
 import FermenterRecipes from "./components/fermenterrecipes";
-import RecipeEditor from "./components/recipes/RecipeEditor";
 import FermenterRecipeEditor from "./components/fermenterrecipes/FermenterRecipeEditor";
 import { Charting } from "./components/charting";
 import MainMenu from "./components/MainMenu";
@@ -247,25 +243,27 @@ const CraftBeerPiApp = () => {
           <Route path="sensor" element={<Hardware />} />
           <Route path="actor/:id" element={<Hardware />} />
           <Route path="actor" element={<Hardware />} />
+          <Route path="recipes" element={<Recipes />} />
+          <Route path="recipes/:file" element={<Recipes />} />
+          <Route path="recipe/:id" element={<Recipes />} />
+          <Route path="upload" element={<Recipes />} />
+          <Route path="mashprofile" element={<Recipes />} />
+          <Route path="brewsteps" element={<Recipes />} />
+          <Route path="step/:id" element={<Recipes />} />
+          <Route path="step" element={<Recipes />} />
           <Route element={<AppLayout appBarHeight={appBarHeight} /> } >
                   <Route path="dashboard" element={<Dashboard2 />}/>   
                   <Route path="fixdash/:dashboardid" element={<FixDashboard />}/>
                   <Route path="plugins" element={<Plugins />} />
                   <Route path="about" element={<About />}/>
-                  <Route path="upload" element={<Upload />}/>
                   <Route path="system" element={<CBPiSystem />}/>
                   <Route path="fermenters" element={<Fermenters />}/>
                   <Route path="fermenter/:id" element={<FermenterForm />}/>
                   <Route path="fermenter" element={<FermenterForm />}/>
-                  <Route path="mashprofile" element={<MashProfile />}/>
                   <Route path="fermenterprofile/:fermenterid" element={<FermenterProfile />}/>
                   <Route path="fermenterprofile" element={<FermenterProfile />}/>
-                  <Route path="recipes" element={<Recipes />}/>
                   <Route path="fermenterrecipes" element={<FermenterRecipes />}/>
-                  <Route path="recipe/:id" element={<RecipeEditor />}/>
                   <Route path="fermenterrecipe/:id" element={<FermenterRecipeEditor />}/>
-                  <Route path="step/:id" element={<StepForm />}/>
-                  <Route path="step" element={<StepForm />}/>
                   <Route path="fermenterstep/:id/:fermenterid" element={<FermenterStepForm />}/>
                   <Route path="fermenterstep/:fermenterid" element={<FermenterStepForm />}/>
                   <Route path="fermenterstep" element={<FermenterStepForm />}/>

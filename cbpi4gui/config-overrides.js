@@ -79,11 +79,12 @@ module.exports = function override(config) {
   //    through the pipeline, which bundles the font files.) The same goes for
   //    the Settings page's: page.js puts settings.css in its shadow root and
   //    settings-frame.css in the document; and the Hardware page's, hardware.css
-  //    and hardware-frame.css, the same way.
+  //    and hardware-frame.css, and the recipe pages', recipes.css and
+  //    recipes-frame.css, the same way.
   const oneOf = config.module.rules.find((rule) => Array.isArray(rule.oneOf));
   if (!oneOf) throw new Error("config-overrides: no oneOf rule in the webpack config");
   oneOf.oneOf.unshift({
-    test: /components[\\/](brewday[\\/]brewday(-extra)?|settings[\\/]settings(-frame)?|hardware[\\/]hardware(-frame)?)\.css$/,
+    test: /components[\\/](brewday[\\/]brewday(-extra)?|settings[\\/]settings(-frame)?|hardware[\\/]hardware(-frame)?|recipes[\\/]recipes(-frame)?)\.css$/,
     type: "asset/source",
   });
 
