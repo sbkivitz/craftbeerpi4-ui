@@ -497,7 +497,7 @@ now." or "CraftBeerPi doesn't find the HLT now." Also:
   figure is the strike water as CraftBeerPi sends it with the refusal, so it says what is in force.
 - USE or BACK TO on a recipe changed elsewhere, decided from CraftBeerPi's answer as START's refusal is: "USE 132.4 °F
   wasn't applied: another recipe was loaded on another screen." (another name), "…: the recipe was changed on another
-  screen." (the same name, as for the same recipe loaded again from the Recipe Book) or "…: the recipe was cleared on
+  screen." (the same name, as for the same recipe loaded again from the Recipe Book) or "…: the recipe was unloaded on
   another screen." (no steps). That refusal carries no state, so the screen asks CraftBeerPi for it.
 - USE when a number has gone missing since: "USE 132.4 °F wasn't applied: a number it's worked out from is missing
   now." The box then says which, in the buttons' place.

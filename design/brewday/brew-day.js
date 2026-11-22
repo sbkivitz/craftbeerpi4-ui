@@ -82,6 +82,8 @@ const SW_STEPS = [
   {n: "Strike water", type: "MashInStep", k: "hlt", note: "Move the strike water to the Mash Tun, then press Next"}
 ];
 const SW_FROM = {grainLb: 20, forGrain: 7.5, dead: 0.76, tunLb: 33, bs: 134.6, bsGrain: 65, bsTun: 72};
+/* Test Recipe v5 as the Recipe Book keeps it: its strike water at the rest, and BrewStart's water (swAsSaved) */
+const SW_PLAN0 = 126, SW_VOL0 = 15;
 /* how far above the rest a strike temperature may be before the screen won't offer it: a mistyped grain bill would
    scald the enzymes before anyone noticed (MashInStep.MAX_STRIKE_RISE_C, 15 °C) */
 const SW_MAX_RISE = 27;
@@ -669,6 +671,38 @@ const SCENES = {
     s.recipe = {state: "ready", cur: 0, left: 0, adds: []};
     s.events.unshift(["14:32:58", "Recipe reset to step 1", "confirmed", "ok"]);
     return s;
+  },
+  /* UNLOAD, at the end of the status line, takes the recipe off Brew Day (POST /step2/clear), as the recipe pages'
+     UNLOAD does. #unloaded: the #prebrew morning's recipe, not begun, unloaded with one tap at 07:41:31: brewing by
+     hand, with the recipe book's LOAD to have it back. #unload-ask: the #stopped day's, its question open.
+     #unload-notinbook: steps built on Brew Steps, never saved to the Recipe Book, not begun: it asks, as they'd be gone.
+     #unload-held: the boil waiting for the brewer (#boil-hold), its question open. #unload-running: the #mash day's,
+     greyed, tapped. #unload-wait: BrewStart waiting overnight for its time (#sw-wait), greyed, tapped.
+     #unload-refused: UNLOAD pressed on a screen that hadn't caught up with a step started on another, and refused by
+     CraftBeerPi (409 step_running). #unload-failed: no answer from CraftBeerPi */
+  unloaded: () => {
+    const s = pbMorning();
+    s.t = 7 * 3600 + 41 * 60 + 40; s.recipe = null;
+    s.events.unshift(["07:41:31", `${RECIPE_NAME} unloaded: Brew Day is brewing by hand`, "confirmed", "ok"]);
+    return Object.assign(s, {base: "prebrew"});
+  },
+  "unload-ask": () => Object.assign(SCENES.stopped(), {base: "stopped", open: {confirmUnload: true}}),
+  /* steps built on Brew Steps and never saved to the Recipe Book: UNLOAD asks before they begin, as they'd be gone */
+  "unload-notinbook": () => { RECIPE.name = "Quick Pale Ale"; return Object.assign(pbMorning(), {base: "prebrew", events: [["07:36:02", "Hot liquor tank MANUAL", "confirmed", "ok"]], open: {confirmUnload: true}}); },
+  "unload-held": () => Object.assign(SCENES["boil-hold"](), {base: "boil-hold", open: {confirmUnload: true}}),
+  "unload-running": () => Object.assign(mash(), {base: "mash", open: {tap: "r:unload"}}),
+  "unload-wait": () => Object.assign(SCENES["sw-wait"](), {base: "sw-wait", open: {tap: "r:unload"}}),
+  "unload-refused": () => {
+    const s = mash(), d = unloadRefused(RECIPE_STEPS[2].n);
+    s.t = 14 * 3600 + 32 * 60 + 36;
+    s.events.unshift(["14:32:35", `Brew steps not cleared: ${d}`, "from CraftBeerPi", ""]);
+    return Object.assign(s, {base: "mash", open: {notes: {r: d}}});
+  },
+  "unload-failed": () => {
+    const s = pbMorning();
+    s.banner = {tone: "alarm", title: "Command failed", text: `${RECIPE_NAME} did not unload. It is still loaded.`, act: "TRY AGAIN", cmd: "r:unload-yes"};
+    s.events.unshift(["07:41:17", `${RECIPE_NAME} unloaded: Brew Day is brewing by hand`, "failed: no answer in 5 s", "bad"]);
+    return Object.assign(s, {base: "prebrew"});
   },
   /* the pre-brew check (pbMorning). #prebrew: COMPARE PROBES under START. #probes, #probes-apart, #probes-off,
      #probes-none: the probes side by side, agreeing; the boil kettle 3.8 °F cooler than the others, as one by a door
@@ -1349,27 +1383,30 @@ function recipeHTML() {
   const r = st.recipe;
   if (!r) return handHTML();
   const S = RECIPE.steps, run = r.state === "running", off = st.link === "lost" ? PAUSED : "";
-  const pS = st.pend["r:start"], pX = st.pend["r:stop"], pN = st.pend["r:next"], pC = st.pend["r:check"];
+  const pS = st.pend["r:start"], pX = st.pend["r:stop"], pN = st.pend["r:next"], pC = st.pend["r:check"], pU = st.pend["r:unload"];
+  /* while UNLOADING… waits, the recipe's own commands wait with it, greyed */
+  const sOff = off || (pU ? WAIT : "");
   const start = pC ? `<button type="button" class="lamp" data-state="pending" data-cmd="noop" aria-disabled="true" data-why="${PB_WAIT}"><span class="st">CHECKING…</span><span class="nm">before it starts</span></button>`
     : pS ? `<button type="button" class="lamp" data-state="pending" data-cmd="noop" aria-disabled="true" data-why="${WAIT}"><span class="st">STARTING…</span><span class="nm">recipe</span></button>`
     : run ? `<button type="button" class="lamp" data-state="running" data-cmd="noop" aria-disabled="true" data-why="The recipe is already running."><span class="st">RUNNING</span><span class="nm">step ${r.cur + 1} of ${S.length}</span></button>`
-    : `<button type="button" class="lamp" data-state="off" data-cmd="r:start"${off ? ` aria-disabled="true" data-why="${off}"` : " data-hold"}>${off ? "" : '<span class="fill"></span>'}<span class="st">START</span><span class="nm">hold to start</span></button>`;
+    : `<button type="button" class="lamp" data-state="off" data-cmd="r:start"${sOff ? ` aria-disabled="true" data-why="${sOff}"` : " data-hold"}>${sOff ? "" : '<span class="fill"></span>'}<span class="st">START</span><span class="nm">hold to start</span></button>`;
   /* the middle button: STOP while a step runs; RESET, to reset the brew day's progress after a stop, while nothing
      runs and some step has begun (stopped, failed, done, or the boil held for you), as a stopwatch's Reset shows once
      it is stopped. CraftBeerPi refuses a reset while a step runs. On a recipe not begun, STOP is greyed. RESET asks
      first (resetConfirmHTML) */
   const pR = st.pend["r:reset"], begun = r.state === "stopped" || r.cur > 0;
-  const stop = !run && (begun || pR) ? b("cmdbtn", pR ? "RESETTING…" : "RESET", "back to step 1", {cmd: "r:reset", why: off || (pR ? WAIT : "")})
+  const stop = !run && (begun || pR) ? b("cmdbtn", pR ? "RESETTING…" : "RESET", "back to step 1", {cmd: "r:reset", why: off || (pR || pU ? WAIT : "")})
     : b("cmdbtn", pX ? "STOPPING…" : "STOP", run ? "tap to stop" : "not running", {cmd: "r:stop", why: off || (pX ? WAIT : "") || (!run ? "The recipe is not running." : "")});
   const last = r.cur >= S.length - 1, notBegun = r.state === "ready" && !r.held;
   /* held before the boil, CraftBeerPi takes NEXT as "start the boil" (StepController.next), which would put heat on with
      two taps, so NEXT STEP is greyed and says how to start it. The same on a recipe loaded or reset and not begun, where
      NEXT would start its first step (NOT_BEGUN) */
-  const next = b("cmdbtn", pN ? "MOVING ON…" : "NEXT STEP", last ? "last step" : notBegun ? "not started" : `to ${S[r.cur + 1].n}`, {cmd: "r:next", why: off || (pN ? WAIT : "") || (r.held ? HELD_NEXT : "") || (notBegun ? NOT_BEGUN(S[r.cur]) : "") || (last ? "This is the last step." : "")});
+  const next = b("cmdbtn", pN ? "MOVING ON…" : "NEXT STEP", last ? "last step" : notBegun ? "not started" : `to ${S[r.cur + 1].n}`, {cmd: "r:next", why: off || (pN || pU ? WAIT : "") || (r.held ? HELD_NEXT : "") || (notBegun ? NOT_BEGUN(S[r.cur]) : "") || (last ? "This is the last step." : "")});
+  const unl = b("unl", pU ? "UNLOADING…" : "UNLOAD", "", {cmd: "r:unload", label: pU ? "" : "Unload the recipe", why: unloadRule().why || ""});
   return `<h2>${esc(RECIPE.name)}</h2>
-    <p class="rmeta">${run ? "Running" : r.state === "ready" ? "Ready to start" : "Stopped"} · step ${r.cur + 1} of ${S.length}</p>
+    <div class="rstat"><p class="rmeta">${run ? "Running" : r.state === "ready" ? "Ready to start" : "Stopped"} · step ${r.cur + 1} of ${S.length}</p>${unl}</div>
     <div class="rctl">${start}${stop}${next}</div>
-    ${st.confirmNext ? confirmHTML() : st.confirmReset && !run && begun ? resetConfirmHTML() : st.pbOpen ? pbHTML() : pbFresh() ? (COL === "new" ? nbHTML() : cmpHTML()) : ""}
+    ${st.confirmNext ? confirmHTML() : st.confirmReset && !run && begun ? resetConfirmHTML() : st.confirmUnload && !run && unloadAsks(r) ? unloadAskHTML() : st.pbOpen ? pbHTML() : pbFresh() ? (COL === "new" ? nbHTML() : cmpHTML()) : ""}
     ${swHTML()}
     <p class="note">${st.notes.r || ""}</p>
     <ol class="steps" aria-label="Recipe steps">${S.map(stepHTML).join("")}</ol>${TIMERS === "new" ? timersHTML() : ""}`;
@@ -1390,6 +1427,49 @@ function resetConfirmHTML() {
     brewQuestions().length ? "Its questions waiting for you are taken down." : "",
     `Kettles, pumps and ${TIMERS === "new" ? "timers" : "the rest timer"} stay as they are.`].filter(Boolean).join(" ");
   return `<div class="confirm" role="group" aria-labelledby="cf-t"><p id="cf-t">Reset the recipe to step 1, <b>${S[0].n}</b>? ${said}</p><div><button type="button" class="yes" data-cmd="r:reset-yes">RESET TO STEP 1</button><button type="button" data-cmd="r:reset-no">${n ? `STAY AT STEP ${n + 1}` : "STAY STOPPED"}</button></div></div>`;
+}
+/* UNLOAD, at the end of the status line: the recipe off Brew Day, back to brewing by hand (POST /step2/clear). The recipe
+   pages' rules, for LOAD and UNLOAD alike: one tap on a recipe not begun, which the Recipe Book still has as it was
+   saved; a question once a brew has begun and nothing runs (unloadAskHTML), as RESET asks; greyed while a step runs,
+   BrewStart waiting for its time included, saying what runs. CraftBeerPi refuses it then (409 step_running). A recipe
+   the Recipe Book doesn't have (steps built on Brew Steps and never saved there) can't be loaded again, so UNLOAD asks
+   for it even before it begins. The screen finds it in the book by its name, as the book lists it */
+const inBook = () => BOOK.some(x => x.n === RECIPE.name);
+function unloadRule() {
+  const r = st.recipe, P = st.pend;
+  if (st.link === "lost") return {why: PAUSED};
+  if (P["r:check"]) return {why: PB_WAIT};
+  if (["r:unload", "r:start", "r:stop", "r:next", "r:reset", "r:load", "sw"].some(k => P[k])) return {why: WAIT};
+  if (r.state === "running") return {why: unloadRunWhy(r)};
+  return unloadAsks(r) ? {ask: true} : {};
+}
+const unloadAsks = r => r.state === "stopped" || r.cur > 0 || !inBook();
+/* what runs, in brewing words, as the recipe pages' greyed LOAD says it */
+function unloadRunWhy(r) {
+  const s = RECIPE.steps[r.cur], at = s.temp == null ? "" : s.type === "SpargeStep" ? ` the water to ${s.temp} °F` : ` to ${s.temp} °F`;
+  const starts = typeof r.wait === "string" && r.wait.startsWith("STARTS ") ? r.wait.slice(7) : "";
+  const what = s.type === "BrewStart" ? (s.ready ? `BrewStart is waiting to have the ${KNAME[s.k]} at ${s.temp} °F by ${s.ready}` : `BrewStart is waiting to start${starts ? ` at ${starts}` : ""}`)
+    : r.wait === WFY ? `${s.n}, waiting for you`
+    : r.wait === true || r.wait === "HEATING" ? `${s.n}, heating${at}` : r.wait === "COOLING" ? `${s.n}, cooling${at}`
+    : r.wait ? `${s.n}, ${String(r.wait).toLowerCase()}` : s.min ? `${s.n}, ${mmss(r.left)} left` : s.n;
+  return `${RECIPE.name} is running: ${what}. Stop it first.`;
+}
+/* CraftBeerPi's refusal (409 step_running), on a screen that hadn't caught up with a step started elsewhere: nothing
+   changes, so the screen logs nothing of its own. CraftBeerPi's sentence, the answer's detail, shows under the buttons
+   for 6 s, as on the recipe pages; CraftBeerPi's own notice of it goes in LOG as its other notices do */
+const unloadRefused = step => `${step} is running. Stop it before clearing the brew steps.`;
+/* UNLOAD's question, as short as RESET's, in the recipe pages' words: what CraftBeerPi forgets (how far the brew got),
+   whether the Recipe Book can give the recipe back, and what stays as it is. Its answers say what each does; neither
+   is the default */
+function unloadAskHTML() {
+  const r = st.recipe, s = RECIPE.steps[r.cur], n = r.cur + 1, begun = r.state === "stopped" || r.cur > 0;
+  const ran = r.state === "stopped" && s.min ? s.min * 60 - r.left : 0;
+  const after = ran >= 60 ? `, after ${Math.floor(ran / 60)} of its ${s.min} min` : ran > 0 ? `, under a minute into its ${s.min} min` : "";
+  const at = r.state === "stopped" ? `it stopped at step ${n}, ${s.n}${after}` : r.held || r.wait === WFY ? `it's at step ${n}, ${s.n}, waiting for you` : `it's at step ${n}, ${s.n}`;
+  const said = [begun ? `CraftBeerPi forgets ${at}.` : "",
+    inBook() ? "The Recipe Book keeps the recipe." : "It isn't in the Recipe Book, so it can't be loaded again.",
+    "Kettles, pumps and timers stay as they are."].filter(Boolean).join(" ");
+  return `<div class="confirm" role="group" aria-labelledby="cf-t"><p id="cf-t">Unload the recipe and brew by hand? ${said}</p><div><button type="button" class="yes" data-cmd="r:unload-yes">UNLOAD</button><button type="button" data-cmd="r:unload-no">STAY AT STEP ${n}</button></div></div>`;
 }
 /* ---------- the pre-brew check ----------
    START on a recipe not begun checks three things first, as a brewhouse's start conditions: every probe gives a reading,
@@ -1417,7 +1497,7 @@ function recipeLost(on = {key: recipeKey(), name: RECIPE.name, fresh: true}) {
    recipe); another in its place looks just like the one START was held on but for its name and steps, so that is also
    said under START */
 function lostSay(why, on) {
-  const words = why === "started" ? "The recipe was started on another screen." : why === "cleared" ? "The recipe was cleared on another screen."
+  const words = why === "started" ? "The recipe was started on another screen." : why === "cleared" ? "The recipe was unloaded on another screen."
     : `Not started: ${on && on.name === RECIPE.name ? "the recipe was changed" : "another recipe was loaded"} on another screen.`;
   say(words);
   if (why === "loaded") timers.push(setTimeout(() => note("r", words), 0));
@@ -1665,7 +1745,7 @@ function cmpVerdict(R) {
 function nbHTML() {
   if (st.cmpOpen) return cmpHTML();
   if (st.rbOpen) return rbHTML();
-  const off = st.link === "lost" ? PAUSED : st.pend["r:check"] ? PB_WAIT : "";
+  const off = st.link === "lost" ? PAUSED : st.pend["r:check"] ? PB_WAIT : st.pend["r:unload"] ? WAIT : "";
   return `<div class="nbrow">${b("cmdbtn", "OTHER RECIPE", "from the recipe book", {cmd: "rb:open", why: off})}${cmpHTML()}</div>`;
 }
 /* the recipe book in the recipe column (?col=new), as agreed with the recipe pages' designer: the newest five, each with
@@ -2184,8 +2264,8 @@ function drawSw() {
    USE out, the head says so, with how long it has been at it, and greys USE */
 function swHTML() {
   const phase = swPhase();
-  if (!phase || st.pbOpen || st.cmpOpen || st.confirmNext || st.confirmReset) return "";
-  const N = swNumbers(), pend = st.pend.sw, why = st.link === "lost" ? PAUSED : pend ? WAIT : "", has = N.ok || !!N.wait, open = !!st.swOpen && has;
+  if (!phase || st.pbOpen || st.cmpOpen || st.confirmNext || st.confirmReset || st.confirmUnload) return "";
+  const N = swNumbers(), pend = st.pend.sw, why = st.link === "lost" ? PAUSED : pend || st.pend["r:unload"] ? WAIT : "", has = N.ok || !!N.wait, open = !!st.swOpen && has;
   const cls = `sw sw-${phase}${has ? "" : " sw-miss"}`;
   if (!has) {
     /* without the HLT's water, the question beside its button, as CHANGE sits beside the figure; once pressed, its box,
@@ -2575,21 +2655,23 @@ function renderAll() {
   const pbGone = st.pend["r:check"] || st.pbOpen ? recipeLost(st.pbFor) : null;
   if (pbGone) pbEnd(pbGone);
   if (st.recipe && !pbFresh()) { st.cmpOpen = false; st.rbOpen = false; }
+  /* UNLOAD's question stays while its words stay true: it goes with the recipe, or as a step starts here or elsewhere */
+  if (st.confirmUnload && !(st.recipe && st.recipe.state !== "running" && unloadAsks(st.recipe))) st.confirmUnload = false;
   /* the strike water box opened out closes when another box takes its place, or the malt has gone in. A timer's editor
      open as a box opens in the column (this one, the check's, the probes') stays open, with what was typed in it: on
      one screen it makes way with the timers until the box closes (brew-day.css) */
-  if (st.swOpen && (!swPhase() || st.pbOpen || st.cmpOpen || st.confirmNext || st.confirmReset)) st.swOpen = false;
-  if (st.swVol && (!swPhase() || st.pbOpen || st.cmpOpen || st.confirmNext || st.confirmReset)) st.swVol = null;
-  if (st.swGrain && (!swPhase() || st.pbOpen || st.cmpOpen || st.confirmNext || st.confirmReset)) st.swGrain = null;
+  if (st.swOpen && (!swPhase() || st.pbOpen || st.cmpOpen || st.confirmNext || st.confirmReset || st.confirmUnload)) st.swOpen = false;
+  if (st.swVol && (!swPhase() || st.pbOpen || st.cmpOpen || st.confirmNext || st.confirmReset || st.confirmUnload)) st.swVol = null;
+  if (st.swGrain && (!swPhase() || st.pbOpen || st.cmpOpen || st.confirmNext || st.confirmReset || st.confirmUnload)) st.swGrain = null;
   /* the check's box, the probes' panel or the strike water box as it is on screen, before the column is drawn again
      (pbFit) */
   const before = pbMeasure();
   /* while a timer's editor is open, the one-screen layout gives it the step list's room (by hand, the recipe book's), and
      the strike water box's while that box is closed (brew-day.css) */
   $("#recipe").toggleAttribute("data-tedit", TIMERS === "new" && !!st.tedit);
-  /* and while something in it waits for you (NEXT STEP's or RESET's question, a timer's alarm), the versions' line steps
-     aside on a monitor, so the step list keeps the current step whole (brew-day.css) */
-  $("#recipe").toggleAttribute("data-asking", !!(st.confirmNext || st.confirmReset || st.pbOpen || st.cmpOpen || st.swOpen || st.swVol || st.swGrain || st.rbOpen || st.tfOpen || (TIMERS === "new" && st.tmrs.some(t => t.state === "done"))));
+  /* and while something in it waits for you (NEXT STEP's, RESET's or UNLOAD's question, a timer's alarm), the versions'
+     line steps aside on a monitor, so the step list keeps the current step whole (brew-day.css) */
+  $("#recipe").toggleAttribute("data-asking", !!(st.confirmNext || st.confirmReset || st.confirmUnload || st.pbOpen || st.cmpOpen || st.swOpen || st.swVol || st.swGrain || st.rbOpen || st.tfOpen || (TIMERS === "new" && st.tmrs.some(t => t.state === "done"))));
   /* the pre-brew check's box, the probes side by side and the strike water box opened out, or with the HLT's water being
      given, take the step list's room on one screen, as a timer's editor does; so does the proposal's recipe book */
   $("#recipe").toggleAttribute("data-pb", !!(st.pbOpen || st.cmpOpen || st.swOpen || st.swVol || st.swGrain || st.rbOpen));
@@ -2964,7 +3046,7 @@ function spargeBegin(s) {
   }, 600));
 }
 function cmdStart(force, cav = "") {
-  st.confirmReset = false;
+  st.confirmReset = false; st.confirmUnload = false;
   /* a recipe not begun is checked first (pbRun); START ANYWAY, or the check passed, comes back here with force */
   if (!force && pbFresh()) return pbRun();
   send("r:start", "start", "Recipe started", () => {
@@ -2986,7 +3068,7 @@ function cmdStart(force, cav = "") {
   }, cav);
 }
 function cmdStop() {
-  st.confirmNext = false; st.confirmReset = false;
+  st.confirmNext = false; st.confirmReset = false; st.confirmUnload = false;
   send("r:stop", "stop", "Recipe stopped", () => {
     const k = RECIPE.steps[st.recipe.cur].k;
     st.recipe.state = "stopped";
@@ -3014,6 +3096,42 @@ function cmdReset() {
     st.finished = false;
     if (st.hist) { st.hist.steps = []; st.hist.start = st.t - 8 * 3600; }
   });
+}
+/* UNLOAD on a recipe not begun, at once; on one begun, the question first (unloadAskHTML). Greyed, the press says why
+   before it gets here (explain) */
+function cmdUnload() {
+  const u = unloadRule();
+  if (u.why) return;
+  Object.assign(st, {confirmNext: false, confirmReset: false, pbOpen: false, cmpOpen: false, rbOpen: false, swOpen: false, swVol: null, swGrain: null});
+  if (u.ask) { st.confirmUnload = true; return renderAll(); }
+  cmdUnloadGo();
+}
+/* UNLOAD, or the question's UNLOAD: CraftBeerPi empties the brew steps and takes down the brew's questions, whose lines
+   say "no longer needed". Kettles, pumps and timers stay as they are. The column goes back to brewing by hand, with
+   the recipe book's LOAD to have the recipe back as the Recipe Book keeps it (swAsSaved). The graphs lose their step
+   marks, as with a reset */
+function cmdUnloadGo() {
+  st.confirmUnload = false;
+  send("r:unload", "unload", `${RECIPE.name} unloaded: Brew Day is brewing by hand`, () => {
+    const q = new Set(brewQuestions());
+    q.forEach(t => questionGone(t, "no longer needed"));
+    if (st.banner && (q.has(st.banner.title) || st.banner.cmd === "r:unload-yes")) st.banner = null;
+    if (st.sw && !st.sw.hand) swAsSaved();
+    st.recipe = null; st.finished = false; st.pbOpen = false; st.cmpOpen = false; st.rbOpen = false;
+    if (st.hist) { st.hist.steps = []; st.hist.start = st.t - 8 * 3600; }
+  });
+}
+/* the mockup's Recipe Book keeps Test Recipe v5 as it was saved: its strike water at the rest's 126 °F, BrewStart's
+   15 gal and no grain temperature of its own. What this brew changed since loading (USE's figure, the HLT's water, the
+   grain's temperature) isn't kept, so LOAD brings the recipe back as saved, and the strike water helper starts a new
+   day for it */
+function swAsSaved() {
+  const {S, bi, si} = swSteps();
+  if (si >= 0) S[si].temp = SW_PLAN0;
+  if (bi >= 0) Object.assign(S[bi], {temp: SW_PLAN0, vol: SW_VOL0, grain: null});
+  Object.assign(st.sw, {plan: SW_PLAN0, was: null, vol: SW_VOL0, grain: null, work: null, failed: null});
+  delete st.sw.srv;
+  st.sw.has = swNow();
 }
 function cmdBanner(x) {
   if (x === "added") send("b", "x", "Hop Alert answered: Added", () => { questionGone("Hop Alert"); st.banner = null; if (st.recipe) st.recipe.adds[0] = "done"; });
@@ -3078,7 +3196,7 @@ function cmdLoad2(i) {
 function cmdAllOff() {
   const running = st.recipe && st.recipe.state === "running";
   const cav = Object.keys(ACT).filter(id => ACT[id].override).map(id => `${ACT[id].name}'s override switch can still run it`).join(" · ");
-  st.confirmNext = false; st.confirmReset = false; st.edit = null;
+  st.confirmNext = false; st.confirmReset = false; st.confirmUnload = false; st.edit = null;
   send("alloff", "off", `ALL OFF: elements and pumps off, every vessel MANUAL${running ? ", recipe stopped" : ""}`, () => {
     if (running) st.recipe.state = "stopped";
     ["hlt", "mt", "bk"].forEach(v => { if (st.v[v].mode === "auto") setMode(v, "manual"); });
@@ -3483,7 +3601,9 @@ function run(cmd) {
       if (x === "stop") return cmdStop();
       if (x === "next-yes") return cmdNextYes();
       if (x === "reset-yes") return cmdReset();
-      st.confirmNext = x === "next"; st.confirmReset = x === "reset"; return renderAll();
+      if (x === "unload") return cmdUnload();
+      if (x === "unload-yes") return cmdUnloadGo();
+      st.confirmNext = x === "next"; st.confirmReset = x === "reset"; st.confirmUnload = false; return renderAll();
     case "b": return cmdBanner(x);
     case "pb": if (x === "go") return pbGo(); st.pbOpen = false; return renderAll();
     case "cmp": if (x === "open") { st.pbOpen = false; st.rbOpen = false; st.cmpOpen = true; return renderAll(); } return cmpDone(true);
@@ -3566,7 +3686,7 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape" && st.tedit && !(ONE_SCREEN.matches && (st.pbOpen || st.cmpOpen || st.swOpen || st.rbOpen))) { st.tedit = null; renderAll(); return; }
   /* the proposal's boxes (?col=new): the recipe book, and the timers opened from their folded line */
   if (e.key === "Escape" && (st.rbOpen || st.tfOpen)) { st.rbOpen = false; st.tfOpen = false; renderAll(); return; }
-  if (e.key === "Escape" && (st.edit || st.logOpen || st.confirmNext || st.confirmReset || st.pbOpen || st.cmpOpen || st.swOpen)) { st.edit = null; st.logOpen = false; st.confirmNext = false; st.confirmReset = false; st.pbOpen = false; st.cmpOpen = false; st.swOpen = false; renderAll(); }
+  if (e.key === "Escape" && (st.edit || st.logOpen || st.confirmNext || st.confirmReset || st.confirmUnload || st.pbOpen || st.cmpOpen || st.swOpen)) { st.edit = null; st.logOpen = false; st.confirmNext = false; st.confirmReset = false; st.confirmUnload = false; st.pbOpen = false; st.cmpOpen = false; st.swOpen = false; renderAll(); }
 });
 document.addEventListener("keyup", e => { if (hold && (e.key === " " || e.key === "Enter")) { e.preventDefault(); holdEnd(true); } });
 document.addEventListener("input", e => {
@@ -3730,7 +3850,7 @@ function load(name) {
   /* a moment can open an editor (open) and borrow another moment's graph history (base) */
   const open = st.open, base = st.base || key;
   delete st.open; delete st.base;
-  Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, logOpen: false, pbOpen: false, cmpOpen: false, swOpen: false}, open);
+  Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, confirmUnload: false, logOpen: false, pbOpen: false, cmpOpen: false, swOpen: false}, open);
   /* the strike water box: CraftBeerPi's answer for the moment's numbers, worked out already, unless the moment has it
      working one out (sw.has: null) or showing an older one */
   if (st.sw && st.sw.has === undefined) st.sw.has = swNow();
@@ -3755,6 +3875,8 @@ function load(name) {
   /* a probe that has given no reading for a while: its graph has a gap, dark, for that time */
   if (st.hist && st.gap) Object.entries(st.gap).forEach(([v, s]) => st.hist.v[v].forEach(row => { if (row[0] > st.t - s) row[1] = null; }));
   applyLocks(); renderAll();
+  /* a moment can show a greyed button tapped: its reason in its note line (tap) */
+  if (st.tap) { const el = document.querySelector(`[data-cmd="${st.tap}"]`); delete st.tap; if (el) explain(el); }
   /* a moment can show FORECAST's details scrolled to a part of them (swAt) */
   if (st.swAt) { const at = st.swAt; delete st.swAt; requestAnimationFrame(() => { const el = $(at); if (el) el.scrollIntoView({block: "center"}); }); }
   document.querySelectorAll(".mock a[href^='#']").forEach(a => a.setAttribute("aria-current", a.getAttribute("href") === "#" + key ? "true" : "false"));

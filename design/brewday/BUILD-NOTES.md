@@ -5338,6 +5338,121 @@ finish drawing on either side.
   which I had written as 58 outside it. STRIKE-WATER.md's dead space passage no longer names the BeerSmith equipment
   profile, as the one on the brewery PC was changed on 10 Nov: it says the figures come from Test Recipe v5's export.
 
+## UNLOAD, a way out of a loaded recipe: ready to build (web UI post32, 22 Nov)
+
+The brewer, on 8012 with Test Recipe v5 loaded and not begun, found no way to abort a recipe once it was loaded. You
+approved building the fix today. The design is DESIGN.md's The Way Out Rule; the words agree with the recipe pages'
+UNLOAD (RECIPES.md, impeccable-recipes 8823b54), with three differences given at the end. CraftBeerPi needs nothing
+new: it is `POST /step2/clear`.
+
+### What to build (screen.js, brewday.css)
+
+1. **Where.** The status line becomes a row (`.rstat`): "Ready to start · step 1 of 7" on the left, and at its end a
+   quiet button, UNLOAD (`.unl`), 44 px tall and 112 px wide, as wide as UNLOADING…, LOG's look with its word in Soft
+   Steel. No hint line. It costs the step list 22 px on one screen and the page 22 px elsewhere. Copy `.rstat` and
+   `.unl` from the mockup's `brew-day.css`.
+2. **Its state** (`unloadRule`, `unloadAsks`, `inBook`, brew-day.js):
+   - no connection: greyed, "No connection. Controls are paused.";
+   - the pre-brew check under way: greyed, the check's own reason (`PB_WAIT`);
+   - UNLOAD, START, STOP, NEXT STEP, RESET, LOAD or the strike water box's command on its way: greyed, "Waiting for
+     CraftBeerPi to answer.";
+   - a step running (any step `A`, so BrewStart waiting for its time too): greyed, and tapped it says what runs
+     (`unloadRunWhy`): "Craftbeerpi Test Recipe v5 is running: Saccharification, 23:41 left. Stop it first." The
+     middle part follows the current step's wait word, as the step's row does: "Boil, heating to 210.2 °F",
+     "…, cooling to 170 °F", "…, waiting for you", "Sparge, heating the water to 168 °F". BrewStart planning Ready by
+     (live.js's `m.ready` and `m.temp`, its Heat_Kettle's name): "BrewStart is waiting to have the HLT at 132.4 °F by
+     07:00"; planning Start at: "BrewStart is waiting to start at 05:30" (the time from STARTS);
+   - begun and nothing running (some step `S` or `E`, or one past the first done, the boil held for the brewer
+     included), or a recipe the Recipe Book doesn't have: it asks first;
+   - otherwise one tap.
+3. **The Recipe Book check.** Today the screen reads the book only with no recipe loaded (`loadBook`). Read it while a
+   recipe is loaded too: once as the page opens, and again after a LOAD or an unload. `inBook`: the book has a recipe
+   of the loaded recipe's name (`basic.name`). If CraftBeerPi comes to record the book file a recipe was loaded from
+   (the recipe pages' server change 4), use that instead. While the screen can't tell (the book not read yet, or the
+   read failed), UNLOAD asks.
+4. **The question** (`unloadAskHTML`), in RESET's place under the three buttons, RESET's box and answer buttons:
+   - begun, stopped: "Unload the recipe and brew by hand? CraftBeerPi forgets it stopped at step 3, Saccharification,
+     after 16 of its 40 min. The Recipe Book keeps the recipe. Kettles, pumps and timers stay as they are." Under a
+     minute: "…, under a minute into its 40 min."; a step without minutes: "… it stopped at step 1, MashIn.";
+   - begun, the boil (or another step) waiting for the brewer: "… CraftBeerPi forgets it's at step 5, Boil, waiting for
+     you. …";
+   - not in the Recipe Book: "The Recipe Book keeps the recipe." becomes "It isn't in the Recipe Book, so it can't be
+     loaded again."; and while the screen can't tell, "The Recipe Book can't be checked right now, so it may not be
+     there to load again." On a recipe not begun the "CraftBeerPi forgets …" sentence is left out;
+   - answers UNLOAD (the Answer White one) and STAY AT STEP 3 (the step's number), neither the default; Escape and
+     STAY close it. It closes too when it stops being true: the recipe goes, or a step starts here or elsewhere.
+     Opening it closes RESET's and NEXT STEP's questions, the check's box, COMPARE PROBES and the strike water box's
+     FORECAST and small boxes, as RESET's does; RESET or NEXT STEP pressed while it is open puts their question in its
+     place. It counts as asking (`data-asking`), and the strike water box steps aside while it is open (`swHTML`).
+5. **The command** (`cmdUnload`, `cmdUnloadGo`): `POST /step2/clear`.
+   - While it waits: UNLOADING… on the button, greyed; START, RESET, NEXT STEP, USE and BACK TO greyed with "Waiting
+     for CraftBeerPi to answer."
+   - 200: the state CraftBeerPi sends next shows no recipe, and the column is brewing by hand. LOG: "Craftbeerpi Test
+     Recipe v5 unloaded: Brew Day is brewing by hand", "confirmed". The questions CraftBeerPi takes down get "no longer
+     needed" on their lines, as after a reset. The graphs lose their step marks and DAY goes back to the last 8 hours,
+     as after a reset.
+   - 409 `step_running`: nothing changes and the screen logs nothing of its own. The answer's `detail` shows in the
+     column's note line for 6 s, word for word: "Saccharification is running. Stop it before clearing the brew
+     steps." CraftBeerPi's own notice of it ("Brew steps not cleared: …", an info since post53) is logged by
+     `logAlert`, "from CraftBeerPi", as now. UNLOAD is greyed once the state shows the step running.
+   - no answer in 5 s, or another error: a failed command. LOG: "Craftbeerpi Test Recipe v5 unloaded: Brew Day is
+     brewing by hand", "failed: {why}", in light red; the title bar's alarm "Command failed": "Craftbeerpi Test Recipe
+     v5 did not unload. It is still loaded.", with TRY AGAIN, which sends the clear again without asking again. An
+     answer that comes after all (the recipe gone) takes the alarm down.
+6. **An unload on another screen** (the recipe pages' UNLOAD, the old Brew Steps page's Clear, another Brew Day): one
+   line, "Craftbeerpi Test Recipe v5 unloaded", "from another screen", when the steps go from some to none and this
+   screen hasn't pressed UNLOAD in the last 10 s; beside "Recipe reset to step 1 · from another screen" in
+   `logEvents`. The name is the one the previous state had. Live only: the mockup has no other screen.
+7. **Words elsewhere** that become UNLOAD's: START's "The recipe was cleared on another screen." is now "The recipe was
+   unloaded on another screen." (`lostSay`), and USE's and BACK TO's refusal on a recipe changed elsewhere ends "…: the
+   recipe was unloaded on another screen." (`recipe_changed`, no steps).
+8. **Moments for the demo**, from the mockup: `#unloaded`, `#unload-ask`, `#unload-notinbook`, `#unload-held`,
+   `#unload-running`, `#unload-wait`, `#unload-refused` and `#unload-failed`. Every moment with a recipe loaded gets
+   the new status line, so the identity test's pictures of those change; with no recipe, none do.
+
+### Optional, in CraftBeerPi
+
+`CLEAR_WHILE_RUNNING` could say the brewer's word: "{} is running. Stop it before unloading the recipe.", titled
+"Recipe not unloaded". The screen shows the answer's `detail` as it comes, so only `#unload-refused` and this section
+would change. Your call.
+
+### Where it differs from the recipe pages' UNLOAD
+
+Robin knows of these.
+
+- Brew Day's UNLOAD is a quiet button without the hint line "brew by hand": it is the screen's least used control,
+  beside START, STOP and NEXT STEP, and the step list can't spare the height. The question carries "brew by hand".
+- The question is shorter than the recipe pages' (four sentences): on one screen at 1180 to 1440 px wide it's no
+  taller than RESET's by more than a line, so the current step stays whole.
+- A recipe the Recipe Book doesn't have asks even before it begins, as one tap would lose it for good. Robin's LOAD
+  could do the same.
+
+### Checked
+
+- `files\unload_presses.py`: 49 presses, all pass: one tap; the night before, USE's figure not kept and LOAD giving
+  the recipe back as saved (126 °F, 15 gal, USE offered again); the question's words, answers, Escape, STAY, RESET and
+  UNLOAD taking each other's place, and closing when a step starts elsewhere; the boil's question taken down; not in
+  the book; greyed with its reasons (Saccharification, the boil, heating to the boil, a SpargeStep heating its water,
+  BrewStart waiting); every wait; `?col=new` beside OTHER RECIPE; no connection; and the eight moments.
+- The earlier suites, unchanged and passing: `bk_presses.py` (12), `sw7_presses.py` (28), `sw8_presses.py` (30),
+  `tm2_presses.py` and `tm2_col_presses.py`.
+- Measured at 360 × 780, 390 × 844, 700 × 900, 820 × 1180, 1024 × 768, 1180 × 860, 1280 × 800, 1366 × 768, 1440 × 900
+  and 1920 × 1080: nothing overflows, the status line keeps one line, and the current step stays whole in every moment
+  but one: the boil waiting for the brewer with UNLOAD's question open at 1180 to 1440 px wide, where RESET's question
+  leaves the same sliver. That is the column's known limit, which the column proposal (`?col=new`) is about.
+- Pictures against your copy (UI 63df107), 18 moments at the five usual sizes: the six with no recipe are the same;
+  in the twelve with one, everything outside the recipe column is the same on one screen, and elsewhere the page is
+  22 px taller from the column down.
+
+### Changed
+
+- `proposal\brew-day.js`, `proposal\brew-day.css`, `proposal\brew-day.html` (eight moments' links);
+  `proposal\STRIKE-WATER.md` (the refusal's "unloaded"); and this section.
+- `DESIGN.md`: Buttons (the quiet button, the answer button), Recipe confirmations, Recipe Column (the status line,
+  UNLOAD, brewing by hand, the versions line), the pre-brew check's and the strike water's "unloaded", The Start Over
+  Rule's last sentence, and The Way Out Rule.
+- `.impeccable\decisions\direction-log.md`; `.impeccable\design.json`, regenerated (the new rule).
+
 ## Open questions about the drawing
 
 Both were answered on 10 Nov. The valves have been in the drawing since then; the path after the boil was

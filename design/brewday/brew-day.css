@@ -235,6 +235,16 @@ html.bare .mock{display:none}
 .recipe{container-type:inline-size;--pu:1cqi;display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0;padding:14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
 .recipe h2{margin:0;font:700 clamp(22px,calc(7 * var(--pu)),31px)/1.05 var(--cond);letter-spacing:.03em;text-transform:uppercase}
 .rmeta{margin:-4px 0 0;font:500 17px/1.3 var(--cond);letter-spacing:.03em;color:var(--text-3)}
+/* the status line, with UNLOAD at its end: the recipe off Brew Day (Recipe confirmations). A quiet button, as LOG is,
+   44px tall, its word in Soft Steel as the timers' REMOVE's; as wide as UNLOADING…, so it keeps its size as it waits */
+.rstat{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:center;margin:-4px 0 0}
+.rstat .rmeta{margin:0}
+.unl{min-height:44px;min-width:112px;padding:0 12px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);font:600 15px/1 var(--cond);letter-spacing:.08em;touch-action:manipulation}
+.unl .lb{color:var(--text-2)}
+.unl:not([aria-disabled=true]):hover{background:#253545}
+.unl:not([aria-disabled=true]):hover .lb{color:var(--text)}
+.unl[aria-disabled=true]{cursor:not-allowed}
+.unl[aria-disabled=true] .lb{color:var(--text-3)}
 .rctl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .rctl .lamp{min-height:66px}
 .rctl .cmdbtn{min-height:66px}

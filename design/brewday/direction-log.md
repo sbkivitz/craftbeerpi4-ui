@@ -1,5 +1,27 @@
 # Direction decision log
 
+## UNLOAD: a way out of a loaded recipe (22 Nov 2026)
+- The brewer, on 8012 with Test Recipe v5 loaded and not begun: no way to abort once a recipe is loaded. Brett approved
+  building the fix today (web UI post32) and left the friction to me, with RESET's question as the model for a brew
+  with progress, Robin's UNLOAD words to match, and OTHER RECIPE (`?col=new`) to fit with.
+- Chosen: UNLOAD, a quiet button at the end of the status line, in the same place in every state: one tap on a recipe
+  not begun, which the Recipe Book can give back; a question in RESET's place once a brew has begun and nothing runs,
+  naming what CraftBeerPi forgets and that kettles, pumps and timers stay as they are, with UNLOAD and STAY AT STEP 3
+  and no default; greyed while a step runs, BrewStart waiting included, saying what runs in brewing words. Afterwards
+  the column is the by-hand view it already had, with the recipe book's LOAD to have the recipe back.
+- Added to Robin's rules: a recipe the Recipe Book doesn't have asks even before it begins, as one tap would lose it
+  for good. While UNLOADING… waits, START, RESET, NEXT STEP, USE and BACK TO wait with it.
+- The refusal (409, a step started on another screen) shows CraftBeerPi's own sentence under the buttons, as the recipe
+  pages do, so the note and LOG say the same thing. The words elsewhere that said "cleared" now say "unloaded".
+- Not chosen: STOP's greyed place on a recipe not begun (a button that changes meaning with the state is a mode error
+  waiting to happen, and UNLOAD is needed in other states too); beside the recipe's name (a long name would wrap at
+  1180 px); a question every time (it would become a habit, and the edits it would protect are kept by pressing
+  START); a hint line under UNLOAD (the step list can't spare the height, and the question says "brew by hand"); and
+  the recipe pages' longer question, which at 1180 × 860 left the current step cut off.
+- Known limit, shared with LOAD: what was changed on the loaded copy since loading (BrewStart's ready-by time, water
+  and grain temperature, USE's figure) goes with an unload of a recipe not begun. Revisit when the BrewStart edit puts
+  the ready-by time on Brew Day.
+
 ## The strike water box's words for the server contract's gaps (22 Nov 2026)
 - Brett's approved server contract (strike-api.md) found states the design hadn't worded: BrewStart's grain
   temperature, saved on Brew Steps, out of range or not a number; the model failing; and what would raise USE most

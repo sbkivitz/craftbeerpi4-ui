@@ -31,6 +31,8 @@ Scenes: #mash (default), #sparge, #hop, #boilpower, #heatup, #pause, #boiling, #
 #notarget-hlt, and the rest in the strip. #sparge-ready and #boil-hold show the pumps CraftBeerPi switches off so their
 hoses can move. #byhand and #byhand-past show an element on by hand in MANUAL, before and after it passes its target.
 #stopped, #reset and #reset-done show the recipe stopped, RESET asking first, and the recipe back at step 1.
+UNLOAD, at the end of the recipe's status line, takes the recipe off Brew Day: #unloaded, #unload-ask,
+#unload-notinbook, #unload-held, #unload-running, #unload-wait, #unload-refused and #unload-failed.
 Add ?bare to hide the mockup strip.
 Layouts: ?layout=b (default) or ?layout=a (the D1 alternative, kept for comparison; its drawing has no sparge line, so
 its HLT pump always goes back round the hot liquor tank).
@@ -82,6 +84,14 @@ whirlpool.html shows them side by side; ?focus=rig is for that page.
   <a href="#stopped">Stopped</a>
   <a href="#reset">RESET asks first</a>
   <a href="#reset-done">Reset to step 1</a>
+  <a href="#unloaded">Unloaded before it began</a>
+  <a href="#unload-ask">UNLOAD asks first</a>
+  <a href="#unload-notinbook">UNLOAD, not in the Recipe Book</a>
+  <a href="#unload-held">UNLOAD, the boil waiting</a>
+  <a href="#unload-running">UNLOAD while a step runs</a>
+  <a href="#unload-wait">UNLOAD, BrewStart waiting</a>
+  <a href="#unload-refused">UNLOAD refused</a>
+  <a href="#unload-failed">UNLOAD got no answer</a>
   <a href="#sparge">Sparge</a>
   <a href="#sparge-heat">Sparge step: heating the water</a>
   <a href="#sparge-ready">Sparge step: waiting for you</a>
