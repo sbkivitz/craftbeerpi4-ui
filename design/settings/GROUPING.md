@@ -54,7 +54,7 @@ Counts below are the simulator's 51 visible settings plus Brett's two new ones (
 | # | Plain name | Key | Control |
 |---|---|---|---|
 | | **While you brew** | | |
-| 1 | Run the HLT pump while the HLT heats | HLT_PUMP_WITH_HEAT | yes / no |
+| 1 | Start the HLT pump when AUTO or the HERMS heats the HLT | HLT_PUMP_WITH_HEAT | yes / no |
 | | **In imported recipes** | | |
 | 2 | Add a mash-in step if the recipe has none | AddMashInStep | yes / no |
 | 3 | Mash-in step type | steps_mashin | step type (blank: MashInStep) |
@@ -168,7 +168,7 @@ A plugin this page doesn't know gets its own heading here, named after the plugi
 ## Placement calls worth checking
 
 - **Mash tun and Boil kettle** sit in Brewhouse, not in Mash or Boil, because the brew-day screen and the HLT pump also use them to tell the kettles apart. Mash and sparge, and Boil, each show a line such as "Boil kettle: Boil Kettle, chosen in Brewhouse" with a CHANGE IT IN BREWHOUSE button.
-- **HLT pump with heat** sits in Mash and sparge because it runs until the sparge.
+- **Start the HLT pump when AUTO or the HERMS heats the HLT** sits in Mash and sparge because it starts the pump only until the sparge.
 - **Override switch** sits in Brewhouse because it describes how the rig is wired (Recirc_PUMP's own switch), even though its key starts BREWDAY_.
 - **Recipe step defaults** sit in the stage they make, with "In imported recipes" over them, so "sparge step type" is under Sparge rather than in a block of 15 import settings.
 - **Phone alerts** (approved 20 Nov) get a group of their own, right after Timers and alerts, rather than a second part inside it: the list on the left then says "Phone alerts" by name, and the setup steps and the test get a plate to themselves. Inside Timers and alerts it would have grown from 4 settings to 16, and the list wouldn't show the word "phone". The cost is ten groups: on a 1366×768 laptop the list's rows sit 2 px apart instead of 5, so all ten still fit.
@@ -247,3 +247,13 @@ What ntfy can't do on your iPhone, which the page says plainly:
 - It makes a sound only with the ringer on and no Focus. Pushover's timer alerts can sound with the phone on silent.
 - A run-out timer's alert comes again every 2 minutes, 10 more times at most, each as a new notification. Nothing on the phone stops them; answering the timer on a screen does, and the ones already there stay.
 - The ntfy app has an open bug: on iOS 26.2 and later, its notifications may make no sound at all. The test will show you whether yours do.
+
+## Changed after the release (22 Nov 2026)
+
+CraftBeerPi 4.7.7.post49 no longer starts the HLT pump when the HLT element is switched on by hand, because the pump may not be primed or its hoses may not be in place. Only AUTO or the HERMS starting to heat the HLT starts it, as before. So the setting's name and line say exactly that:
+
+- **Was:** Run the HLT pump while the HLT heats
+- **Now:** Start the HLT pump when AUTO or the HERMS heats the HLT
+- **Its line:** "Until the recipe reaches its sparge, so the water doesn't settle into hot and cool layers. Heating by hand never starts it: the pump may not be primed, or its hoses may not be in place. It keeps running when the heat stops. You can still stop it; it starts again when AUTO or the HERMS next starts heating."
+
+AUTO and HERMS are the words the brew-day screen shows on the HLT while one of them heats it, and "heating by hand" is what it says while the element is on in MANUAL.

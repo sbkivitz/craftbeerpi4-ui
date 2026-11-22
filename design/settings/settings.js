@@ -32,7 +32,7 @@ const M = {
   brewfather_list_length: {n: "Brewfather recipes shown", ctl: "select", h: "How many the Brewfather list shows."},
   RECIPE_CREATION_PATH: {n: "Recipe creation plugin path", adv: 1, h: "Change it only for a recipe creation plugin. Normally upload."},
 
-  HLT_PUMP_WITH_HEAT: {n: "Run the HLT pump while the HLT heats", h: "Until the recipe reaches its sparge, so the water doesn't settle into hot and cool layers. It keeps running when the heat stops; you can still stop it.", syn: "recirc agitator layers"},
+  HLT_PUMP_WITH_HEAT: {n: "Start the HLT pump when AUTO or the HERMS heats the HLT", h: "Until the recipe reaches its sparge, so the water doesn't settle into hot and cool layers. Heating by hand never starts it: the pump may not be primed, or its hoses may not be in place. It keeps running when the heat stops. You can still stop it; it starts again when AUTO or the HERMS next starts heating.", syn: "recirc agitator stir layers manual"},
   AddMashInStep: {n: "Add a mash-in step if the recipe has none"},
   steps_mashin: {n: "Mash-in step type", blank: "Standard: MashInStep"},
   steps_mash: {n: "Mash step type", blank: "Standard: MashStep"},

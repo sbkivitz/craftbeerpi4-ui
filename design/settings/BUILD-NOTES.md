@@ -346,3 +346,32 @@ Two changes reach the page without the plugin too, in the mockup and the build a
 ### Changed in the worktree, all uncommitted
 
 `proposal\settings.js`, `settings.css`, `settings.html`, `settings-data.js`, `GROUPING.md` and this file.
+
+## HLT pump: new words for core 4.7.7.post49 (22 Nov)
+
+Core 4.7.7.post49 (8060eaf4) no longer starts the HLT pump for the HLT element switched on by hand. Only a logic starting to heat the HLT starts it: the HLT's own AUTO, or the mash tun's HERMS, which BrewStart also heats through. AUTO taking the heating over from the hand still starts it. So the setting's old name, "Run the HLT pump while the HLT heats", promised more than CraftBeerPi does. `M.HLT_PUMP_WITH_HEAT` now has:
+
+- `n`: "Start the HLT pump when AUTO or the HERMS heats the HLT". AUTO and HERMS are what the brew-day screen shows on the HLT while a logic heats it: its own mode switch at AUTO, or the dashed HERMS button while the mash tun's AUTO runs the HERMS.
+- `h`: "Until the recipe reaches its sparge, so the water doesn't settle into hot and cool layers. Heating by hand never starts it: the pump may not be primed, or its hoses may not be in place. It keeps running when the heat stops. You can still stop it; it starts again when AUTO or the HERMS next starts heating." "Heating by hand" is what the brew-day screen says while an element is on in MANUAL. The reason it never starts the pump is the one the core gives. The last sentence is new, though the rule it states hasn't changed: a stop lasts only until a logic next starts heating, as the core's description says. That matters to someone who stopped the pump because it wasn't ready.
+- `syn`: "recirc agitator stir layers manual" (was "recirc agitator layers"). FIND already finds "auto", "herms", "hand", "primed" and "hoses" in the name or the help.
+
+Where it shows. All of it comes from `M`, so `port.mjs` carries it, and `catalog.js` line 30 is the only line that changes:
+
+- its row, the first in Mash and sparge under "While you brew": the name, the help and the key;
+- the group list's line for Mash and sparge, which starts with the first four names, so it now begins "Start the HLT pump when AUTO or the HERMS heats the HLT" and is cut short with "…" as before;
+- FIND, through the name, the help, `syn`, the key and the group's name;
+- wherever the page names a setting: the last-event line after a save ("Settings: Start the HLT pump when AUTO or the HERMS heats the HLT saved"), and the didn't-save and leaving notes;
+- `GROUPING.md`: the Mash and sparge table, the placement note, and "Changed after the release (22 Nov 2026)" for the brewer.
+
+What moves: the help line grows from 2 lines to 4 at 1920 and 1024 wide, from 3 to 5 at 1366×768, from 4 to 8 at 768×1024, and from 3 to 7 on a 390×844 phone, where the name also takes 2 lines. That is as long as the longest help already on the page at each size, not longer. At 1920 the row is 165 px tall instead of 123, so everything under it in Mash and sparge moves down 42 px. Every picture that shows the group list has the new start to Mash and sparge's line. The mockup and the build change alike.
+
+The core's description: an install that already has HLT_PUMP_WITH_HEAT keeps the old one, which still says the pump starts "whenever the HLT starts heating". ConfigUpdate writes it only when the setting is missing (`if HltPumpWithHeat is None`), while AddMashOutStep's block (line 525) rewrites its description with each version and keeps the saved value. The Settings page never shows this description, because `M` names the setting, so nothing on screen is wrong. But 8000, 8012 and the rig serve the old words in `GET /config/`, and `settings-data.js` keeps them, since it records what 8012 serves.
+
+Checked:
+
+- All 52 recorded pages (the 21 moments at 1920×1080 and on a 390×844 phone, and a CraftBeerPi with the original plugin or no phone settings) differ from 20 Nov's only by the new name and help. Nothing else on any page changed.
+- At seven sizes, the row is drawn whole, with nothing past its edge and nothing wider than the window, on a phone with Mash and sparge open too. There are no script errors.
+- FIND finds the row by "herms", "hand", "primed", "manual", "hoses", "stir", "hlt pump", "recirc" and "layers". "mash" still finds 9 rows. SAVE puts the new name in the last-event line. `smoke2.py` passes.
+- `port.mjs` (main's) on a scratch copy: `catalog.js` differs from the product's in line 30 only, and `settings.css`, `settings-frame.css` and `demo-data.js` don't differ at all.
+
+Changed in the worktree: `proposal\settings.js` (that one entry), `GROUPING.md` and this file.
