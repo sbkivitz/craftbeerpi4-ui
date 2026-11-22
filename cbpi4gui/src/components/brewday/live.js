@@ -148,7 +148,7 @@ export function additions(p) {
   return out;
 }
 
-export function stepModel(s, roleOf, U) {
+export function stepModel(s, roleOf, U, kname = {}) {
   const p = (s && s.props) || {};
   const temp = num(p.Temp), t = num(p.Timer);
   const m = {
@@ -158,12 +158,14 @@ export function stepModel(s, roleOf, U) {
   };
   if (temp != null) m.temp = temp;
   if (t != null && t > 0) m.min = t;
-  /* BrewStart planning Ready by: its row says the water's temperature, when it's ready by and how much there is */
+  /* BrewStart planning Ready by: its row says the water's temperature, when it's ready by and how much there is; the
+     kettle it heats (Heat_Kettle) by its name in CraftBeerPi, which UNLOAD's reason gives while it waits */
   if (s.type === "BrewStart" && String(p.Timing || "").trim() === "Ready by") {
     const ready = num(p.Ready_Temp), vol = num(p.Volume), at = /^\s*(\d{1,2}):(\d{2})/.exec(String(p.StartTime || ""));
     if (ready != null) m.temp = ready;
     if (at) m.ready = `${at[1].padStart(2, "0")}:${at[2]}`;
     if (vol != null && vol > 0) { m.vol = vol; m.volU = p.Volume_Unit === "L" || p.Volume_Unit === "gal" ? p.Volume_Unit : U === "°C" ? "L" : "gal"; }
+    if (kname[p.Heat_Kettle]) m.kn = kname[p.Heat_Kettle];
   }
   if (s.type === "MashInStep") m.note = temp != null ? `Add the malt when it reaches ${temp} ${U}` : "Add the malt when it is up to temperature";
   else if (s.type === "NotificationStep" && p.Notification) m.note = unitText(p.Notification, U);
@@ -193,9 +195,10 @@ export function model(snap) {
   for (const v in VACT0) VACT[v] = VACT0[v].filter((id) => ACT[id].id);
   const C = String(cfg(snap.config, "TEMP_UNIT") || "C").toUpperCase() === "F" ? "F" : "C";
   const U = `°${C}`;
-  const roleOf = {};
+  const roleOf = {}, kname = {};
   for (const v of ROLES) if (K[v]) roleOf[K[v].id] = v;
-  const steps = (snap.steps || []).filter(Boolean).map((s) => stepModel(s, roleOf, U));
+  for (const k of snap.kettles || []) if (k && k.id != null && k.name) kname[k.id] = String(k.name);
+  const steps = (snap.steps || []).filter(Boolean).map((s) => stepModel(s, roleOf, U, kname));
   // the new boil kettle: a BoilPower whose target is BOIL or a hold, from 0.0.3.post7
   const BKNEW = !!K.bk && declares(snap.logic, K.bk.type, "set_boil_at");
   return {
@@ -207,7 +210,8 @@ export function model(snap) {
     BOILPOWER: !!K.bk && declares(snap.logic, K.bk.type, "set_boil_power"),
     BKNEW,
     BOIL_TH: boilThreshold(K.bk, C, BKNEW),
-    RECIPE: { name: (snap.basic && snap.basic.name) || "Brew steps", steps },
+    // the recipe's name as CraftBeerPi has it, blank for steps that have none (given); name stands in for it on screen
+    RECIPE: { name: (snap.basic && snap.basic.name) || "Brew steps", given: String((snap.basic && snap.basic.name) || ""), steps },
     BOOK: snap.book || [],
     LIMITS: C === "F" ? [32, 230] : [0, 110],
     // where a target editor starts when a vessel has none: the mockup's, in °F

@@ -70,6 +70,9 @@ export const api = {
   next: () => post("/step2/next"),
   // Every step back to not started; refused with 409 while a step runs.
   reset: () => post("/step2/reset"),
+  // The brew steps emptied: the recipe off Brew Day. Refused while a step runs, BrewStart waiting included: 409
+  // {error: "step_running", detail, step}, the detail CraftBeerPi's own sentence.
+  clear: () => post("/step2/clear"),
   answer: (notificationId, actionId) => post(`/notification/${id(notificationId)}/action/${id(actionId)}`),
   // OK on a warning or an error without buttons: CraftBeerPi takes it down from every page, and BrewScribe's
   seen: (notificationId) => post(`/notification/${id(notificationId)}/seen`),

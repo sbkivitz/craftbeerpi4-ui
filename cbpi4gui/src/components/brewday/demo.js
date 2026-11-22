@@ -3,7 +3,9 @@
 // mode (?demo=mash, sparge, sparge-heat, sparge-ready, sparge-run, sparge-batch, boil-hold, hop, boilpower, heatup, pause,
 // pause-long, boiling, hold, whirlpool, finished, keepboil, letfall, bktarget, handhold, fail, manual, offline, notarget,
 // notarget-hlt, timers, timer-done, timer-back, timer-back-done, timer-back-unknown, timer-new, timer-names,
-// timer-nonames, timers-hand, sound-allow, byhand, byhand-past, stopped, reset, reset-done, and the pre-brew check's
+// timer-nonames, timers-hand, sound-allow, byhand, byhand-past, stopped, reset, reset-done, UNLOAD's unloaded,
+// unload-ask, unload-notinbook, unload-held, unload-running, unload-wait, unload-refused, unload-failed and
+// load-notinbook, and the pre-brew check's
 // prebrew, probes, probes-apart, probes-off, probes-none, checking, check-clock, check-now, check-probe, check-adds,
 // check-many, check-noanswer, check-noprobe, check-slow and check-unsure, and the strike water's sw-plan, sw-forecast,
 // sw-volume, sw-grain-edit, sw-grain, sw-hot, sw-used, sw-backhot, sw-working, sw-working-open, sw-reworking, sw-levers,
@@ -553,6 +555,43 @@ const SCENES = {
     s.events.unshift(["14:32:58", "Recipe reset to step 1", "confirmed", "ok"]);
     return s;
   },
+  /* UNLOAD, at the end of the status line, takes the recipe off Brew Day (POST /step2/clear), as the recipe pages'
+     UNLOAD does. #unloaded: the #prebrew morning's recipe, not begun, unloaded with one tap at 07:41:31: brewing by
+     hand, with the recipe book's LOAD to have it back. #unload-ask: the #stopped day's, its question open.
+     #unload-notinbook: steps built on Brew Steps, never saved to the Recipe Book, not begun: it asks, as they'd be gone.
+     #unload-held: the boil waiting for the brewer (#boil-hold), its question open. #unload-running: the #mash day's,
+     greyed, tapped. #unload-wait: BrewStart waiting overnight for its time (#sw-wait), greyed, tapped.
+     #unload-refused: UNLOAD pressed on a screen that hadn't caught up with a step started on another, and refused by
+     CraftBeerPi (409 step_running), in its words (core 4.7.7.post58). #unload-failed: no answer from CraftBeerPi.
+     #load-notinbook: LOAD in the by-hand list over a finished recipe the Recipe Book doesn't have */
+  unloaded: () => {
+    const s = pbMorning();
+    s.t = 7 * 3600 + 41 * 60 + 40; s.recipe = null;
+    s.events.unshift(["07:41:31", `${RECIPE.name} unloaded: Brew Day is brewing by hand`, "confirmed", "ok"]);
+    return Object.assign(s, {base: "prebrew"});
+  },
+  "unload-ask": () => Object.assign(SCENES.stopped(), {base: "stopped", open: {confirmUnload: true}}),
+  /* steps built on Brew Steps and never saved to the Recipe Book, under a name it doesn't have (recipeName): UNLOAD asks
+     before they begin, as they'd be gone */
+  "unload-notinbook": () => Object.assign(pbMorning(), {base: "prebrew", recipeName: "Quick Pale Ale", events: [["07:36:02", "Hot liquor tank MANUAL", "confirmed", "ok"]], open: {confirmUnload: true}}),
+  /* LOAD in the by-hand list over a finished recipe the Recipe Book doesn't have (Rye Pale Ale, built on Brew Steps):
+     it asks first, as its steps would be gone */
+  "load-notinbook": () => Object.assign(SCENES.finished(), {base: "finished", recipeName: "Rye Pale Ale", open: {confirmLoad: 0}}),
+  "unload-held": () => Object.assign(SCENES["boil-hold"](), {base: "boil-hold", open: {confirmUnload: true}}),
+  "unload-running": () => Object.assign(mash(), {base: "mash", open: {tap: "r:unload"}}),
+  "unload-wait": () => Object.assign(SCENES["sw-wait"](), {base: "sw-wait", open: {tap: "r:unload"}}),
+  "unload-refused": () => {
+    const s = mash(), d = `${RECIPE.steps[2].n} is running. Stop it before unloading the recipe.`;
+    s.t = 14 * 3600 + 32 * 60 + 36;
+    s.events.unshift(["14:32:35", `Recipe not unloaded: ${d}`, "from CraftBeerPi", ""]);
+    return Object.assign(s, {base: "mash", open: {notes: {r: d}}});
+  },
+  "unload-failed": () => {
+    const s = pbMorning();
+    s.banner = {tone: "alarm", title: "Command failed", text: `${RECIPE.name} did not unload. It is still loaded.`, act: "TRY AGAIN", cmd: "r:unload-yes"};
+    s.events.unshift(["07:41:17", `${RECIPE.name} unloaded: Brew Day is brewing by hand`, "failed: no answer in 5 s", "bad"]);
+    return Object.assign(s, {base: "prebrew"});
+  },
   /* the pre-brew check (pbMorning). #prebrew: COMPARE PROBES under START. #probes, #probes-apart, #probes-off,
      #probes-none: the probes side by side, agreeing; the boil kettle 3.8 °F cooler than the others, as one by a door
      can be; the boil kettle's 17.5 °F low, more than its spot explains; the mash tun's giving no reading for 4 min.
@@ -701,6 +740,8 @@ const SW_STEPS = [
   {n: "Strike water", type: "MashInStep", k: "hlt", note: "Move the strike water to the Mash Tun, then press Next"}
 ];
 const SW_FROM = {grainLb: 20, forGrain: 7.5, dead: 0.76, tunLb: 33, bs: 134.6, bsGrain: 65, bsTun: 72};
+/* Test Recipe v5 as the Recipe Book keeps it: its strike water at the rest, and BrewStart's water (swAsSaved) */
+const SW_PLAN0 = 126, SW_VOL0 = 15;
 /* BrewStart's Ready by plan, from the rig's measured heat-up (rig page 9b: 15 gal from 60 to 152 °F in 42 min, so
    2.19 °F a minute, plus 10 spare minutes) */
 const SW_RATE = 2.19, SW_SPARE = 10;
@@ -1106,7 +1147,7 @@ function history(scene, now, x) {
 }
 
 export { RECIPE, SPARGE_STEP, BIG_ADDS, VNAME, KNAME, PROBE, VACT, ACT, HERMS_DELTA, BOIL_TH, BOOK, SCENES, history, noTargetBanner, pauseBanner, spargeBanner, boilHoldBanner, boilStartLine, tfmt, tBanner, byHandBanner, versions,
-  SW_STEPS, swStartAt, swPlanLine };
+  SW_STEPS, swStartAt, swPlanLine, SW_PLAN0, SW_VOL0 };
 
 // Not the mockup's: two moments of the screen's own, for checking how the title bar holds what CraftBeerPi
 // really asks. Not compared with the mockup.
