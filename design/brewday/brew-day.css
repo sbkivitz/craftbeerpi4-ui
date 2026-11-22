@@ -145,9 +145,9 @@ html.bare .mock{display:none}
 .seg button[aria-pressed=true] small{color:#c9d6e2}
 .seg button:not([aria-pressed=true]):not([aria-disabled=true]):hover,.tgtbtn:not([aria-disabled=true]):hover,.cmdbtn:not([aria-disabled=true]):hover{background:#253545}
 /* under the pointer, a button's second line, and a timer's state, turn Soft Steel: Dim Steel on the hover slate is 4.46:1.
-   A pressed choice, the target's amber "no target", the timer editor's blue main action, OK on a timer that has run out,
-   that timer's amber state and a greyed button keep their own colours */
-.seg button:not([aria-pressed=true]):not([aria-disabled=true]):hover small,.tgtbtn:not(.notgt):not([aria-disabled=true]):hover small,.cmdbtn:not([aria-pressed=true]):not([aria-disabled=true]):not(.tgo):not(.tok):hover small,.trow:not([data-state=done]) .tsel:not([aria-disabled=true]):hover .ts{color:var(--text-2)}
+   A pressed choice, the target's amber "no target", the timer editor's blue main action, the strike water's blue USE,
+   OK on a timer that has run out, that timer's amber state and a greyed button keep their own colours */
+.seg button:not([aria-pressed=true]):not([aria-disabled=true]):hover small,.tgtbtn:not(.notgt):not([aria-disabled=true]):hover small,.cmdbtn:not([aria-pressed=true]):not([aria-disabled=true]):not(.tgo):not(.tok):not(.swuse):hover small,.trow:not([data-state=done]) .tsel:not([aria-disabled=true]):hover .ts{color:var(--text-2)}
 .tgtbtn,.cmdbtn{border:1px solid var(--edge);border-radius:var(--r)}
 .seg button[aria-disabled=true],.tgtbtn[aria-disabled=true],.cmdbtn[aria-disabled=true]{color:var(--text-3)}
 .note{margin:0;font:500 15px/1.35 var(--sans);color:#ffd9a0}
@@ -281,6 +281,90 @@ html.bare .mock{display:none}
 .cpl .cr .u{margin-left:2px;font-size:15px;vertical-align:top}
 .cpv{display:grid;grid-template-columns:24px minmax(0,1fr);column-gap:9px;align-items:start;font:500 16px/1.4 var(--sans)}
 .cpn{font:500 14px/1.35 var(--sans);color:var(--text-2)}
+/* the strike water box (STRIKE-WATER.md): raised like the probes' panel, under START, STOP and NEXT STEP, and small, as
+   it stays for hours beside the step list. A small PID window: the strike water as planned, its temperature in
+   Setpoint Green as a target's is, and where the mash lands, white, or Prompt Amber when it would go over the rest; one
+   line each, sized to the column. Under it USE, in Selection Blue as the editors' SET, keeping its blue under the
+   pointer, and FORECAST. Together they are the box's head. Opened out, FORECAST turns into CLOSE in its place and the
+   details come under the head, across a line: the forecast drawn and in words, kept as tall as the other state's words
+   would be (the ghost under them) so USE and BACK TO swap without moving anything, and the numbers it used */
+.sw{display:grid;gap:10px;padding:0 10px 10px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2)}
+.swhead{display:grid;gap:8px;padding-top:10px;background:var(--panel-2)}
+.sw.open .swhead{padding-bottom:10px;border-bottom:1px solid var(--line)}
+.swdet{display:grid;gap:10px}
+.sw p{margin:0}
+.swv{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;column-gap:12px;row-gap:2px;margin:0;padding:6px 12px;border:1px solid #1d2a36;border-radius:var(--r);background:var(--face)}
+.swv dt{font:600 15px/1 var(--cond);letter-spacing:.08em;color:var(--text-3)}
+.swv dd{margin:0;overflow:hidden;font:600 clamp(20px,calc(7 * var(--pu)),27px)/1.2 var(--cond);font-variant-numeric:tabular-nums;white-space:nowrap;text-overflow:ellipsis}
+.swv b{font-weight:600}
+.swv .u{margin-left:1px;font-size:.56em;vertical-align:top}
+.swv .ug{margin-left:4px;font-size:.6em;color:var(--text-2)}
+.swk{margin:0 .4em;font:600 .56em/1 var(--cond);letter-spacing:.08em;text-transform:uppercase;color:var(--text-3)}
+.swk:first-child{margin-left:0}
+.swt{color:var(--sv)}
+.swm.hot,.swm.hot .swk{color:var(--prompt)}
+.swa{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:8px}
+.swa.one{grid-template-columns:minmax(0,1fr)}
+.sw .cmdbtn{min-height:54px}
+.sw .swuse{background:var(--select);border-color:var(--select);color:#fff}
+.sw .swuse small{color:#fff}
+.sw .swuse:not([aria-disabled=true]):hover{background:#3477c8}
+.sw .swuse[aria-disabled=true]{background:var(--panel-2);border-color:var(--edge);color:var(--text-3)}
+.sw .swuse[aria-disabled=true] small{color:var(--text-3)}
+.swl{display:grid;font:500 16px/1.4 var(--sans)}
+/* with a number missing, why, in the buttons' place: a size smaller, so the step list keeps its room on one screen */
+.sw-miss .swl{font-size:15px;line-height:1.35}
+.swl>span{grid-area:1/1}
+.swl .ghost{visibility:hidden}
+.swl b{font-weight:700;color:#fff}
+.swd{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:12px;row-gap:5px;margin:0;font:500 15px/1.35 var(--sans)}
+.swd dt{font:600 14px/1.45 var(--cond);letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)}
+.swd dd{margin:0}
+.swn{font:500 14px/1.35 var(--sans);color:var(--text-2)}
+/* the strike water's forecast (FORECAST): the chart on the PID windows' black face, as the graphs are; the band for the
+   strike water as planned in the readings' red (Prompt Amber when it goes over the rest), the other choice's as a grey
+   dashed outline; a key under it in words; then the numbers in groups by where they come from */
+.swf{display:grid;gap:6px;margin:0}
+.swc{height:clamp(132px,calc(40 * var(--pu)),176px);border:1px solid #1d2a36;border-radius:var(--r);background:var(--face);overflow:hidden}
+.swc svg{display:block}
+.swc text{font:600 12px var(--cond);letter-spacing:.04em;fill:var(--text-3);paint-order:stroke;stroke:var(--face);stroke-width:3px;stroke-linejoin:round}
+.swc .swrl{fill:var(--sv)}
+.swb{fill:rgb(255 75 62/.22);stroke:none}
+.swb.hot{fill:rgb(255 178 30/.22)}
+.swb.alt{fill:rgb(182 195 207/.07)}
+.swe{fill:none;stroke:var(--pv);stroke-width:1.6;stroke-linejoin:round}
+.swe.hot{stroke:var(--prompt)}
+.swe.alt{stroke:var(--text-2);stroke-width:1.4;stroke-dasharray:6 4}
+.swkey{display:flex;flex-wrap:wrap;gap:4px 16px;margin:0;padding:0;list-style:none;font:600 14px/1.25 var(--cond);letter-spacing:.04em;color:var(--text-2)}
+.swkey i{display:inline-block;width:20px;height:10px;margin-right:6px;vertical-align:-1px;border-radius:2px}
+.swkey .k-plan{background:rgb(255 75 62/.22);border:2px solid var(--pv)}
+.swkey .k-plan.hot{background:rgb(255 178 30/.22);border-color:var(--prompt)}
+.swkey .k-alt{border:2px dashed var(--text-2)}
+.swkey .k-rest{height:0;border-top:2px solid var(--sv);border-radius:0;vertical-align:4px}
+.swg{margin:6px 0 0;font:700 15px/1.2 var(--cond);letter-spacing:.08em;text-transform:uppercase;color:var(--text-2)}
+.swd dt{min-width:5.4em}
+.swyou{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;font:500 15px/1.35 var(--sans)}
+.swyou p{margin:0}
+.swyou .cmdbtn{min-width:112px;padding:4px 12px}
+.swmt{font-size:15px;line-height:1.35;color:var(--text-2)}
+/* while CraftBeerPi works USE out: the line saying so, a size smaller, and the last answer's figures, shown until the
+   new ones come, in the stale grey the readings take, a shade lighter for the window's smaller text (4.9:1 on its face):
+   the window's MASH, the chart's bands and its words */
+.swwk{font-size:15px;line-height:1.35;color:var(--text-2)}
+#sw-el{font-variant-numeric:tabular-nums}
+.swm.stale,.swm.stale b,.swm.stale .swk{color:#737f8d}
+.swc svg.stale .swb{fill:rgb(115 127 141/.16)}
+.swc svg.stale .swe{stroke:#737f8d}
+.swf.stale figcaption,.swf.stale .swl b,.swf.stale .swkey{color:var(--text-3)}
+.swf.stale .swkey .k-plan{background:rgb(115 127 141/.16);border-color:#737f8d}
+/* the HLT's water, in TARGET's box: its label and what the figure is, across the box's width */
+.swvol .swvl{grid-column:1/-1;font:700 15px/1.2 var(--cond);letter-spacing:.06em;text-transform:uppercase;color:var(--text-2)}
+.swvol .swvh{grid-column:1/-1;margin:0 0 2px;font:500 14px/1.35 var(--sans);color:var(--text-2)}
+.swvol input{color:var(--text)}
+/* a volume needs fewer digits than a target, so its box gives the steps the room: at least 49 px each on a 360 px phone.
+   The grain's temperature uses the same box; THE PROBE, going back to the boil kettle's probe, takes a row of its own */
+.swvol{grid-template-columns:repeat(2,minmax(0,1fr)) minmax(0,1.2fr) repeat(2,minmax(0,1fr))}
+.swvol .swprobe{grid-column:1/-1}
 .steps{flex:1;min-height:0;overflow:auto;margin:0;padding:0 2px 0 0;list-style:none;display:flex;flex-direction:column;gap:6px;overscroll-behavior:contain}
 /* the versions (verHTML): the quietest words on the screen, last in the recipe column whatever comes before it. Each part
    keeps whole; where the column is narrow the CraftBeerPi part goes on a line of its own */
@@ -291,6 +375,9 @@ html.bare .mock{display:none}
 .step .n{grid-row:1/3;font:700 26px/1 var(--cond);text-align:center;color:var(--text-2)}
 .step .t{grid-column:2;font:600 20px/1.1 var(--cond);letter-spacing:.02em}
 .step .p{grid-column:2;font:500 16px/1.25 var(--cond);letter-spacing:.02em;color:var(--text-2)}
+/* on one screen the title bar is always in view. While it shows a step's own question, the step's note, the same
+   thing in other words, steps aside, so the current step stays whole where a box above it has made the list short */
+@media (min-width:1180px){.step .pn.asked{display:none}}
 .step .s{grid-column:3;grid-row:1/3;font:600 15px/1 var(--cond);letter-spacing:.06em;color:var(--text-3);text-align:right;white-space:nowrap}
 /* WAITING FOR YOU on a step held for the brewer, in the brighter amber the built screen uses (brewday-extra.css) */
 .wfy{color:#ffd27a}
@@ -527,18 +614,30 @@ html.bare .mock{display:none}
 /* desktop: one fixed screen */
 @media (min-width:1180px){.app{height:max(calc(100dvh - var(--mock-h)),860px)}}
 /* while a timer's editor is open, the step list (by hand, the recipe book and its two links) makes way for it, rather
-   than shrinking to a sliced row. The header still says which step runs, and alerts still come in the title bar. All
-   back when it closes */
-@media (min-width:1180px){.recipe[data-tedit] :is(.steps,.book,.handlinks){display:none}}
-/* the pre-brew check's box and the probes side by side do the same */
-@media (min-width:1180px){.recipe[data-pb] :is(.steps,.book,.handlinks){display:none}}
+   than shrinking to a sliced row, and so does the strike water box, unless it is the box open (data-pb). The header
+   still says which step runs, and alerts still come in the title bar. All back when it closes */
+@media (min-width:1180px){.recipe[data-tedit] :is(.steps,.book,.handlinks){display:none}.recipe[data-tedit]:not([data-pb]) .sw{display:none}}
+/* the pre-brew check's box, the probes side by side and the strike water box opened out do the same, and the timers
+   make way for them too, so the box isn't squeezed to a sliver and the page doesn't grow: a timer that runs out
+   meanwhile still says so in the title bar, with OK, and in the frame round the screen. A timer's editor open at the
+   time makes way with them, with what was typed in it, and is back as it was when the box closes */
+@media (min-width:1180px){.recipe[data-pb] :is(.steps,.book,.handlinks,.tmrs,.timer){display:none}}
 /* where the column is short, the probes' panel scrolls in it, as the step list whose room it takes does, rather than
-   making the page longer (The One Screen Rule) */
+   making the page longer (The One Screen Rule). The strike water box opened out keeps its head, with USE or BACK TO and
+   CLOSE, and only the details under it scroll */
 @media (min-width:1180px){.recipe[data-pb] .cmp{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}}
-/* the versions' line steps aside too while a timer's editor is open, and while something in the column waits for you
-   (NEXT STEP's or RESET's question, a timer's alarm): on a monitor the column has no room to spare then, and the line is
-   the least needed thing in it */
-@media (min-width:1180px){.recipe:is([data-tedit],[data-asking]) .ver{display:none}}
+@media (min-width:1180px){.recipe[data-pb] .sw.open{display:flex;flex-direction:column;flex:0 1 auto;min-height:0}.recipe[data-pb] .sw.open .swhead{flex:none}.recipe[data-pb] .swdet{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}}
+/* only the scrolling box gives up height: everything else in the column keeps its size, so nothing above the box
+   moves when it opens (COMPARE PROBES' button would otherwise lose a pixel or two where its words are big) */
+@media (min-width:1180px){.recipe[data-pb]>:not(.cmp):not(.sw){flex-shrink:0}}
+/* where the page scrolls, the strike water box's head stays at the top of the screen while its details pass under it,
+   so USE or BACK TO and CLOSE are always in reach */
+@media (max-width:1179.98px){.sw.open .swhead{position:sticky;top:0;z-index:2}}
+/* the versions' line steps aside too while a timer's editor is open, while something in the column waits for you
+   (NEXT STEP's or RESET's question, a timer's alarm), and where the current step wouldn't be whole without its room
+   (data-short, keepStepInView): on a monitor the column has no room to spare then, and the line is the least needed
+   thing in it */
+@media (min-width:1180px){.recipe:is([data-tedit],[data-asking],[data-short]) .ver{display:none}}
 /* while a value editor is open the drawing may shrink further, so a note under the editor can't push the page past the screen */
 @media (min-width:1180px){.app[data-editing] .rig{min-height:160px}}
 /* tablet: stack, page scrolls */

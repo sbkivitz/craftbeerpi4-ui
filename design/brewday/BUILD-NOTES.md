@@ -66,6 +66,9 @@ same. The section at the end has the detail.
 | An HLT pump in the simulator | Simulator configuration | The rig already has one: `Recirc_PUMP` on GPIO 7, which is also the HLT kettle's agitator (the brewer confirmed the pump mapping on 9 Oct). The simulator has `Mash Pump` and `Glycol Pump` but no HLT pump; Brett plans to add one when he builds this. |
 | The pre-brew check: START held on a recipe not begun checks that every probe gives a reading, the clock is set and every boil addition has a reminder; if one doesn't pass, an amber box under START with START ANYWAY (held) and DON'T START | Server and React UI | Approved 17 Nov. One check request on START (core 4.7.7.post45, Brett's), and the import keeping the additions it couldn't give a reminder. See "The pre-brew check" below. |
 | COMPARE PROBES: the probes' own readings side by side before filling, judged at three levels | React UI | Approved 17 Nov, after the rig's own readings. Needs each probe's `offset` from its settings; no server change. See "The pre-brew check" below. |
+| On a monitor, a box opened in the recipe column (the pre-brew check's box, COMPARE PROBES, the strike water's FORECAST) takes the timers' room as well as the step list's, a timer's editor open meanwhile making way with them, keeping what was typed; and the closed strike water box makes way for a timer's editor | React UI | 20 Nov. With timers in the column the boxes were squeezed to nothing, or pushed the timers past the column's foot. See "An open box takes the timers' room too" below. |
+| The strike water helper: a box in the recipe column from a recipe's loading until its malt goes in, with where the mash lands, USE (the forecast's strike temperature, which changes the plan only when pressed) or BACK TO in one place, and FORECAST, whose head stays in reach while its details scroll; greyed, with the seconds so far, while CraftBeerPi works USE out, and a refusal said under the box when its figure has been overtaken | Server, plugin and React UI | Approved 20 Nov, with the bench's model's figures the same evening. The model works out the figures in a worker of its own; one call for USE and BACK TO, refusing an overtaken figure (409 `plan_changed`); the recipe's numbers kept on import; BrewStart's water volume, and a new Grain temperature setting on BrewStart (the brewer's fork). See "The strike water helper" and "…with the model's figures" below. |
+| BrewStart's row says when it's ready by and its water ("126 °F · ready by 07:00 · 15 gal"); on one screen, a step's note and the versions line step aside where the current step wouldn't otherwise be whole | React UI | With the strike water helper, 20 Nov. `stepModel` reads Ready_Temp, the ready time and Volume; no server change. |
 
 ## What this screen does not fix
 
@@ -4881,6 +4884,459 @@ and the column's width matched within one redraw, so a height from another width
   description, the same.
 - This file: "It keeps its height" in the pre-brew check's notes, and this section.
 - `.impeccable\decisions\direction-log.md`.
+
+## The strike water helper: ready to build (20 Nov)
+
+Approved by the brewer on 20 Nov, through you: "Yes, approve it with those two fixes". The fixes answer his questions
+"Do I need to scroll down to click "USE ..."?" and "What does "DONE" do?". For the HLT's water he chose "Yes, use
+BrewStart's water volume (Recommended)", and for the grain "A is my answer but I think we can figure out the night
+before when setting up the BrewTimer", so BrewStart gets a Grain temperature. Your two picks stand: BeerSmith's figure
+beside the forecast's, and the volume shown. The reasoning, the forecast and every word are in
+`proposal\STRIKE-WATER.md`; DESIGN.md has the Strike Water section and The Offer, Don't Apply Rule. The moments are
+second in the strip: `brew-day.html#sw-plan`. Its figures are your bench's model's, since the same evening: see "The
+strike water helper with the model's figures", below, which also says what the model changed here. The mockup carries
+the model's answers in `strike-model.js`; the screen shows whatever the server's model gives, so neither that file nor
+`swModel` belongs in the build. Line numbers below are the mockup's now.
+
+### When the box shows
+
+- **From a recipe's loading until its malt goes in** (`swPhase`, line 1592): "plan" while BrewStart is next or waits, or
+  any step before the strike water step; "heat" while the strike water step (a MashInStep on the HLT) heats and holds
+  the water; "moved" while MashIn on the Mash Tun brings the water to the rest and asks for the malt. Gone once a step
+  after MashIn on the Mash Tun has begun. A recipe without the strike water step (`#sw-hand`) has the box only while it
+  waits to start with the mash tun not in AUTO, and there USE sets the HLT's target, as SET would.
+- **One box at a time** (`swHTML`, line 1980): not while the pre-brew check's box, COMPARE PROBES, or NEXT STEP's or
+  RESET's question is up. `renderAll` (line 2363) closes FORECAST and the two small boxes when one of those opens or
+  the phase ends.
+- **In the recipe column,** after COMPARE PROBES and before the step list: `.sw` (brew-day.css line 291), Raised Slate
+  with a Control Edge border.
+
+### The head: the window, USE or BACK TO, FORECAST or CLOSE
+
+- **The window** (`swWin`, line 1798): STRIKE, the water to the mash tun and the temperature planned (the strike water
+  step's Temp, or by hand the HLT's SV), the temperature in Setpoint Green; MASH, the forecast's lowest and highest
+  as the grain goes in, rounded, as "LANDS 113–118 °F" with " to " for screen readers (`swR`). Over the rest by the
+  strike's doing (`swOver`: the forecast's highest point more than 0.5 °F above both the rest and where water at the
+  rest would take the mash): "UP TO 137 °F OVER THE REST" in Prompt Amber. Each row `white-space:nowrap`, and one line
+  at every size from 360 px up.
+- **USE or BACK TO** (`swAlt`, line 1762), two thirds of the row (`.swa`): USE with the model's figure until the plan is
+  within 0.5 °F of it (`SW_SAME`), then BACK TO the temperature before the first USE (`st.sw.was`), or the rest when
+  none was kept. USE is `.swuse`, Selection Blue with white words, "aims under the rest" ("as the HLT's target" by
+  hand); BACK TO a plain command button, "as it was". While CraftBeerPi answers, SENDING… and greyed with `WAIT`.
+  While the HLT heats the strike water (the step running, or by hand the HLT in AUTO), a figure more than 0.5 °F below
+  the HLT's reading is greyed, and tapped says "The water is already at 132.3 °F, above 126.0 °F, and the HLT can't
+  cool it."
+- **FORECAST and CLOSE are one button and one command,** `sw:more` (line 3149), so the click handler's refocus lands on
+  the same button: FORECAST "in detail", or CLOSE "the forecast" while open, with `aria-expanded`, and
+  `aria-controls="sw-det"` while open (`b()`'s new `controls` option, line 973). Escape closes a small box first, then
+  FORECAST.
+- **The dough-in line,** under the window: phase "moved", the wort pump off, and the Mash Tun reading more than 3 °F
+  over the forecast's highest as the grain goes in (`fc(plan).hi[0] + 3`), with the probe at the coil's outlet: "The
+  Mash Tun's 132.2 °F isn't the mash: with the pump stopped, its probe reads the water left in the HLT's coil."
+
+### FORECAST open: the head stays in reach
+
+- `swHTML` puts the window, the dough-in line and the buttons in `.swhead`, and the details in `.swdet#sw-det`: the
+  chart (`drawSw`, line 1944), its key, the words (`swWords`, with the ghost that keeps their height when USE and BACK
+  TO swap), why it's a range, what the Mash Tun may read, and the numbers by where they come from (`swList`,
+  line 1834). USE no longer repeats at the foot.
+- **On one screen (1180 px and wider),** the open box sets `data-pb` on the recipe column, as the pre-brew check's box
+  does, so the step list, the recipe book and its links make way, and the timers too (brew-day.css line 624; see "An
+  open box takes the timers' room too", below). The box is a flex column: the head keeps its size and `.swdet` scrolls
+  (`flex:0 1 auto;min-height:0;overflow:auto`, line 629). And `.recipe[data-pb]>:not(.cmp):not(.sw){flex-shrink:0}`
+  (line 632): only the box gives up height. Without it, at
+  1920×1080 COMPARE PROBES' button, whose words need 55.4 px over its 54 px minimum, lost 1.4 px as FORECAST opened,
+  and the box and its button moved up with it. Nothing else in any moment shrinks with or without the rule.
+- **Where the page scrolls** (narrower than 1180 px): `.sw.open .swhead{position:sticky;top:0;z-index:2}` (line 635),
+  with the head's own Raised Slate behind it, so the details pass under it.
+- **The kept height** (`pbKeep`) is the closed box's only: `#recipe .sw:not(.open)` in `pbMeasure` and `pbFit`.
+  Opened, its buttons are in its head, above everything in it that changes.
+
+### The HLT's water and the grain's temperature
+
+- **Where they come from** (`swVolOf` and `swGrainOf`, lines 1673 and 1677): BrewStart's Volume and its new Grain
+  temperature where the recipe has BrewStart; by hand, the brew day's figures.
+- **`swIn` and `swNumbers`** (lines 1684 and 1707): the room is the boil kettle's reading less its offset, as COMPARE
+  PROBES takes it; the grain is the figure given, or else the room. What's missing, in this order: the recipe's
+  numbers, the probe's reading, a room's reading (35-120 °F, `ROOM_LO` and `ROOM_HI`, line 1486), the HLT's water
+  (none, or less than the
+  strike water), and a figure more than 27 °F over the rest (`SW_MAX_RISE`, MashInStep's own 15 °C). Nothing stands in
+  for the room: a guessed room could make USE err high.
+- **The two boxes** (`swVolHTML` and `swVol`, lines 1867 and 1878; `swGrainHTML` and `swGrain`, lines 1903 and 1917),
+  in FORECAST's FROM YOU, laid out as TARGET's box (`.editor.swvol`): the label with its unit, a line of instructions
+  tied to the input (`aria-describedby`), −1 −.1, the input, +.1 +1, SET with the figure, CANCEL; the grain's also
+  THE PROBE across its foot while a figure is in use. They open with the input focused and selected. Enter sets and
+  Escape cancels. One at a time: opening one closes the other. The words, refusals and LOG lines are in
+  STRIKE-WATER.md, "The words".
+- **With no HLT water,** the question takes the buttons' place beside HLT WATER, "set it", which opens the water's box
+  there.
+
+### What the server needs
+
+1. **The forecast** (the bench's model, in a worker of its own). Given the batch (the grain's weight, the water to the
+   mash tun, the tun's steel, the HLT's water, the room's and the grain's temperatures, and the rest), USE's figure by
+   the second rule: the hottest strike water, rounded down to 0.1 °F, that in every case takes the mash no higher than
+   water heated only to the rest would, its highest point counted from the grain going in. For any strike temperature
+   the screen asks about (the one planned, USE's, BACK TO's, BeerSmith's): the mash's lowest and highest each minute
+   for an hour from the grain going in, the highest point, and the Mash Tun probe's highest reading from the ask for the
+   malt to Next. Everything else it sends, and when it works, is in "…with the model's figures", below.
+2. **The recipe's numbers,** kept on import: the grain's weight; the first infusion as BeerSmith shows it
+   (DISPLAY_INFUSE_AMT) and the recoverable dead space in it (its difference from INFUSE_AMOUNT); the tun's weight
+   (TUN_WEIGHT, in ounces in the mash section) and specific heat; INFUSE_TEMP and GRAIN_TEMP; and which of them the
+   recipe lacks. Today the import keeps only Grain_Kg.
+3. **USE and BACK TO,** your one call: the strike water step's Temp, BrewStart's Ready_Temp while it hasn't started
+   heating, and the HLT's target while the strike water step runs, taking down a move question already asked; it keeps
+   the temperature before the first USE, and refuses a recipe that has changed (409 `recipe_changed`, as START does),
+   and a figure that has been overtaken (409 `plan_changed`, below). Brewing by hand, the HLT's target, as SET.
+4. **The HLT's water:** BrewStart's Volume and Volume_Unit for the loaded recipe, and a call that changes it, logged,
+   refusing a recipe that has changed. By hand, a figure CraftBeerPi keeps for the brew day.
+5. **BrewStart's Grain temperature,** a new setting in the brewer's fork of cbpi4_BrewStart, beside Volume, empty by
+   default, in the brewery's unit. Label "Grain temperature"; description "The grain's temperature, if it spends the
+   night somewhere other than with the boil kettle. Leave blank to use the boil kettle's probe." BrewStart itself
+   needn't use it. A call that sets or blanks it, logged, refusing a recipe that has changed; by hand, a figure kept
+   for the brew day.
+6. **The room:** always the boil kettle's probe less its offset.
+7. **BrewStart's row:** `live.js` `stepModel` reads Ready_Temp, the ready time and Volume for a BrewStart step.
+
+### In °C
+
+The 3 °F of the dough-in line is 1.7 °C; the half degree of `SW_SAME` and `swOver` is 0.3 °C; 35-120 °F is 1.5-49 °C;
+27 °F is 15 °C. Figures show one decimal in either unit, and the water in BrewStart's Volume_Unit.
+
+### Your bench tests
+
+- A walk that loads a recipe with the brewer's flow (BrewStart, then a MashIn step on the HLT before MashIn on the
+  Mash Tun) now meets the box between COMPARE PROBES and the step list until the malt goes in, so the step list
+  starts lower: the box is 152-172 px on one screen. A recipe whose first step is on the mash tun, like the demo's,
+  shows it only while the recipe waits to start; one built on Brew Steps, without the recipe's numbers, shows it
+  with "No grain weight or mash water in this recipe…" in place of its buttons.
+- New ones worth having, as the mockup was checked: with FORECAST open at a phone, a tablet and a monitor, USE (or
+  BACK TO) and CLOSE in view before and after the details are scrolled to their end, and the button in the same place,
+  open and closed; USE and BACK TO, and their LOG lines; the grain's box (a figure outside 35-120 °F refused, THE PROBE
+  blanking it) and the water's.
+
+### The moments
+
+New, second in the strip: `#sw-plan`, `#sw-forecast`, `#sw-volume`, `#sw-grain-edit`, `#sw-grain`, `#sw-hot`,
+`#sw-used`, `#sw-wait`, `#sw-heat`, `#sw-move`, `#sw-late`, `#sw-doughin`, `#sw-hand`, `#sw-novol`, `#sw-missing` and
+`#sw-noprobe`. They share `swDay` (line 731) and `swMorning` (line 750); `swHot` (line 709) is USE's figure for the
+moments where it was pressed. `graphs.js` has the dough-in's Mash Tun reading for them; that is demo history only.
+Five more came with the model's figures (below).
+
+### Moments whose pictures change
+
+Compared as your identity test does (animations off, the page clock stopped, software drawing), the mockup before
+the strike water went in against this one, in the default, at your five sizes: all 55 earlier moments are the same,
+275 pictures. The only differences are the 16 new moments, which the earlier mockup doesn't have. `#boilpower` and
+`#bktarget` at 1180×860 never finish drawing on either side, as before.
+
+### Checked (with the stand-in's figures; the model's are checked below)
+
+- All 16 moments at 17 sizes, 360 px to 2560×1440: no page errors, no window line cut, no button's words wrapped,
+  nothing wider than the screen; buttons 54-55 px tall, the small boxes' keys at least 50 px wide; the lowest text
+  contrast 5.08:1 (USE's white on blue). The current step whole in the list at every one-screen size.
+- FORECAST open, at 8 sizes from 360×740 to 1920×1080 and on the brewer's 1278×1197 window: USE or BACK TO and CLOSE
+  in view before and after the details are scrolled to their end, the button in the same place open and closed (y 522
+  on his window), keeping the focus, `aria-expanded` and `aria-controls` right. The details' room is in the next
+  section.
+- With `flex-shrink:0` forced on every child of the recipe column but the scrolling ones, in every moment at four
+  one-screen sizes, FORECAST open where it can be: nothing else changes, so the rule only stops the 1.4 px.
+- Pressed through: USE and BACK TO in every moment that offers them, and with FORECAST open (height and place
+  unchanged; the title bar 12 px shorter when USE takes the move question down, as before); FORECAST then CLOSE, and
+  Escape; the HLT's water (steps, typing, SET at 12 gal giving 134.2 °F, a figure under the strike water refused,
+  Escape, HLT WATER with none given); the grain's (20 °F and empty refused, 70 °F giving 132.5 °F, THE PROBE back to
+  133.2 °F, Escape, 68 °F by hand giving 132.6 °F, one box at a time); START held the night before; NEXT STEP on the
+  move question and then the malt question. No page errors.
+- Your 11 checks from test_ui_prebrew_box_height.py, on the mockup: 11/11.
+- The Impeccable detector on `brew-day.css`: two more of findings it already had, `#3477c8` (USE under the pointer, the
+  timer editor's main button's blue) and a 2 px corner on the chart key's swatches.
+
+### Changed
+
+- `proposal\brew-day.js`, `proposal\brew-day.css`, `proposal\brew-day.html` and `proposal\graphs.js` (LF, as it was);
+  `proposal\STRIKE-WATER.md`, approved; and this file (this section, and two rows of the "Change by change" table).
+- `DESIGN.md`: the colours (Process Red, Setpoint Green, Prompt Amber, Selection Blue, Soft Steel, PID Window Black),
+  the Recipe Column (the box's place, BrewStart's row, a step's note and the versions line stepping aside), Strike
+  Water (new), The Offer, Don't Apply Rule (new), the Do's and Don'ts, and eight components in its front matter.
+- `.impeccable\design.json`, regenerated, with a new sample (Strike Water); `.impeccable\decisions\direction-log.md`;
+  and the surface brief.
+
+## An open box takes the timers' room too, on one screen: ready to build (20 Nov, evening)
+
+You asked whether FORECAST's 107 px at 1180×860 and 1366×768, less than its chart, would suit a sticky head with the
+page scrolling instead. Measuring it turned up more than those two sizes, and in two boxes you've already built:
+
+- **FORECAST with timers.** The details get what's left of the column after everything else, and the timers are fixed
+  in size. With the #timers pair (Stir counting down, Yeast ready) the details were 0 px at 1180×860, 1366×768,
+  1440×900 and 1600×900, 41 px at 1280×950 and 1440×950, and 18 px at 1920×950, the brewer's usual window height.
+  Without timers, at 1920×950 they were 174 px, which cut off the chart's key.
+- **+ TIMER pressed while FORECAST is open** opened the timer's editor too: two boxes, and the details at 0 px.
+- **COMPARE PROBES and the pre-brew check's box with timers** (built, post22-24). Neither gives up height, the panel
+  because it keeps its tallest height (`pbKeep`) and the box by design, so the timers were pushed past the recipe
+  column's foot: by 115-141 px with the panel open at 1920×950 and 1440×900, and by 57-185 px with `#check-many`'s box,
+  the page growing by up to 173 px (1180×860). That's against what DESIGN.md says for both: "the page never grows",
+  and the page "no taller than the window on any monitor 900 px tall or more".
+
+**Not chosen: the page scrolling on a monitor.** It would give the details the whole window, but while the forecast is
+read the title bar, with its alarms, and the faceplates would scroll out of view (The One Screen Rule), and the
+squeeze wasn't only at the smallest windows.
+
+### The rule
+
+- **On one screen, while a box is open in the recipe column** (`data-pb`: the check's box, COMPARE PROBES, FORECAST or
+  the water's or grain's box), the timers make way, as the step list already does:
+  `.recipe[data-pb] :is(.steps,.book,.handlinks,.tmrs,.timer){display:none}` (brew-day.css line 624; `.timer` is the
+  one rest timer an older CraftBeerPi has, by hand). A timer that runs out meanwhile still shows in the title bar with
+  OK, and the frame round the screen pulses (`data-ring`); its row is back once the box closes. Narrower screens are
+  unchanged: the page scrolls there.
+- **A timer's editor isn't closed** (your question): what's typed in it is the editor's own state (`st.tedit`: the
+  name, the minutes, a name picked), which it is drawn from every time, so it makes way with the timers and is back
+  exactly as it was when the box closes. Nothing is kept anywhere else, and nothing is greyed. While a box is open
+  on one screen, Escape is for the box (the keydown handler, line 3222), then for the editor as before. On a phone or
+  tablet both stay on the page, and Escape closes the editor first, as now. The one way a draft still goes is the old
+  one: if the timer being changed runs out, its editor closes for the alarm (`tmTick`, line 3101).
+- **The other way round:** while a timer's editor is open on one screen, the strike water box makes way too, unless
+  it's the box open: `.recipe[data-tedit]:not([data-pb]) .sw{display:none}` (line 619, beside the step list's rule).
+  Without it, a timer's editor opened during the strike water steps made the page grow even with no timers: by 46 px
+  at 1920×950 and 126 px at 1180×860 (`#sw-plan`), and by 162 and 242 px with two timers. With it, the page grows no
+  more than in the built pre-brew moments: not at all with no timers, and with two not from 1920×950 up (+40 at
+  1440×900 and +80 at 1180×860, as the built `#prebrew` has already, from COMPARE PROBES' button). So while a timer's
+  editor is open on one screen, FORECAST and USE are out of view until it closes, as + TIMER is while another
+  editor is open.
+
+### What it gives
+
+- FORECAST's details, timers or not: 225 px at a time at 1180×860 and 1366×768, 265 at 1440×900, 258 at 1600×900, 315
+  at 1280×950, 292 at 1920×950, 415 at 1920×1080, 562 on the brewer's 1278×1197 window and 775 at 2560×1440. The chart
+  and its key need 177-209 px, so they show whole at every size.
+- COMPARE PROBES' panel shows whole at 1180×860 (435 px), timers or not; by hand, with three timers or the one rest
+  timer, it takes the column, and DONE brings them back.
+- `#check-many`'s box with two timers: nothing past the column's foot, and the page doesn't grow, from 1180×860 up.
+
+### Moments whose pictures change
+
+Compared as your identity test does, the mockup before this change against this one, all 71 moments at your five
+sizes: 17 change, all at the one-screen sizes (1180×860, 1440×900, 1920×1080) and none at 390×844 or 820×1180.
+- `#probes`, `#probes-apart`, `#probes-off` and `#probes-none`: COMPARE PROBES' panel shows whole where it used to
+  scroll, and the TIMERS section under it is gone while it's open. Elsewhere on those pages only faint anti-aliasing
+  at panel corners changes (at most 63 of 255, about 1,400 pixels at 1440×900), most likely because the panel no
+  longer scrolls.
+- `#check-clock`, `#check-now`, `#check-probe`, `#check-adds`, `#check-many`, `#check-noanswer`, `#check-noprobe`,
+  `#check-slow` and `#check-unsure`: the TIMERS section under the check's box is gone while it's open, and nothing
+  else. At 1180×860 `#check-many`'s page is no longer 17 px taller than the window.
+- `#sw-forecast`, `#sw-volume`, `#sw-grain-edit` and `#sw-grain`: the open box takes the timers' room too.
+- `#sparge-heat` at 1920×1080 was flagged once and came out the same on two reruns: a flake.
+- The editor kept and the strike water box making way for a timer's editor, after your question: none of the 71
+  moments changes (355 pictures against the mockup just before them).
+
+### Known limit, not designed: timers and the current step
+
+With timers in the column on one screen, the closed strike water box can leave the step list too short for the
+current step, which DESIGN.md says stays whole whatever takes the column's height. With two timers on a 1920×950
+window: `#sw-plan` (29 px of list for a 63 px step), `#sw-heat` (95 for 106) and `#sw-doughin` (34 for 63). With one
+timer at 1440×900 and 1180×860, `#sw-plan` and `#sw-doughin`, and at 1180×860 `#sw-heat` too. The list then shows what
+it can of the current step, from its top. The built moments (`#prebrew`, `#timers`) keep it whole at every size with
+two timers, and at 1920×1080 every strike water moment does. A fix means shrinking or hiding something the brewer
+approved (a slimmer box where the column is short, or the timers on one line each, which hides PAUSE), so it waits
+for him; it's in the direction log.
+
+### Your bench tests
+
+- A walk that opens COMPARE PROBES, or gets the check's box, with the TIMERS section on screen at 1180 px or wider now
+  finds the section gone until the box closes; one with a timer's editor open when a box opens finds it gone with
+  the section and back, as it was, when the box closes. One that opens a timer's editor during the strike water steps
+  finds the strike water box gone until the editor closes.
+
+### Checked
+
+- FORECAST's details at 9 one-screen sizes, with no timers and with the #timers pair: 225-775 px, the chart and its key
+  whole at every size, the page no taller than before. USE and CLOSE where they were (y 551 at 1920×1080, 522 at
+  1440×900 and 1180×860, 430 at 1366×768), open and closed, and after the details are scrolled to their end.
+- A timer half typed, at 1180×860, 1440×900 and 1920×950: a new timer's name and minutes when COMPARE PROBES opens
+  (back on DONE) and when the check's box opens after START is held (back on Escape, which is DON'T START); out of
+  view with the timers meanwhile, and Escape closes the box first. While a timer's editor is open the strike water
+  box makes way, and is back on Escape, CANCEL, the timer's START, or DONE for a running one renamed. At 900×1000 a
+  new timer half typed and FORECAST both open; widened to 1440×900, FORECAST stays open and the editor makes way with
+  the timers, then Escape closes FORECAST and brings the editor back as it was, and Escape again closes the editor.
+- A timer's editor during the strike water steps (`#sw-plan`, `#sw-heat`, `#sw-novol`), with no timers and with two,
+  at five one-screen sizes: the page grows exactly as much as `#prebrew`'s, as built.
+- `#probes` and `#check-many` with the #timers pair at 1180×860, 1440×900, 1920×950 and 1920×1080: nothing past the
+  column's foot and the page no taller than the window; the panel whole (435 px, 399 px at 1920 wide).
+- By hand, `#timers-hand` (three timers) and `#manual?timers=today` (the one rest timer), at 1440×900 and 1920×950:
+  COMPARE PROBES takes the column, and DONE brings the timers and the recipe book back.
+- The strike water's own checks again: all 16 moments at 17 sizes, FORECAST's reach at 8 sizes, every press. The same
+  results as before but for the open box's height and the details' room. No page errors anywhere.
+- Nothing else in the column shrinks, in every moment at four one-screen sizes, FORECAST open where it can be; your 11
+  checks from test_ui_prebrew_box_height.py, 11/11.
+- The alternative of one-line timer rows, measured on the mockup before the change: FORECAST's details 55-122 px from
+  1180×860 to 1920×950, still less than the chart.
+
+### Changed
+
+- `proposal\brew-day.css` (the two rules, each joining the line it extends) and `proposal\brew-day.js` (Escape while a
+  box is open, and two notes in `renderAll`).
+- `DESIGN.md`: Timers, COMPARE PROBES, the strike water's FORECAST, and a Do. `proposal\STRIKE-WATER.md`: FORECAST
+  opened, "Where it sits, and when", and its checks. This file: this section, a row of the table, and the strike water
+  section's line numbers.
+- `.impeccable\decisions\direction-log.md`, the surface brief and `.impeccable\design.json` (regenerated).
+
+## The strike water helper with the model's figures: ready to build (20 Nov, late)
+
+Your bench's model is done (`strike_model.py`, 6b17b8d, then 6f3c001 with its fix for warm grain), and its figures are
+now the mockup's, with the five changes you asked for. What each became, then what the server needs beyond "The strike
+water helper", above. The reasoning is in `proposal\STRIKE-WATER.md` (Decisions 7-12); DESIGN.md's Strike Water
+section has the rules.
+
+### The figures, and how the mockup carries them
+
+Test Recipe v5, the room at 60.4 °F, 15 gal in the HLT, the probe at the coil's outlet, by the second rule:
+
+- USE 132.4 °F with the grain at the room's 60.4 °F, 131.8 °F with it given as 70 °F; 133.3 °F with 12 gal in the HLT,
+  131.4 °F with 20.
+- As planned, 126.0 °F: lands 113-118 °F as the grain goes in, 118-126 °F half an hour later. At USE: 118-124 °F and
+  120-126 °F. BeerSmith's 134.6 °F could reach 128 °F (127.94), over the rest; a planned 145.0 °F up to 137 °F.
+- With USE the Mash Tun may read up to 132 °F during dough-in.
+- USE if every guess proved middling: 137.3 °F. The three that would raise it most if known: the minutes from the grain
+  to Next (+0.8), the tun's steel warmed (+0.7), the tun's heat loss (+0.6).
+- With the probe at the tun's outlet (`#sw-tunprobe`): USE 132.9 °F; water at the rest peaks 127.47 °F.
+- Brew morning: MashIn asks for the malt 4 s after the water arrives, Kal's way too; 40 s on, the Mash Tun reads
+  132.2 °F, the HLT 132.3 °F, its element off (Kal's way: 125.8 °F, 125.9 °F, 0.9 %).
+
+`proposal\strike-model.js` (new, 100 KB, `SW_MODEL`, loaded before `brew-day.js`) holds the model's answers, written by
+a generator that runs your model at one commit, 6f3c001, copied out of the bench, and writes nothing into it; it
+reproduces the report's figures exactly. For the grain at 35, 60.4, 70, 95 and 120 °F and 8.5, 11, 15 and 20 gal in the
+HLT: USE before and after rounding, USE at the middle guesses, the levers, the HLT's own loss share, and the forecast
+at USE and at 17 strikes from 110 to 175 °F; and the tun outlet's answers for `#sw-tunprobe`'s own numbers. `swModel`
+(line 1649) weights the four points around any other numbers, standing in for the server working them out. None of it
+belongs in the build.
+
+The warm-grain jump I sent you on 20 Nov is gone with your helper's fix. With the grain at 95 °F, USE is now 131.2,
+130.7, 130.1 and 129.6 °F at 8.5, 11, 15 and 20 gal (it was 131.2, 129.0, 126.0 and 129.6), and with it at 120 °F,
+128.0, 128.4, 128.2 and 128.1 °F. What else the rebuild moved is under "Checked" and "Moments whose pictures change",
+below.
+
+### Your five points
+
+1. **The rule.** FORECAST: "It's a range because some of the rig hasn't been measured yet (below). USE errs low: even
+   at the top of the range, it takes the mash no higher than water heated only to the rest would." USE's "aims under
+   the rest" stays. The words (`swWords`): when no figure's highest shows over the rest at 0.1 °F, "Neither is forecast
+   to go over the 126 °F rest." (126.03 shows as 126.0). Where one does, it gets "and could reach 127.5 °F", and when
+   water at the rest goes over too (`restPeak`, the highest of the forecast at the rest, 0.05 °F or more over it):
+   "Going over the rest is PID_HERMS's own overshoot, which it makes whatever the strike: with the water heated only to
+   the rest, it takes the mash to 127.5 °F." if every figure that shows over is within it, or else only "With the water
+   heated only to the rest, PID_HERMS by itself takes the mash to 127.5 °F." Amber (`swOver`) now needs more than
+   0.5 °F above both the rest and `restPeak`, so Kal's way never goes amber for PID_HERMS's own overshoot. When USE comes
+   out at the rest itself with the strike water there already, there's no USE, and FORECAST says "USE would be the rest
+   itself here, so there's nothing to change: hotter water could take the mash higher than water heated only to the
+   rest would."
+2. **The figures,** above.
+3. **"Lands" is the moment the grain is mixed in,** the model's: minute 0 of the envelope, the chart's left edge (GRAIN
+   IN), and what a stirred hand thermometer reads then. The lowest point before Next rests on how long he waits, a guess
+   of 0-10 min. The words say "lands 113-118 °F as the grain goes in"; the dip while he waits shows on the chart.
+4. **The cases became ranges.** NOT MEASURED YET (`SW_GUESS`, `swList`, line 1834) lists your eleven guesses, each with
+   its range, in a fixed order (the v5 levers', so no row moves as the numbers change), then PUMP OFF, the held
+   assumption that the stopped probe reads the HLT's water (coil outlet only). Then, from the answer: "Knowing the
+   minutes from the grain to Next, how much of the tun's steel warms and the tun's heat loss would raise USE the most:
+   about 0.8, 0.7 and 0.6 °F. If every one proved to be the middle of its range, USE would be 137.3 °F." It doesn't
+   show the value USE's worst case takes: at grain 70 °F the worst warms all of the tun's steel and loses nothing on
+   the way, which alone would read as USE not being cautious there. ON THE WAY is the transfer loss, 0-2 °F. The groups
+   follow your §1, with THE RIG'S SETUP new: where the mash probe sits, and that the strike water goes through the coil.
+5. **The two states.**
+   - **Working it out** (`swNumbers`' `wait` and `stale`, line 1707; `swWorkSays`, `swWas`, `swWhy`, lines 1736-1750).
+     Nothing worked out yet: MASH "– – WORKING OUT", USE "– – °F" greyed, "working it out". Worked out again: the last
+     answer stays, in Stale Grey Text, `#737f8d` (MASH, the chart's bands, the words: `.swm.stale`, `svg.stale`,
+     `.swf.stale`); USE greyed with the last figure. One line in the head: "Working out USE: 20 s so far." or "Working
+     out USE again: 9 s so far.", counted from when the server started (`#sw-el`, on the 1 s tick at line 3297). Why,
+     and what the grey figures are for, above the chart ("The HLT's water changed, so CraftBeerPi is working USE out
+     again. Until then, these are the figures for 15 gal in the HLT.") and in the greyed USE's reason ("Not yet: the
+     HLT's water changed, and CraftBeerPi is working USE out again. 132.4 °F was for 15 gal in the HLT."). BACK TO stays
+     live. In the mockup SET of the water or the grain starts it (`swRework`, line 1719), it takes `SW_WORK_S` (30 s),
+     and numbers it already has an answer for start nothing (`swSameIn`: within 0.05 gal or °F, the room within
+     0.5 °F).
+   - **Refused** (`swRefuse`, `swRefusal`, `swChanged`, lines 2060-2080): as START's refusal is said, a note under the
+     box for 6 s, read out, and no LOG line: "USE 132.4 °F wasn't applied: BrewStart's grain temperature is now 70.0 °F,
+     so USE is 131.8 °F." The new figure takes USE's place; the window still shows the strike water. Refused while it's
+     still being worked out: "…, and CraftBeerPi is working USE out again." and the box shows it working. In the mockup
+     `st.sw.srv` stands for the server having moved on.
+
+### What the server needs, beyond "The strike water helper"
+
+- **The worker:** the model in a process of its own, never in the control loop: on a recipe's loading, when the grain's
+  or the room's temperature moves by more than 0.5 °F, and when a number it works from changes. The last answer is kept
+  with the numbers it came from and an id, and sent until the new one is ready, with `working: {since, why}` meanwhile
+  (`why`: the HLT's water, the grain's temperature, the room's, or another number). The screen counts the seconds from
+  `since`.
+- **What it sends,** with the step state or from `GET /step2/strike`: the plan's id; USE, or none; the numbers it came
+  from (the grain's temperature and where from, the room's, the HLT's water and where from, where the probe sits); for
+  each strike shown (the planned, USE's, BACK TO's, BeerSmith's) the lowest and highest each minute for 60 min from the
+  grain going in, the highest, and the probe's highest from the ask for the malt to Next; the forecast at the rest's
+  highest (`restPeak`); each guess's range and middle; the three biggest levers; USE at the middle guesses. A strike the
+  screen hasn't got (the HLT's target changed by hand) gets a forecast without its own search, from the cases USE found.
+- **`POST /step2/strike`:** as your §5, 409 `plan_changed` with the new plan (its figure and numbers) when the numbers
+  have moved and the sent figure is hotter than the new USE. And while the worker is still at it, a USE with an old plan
+  id refused the same way with `working: true`: the screen greys USE then, so only a screen that hasn't caught up sends
+  one. BACK TO is always allowed.
+- **The plant file,** with where the probe sits for THE RIG'S SETUP and the dough-in line (coil outlet only).
+
+### The moments
+
+New: `#sw-working`, `#sw-working-open`, `#sw-reworking`, `#sw-refused` and `#sw-tunprobe` (from line 662). `swHot`
+(line 709) is the model's USE. `swMorning` (line 750) takes the dough-in readings from `SW_MODEL.morning`. In
+`graphs.js` the Mash Tun's line climbs to the strike temperature during the transfer, from 4 min before Next, then
+settles on the HLT's water; that is demo history only.
+
+### Moments whose pictures change
+
+Compared as your identity test does, the mockup before the model's figures against this one, at your five sizes, 380
+pictures of 76 moments: 58 are the same (290 pictures), the 55 outside the strike water and its `#sw-novol`,
+`#sw-missing` and `#sw-noprobe`. 18 differ, all strike water: the five new ones, which the earlier mockup doesn't have,
+and 13 whose figures or words changed: `#sw-plan`, `#sw-forecast`, `#sw-volume`, `#sw-grain-edit`, `#sw-grain`,
+`#sw-hot`, `#sw-used`, `#sw-wait`, `#sw-heat`, `#sw-move`, `#sw-late`, `#sw-doughin` and `#sw-hand`. `#boilpower` and
+`#bktarget` at 1180×860 never finish drawing on either side, as before.
+
+Rebuilt from 6f3c001 and compared the same way with the mockup just before the rebuild: 74 of the 76 moments are the
+same (376 of 380 pictures). `#sw-grain` and `#sw-tunprobe` differ only at 390×844 and 820×1180, where the page shows
+FORECAST whole: USE at the middle guesses went from 136.5 to 136.6 °F and from 137.9 to 138 °F, and `#sw-tunprobe`'s
+three biggest levers from 0.8, 0.8 and 0.7 to 0.9, 0.9 and 0.8 °F. `#boilpower` and `#bktarget` at 1180×860 again never
+finish drawing on either side.
+
+### Checked
+
+- The model run from my own folder (no bytecode written into the bench) reproduces the report: USE 132.4 and 131.8 °F,
+  lands 117.8-123.6 °F, highest 125.99 °F; 133.3 °F at 12 gal, 131.4 °F at 20.
+- Rebuilt from 6f3c001, copied out of the bench at that commit: of the 41 figures these notes and STRIKE-WATER.md
+  quote, all are as before but one, USE with 0.50 gal under the false bottom, now 132.5 °F (STRIKE-WATER.md, "The dead
+  space in the BeerSmith profile"), as the model also tries the step above its rounded answer. The 27 presses, the edge
+  checks and all 21 moments at a monitor's and a phone's size pass again, with no page errors.
+- 27 presses: USE and BACK TO; the HLT's water set to 13.5 gal (working out again, the stale grey, the greyed USE and
+  its reason, the seconds counting on, then USE 132.9 °F); the grain at 70 °F (131.8 °F), THE PROBE (132.4 °F), the
+  probe's own 60.4 °F typed (nothing to work out); refused with the new figure (the note, USE 131.8 °F offered, the
+  strike water unchanged, nothing logged, then pressed again and applied); refused while working; the first answer after
+  loading; NEXT STEP on the move question with USE's water and with Kal's way, both asking for the malt at once, the
+  Mash Tun reading the HLT's water, the dough-in line showing. And the edges: USE coming out at the rest itself, set so
+  in the page (no USE, FORECAST says why), and USE in `#sw-tunprobe` (132.9 °F, the PID_HERMS sentence kept).
+- All 21 moments at 17 sizes, 360 px to 2560×1440: no page errors, no window line cut, no button's words wrapped,
+  nothing wider than the screen; buttons 54-55 px; the lowest text contrast 4.98:1, the stale grey on the window's
+  face. The current step whole at every one-screen size, but for the refusal's 6 s at 1180×860 (DESIGN.md, Known
+  limits).
+- Your 11 checks from test_ui_prebrew_box_height.py: 11/11. Nothing in the column shrinks: 0 of 76 moments at four
+  one-screen sizes, FORECAST open where it can be.
+
+### Changed
+
+- `proposal\strike-model.js` (new, LF), `proposal\brew-day.js`, `proposal\brew-day.css`, `proposal\brew-day.html` (the
+  script and five moments' links) and `proposal\graphs.js` (LF); `proposal\STRIKE-WATER.md`; and this file (this
+  section; "The strike water helper": its stand-in wording, figures and line numbers; the timers section's line
+  numbers; a row of the table).
+- `DESIGN.md`: Strike Water (the model, the two states, PID_HERMS's own overshoot, the known limits), The Offer, Don't
+  Apply Rule, a Do and a Don't, and in the front matter Stale Grey Text and two components.
+- `.impeccable\design.json`, regenerated; `.impeccable\decisions\direction-log.md`; the surface brief. Regenerating
+  it also put right the Target Editor's description, which earlier refreshes had given its last sentence seven times.
+- Rebuilt from 6f3c001 (22 Nov): `proposal\strike-model.js`; the model's commit here, in STRIKE-WATER.md, DESIGN.md,
+  the direction log and the surface brief; the warm-grain paragraphs; USE with 0.50 gal of dead space; and the count of
+  moments that stayed the same when the model's figures went in: 58, the 55 outside the strike water and 3 of its own,
+  which I had written as 58 outside it. STRIKE-WATER.md's dead space passage no longer names the BeerSmith equipment
+  profile, as the one on the brewery PC was changed on 10 Nov: it says the figures come from Test Recipe v5's export.
 
 ## Open questions about the drawing
 

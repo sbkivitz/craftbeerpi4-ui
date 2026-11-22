@@ -184,6 +184,37 @@ function gDemo(scene) {
     d.mt.pv.push([hms(16, 31, 10), 146.9, "s"]);
     return d;
   }
+  /* the strike water moments (st.sw.g, brew-day.js swMorning): the night in the garage, then from BrewStart's start
+     (g.heat) the HLT heating the strike water at the rig's rate to g.plan, the step asking half a degree short (g.hot),
+     and the HLT holding it; from g.moved the water in the mash tun and PID_HERMS on it, MashIn asking for the malt at
+     once (g.ask). #sw-hand: the HLT on its own AUTO from g.heat, and no recipe begun. Times run on past midnight, so the
+     end is a day and a bit on. The mash tun's probe sits at the coil's outlet: it reads the strike water as it comes
+     through the coil, and with the pump stopped for the dough-in, the HLT's water */
+  const g = st.sw && st.sw.g;
+  if (g) {
+    const Z = st.t + 3600, start = st.t - 8 * 3600, hot = g.hot ?? Infinity, mv = g.moved ?? Infinity, kal = g.plan <= 126;
+    const hlt = [[start, g.from + 0.7], [g.heat, g.from, "s"]];
+    if (st.t < hot) hlt.push([st.t, st.v.hlt.pv, "l"]);
+    else {
+      hlt.push([hot, g.plan - 0.5, "l"], [hot + 40, g.plan - 0.1, "e"]);
+      if (st.t >= mv) hlt.push([mv, g.plan - 0.1, "h"], [st.t, st.v.hlt.pv, "s"]); else hlt.push([st.t, g.plan - 0.1, "h"]);
+    }
+    /* the strike water through the coil: the probe at its outlet reads it from the transfer's start, about 4 minutes
+       before Next; MashIn asks for the malt at once, the pump stops, and the probe settles on the HLT's water */
+    const mt = [[start, 63.9]];
+    if (st.t >= mv) mt.push([mv - 240, 64.6, "s"], [mv - 200, g.plan - 0.2, "e"], [mv, g.plan - 0.1, "h"], [st.t, st.v.mt.pv, "s"]);
+    else mt.push([st.t, 64.6, "s"]);
+    const out = [[start, g.heat, 0], [g.heat, Math.min(hot, mv, Z), 100]];
+    if (st.t >= hot) out.push([hot, Math.min(mv, Z), [8, 24]]);
+    /* PID_HERMS holds the HLT at no more than the rest while the pump is stopped: off above it, a trickle at it */
+    if (st.t >= mv) out.push([mv, Z, kal ? [0, 6] : 0]);
+    return {
+      start, steps: g.hand ? [] : [[g.heat, 2], ...(st.t >= mv ? [[mv, 3]] : [])],
+      hlt: {pv: hlt, sv: [[g.heat, Math.min(mv, Z), g.plan], ...(st.t >= mv ? [[mv, Z, st.v.hlt.sv]] : [])], out},
+      mt: {pv: mt, sv: st.t >= mv ? [[mv, Z, 126]] : []},
+      bk: {pv: [[start, st.v.bk.pv - 1.2], [st.t, st.v.bk.pv, "s"]], out: [[start, Z, 0]]}
+    };
+  }
   /* the pre-brew moments (#prebrew, #probes…, #check…): the night before in the garage, every vessel empty and slowly
      warming with the morning, each probe ending on its own reading (one silent for a while ends on its last); nothing
      heated, so no SV and no OUT. DAY is the last 8 hours, as with no recipe begun */

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-18T06:19:51.720Z",
+  "generatedAt": "2026-11-21T03:43:40.725Z",
   "title": "Design System: CraftBeerPi Brew Day",
   "extensions": {
     "colorMeta": {
@@ -188,6 +188,21 @@
         "role": "neutral",
         "displayName": "Stale Grey",
         "canonical": "#6b7785",
+        "tonalRamp": [
+          "#040c16",
+          "#1c2632",
+          "#384350",
+          "#576270",
+          "#778492",
+          "#9aa6b5",
+          "#bdcbda",
+          "#e3f0ff"
+        ]
+      },
+      "stale-text": {
+        "role": "neutral",
+        "displayName": "Stale Grey Text",
+        "canonical": "#737f8d",
         "tonalRamp": [
           "#040c16",
           "#1c2632",
@@ -920,7 +935,7 @@
       "name": "Target Editor",
       "kind": "input",
       "refersTo": "target-input",
-      "description": "Replaces a faceplate’s mode row in place when TARGET is pressed: step keys, a small PID-window input in Setpoint Green, SET in Selection Blue, and CANCEL. Keys are never under 44px wide: on a faceplate under 276px inside the value takes the width and the keys a row under it. Keys are never under 44px wide: on a faceplate under 276px inside the value takes the width and the keys a row under it. Keys are never under 44px wide: on a faceplate under 276px inside the value takes the width and the keys a row under it. Keys are never under 44px wide: on a faceplate under 276px inside the value takes the width and the keys a row under it.",
+      "description": "Replaces a faceplate’s mode row in place when TARGET is pressed: step keys, a small PID-window input in Setpoint Green, SET in Selection Blue, and CANCEL. Keys are never under 44px wide: on a faceplate under 276px inside the value takes the width and the keys a row under it.",
       "html": "<div class=\"ds-editor\" role=\"group\" aria-label=\"New target for the mash tun\"><button type=\"button\" aria-label=\"Down 1 degree\">−1</button><button type=\"button\" aria-label=\"Down 0.1 degree\">−.1</button><input inputmode=\"decimal\" value=\"149.0\" aria-label=\"New target in °F\"><button type=\"button\" aria-label=\"Up 0.1 degree\">+.1</button><button type=\"button\" aria-label=\"Up 1 degree\">+1</button><button type=\"button\" class=\"ds-ok\">SET 149.0 °F</button><button type=\"button\" class=\"ds-no\">CANCEL</button></div>",
       "css": ".ds-editor{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) minmax(0,1.7fr) repeat(2,minmax(0,1fr));gap:6px;width:360px;font-family:\"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif} .ds-editor button{min-height:54px;padding:0 2px;border:1px solid var(--edge,#33475a);border-radius:6px;background:var(--panel-2,#1e2b37);color:var(--text,#e8eef3);font:700 18px/1 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;cursor:pointer} .ds-editor input{min-width:0;min-height:54px;border:2px solid #3d7fd0;border-radius:6px;background:var(--face,#030609);color:var(--sv,#3ddc6f);font:600 28px/1 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;text-align:center;font-variant-numeric:tabular-nums} .ds-editor .ds-ok{grid-column:1/4;background:var(--select,#2a6fc0);border-color:var(--select,#2a6fc0);color:#fff} .ds-editor .ds-no{grid-column:4/6} .ds-editor button:focus-visible,.ds-editor input:focus-visible{outline:3px solid #8cc2ff;outline-offset:2px}"
     },
@@ -967,6 +982,13 @@
       "description": "COMPARE PROBES, opened before filling: its title with DONE beside it; how to use it, adding that each reading is the probe's own, without its offset, when a probe has one; a row for each vessel like a small PID window on PID Window Black (the vessel, its probe's name and offset, the probe's own reading in Process Red, 30px); one sentence on what they show, with its mark; and the rule in small print. Within 2.0 °F they agree, with the Running Green tick. Up to 10 °F apart is likely where a vessel sits, said in the plain colour with a Soft Steel ring and \"i\" and COOLER or WARMER on that row, as here. Past 10 °F, or at a reading below 35 °F or above 120 °F, a probe looks off: the amber disc, a 2px Prompt Amber edge on its row and LOOKS OFF.",
       "html": "<section class=\"ds-cmp\" aria-labelledby=\"ds-cp-h\"><div class=\"ds-cph\"><h3 id=\"ds-cp-h\">Compare probes</h3><button type=\"button\" class=\"ds-cpdone\">DONE<small>adds them to LOG</small></button></div><p class=\"ds-cpi\">With every vessel empty and at room temperature. Each reading is the probe's own, without its offset.</p><ul class=\"ds-cpl\"><li><span class=\"ds-cn\">Hot liquor tank</span><span class=\"ds-cp\">HLT Temp · offset +0.23&nbsp;°F</span><span class=\"ds-cr\">63.4<span class=\"ds-u\">°F</span></span></li><li><span class=\"ds-cn\">Mash tun</span><span class=\"ds-cp\">Mash Temp · offset +4.0&nbsp;°F</span><span class=\"ds-cr\">63.5<span class=\"ds-u\">°F</span></span></li><li><span class=\"ds-cn\">Boil kettle</span><span class=\"ds-cp\">Boil Temp · offset +1.0&nbsp;°F · <span class=\"ds-ct\">cooler</span></span><span class=\"ds-cr\">59.7<span class=\"ds-u\">°F</span></span></li></ul><p class=\"ds-cpv\"><span class=\"ds-mk\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10.6\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\"/><path d=\"M12 11v6.3\" stroke=\"currentColor\" stroke-width=\"2.5\" stroke-linecap=\"round\"/><circle cx=\"12\" cy=\"7.3\" r=\"1.6\" fill=\"currentColor\"/></svg></span><span>The boil kettle reads up to 3.8&nbsp;°F below the other two. That's likely where it sits, not its probe. To be sure, put the probe in ice water: with its +1.0&nbsp;°F offset it should read 33.0&nbsp;°F, ±0.9&nbsp;°F. If it doesn't, correct its offset in Hardware.</span></p><p class=\"ds-cpn\">They agree within 2.0&nbsp;°F: each probe is accurate to ±0.9&nbsp;°F. Where a vessel sits can put it up to 10&nbsp;°F from the others; more than that, a probe looks off.</p></section>",
       "css": ".ds-cmp{display:grid;gap:10px;width:400px;padding:12px;border:1px solid var(--edge,#33475a);border-radius:6px;background:var(--panel-2,#1e2b37);color:var(--text,#e8eef3);font-family:\"Barlow\",\"Segoe UI\",system-ui,sans-serif} .ds-cmp p{margin:0} .ds-cph{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:center} .ds-cmp h3{margin:0;font:700 20px/1.05 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;letter-spacing:.06em;text-transform:uppercase} .ds-cpdone{min-height:48px;min-width:96px;padding:4px 12px;border:1px solid var(--edge,#33475a);border-radius:6px;background:var(--panel-2,#1e2b37);color:var(--text,#e8eef3);font:700 20px/1 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;letter-spacing:.06em;cursor:pointer} .ds-cpdone small{display:block;margin-top:5px;font:500 14px/1.1 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;letter-spacing:.04em;color:var(--text-3,#8b9cad)} .ds-cpdone:hover{background:var(--hover,#253545)} .ds-cpdone:hover small{color:var(--text-2,#b6c3cf)} .ds-cpdone:focus-visible{outline:3px solid var(--focus,#8cc2ff);outline-offset:2px} .ds-cpi{font-weight:500;font-size:15px;line-height:1.35;color:var(--text-2,#b6c3cf)} .ds-cpl{display:grid;gap:6px;margin:0;padding:0;list-style:none} .ds-cpl li{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;row-gap:1px;align-items:center;padding:6px 12px;border:1px solid #1d2a36;border-radius:6px;background:var(--face,#030609)} .ds-cn{font:600 17px/1.1 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;letter-spacing:.04em;text-transform:uppercase} .ds-cp{grid-column:1;font:500 14px/1.2 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;letter-spacing:.03em;color:var(--text-3,#8b9cad)} .ds-ct{font-weight:600;color:var(--text-2,#b6c3cf);text-transform:uppercase;letter-spacing:.05em} .ds-cr{grid-column:2;grid-row:1/3;font:600 30px/1 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;color:var(--pv,#ff4b3e);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap} .ds-u{margin-left:2px;font-size:15px;vertical-align:top} .ds-cpv{display:grid;grid-template-columns:24px minmax(0,1fr);column-gap:9px;align-items:start;font-weight:500;font-size:16px;line-height:1.4} .ds-cpv .ds-mk{color:var(--text-2,#b6c3cf)} .ds-cpn{font-weight:500;font-size:14px;line-height:1.35;color:var(--text-2,#b6c3cf)}"
+    },
+    {
+      "name": "Strike Water",
+      "kind": "custom",
+      "description": "The strike water box in the recipe column, from a recipe's loading until its malt goes in; here the night before. A small PID window on PID Window Black: STRIKE, the water to the mash tun and its temperature in Setpoint Green, as it's a target; MASH, where the mash lands as the grain goes in, a range while the rig is unmeasured, or \"UP TO 137 °F OVER THE REST\" in Prompt Amber when the water as planned would take the mash over its rest. Each row stays one line. Under it USE in Selection Blue, \"aims under the rest\", over two thirds of the row, and FORECAST, \"in detail\". Pressed, USE changes the plan and BACK TO, \"as it was\", takes its place as a plain command button. FORECAST opens the details under this head, which stays in reach while they scroll, and becomes CLOSE, \"the forecast\", in its own place (The Offer, Don't Apply Rule).",
+      "html": "<section class=\"ds-sw\" aria-label=\"Strike water\"><dl class=\"ds-swv\"><dt>STRIKE</dt><dd><b>8.26</b><span class=\"ds-swug\">gal</span><span class=\"ds-swk\">at</span><span class=\"ds-swt\"><b>126.0</b><span class=\"ds-swu\">°F</span></span></dd><dt>MASH</dt><dd><span class=\"ds-swk\">lands</span><b>113<span aria-hidden=\"true\">–</span><span class=\"ds-swsr\"> to </span>118</b><span class=\"ds-swu\">°F</span></dd></dl><div class=\"ds-swa\"><button type=\"button\" class=\"ds-swuse\">USE 132.4&nbsp;°F<small>aims under the rest</small></button><button type=\"button\" aria-expanded=\"false\">FORECAST<small>in detail</small></button></div></section>",
+      "css": ".ds-sw{display:grid;gap:8px;width:400px;padding:10px;border:1px solid var(--edge,#33475a);border-radius:6px;background:var(--panel-2,#1e2b37);color:var(--text,#e8eef3);font-family:\"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif} .ds-swv{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;column-gap:12px;row-gap:2px;margin:0;padding:6px 12px;border:1px solid #1d2a36;border-radius:6px;background:var(--face,#030609)} .ds-swv dt{font:600 15px/1 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;letter-spacing:.08em;color:var(--text-3,#8b9cad)} .ds-swv dd{margin:0;overflow:hidden;font:600 27px/1.2 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap;text-overflow:ellipsis} .ds-swv b{font-weight:600} .ds-swu{margin-left:1px;font-size:.56em;vertical-align:top} .ds-swug{margin-left:4px;font-size:.6em;color:var(--text-2,#b6c3cf)} .ds-swk{margin:0 .4em;font:600 .56em/1 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3,#8b9cad)} .ds-swk:first-child{margin-left:0} .ds-swt{color:var(--sv,#3ddc6f)} .ds-swsr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap} .ds-swa{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:8px} .ds-swa button{min-height:54px;padding:6px 4px;border:1px solid var(--edge,#33475a);border-radius:6px;background:var(--panel-2,#1e2b37);color:var(--text,#e8eef3);font:700 21px/1 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;letter-spacing:.06em;cursor:pointer} .ds-swa small{display:block;margin-top:5px;font:500 14px/1.1 \"Barlow Condensed\",\"Roboto Condensed\",\"Arial Narrow\",\"Segoe UI\",sans-serif;letter-spacing:.04em;color:var(--text-3,#8b9cad)} .ds-swa .ds-swuse{background:var(--select,#2a6fc0);border-color:var(--select,#2a6fc0);color:#fff} .ds-swa .ds-swuse small{color:#fff} .ds-swa .ds-swuse:hover{background:#3477c8} .ds-swa button:not(.ds-swuse):hover{background:var(--hover,#253545)} .ds-swa button:not(.ds-swuse):hover small{color:var(--text-2,#b6c3cf)} .ds-swa button:focus-visible{outline:3px solid var(--focus,#8cc2ff);outline-offset:2px}"
     }
   ],
   "narrative": {
@@ -1092,6 +1114,11 @@
         "section": "components"
       },
       {
+        "name": "The Offer, Don't Apply Rule",
+        "body": "A figure the screen works out is offered, never applied by itself: the strike water helper was asked for on that condition (\"never set the HLT's target by itself\"), and it changes nothing until USE is pressed. The offer says what it is and what it aims at (\"USE 132.4 °F · aims under the rest\"). Pressed, the change shows where it lands (the step list, SV and LOG), and the same place then offers BACK TO, so one tap undoes it and nothing asks first. The figure errs to the side that can be put right: the HERMS can heat a mash but can't cool one, so USE allows for every case nobody has ruled out, anywhere in the ranges the rig hasn't been measured to, and takes the mash no higher than water heated only to the rest would; it says it \"aims under the rest\" rather than promising it never goes over. While parts of the rig are unmeasured the forecast is a range, and it says which numbers are measured, which are guesses with their ranges, and where each came from, so trust in it can match how good it is (Lee and See). A missing number is named, never guessed. A figure worked out from numbers that have changed since is never offered as if current: until the new one comes it's greyed, and CraftBeerPi refuses it if it's sent.",
+        "section": "components"
+      },
+      {
         "name": "The Trend In The Window Rule",
         "body": "A vessel's temperature history belongs in its own PID window, under the PV and SV it explains, on its own scale, with real gridline values and clock times. Never a separate chart panel, never one plot shared by the three vessels, never a bare sparkline. The three graphs always show the same span.",
         "section": "components"
@@ -1139,7 +1166,11 @@
       "Do put RESET in STOP's place once nothing runs and some step has begun, and make it ask first, saying what CraftBeerPi forgets and that kettles, pumps and timers stay as they are.",
       "Do show the web UI's and CraftBeerPi's versions in the recipe column's last line, in Fine Print, as text that can be copied; on a monitor let it step aside while the column needs its room.",
       "Do check, when START is held on a recipe not begun, what CraftBeerPi can sense: a reading from every probe, the clock, a reminder for every boil addition. Name what didn't pass, with what to do, and offer START ANYWAY, held.",
-      "Do compare the probes on their own readings, without their offsets, and say that a few degrees apart is likely where a vessel sits, in the plain colour; amber only past 10 °F, or at a reading no room has."
+      "Do compare the probes on their own readings, without their offsets, and say that a few degrees apart is likely where a vessel sits, in the plain colour; amber only past 10 °F, or at a reading no room has.",
+      "Do offer a worked-out figure on a button that says what it is and what it aims at (USE 132.4 °F, \"aims under the rest\"), apply it only when pressed, show the change where it lands, and put BACK TO in the same place.",
+      "Do say, while a figure is being worked out, that it is and for how long so far; keep the last figure in grey, say what it was for, and grey the button that would send it.",
+      "Do keep a box's action in reach while its details scroll: with FORECAST open, the window, USE or BACK TO and CLOSE stay put, and only the details move.",
+      "Do give a box opened in the recipe column the step list's room and, on a monitor, the timers' too, so it is never squeezed to a sliver and the page never grows; a timer that runs out meanwhile still shows in the title bar."
     ],
     "donts": [
       "Don't show vessel temperatures as dial gauges or needles; the brewer turned them down.",
@@ -1165,7 +1196,11 @@
       "Don't let anything that holds nothing up (a reminder, a plugin's question) stand in the title bar in front of what the brew waits on, a hop to add or a timer that has run out.",
       "Don't draw the wort pump going through the HERMS coil, or anywhere on the mash tun's side, once the boil has started; and don't run new pipes across the drawing to reach the boil kettle. As the brewer put it: \"I don't want the symbols to become too chaotic.\"",
       "Don't let a pre-brew check block a start, make a sound or take the title bar; and don't say a probe works, because one stuck on an old reading still gives a reading.",
-      "Don't call a probe off for a difference a room can explain, or compare probes with their offsets in: an offset set for brewing would read as a fault on every brew day."
+      "Don't call a probe off for a difference a room can explain, or compare probes with their offsets in: an offset set for brewing would read as a fault on every brew day.",
+      "Don't let a helper change a target or a recipe's plan by itself, or ask \"Are you sure?\" before a change that one tap undoes.",
+      "Don't promise more than a forecast with unmeasured parts can keep, or guess a number that's missing: \"aims under the rest\", not \"never over\", and say what's missing.",
+      "Don't call PID_HERMS's own overshoot the strike's doing: amber is for a strike that takes the mash over the rest beyond what water heated only to the rest would.",
+      "Don't give two different jobs one word: COMPARE PROBES' DONE adds the readings to LOG, so a button that only closes says CLOSE."
     ]
   }
 }
