@@ -141,7 +141,7 @@ Pictures: [`13-book-laptop`](pictures/13-book-laptop.png), [`14-edit-tablet`](pi
 
 ## Questions for you
 
-1. **The layout:** is the recipe on the left, as Brew Day shows it, with the book and its settings on the right, how you want to see a recipe while choosing and changing it? The design tool dealt two other layouts, and I can mock either. One arranges the steps by vessel on the brewhouse drawing. The other is a brew sheet: one table of steps, changed in place.
+1. **The layout:** is the recipe on the left, as Brew Day shows it, with the book and its settings on the right, how you want to see a recipe while choosing and changing it? The design tool dealt two other layouts. One arranges the steps by vessel under the brewhouse drawing. The other is a brew sheet: one table of steps, changed in place. All three show the same recipe, side by side, in [`24-compare-layouts-phone`](pictures/24-compare-layouts-phone.png) and [`25-compare-layouts-monitor`](pictures/25-compare-layouts-monitor.png).
 2. **Import no longer loads.** After importing you press LOAD, one tap more than today, and an import can never replace a brew. All right?
 3. **Brew steps loses START, NEXT, STOP and RESET.** They stay on Brew Day, where START is held. Do you use the ones on Brew steps today?
 4. **The names:** Mash rest for MashStep, Message for NotificationStep, Run a switch for ActorStep, and the rest in the table. Any you'd call something else?
@@ -159,6 +159,8 @@ Pictures: [`13-book-laptop`](pictures/13-book-laptop.png), [`14-edit-tablet`](pi
 
 Everything else is web page only. That covers the pages themselves, FIND, the plain names, SAVE and UNDO, saving Brew steps step by step, sending a file without a reload, finding in the Brewfather list (CraftBeerPi already sends the whole list), and SAVE TO BOOK as a new recipe with its own name (`/recipe/create`, then a save).
 
+Brett is making changes 2 and 3 now, in CraftBeerPi 4.7.7.post51, because today they can end a running rest with one tap. Until you answer question 2, an import is refused while a step runs too. Changes 1 and 4 wait for your answers.
+
 ## For Brett, when it's approved
 
 - The mockup is built like Settings' and Hardware's. The frame rules at the top of `recipes.css` are Settings' copy of Brew Day's, so a port script like `design/settings/port.mjs` can leave them out. `recipes-catalog.js` is the plain-name catalogue, as `catalog.js` is for Settings, and `recipes-data.js` is the demo data.
@@ -167,10 +169,12 @@ Everything else is web page only. That covers the pages themselves, FIND, the pl
 
 ## The other two layouts the tool dealt
 
-The design tool picks among my own list of layouts at random, so I don't always land on the obvious one. For this page it dealt three. The lead is the one above.
+The design tool picks among my own list of layouts at random, so I don't always land on the obvious one. For this page it dealt three. The lead is the one above. The other two are drawn with the same recipe open, Craftbeerpi Test Recipe v5, on a monitor and a phone. Each is one picture, not a clickable page.
 
-- **Steps by vessel, on the drawing:** each step sits under the vessel it runs on, along Brew Day's line drawing: the sparge water at the HLT; mash in, the rests and mash out at the mash tun; the boil and whirlpool at the boil kettle. It's good for seeing which vessel does what. It's poorer for order, which matters more in a recipe.
-- **A brew sheet:** the recipe as a printed brew sheet, one ruled table of steps (vessel, temperature, minutes, what it says), changed in place in its cells. It's compact on a monitor. It's cramped on a phone, and its plain-word help has nowhere to go.
+- **Steps by vessel, on the drawing** ([monitor](pictures/20-other-layout-by-vessel-monitor.png), [phone](pictures/21-other-layout-by-vessel-phone.png)): Brew Day's line drawing across the top, and each step listed under the vessel it runs on, numbered in the order it runs. The sparge water is at the HLT; mash in, the rests and mash out are at the mash tun; the boil and whirlpool are at the boil kettle. The book is a list down the left. It's good for seeing which vessel does what. It's poorer for order, which matters more in a recipe: the numbers jump between columns (5 at the HLT, 1 to 4 at the mash tun). On a phone there is no drawing, as on Brew Day, so the vessels are stacked, with the HLT first.
+- **A brew sheet** ([monitor](pictures/22-other-layout-brew-sheet-monitor.png), [phone](pictures/23-other-layout-brew-sheet-phone.png)): the recipe's numbers across the top in small windows (steps, mash, boil, additions, whirlpool), then one ruled table: step, kind, vessel, temperature, minutes, and what it says or the boil's additions. Each cell would change in place, with one SAVE. It's the most compact on a monitor, and the easiest to check against BeerSmith's brew sheet. It's cramped on a phone, where each row becomes a block, and the plain-word help for each setting has nowhere to go.
+
+[`19-v5-open-phone`](pictures/19-v5-open-phone.png) is the proposed design on a phone with the same recipe open, so the three can be compared.
 
 ## What I read for this
 
@@ -192,4 +196,5 @@ Your standing sources, for these decisions:
 | `recipes.css`, `recipes.js` | Its look and behaviour. |
 | `recipes-data.js` | The simulator's recipes, vessels and import settings, and the made-up ones. |
 | `recipes-catalog.js` | The plain names of each kind of step and its settings. |
-| `pictures/` | The moments at monitor, laptop, tablet and phone sizes, and today's pages (`today-…`). |
+| `other-layouts.html`, `.css`, `.js` | The two other layouts, drawn for their pictures: `?layout=vessel` and `?layout=sheet`. `rig.js` is Brew Day's drawing, copied from `design/brewday`. |
+| `pictures/` | The moments at monitor, laptop, tablet and phone sizes, the three layouts side by side (`24-…`, `25-…`), and today's pages (`today-…`). |
