@@ -122,6 +122,7 @@ EDIT, or a tap on any step, opens the recipe's settings on the right. The steps 
 - The step then says MOVED, and its settings say where it was. SAVE keeps it; UNDO puts it back.
 - On a phone, MOVE goes to the list of steps, and its bar stays at the top of the screen while the list scrolls.
 - On Brew steps, a step that has begun (done, running or stopped) stays where it ran, and nothing goes above it, because CraftBeerPi runs the steps still to come in order.
+- **If a step starts on another screen** while a move or a new step above it isn't saved yet, the page says so, and SAVE waits: "MashIn has begun, so BrewStart can't go above it now. MOVE it below MashIn, or remove it." If SAVE reaches CraftBeerPi first, CraftBeerPi refuses the new order (from 4.7.7.post58) and keeps the one it had. SAVING… ends, CraftBeerPi's own sentence, which names the step that has begun, shows under SAVE for six seconds, and the move stays on screen, not saved, to put right.
 
 **Where each kind of step goes when it's added:** BrewStart first. Mash in before the first rest. A mash rest before the mash out, or after the last rest. The sparge after the mash. The boil after the sparge. The whirlpool after the boil. Cool down last. A message, a wait or a switch can't be placed by its kind, so it goes after the step you had open, or last.
 
@@ -240,7 +241,7 @@ Why not dragging: on a touch screen, NN/g advises dragging only when people expe
 
 Everything else is web page only. That covers the pages themselves, FIND, the plain names, SAVE and UNDO, saving Brew steps step by step, sending a file without a reload, finding in the Brewfather list (CraftBeerPi already sends the whole list), and SAVE TO BOOK as a new recipe with its own name (`/recipe/create`, then a save). In the Recipe book, + BrewStart, MOVE and + STEP's places need nothing new, because a recipe there is saved whole (`PUT /recipe/{id}`).
 
-Changes 2 and 3 are done: from CraftBeerPi 4.7.7.post51 it refuses LOAD, UNLOAD and an import while a step runs, changing nothing, and from post53 it says so as a notice rather than a warning. Until you answer question 2, an import stays refused while a step runs. Changes 1 and 4 wait for your answers, and changes 5 and 6 for this proposal's.
+Changes 2 and 3 are done: from CraftBeerPi 4.7.7.post51 it refuses LOAD, UNLOAD and an import while a step runs, changing nothing, and from post53 it says so as a notice rather than a warning. Until you answer question 2, an import stays refused while a step runs. Changes 1 and 4 wait for your answers. Changes 5 and 6 are being built now, as CraftBeerPi 4.7.7.post58, because every way of moving a step or adding BrewStart needs them. It refuses a move, or a new step, that would go above a step that has begun (409, "begun"), and its sentence names the last step that has begun.
 
 ## For Brett, when it's approved
 
