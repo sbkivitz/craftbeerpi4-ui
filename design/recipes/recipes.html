@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en" data-layout="b">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Recipe Book · CraftBeerPi proposal (mockup)</title>
+<!--
+DIRECTION CONTRACT (Impeccable; source: proposal/RECIPES.md)
+THESIS: The Recipe Book shows a recipe the way Brew Day will show it, in the place Brew Day shows it, and you choose,
+change and import beside it. One word, LOAD, puts a recipe on Brew Day, everywhere. It refuses the unlabelled icons
+whose meaning lives in a hover tooltip.
+OWN-WORLD: The brew-day touch panel unchanged: Garage Slate page, Cabinet Black title bar and tabs, Panel Slate column and
+plates, Barlow Condensed capitals, Brew Day's numbered step rows, Settings' rows with the plain name first and
+CraftBeerPi's name under it in Dim Steel; blue only for where you are, Prompt Amber for a question, Running Green for a
+recipe that is running.
+STORY: The brewer finds the recipe he wants by its name or its numbers, sees its steps as Brew Day will show them, loads
+it with one tap (or answers one question when a brew has begun), and changes a step beside its preview. A new step goes
+where its kind belongs; MOVE, then PUT IT HERE, puts any step anywhere in two taps; a recipe without BrewStart offers it
+as step 1, filled in from the rig, with only its time left to set.
+FIRST VIEWPORT: Title bar, last event, tabs with RECIPE BOOK lit. Left: the recipe on Brew Day, as Brew Day's recipe
+column shows it, with LOAD, EDIT and COPY in START, STOP and NEXT STEP's places. Right: FIND A RECIPE, + NEW and IMPORT
+over the book, a row per recipe, newest first, its numbers in fixed columns, LOAD at the end of each.
+FORM: the recipe as Brew Day's column, 3rd of 7, with the book and the editor beside it; staging: Brew Day's recipe
+column as the preview; seed:9b8ebe9aa0f9987a. Raised from the split-flap board: the book's rows keep fixed columns, so
+v3, v4 and v5 line up and their differences show by eye.
+
+This is a proposal mockup. Its recipes, vessels, probes and settings are the simulator's (http://127.0.0.1:8012), read
+once; nothing here talks to CraftBeerPi. Recipes and files that are made up say so. The moments are in the
+strip at the top; add ?bare to hide it. Brew Day's own part (OTHER RECIPE in its recipe column) belongs to the brew-day screen.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="recipes.css">
+</head>
+<body>
+<nav class="mock" id="mock" aria-label="Mockup moments (not part of the design)">
+  <strong>Recipe Book mockup.</strong>
+  <span class="grp">The book:</span>
+  <a href="#book">As it opens</a>
+  <a href="#choose">v4 opened</a>
+  <a href="#loading">LOAD v4</a>
+  <a href="#loaded">v4 loaded</a>
+  <a href="#ask">LOAD over a stopped brew</a>
+  <a href="#ask-lost">LOAD over a recipe not in the book</a>
+  <a href="#running">LOAD while a step runs</a>
+  <a href="#brewstart">BrewStart waiting overnight</a>
+  <a href="#finished">After a brew</a>
+  <a href="#find">Find "citra"</a>
+  <a href="#empty">An empty book</a>
+  <span class="grp">A recipe:</span>
+  <a href="#edit">EDIT v4, 3 changes</a>
+  <a href="#boil">The boil's additions</a>
+  <a href="#add">+ STEP</a>
+  <a href="#saved">Saved while it's on Brew Day</a>
+  <a href="#copy">COPY</a>
+  <a href="#new">+ NEW</a>
+  <a href="#delete">Delete asks first</a>
+  <a href="#leave">Leaving with changes</a>
+  <span class="grp">Import:</span>
+  <a href="#import">IMPORT</a>
+  <a href="#import-file">A file with 3 recipes</a>
+  <a href="#imported">Imported, with a warning</a>
+  <a href="#reimported">Imported again</a>
+  <a href="#refused">Not imported</a>
+  <a href="#brewfather">Brewfather</a>
+  <span class="grp">Brew Steps:</span>
+  <a href="#steps">Ready to start</a>
+  <a href="#steps-running">A step running</a>
+  <a href="#to-book">SAVE TO BOOK</a>
+  <a href="#steps-none">Nothing loaded</a>
+  <a href="#unload">UNLOAD a stopped brew</a>
+  <span class="grp">BrewStart and moving:</span>
+  <a href="#brewstart-add">The night before</a>
+  <a href="#brewstart-added">+ BrewStart tapped</a>
+  <a href="#brewstart-time">Its time set</a>
+  <a href="#move">MOVE the last step</a>
+  <a href="#moved">Moved to step 1</a>
+  <span class="grp">And:</span>
+  <a href="#offline">Connection lost</a>
+  <span>Recipes are the simulator's; House Pale Ale, Oatmeal Stout, Hefeweizen, the BeerSmith files and the Brewfather list are made up.</span>
+</nav>
+<div class="app" id="app" data-link="ok">
+  <header class="topbar">
+    <p class="brand"><span class="bname">CraftBeerPi Brewery</span></p>
+    <div class="banner" id="banner" data-tone="ok"></div>
+    <p class="link" id="link" data-link="ok"><i aria-hidden="true"></i><span id="link-t">Connected</span></p>
+    <button class="alloff" id="alloff" type="button">ALL OFF</button>
+    <p class="clock" id="clock">07:41</p>
+  </header>
+
+  <section class="status" aria-label="The last event">
+    <div class="event" id="event"></div>
+  </section>
+
+  <nav class="tabs" aria-label="Screens">
+    <a href="#tab" data-tab="Brew Day">Brew Day</a>
+    <a href="#tab" data-tab="Brew Steps"><span class="long">Brew Steps</span><span class="short">Steps</span></a>
+    <a href="#tab" data-tab="Recipe Book" aria-current="page"><span class="long">Recipe Book</span><span class="short">Recipes</span></a>
+    <a href="#tab" data-tab="Analytics">Analytics</a>
+    <a href="#tab" data-tab="Hardware">Hardware</a>
+    <a href="#tab" data-tab="Settings">Settings</a>
+    <a href="#tab" data-tab="More">More</a>
+    <a href="#tab" data-tab="BrewScribe" class="ext"><span class="lbl">Brew<wbr><span class="nw">Scribe<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M5 1.8H2.4a.6.6 0 0 0-.6.6v7.2c0 .3.3.6.6.6h7.2c.3 0 .6-.3.6-.6V7M7.2 1.8h3v3M10.2 1.8 5.6 6.4"/></svg></span></span><span class="sr"> (opens in its own tab)</span></a>
+  </nav>
+
+  <main class="main" id="main" data-view="list">
+    <div class="tool" id="tool"></div>
+    <aside class="col" id="col" aria-label="Recipe"></aside>
+    <section class="pane" id="pane" aria-label="Recipe Book">
+      <div id="work"></div>
+    </section>
+  </main>
+  <div class="savebar" id="savebar" hidden></div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+<p class="sr" id="sr" aria-live="polite"></p>
+<input type="file" id="file-input" accept=".xml,.json,.sqlite" hidden>
+<script src="recipes-data.js"></script>
+<script src="recipes-catalog.js"></script>
+<script src="recipes.js"></script>
+</body>
+</html>
