@@ -5379,8 +5379,9 @@ new: it is `POST /step2/clear`.
    - not in the Recipe Book: "The Recipe Book keeps the recipe." becomes "It isn't in the Recipe Book, so it can't be
      loaded again."; and while the screen can't tell, "The Recipe Book can't be checked right now, so it may not be
      there to load again." On a recipe not begun the "CraftBeerPi forgets …" sentence is left out;
-   - answers UNLOAD (the Answer White one) and STAY AT STEP 3 (the step's number), neither the default; Escape and
-     STAY close it. It closes too when it stops being true: the recipe goes, or a step starts here or elsewhere.
+   - answers UNLOAD (the Answer White one) and STAY AT STEP 3 (the step's number), or DON'T UNLOAD on a recipe not
+     begun, neither the default; Escape and the second answer close it. It closes too when it stops being true: the
+     recipe goes, or a step starts here or elsewhere.
      Opening it closes RESET's and NEXT STEP's questions, the check's box, COMPARE PROBES and the strike water box's
      FORECAST and small boxes, as RESET's does; RESET or NEXT STEP pressed while it is open puts their question in its
      place. It counts as asking (`data-asking`), and the strike water box steps aside while it is open (`swHTML`).
@@ -5392,9 +5393,10 @@ new: it is `POST /step2/clear`.
      needed" on their lines, as after a reset. The graphs lose their step marks and DAY goes back to the last 8 hours,
      as after a reset.
    - 409 `step_running`: nothing changes and the screen logs nothing of its own. The answer's `detail` shows in the
-     column's note line for 6 s, word for word: "Saccharification is running. Stop it before clearing the brew
-     steps." CraftBeerPi's own notice of it ("Brew steps not cleared: …", an info since post53) is logged by
-     `logAlert`, "from CraftBeerPi", as now. UNLOAD is greyed once the state shows the step running.
+     column's note line for 6 s, word for word: "Saccharification is running. Stop it before unloading the recipe."
+     (core 4.7.7.post58; before it, "… Stop it before clearing the brew steps."). CraftBeerPi's own notice of it
+     ("Recipe not unloaded: …", an info) is logged by `logAlert`, "from CraftBeerPi", as now. UNLOAD is greyed once the
+     state shows the step running.
    - no answer in 5 s, or another error: a failed command. LOG: "Craftbeerpi Test Recipe v5 unloaded: Brew Day is
      brewing by hand", "failed: {why}", in light red; the title bar's alarm "Command failed": "Craftbeerpi Test Recipe
      v5 did not unload. It is still loaded.", with TRY AGAIN, which sends the clear again without asking again. An
@@ -5407,14 +5409,24 @@ new: it is `POST /step2/clear`.
    unloaded on another screen." (`lostSay`), and USE's and BACK TO's refusal on a recipe changed elsewhere ends "…: the
    recipe was unloaded on another screen." (`recipe_changed`, no steps).
 8. **Moments for the demo**, from the mockup: `#unloaded`, `#unload-ask`, `#unload-notinbook`, `#unload-held`,
-   `#unload-running`, `#unload-wait`, `#unload-refused` and `#unload-failed`. Every moment with a recipe loaded gets
-   the new status line, so the identity test's pictures of those change; with no recipe, none do.
+   `#unload-running`, `#unload-wait`, `#unload-refused`, `#unload-failed` and `#load-notinbook`. Every moment with a
+   recipe loaded gets the new status line, so the identity test's pictures of those change; with no recipe, none do.
+9. **LOAD over a recipe the Recipe Book doesn't have** (agreed with Robin after the first copy; small, so it can go in
+   post32 or the build after). The by-hand list shows after a recipe has finished too, and CraftBeerPi keeps the
+   finished recipe's steps, all done, until another is loaded. If those steps aren't in the Recipe Book (the same
+   `inBook` test as UNLOAD's), LOAD there asks first, in the list's place (`loadAskHTML`, `loadAsks`, `cmdLoad`):
+   "Load Craftbeerpi Test Recipe v5 in place of Rye Pale Ale? Rye Pale Ale isn't in the Recipe Book, so it can't be
+   loaded again. Save it there on Brew Steps to keep it. Kettles, pumps and timers stay as they are." For steps with no
+   name: "Load … in place of the steps on Brew Day? They aren't in the Recipe Book, so they can't be loaded again.
+   Save them there on Brew Steps to keep them. …". The answers are LOAD INSTEAD (the Answer White one) and DON'T LOAD,
+   neither the default; Escape closes it. It closes too if another recipe is loaded meanwhile. With no recipe at all,
+   or one the book has, LOAD stays one tap.
 
-### Optional, in CraftBeerPi
+### In CraftBeerPi
 
-`CLEAR_WHILE_RUNNING` could say the brewer's word: "{} is running. Stop it before unloading the recipe.", titled
-"Recipe not unloaded". The screen shows the answer's `detail` as it comes, so only `#unload-refused` and this section
-would change. Your call.
+Taken by Brett for core 4.7.7.post58: `CLEAR_WHILE_RUNNING` says the brewer's word, "{} is running. Stop it before
+unloading the recipe.", titled "Recipe not unloaded". The screen shows the answer's `detail` as it comes, so nothing
+in the screen depends on it; `#unload-refused` shows the new words.
 
 ### Where it differs from the recipe pages' UNLOAD
 
@@ -5425,15 +5437,18 @@ Robin knows of these.
 - The question is shorter than the recipe pages' (four sentences): on one screen at 1180 to 1440 px wide it's no
   taller than RESET's by more than a line, so the current step stays whole.
 - A recipe the Recipe Book doesn't have asks even before it begins, as one tap would lose it for good. Robin's LOAD
-  could do the same.
+  now does the same, and so does Brew Day's LOAD over a finished recipe (point 9). His not-begun answer, DON'T UNLOAD,
+  is Brew Day's too.
 
 ### Checked
 
-- `files\unload_presses.py`: 49 presses, all pass: one tap; the night before, USE's figure not kept and LOAD giving
+- `files\unload_presses.py`: 61 presses, all pass: one tap; the night before, USE's figure not kept and LOAD giving
   the recipe back as saved (126 °F, 15 gal, USE offered again); the question's words, answers, Escape, STAY, RESET and
   UNLOAD taking each other's place, and closing when a step starts elsewhere; the boil's question taken down; not in
-  the book; greyed with its reasons (Saccharification, the boil, heating to the boil, a SpargeStep heating its water,
-  BrewStart waiting); every wait; `?col=new` beside OTHER RECIPE; no connection; and the eight moments.
+  the book; LOAD over a finished recipe not in the book, with and without a name, over one in the book and over none,
+  and under OTHER RECIPE (`?col=new`); greyed with its reasons (Saccharification, the boil, heating to the boil, a
+  SpargeStep heating its water, BrewStart waiting); every wait; `?col=new` beside OTHER RECIPE; no connection; and the
+  nine moments.
 - The earlier suites, unchanged and passing: `bk_presses.py` (12), `sw7_presses.py` (28), `sw8_presses.py` (30),
   `tm2_presses.py` and `tm2_col_presses.py`.
 - Measured at 360 × 780, 390 × 844, 700 × 900, 820 × 1180, 1024 × 768, 1180 × 860, 1280 × 800, 1366 × 768, 1440 × 900

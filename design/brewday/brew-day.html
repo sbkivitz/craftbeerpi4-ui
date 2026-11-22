@@ -32,7 +32,8 @@ Scenes: #mash (default), #sparge, #hop, #boilpower, #heatup, #pause, #boiling, #
 hoses can move. #byhand and #byhand-past show an element on by hand in MANUAL, before and after it passes its target.
 #stopped, #reset and #reset-done show the recipe stopped, RESET asking first, and the recipe back at step 1.
 UNLOAD, at the end of the recipe's status line, takes the recipe off Brew Day: #unloaded, #unload-ask,
-#unload-notinbook, #unload-held, #unload-running, #unload-wait, #unload-refused and #unload-failed.
+#unload-notinbook, #unload-held, #unload-running, #unload-wait, #unload-refused and #unload-failed. LOAD over a
+finished recipe the Recipe Book doesn't have asks first: #load-notinbook.
 Add ?bare to hide the mockup strip.
 Layouts: ?layout=b (default) or ?layout=a (the D1 alternative, kept for comparison; its drawing has no sparge line, so
 its HLT pump always goes back round the hot liquor tank).
@@ -92,6 +93,7 @@ whirlpool.html shows them side by side; ?focus=rig is for that page.
   <a href="#unload-wait">UNLOAD, BrewStart waiting</a>
   <a href="#unload-refused">UNLOAD refused</a>
   <a href="#unload-failed">UNLOAD got no answer</a>
+  <a href="#load-notinbook">LOAD over steps not in the Recipe Book</a>
   <a href="#sparge">Sparge</a>
   <a href="#sparge-heat">Sparge step: heating the water</a>
   <a href="#sparge-ready">Sparge step: waiting for you</a>

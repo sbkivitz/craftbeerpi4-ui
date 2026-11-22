@@ -10,9 +10,15 @@
   and no default; greyed while a step runs, BrewStart waiting included, saying what runs in brewing words. Afterwards
   the column is the by-hand view it already had, with the recipe book's LOAD to have the recipe back.
 - Added to Robin's rules: a recipe the Recipe Book doesn't have asks even before it begins, as one tap would lose it
-  for good. While UNLOADING… waits, START, RESET, NEXT STEP, USE and BACK TO wait with it.
+  for good. While UNLOADING… waits, START, RESET, NEXT STEP, USE and BACK TO wait with it. Robin then took the same
+  rule for his LOAD and asked Brew Day's LOAD to follow it: over a finished recipe the book doesn't have, the by-hand
+  list's LOAD asks in the list's place (LOAD INSTEAD, DON'T LOAD). I took his DON'T UNLOAD for a recipe not begun,
+  as the pre-brew check's DON'T START; his "SAVE TO BOOK on Brew Steps keeps it" became "Save it there on Brew Steps
+  to keep it", true of today's Brew Steps page too, and UNLOAD's question leaves it out to keep the current step
+  whole at 1180 px.
 - The refusal (409, a step started on another screen) shows CraftBeerPi's own sentence under the buttons, as the recipe
-  pages do, so the note and LOG say the same thing. The words elsewhere that said "cleared" now say "unloaded".
+  pages do, so the note and LOG say the same thing. Brett took my wording for it in core post58: "… Stop it before
+  unloading the recipe.", titled "Recipe not unloaded". The words elsewhere that said "cleared" now say "unloaded".
 - Not chosen: STOP's greyed place on a recipe not begun (a button that changes meaning with the state is a mode error
   waiting to happen, and UNLOAD is needed in other states too); beside the recipe's name (a long name would wrap at
   1180 px); a question every time (it would become a habit, and the edits it would protect are kept by pressing

@@ -282,14 +282,21 @@ dough-in line and no "may read" sentence.
 
 1. **The two fixes.** USE or BACK TO, with CLOSE, stay in reach while FORECAST is open, and FORECAST's button turns into
    CLOSE in its own place. COMPARE PROBES' DONE stays as it is.
-2. **The HLT's water is BrewStart's water volume.** "Yes, use BrewStart's water volume (Recommended)".
+2. **The HLT's water is BrewStart's water volume.** "Yes, use BrewStart's water volume (Recommended)". On 22 Nov he
+   added that he shouldn't have to type it: Robin is working out filling it in by itself, from the recipe if it can,
+   otherwise from the last brew.
 3. **The grain's temperature is BrewStart's Grain temperature, blank for the boil kettle's probe,** given the night
-   before. "A is my answer but I think we can figure out the night before when setting up the BrewTimer".
-4. **The figure is the forecast's, with BeerSmith's beside it.** (Brett's pick, which stands.) FORECAST shows
-   BeerSmith's 134.6 °F, "for grain at 65 °F and the tun at 72 °F", and why it's higher: "It leaves out the HLT's
-   6.74 gal, so here it could take the mash to 128 °F, over the rest."
-5. **The volume is shown: 8.26 gal.** (Brett's pick, which stands.) It's BeerSmith's own figure ("Add 33.04 qt of
-   water"), so what's sent can be checked against it.
+   before. "A is my answer but I think we can figure out the night before when setting up the BrewTimer". On 22 Nov he
+   chose to be asked each time, once per brew: "I'm thinking it might spend the night indoors if I've purchased enough
+   for the batch at the homebrew store. If I end up having bulk grains in the garage, then it will be at garage
+   temperature. I don't know yet." The question (in the garage, so the boil kettle's probe stands for it, or indoors,
+   at a temperature) comes with setting BrewStart's time on Brew Day the night before, designed with that; GRAIN in
+   this box stays, for a change on brew morning.
+4. **The figure is the forecast's, with BeerSmith's beside it.** (Brett's pick, confirmed by the brewer on 22 Nov:
+   "Show both".) FORECAST shows BeerSmith's 134.6 °F, "for grain at 65 °F and the tun at 72 °F", and why it's higher:
+   "It leaves out the HLT's 6.74 gal, so here it could take the mash to 128 °F, over the rest."
+5. **The volume is shown: 8.26 gal.** (Brett's pick, which the brewer found fine on 22 Nov.) It's BeerSmith's own
+   figure ("Add 33.04 qt of water"), so what's sent can be checked against it.
 6. **Kal's way stays, as not pressing USE.** The box always says where the mash lands with the water as planned, so it
    reads sensibly either way.
 7. **The figures are the bench's model's.** They replaced the stand-in's on 20 Nov: USE 132.4 °F where the stand-in
