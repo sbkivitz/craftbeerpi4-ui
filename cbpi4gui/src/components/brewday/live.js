@@ -158,6 +158,13 @@ export function stepModel(s, roleOf, U) {
   };
   if (temp != null) m.temp = temp;
   if (t != null && t > 0) m.min = t;
+  /* BrewStart planning Ready by: its row says the water's temperature, when it's ready by and how much there is */
+  if (s.type === "BrewStart" && String(p.Timing || "").trim() === "Ready by") {
+    const ready = num(p.Ready_Temp), vol = num(p.Volume), at = /^\s*(\d{1,2}):(\d{2})/.exec(String(p.StartTime || ""));
+    if (ready != null) m.temp = ready;
+    if (at) m.ready = `${at[1].padStart(2, "0")}:${at[2]}`;
+    if (vol != null && vol > 0) { m.vol = vol; m.volU = p.Volume_Unit === "L" || p.Volume_Unit === "gal" ? p.Volume_Unit : U === "°C" ? "L" : "gal"; }
+  }
   if (s.type === "MashInStep") m.note = temp != null ? `Add the malt when it reaches ${temp} ${U}` : "Add the malt when it is up to temperature";
   else if (s.type === "NotificationStep" && p.Notification) m.note = unitText(p.Notification, U);
   if (s.type === "BoilStep") {

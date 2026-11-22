@@ -5,8 +5,11 @@
 // notarget-hlt, timers, timer-done, timer-back, timer-back-done, timer-back-unknown, timer-new, timer-names,
 // timer-nonames, timers-hand, sound-allow, byhand, byhand-past, stopped, reset, reset-done, and the pre-brew check's
 // prebrew, probes, probes-apart, probes-off, probes-none, checking, check-clock, check-now, check-probe, check-adds,
-// check-many, check-noanswer, check-noprobe, check-slow and check-unsure) runs on this, so it can be compared with the
-// mockup pixel for pixel.
+// check-many, check-noanswer, check-noprobe, check-slow and check-unsure, and the strike water's sw-plan, sw-forecast,
+// sw-volume, sw-grain-edit, sw-grain, sw-hot, sw-used, sw-working, sw-working-open, sw-reworking, sw-levers, sw-refused,
+// sw-refused-moved, sw-failed, sw-tunprobe, sw-wait, sw-heat, sw-move, sw-late, sw-doughin, sw-hand, sw-novol,
+// sw-missing, sw-noprobe and sw-grain-bad) runs on this, so it can be compared with the mockup pixel for pixel.
+import { swModel, SW_MORNING, SW_LEVER_S } from "./strike-demo";
 
 const RECIPE = {
   name: "Craftbeerpi Test Recipe v5",
@@ -575,8 +578,207 @@ const SCENES = {
   "check-noanswer": () => { const s = pbMorning(); s.pb.noAnswer = true; return Object.assign(s, {open: {pbOpen: true}}); },
   "check-noprobe": () => { const s = pbMorning(); s.v.bk.pv = null; s.pb.why = {bk: "no_probe"}; return Object.assign(s, {pbLast: {bk: 61.4}, gap: {bk: 9 * 3600}, open: {pbOpen: true}}); },
   "check-slow": () => { const s = pbMorning(); s.pb.clock = false; s.pb.clockWhy = "slow"; s.pb.clockAt = s.t + 5; return Object.assign(s, {open: {pbOpen: true}}); },
-  "check-unsure": () => { const s = pbMorning(); s.pb.clock = false; s.pb.clockWhy = "unsure"; return Object.assign(s, {open: {pbOpen: true}}); }
+  "check-unsure": () => { const s = pbMorning(); s.pb.clock = false; s.pb.clockWhy = "unsure"; return Object.assign(s, {open: {pbOpen: true}}); },
+  /* the strike water helper (swDay, swMorning): the brewer's own flow (the rig page, 9b) in front of Test Recipe v5.
+     The night before: #sw-plan, the recipe loaded and not begun, its strike water at the rest, as under Kal's way,
+     and USE offered; #sw-forecast, the box opened out with FORECAST; #sw-volume, the HLT's water being changed there;
+     #sw-grain-edit, the grain's temperature being given there, for grain kept indoors; #sw-grain, given on BrewStart;
+     #sw-hot, the strike water typed in too hot, so the mash would go over its rest; #sw-used, USE pressed. CraftBeerPi
+     working USE out: #sw-working, the recipe just loaded and nothing worked out yet, and #sw-working-open with FORECAST
+     open; #sw-reworking, the HLT's water just changed, the last figures shown until the new ones come; #sw-levers, USE
+     worked out for the new water and FORECAST waiting for what would raise it most. #sw-refused: USE pressed on a
+     screen that hadn't caught up with the grain's temperature given on another, so CraftBeerPi refused it and the box
+     offers its new figure; #sw-refused-moved, USE pressed on a screen that hadn't caught up with the water going to the
+     mash tun. #sw-failed: CraftBeerPi's work on USE failed. #sw-tunprobe: the mash probe at the tun's outlet instead,
+     where PID_HERMS takes the mash over the rest by itself. Brew day: #sw-wait, BrewStart waiting to start heating for
+     07:00; #sw-heat, the strike water step heating the HLT; #sw-move, the water there and CraftBeerPi asking for it to
+     be moved; #sw-late, the same at the rest, with USE not pressed the night before; #sw-doughin, the water in the mash
+     tun, MashIn on the Mash Tun asking for the malt and its probe reading the HLT's water. #sw-hand: the recipe as
+     imported, without the flow, and the HLT heating the strike water on its own AUTO. With a number missing: #sw-novol,
+     BrewStart without a water volume; #sw-missing, a recipe built on Brew Steps, with no grain weight or mash water;
+     #sw-noprobe, the boil kettle's probe giving no reading; #sw-grain-bad, BrewStart's grain temperature saved on Brew
+     Steps as 150 °F. swd: the moment's numbers, which the demo's stand-in for CraftBeerPi works the box's state out from
+     (strike-demo.js) */
+  "sw-plan": () => swDay(21 * 3600 + 12 * 60 + 5, {}),
+  "sw-forecast": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {open: {swOpen: true}}),
+  "sw-volume": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {open: {swOpen: true, swVol: {val: 13.5}}}),
+  "sw-grain-edit": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {open: {swOpen: true, swGrain: {val: 70}}}),
+  "sw-grain": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.grain = 70; return Object.assign(s, {open: {swOpen: true}}); },
+  "sw-hot": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.plan = 145; return s; },
+  "sw-used": () => swDay(21 * 3600 + 12 * 60 + 40, {used: true}),
+  "sw-working": () => swWorking(21 * 3600 + 8 * 60 + 50),
+  "sw-working-open": () => Object.assign(swWorking(21 * 3600 + 8 * 60 + 50), {open: {swOpen: true}}),
+  /* SET 13.5 gal in the HLT's box (#sw-volume) at 21:12:25: the figures for 15 gal stay, greyed, until CraftBeerPi has
+     worked USE out for 13.5 */
+  "sw-reworking": () => {
+    const s = swDay(21 * 3600 + 12 * 60 + 34, {});
+    s.swd.vol = 13.5;
+    s.swd.has = {grain: 60.4, vol: 15, probe: "coil", room: 60.4};
+    s.swd.work = {since: 21 * 3600 + 12 * 60 + 25, why: "vol"};
+    s.events.unshift(["21:12:25", "HLT water set to 13.5 gal, was 15.0 gal · Campden ¾ tablet", "confirmed", "ok"]);
+    return Object.assign(s, {open: {swOpen: true}});
+  },
+  /* the same, USE worked out for 13.5 gal at 21:12:55, and FORECAST, at NOT MEASURED YET, still waiting for what would
+     raise it most */
+  "sw-levers": () => {
+    const s = swDay(21 * 3600 + 13 * 60 + 5, {});
+    s.swd.vol = 13.5;
+    s.swd.has = {grain: 60.4, vol: 13.5, probe: "coil", room: 60.4, lvAt: 21 * 3600 + 12 * 60 + 55 + SW_LEVER_S};
+    s.events.unshift(["21:12:25", "HLT water set to 13.5 gal, was 15.0 gal · Campden ¾ tablet", "confirmed", "ok"]);
+    return Object.assign(s, {open: {swOpen: true, swAt: "#sw-lv"}});
+  },
+  /* BrewStart's grain temperature given as 70 °F on another screen at 21:11:40, and USE worked out again for it; this
+     screen, a phone woken from sleep, still showed the figure for the probe's 60.4 °F when USE was pressed at 21:12:31 */
+  "sw-refused": () => {
+    const s = swDay(21 * 3600 + 12 * 60 + 32, {});
+    s.swd.grain = 70;
+    s.events.unshift(["21:11:40", "Grain temperature set to 70.0 °F, was the boil kettle's probe", "confirmed", "ok"]);
+    return Object.assign(s, {open: {notes: {r: `USE ${swHot().toFixed(1)} °F wasn't applied: BrewStart's grain temperature is now 70.0 °F, so USE is ${swModel(70, 15, "coil").use.toFixed(1)} °F.`}}});
+  },
+  /* the water moved to the mash tun with USE never pressed; a phone woken from sleep still showed the night before's
+     box, and USE pressed on it is refused (409 moved): the note, and the box as CraftBeerPi has it */
+  "sw-refused-moved": () => Object.assign(swMorning(SW_MOVED + 40, 126), {open: {notes: {r: `USE ${swHot().toFixed(1)} °F wasn't applied: the strike water is already in the mash tun.`}}}),
+  /* CraftBeerPi's work on USE for the recipe loaded at 21:08:30 failed at 21:09:12, so there's no USE until a number it
+     works from changes */
+  "sw-failed": () => {
+    const s = swDay(21 * 3600 + 12 * 60 + 5, {});
+    s.swd.has = null;
+    s.swd.failed = {at: 21 * 3600 + 9 * 60 + 12, detail: "the model's process stopped without an answer", for: {grain: 60.4, vol: 15, probe: "coil", room: 60.4}};
+    s.events.unshift(["21:09:12", `Strike water forecast failed: ${s.swd.failed.detail}`, "failed", "bad"]);
+    return s;
+  },
+  "sw-tunprobe": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.probe = "tun"; return Object.assign(s, {open: {swOpen: true}}); },
+  "sw-wait": () => {
+    const s = swDay(DAY2 + 5 * 3600 + 40 * 60 + 12, {used: true, state: "running"});
+    s.v.hlt.pv = 59.8;
+    s.recipe.wait = `STARTS ${hhmm(swStartAt(s.swd.plan, 59.8))}`;
+    return s;
+  },
+  "sw-heat": () => swMorning(DAY2 + 6 * 3600 + 41 * 60 + 30, swHot()),
+  "sw-move": () => swMorning(DAY2 + 6 * 3600 + 51 * 60 + 10, swHot()),
+  "sw-late": () => swMorning(DAY2 + 6 * 3600 + 51 * 60 + 10, 126),
+  "sw-doughin": () => swMorning(SW_MOVED + 40, swHot()),
+  "sw-hand": () => {
+    const s = swDay(DAY2 + 9 * 3600 + 5 * 60, {}), on = DAY2 + 8 * 3600 + 41 * 60 + 20;
+    s.swd.hand = true;
+    Object.assign(s.v.hlt, {pv: +(59.9 + (s.t - on) / 60 * SW_RATE).toFixed(1), sv: 126, own: 126, mode: "auto"});
+    Object.assign(s.a, {hltEl: {on: true, pct: 100}, hltPump: {on: true}});
+    s.swd.g = {from: 59.9, heat: on, plan: 126, hand: true};
+    s.events = [["08:41:20", "Hot liquor tank AUTO", "confirmed", "ok"], ["08:41:12", "Hot liquor tank target 126.0 °F", "confirmed", "ok"],
+      ["08:40:10", "Craftbeerpi Test Recipe v5 loaded", "confirmed", "ok"]];
+    return s;
+  },
+  "sw-novol": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.vol = null; return s; },
+  "sw-missing": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.from = null; return s; },
+  "sw-noprobe": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.v.bk.pv = null; s.pb.none.bk = 300; return Object.assign(s, {pbLast: {bk: 61.4}, gap: {bk: 300}}); },
+  "sw-grain-bad": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.grain = 150; return s; }
 };
+/* ---------- the strike water's moments ----------
+   The brewer's own flow (the rig page, 9b) in front of the recipe: BrewStart waits for Ready by on the HLT, then a
+   MashInStep on the HLT, the strike water step, heats all the water in it, strike and sparge, and holds it until he has
+   moved the strike water to the Mash Tun and pressed Next; then the recipe's steps from MashIn on the Mash Tun. Under
+   Kal's way (The Electric Brewery's method) the strike water is at the rest temperature, as the recipe comes; USE
+   changes it to the strike temperature the forecast works out. The moments put the two in front of Test Recipe v5, with
+   the numbers its BeerSmith export carries: 20 lb of grain at 1.5 qt/lb, so 7.50 gal for the grain (INFUSE_AMOUNT), plus
+   the equipment profile's recoverable mash deadspace, 0.76 gal, which BeerSmith adds to the first infusion
+   (DISPLAY_INFUSE_AMT 33.04 qt), so it is never added again; the mash tun, 33 lb of steel (TUN_WEIGHT, TUN_SPECIFIC_HEAT
+   0.12); and BeerSmith's own strike temperature, INFUSE_TEMP 134.6 °F, worked out for grain at 65 °F (GRAIN_TEMP). The
+   export doesn't say how much water is in the HLT: that is BrewStart's water volume (vol, from the moment: swDay), which
+   also sets its Campden dose */
+const SW_STEPS = [
+  {n: "BrewStart", type: "BrewStart", k: "hlt", ready: "07:00", campden: true},
+  {n: "Strike water", type: "MashInStep", k: "hlt", note: "Move the strike water to the Mash Tun, then press Next"}
+];
+const SW_FROM = {grainLb: 20, forGrain: 7.5, dead: 0.76, tunLb: 33, bs: 134.6, bsGrain: 65, bsTun: 72};
+/* BrewStart's Ready by plan, from the rig's measured heat-up (rig page 9b: 15 gal from 60 to 152 °F in 42 min, so
+   2.19 °F a minute, plus 10 spare minutes) */
+const SW_RATE = 2.19, SW_SPARE = 10;
+/* the brew-day morning's moments run on from the night before, so the clock and the graphs carry on past midnight */
+const DAY2 = 24 * 3600;
+const pad2 = n => String(n).padStart(2, "0");
+const hhmm = t => `${pad2(Math.floor(t / 3600) % 24)}:${pad2(Math.floor(t / 60) % 60)}`;
+const hhmmss = t => `${hhmm(t)}:${pad2(t % 60)}`;
+/* the strike water's temperature once USE is pressed in the moments: USE for Test Recipe v5 with 15 gal in the HLT and
+   the grain at 60.4 °F (the boil kettle's 61.4 °F, less its 1.0 °F offset), from the model's answers */
+const swHot = () => swModel(60.4, 15, "coil").use;
+/* the recipe loaded at 21:08:30 and CraftBeerPi working USE out since, with nothing worked out yet */
+function swWorking(t) {
+  const s = swDay(t, {});
+  s.swd.has = null;
+  s.swd.work = {since: 21 * 3600 + 8 * 60 + 30, why: "load"};
+  return s;
+}
+/* brew day, as cbpi4_BrewStart writes it (format_start), and the moment the strike water has been moved and Next
+   pressed */
+const SW_DAY = "Sat Nov 21";
+const SW_MOVED = DAY2 + 6 * 3600 + 55 * 60 + 40;
+/* when BrewStart starts heating for 07:00, water at pv heated to t: its heat-up at the rig's rate plus its spare minutes */
+const swStartAt = (t, pv) => DAY2 + 7 * 3600 - Math.ceil(((t - pv) / SW_RATE + SW_SPARE) * 60);
+/* BrewStart's notification as the recipe starts (notify_ready_scheduled), in its words */
+const swPlanLine = (t, pv) => `BrewStart: Ready by ${SW_DAY}, 07:00: heating starts about ${SW_DAY}, ${hhmm(swStartAt(t, pv))}. ${pv.toFixed(1)} °F to ${t.toFixed(1)} °F takes about ${Math.round((t - pv) / SW_RATE)} min, plus ${SW_SPARE} min spare.`;
+/* the night before, Friday 21:12: all the strike and sparge water in the HLT, 15 gal at the garage's temperature, every
+   other vessel empty, every probe with the rig's offset, and the graphs showing the evening (pbMorning's pbDay); the
+   recipe loaded at 21:08, its strike water at the rest, and BrewStart's water volume 15 gal, as the rig page sets it
+   (swd.vol; brewing by hand, the figure given in the box). used: USE pressed at 21:12:31. state "running": START held
+   at 21:13, the check passed and BrewStart waits. CraftBeerPi has worked USE out for the numbers as the moment has them
+   (swd.has, set as it loads) unless the moment says otherwise */
+function swDay(t, o) {
+  const s = pbMorning(), used = !!o.used, hot = used ? swHot() : null;
+  s.t = t;
+  s.v.hlt.pv = 60.6; s.v.mt.pv = 64.6; s.v.bk.pv = 61.4;
+  s.recipe = {state: o.state || "ready", cur: 0, left: 0, adds: []};
+  s.swd = {plan: used ? hot : 126, was: used ? 126 : null, from: Object.assign({}, SW_FROM), vol: 15, grain: null};
+  s.events = [["21:08:30", "Craftbeerpi Test Recipe v5 loaded", "confirmed", "ok"]];
+  if (used) s.events.unshift(["21:12:31", `Strike water set to ${hot.toFixed(1)} °F, was 126.0 °F`, "confirmed", "ok"]);
+  if (o.state) s.events.unshift(["21:13:04", swPlanLine(s.swd.plan, 60.6), "from CraftBeerPi", ""], ["21:13:02", "Recipe started", "confirmed", "ok"],
+    ["21:13:01", "Checked before starting: probes, clock, reminders", "all passed", "ok"]);
+  return s;
+}
+/* brew day, from BrewStart's start: the strike water step heats the HLT on its own AUTO at the rig's rate to plan, and
+   asks for the water to be moved half a degree short of it, as the step counts it there; the HLT holds it until Next.
+   At SW_MOVED the water is in the mash tun and Next pressed. It came through the coil, so the Mash Tun's probe, at the
+   coil's outlet, reads the strike water: MashIn on the Mash Tun finds the rest reached and asks for the malt within
+   seconds, the strike water at the rest as much as above it. Its pump stops for the dough-in, PID_HERMS holds the HLT
+   at no more than the rest while it does, and the probe reads the HLT's water. The time of the ask and the readings
+   40 s on are the model's, its middle guesses (SW_MORNING). swd.g gives the graphs the times */
+function swMorning(t, plan) {
+  const s = swDay(t, {used: plan !== 126, state: "running"}), S = SW_STEPS[1], kal = plan <= 126;
+  const heat = swStartAt(plan, 59.8), hot = heat + Math.round((plan - 0.5 - 59.8) / SW_RATE * 60);
+  const M = SW_MORNING[kal ? "rest" : "use"], ask = SW_MOVED + M.ask;
+  const log = s.events.slice().reverse();
+  log.push([hhmmss(heat), `BrewStart: Time to heat - the water should be ready by ${SW_DAY}, 07:00.`, "from CraftBeerPi", ""],
+    [hhmmss(heat), "BrewStart finished", "by recipe", ""], [hhmmss(heat), `${S.n} started, HLT target ${plan.toFixed(1)} °F`, "by recipe", ""]);
+  Object.assign(s.a, {hltPump: {on: true}});
+  s.swd.g = {from: 59.8, heat, hot, plan, ask};
+  if (t < SW_MOVED) {
+    s.recipe.cur = 1;
+    const held = t >= hot;
+    Object.assign(s.v.hlt, {pv: held ? +(plan - 0.1).toFixed(1) : +(59.8 + (t - heat) / 60 * SW_RATE).toFixed(1), sv: plan, own: plan, mode: "auto"});
+    s.a.hltEl = {on: true, pct: held ? 16 : 100};
+    s.recipe.wait = held ? WFY : true;
+    if (held) {
+      s.banner = {tone: "prompt", title: S.n, text: S.note, act: "NEXT STEP", cmd: "b:done"};
+      log.push([hhmmss(hot + 6), `${S.n}: ${S.note}`, "waiting for you", "wait"]);
+    }
+  } else {
+    s.recipe.cur = 2; s.swd.g.moved = SW_MOVED;
+    log.push([hhmmss(hot + 6), `${S.n}: ${S.note}`, "answered", ""], [hhmmss(SW_MOVED), `${S.n} answered: Next Step`, "confirmed", "ok"],
+      [hhmmss(SW_MOVED + 1), "MashIn started, mash tun target 126.0 °F", "by recipe", ""]);
+    const asked = t >= ask;
+    Object.assign(s.v.mt, {pv: asked ? M.mt : plan, sv: 126, mode: "auto"});
+    Object.assign(s.v.hlt, {pv: M.hlt, sv: +(126 + HERMS_DELTA).toFixed(1), mode: "manual"});
+    s.a.hltEl = M.el >= 0.5 ? {on: true, pct: Math.round(M.el)} : {on: false, pct: 0};
+    s.a.wortPump = {on: !asked};
+    s.fill.mtLiq = true;
+    s.recipe.wait = asked ? WFY : true;
+    if (asked) {
+      s.banner = {tone: "prompt", title: "MashIn", text: "Target temperature reached. Please add malt.", act: "NEXT STEP", cmd: "b:done"};
+      log.push([hhmmss(ask), "MashIn: Target temperature reached. Please add malt.", "waiting for you", "wait"]);
+    }
+  }
+  s.events = log.reverse();
+  return s;
+}
 /* brew day's morning, for the pre-brew check: 07:41, the recipe loaded at 07:38 and not begun, every vessel empty and at
    the garage's temperature since the night before, nothing on and no targets set. Each probe has an offset set in
    Hardware (poff), as a rig's can: the mash probe, at the HERMS coil's outlet, +4.0 °F, so the mash tun shows 4 °F
@@ -672,6 +874,37 @@ const gWob = (t, k) => 0.16 * Math.sin(t / 47 + k) + 0.09 * Math.sin(t / 13.7 + 
 
 function gDemo(scene, now, x = {}) {
   const E = 30 * 3600;
+  /* the strike water moments (x.sw, swMorning's swd.g): the night in the garage, then from BrewStart's start (g.heat) the
+     HLT heating the strike water at the rig's rate to g.plan, the step asking half a degree short (g.hot), and the HLT
+     holding it; from g.moved the water in the mash tun and PID_HERMS on it, MashIn asking for the malt at once (g.ask).
+     #sw-hand: the HLT on its own AUTO from g.heat, and no recipe begun. Times run on past midnight, so the end is a day
+     and a bit on. The mash tun's probe sits at the coil's outlet: it reads the strike water as it comes through the coil,
+     and with the pump stopped for the dough-in, the HLT's water. x.pv: the moment's readings; x.hltSv: the HLT's target */
+  const g = x.sw;
+  if (g) {
+    const Z = now + 3600, start = now - 8 * 3600, hot = g.hot ?? Infinity, mv = g.moved ?? Infinity, kal = g.plan <= 126;
+    const hlt = [[start, g.from + 0.7], [g.heat, g.from, "s"]];
+    if (now < hot) hlt.push([now, x.pv.hlt, "l"]);
+    else {
+      hlt.push([hot, g.plan - 0.5, "l"], [hot + 40, g.plan - 0.1, "e"]);
+      if (now >= mv) hlt.push([mv, g.plan - 0.1, "h"], [now, x.pv.hlt, "s"]); else hlt.push([now, g.plan - 0.1, "h"]);
+    }
+    /* the strike water through the coil: the probe at its outlet reads it from the transfer's start, about 4 minutes
+       before Next; MashIn asks for the malt at once, the pump stops, and the probe settles on the HLT's water */
+    const mt = [[start, 63.9]];
+    if (now >= mv) mt.push([mv - 240, 64.6, "s"], [mv - 200, g.plan - 0.2, "e"], [mv, g.plan - 0.1, "h"], [now, x.pv.mt, "s"]);
+    else mt.push([now, 64.6, "s"]);
+    const out = [[start, g.heat, 0], [g.heat, Math.min(hot, mv, Z), 100]];
+    if (now >= hot) out.push([hot, Math.min(mv, Z), [8, 24]]);
+    /* PID_HERMS holds the HLT at no more than the rest while the pump is stopped: off above it, a trickle at it */
+    if (now >= mv) out.push([mv, Z, kal ? [0, 6] : 0]);
+    return {
+      start, steps: g.hand ? [] : [[g.heat, 2], ...(now >= mv ? [[mv, 3]] : [])],
+      hlt: {pv: hlt, sv: [[g.heat, Math.min(mv, Z), g.plan], ...(now >= mv ? [[mv, Z, x.hltSv]] : [])], out},
+      mt: {pv: mt, sv: now >= mv ? [[mv, Z, 126]] : []},
+      bk: {pv: [[start, x.pv.bk - 1.2], [now, x.pv.bk, "s"]], out: [[start, Z, 0]]}
+    };
+  }
   /* the pre-brew moments (#prebrew, #probes…, #check…): the night before in the garage, every vessel empty and slowly
      warming with the morning, each probe ending on its own reading (one silent for a while ends on its last); nothing
      heated, so no SV and no OUT. DAY is the last 8 hours, as with no recipe begun. x: the moment's own readings (pv) and a
@@ -861,7 +1094,8 @@ function history(scene, now, x) {
   return h;
 }
 
-export { RECIPE, SPARGE_STEP, BIG_ADDS, VNAME, KNAME, PROBE, VACT, ACT, HERMS_DELTA, BOIL_TH, BOOK, SCENES, history, noTargetBanner, pauseBanner, spargeBanner, boilHoldBanner, boilStartLine, tfmt, tBanner, byHandBanner, versions };
+export { RECIPE, SPARGE_STEP, BIG_ADDS, VNAME, KNAME, PROBE, VACT, ACT, HERMS_DELTA, BOIL_TH, BOOK, SCENES, history, noTargetBanner, pauseBanner, spargeBanner, boilHoldBanner, boilStartLine, tfmt, tBanner, byHandBanner, versions,
+  SW_STEPS, swStartAt, swPlanLine };
 
 // Not the mockup's: two moments of the screen's own, for checking how the title bar holds what CraftBeerPi
 // really asks. Not compared with the mockup.

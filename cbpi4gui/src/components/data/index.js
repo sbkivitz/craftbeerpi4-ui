@@ -10,6 +10,10 @@ import { sensorapi } from "./sensorapi";
 
 export const CBPiContext = createContext({});
 
+// The strike water helper's state as this page keeps it: the newer by CraftBeerPi's brewing clock of what it had and
+// what has just come, with when this page heard it.
+const newerStrike = (cur, x) => (!x || typeof x !== "object" ? cur : cur && Number(cur.now) > Number(x.now) ? cur : { ...x, received: Date.now() });
+
 export const CBPiProvider = ({ children }) => {
   const [sensors, setSensors] = useState([]);
   const [sensorData, setSensorData] = useState({});
@@ -51,6 +55,9 @@ export const CBPiProvider = ({ children }) => {
   // Its timers, up to four, kept the same way: {timers, max, names, now, scale}, plus when this page heard it.
   // null from a CraftBeerPi without them: the screen keeps its one rest timer.
   const [timers, setTimers] = useState(null);
+  // The strike water helper's state (GET /step2/strike and the topic "strike"), plus when this page heard it: the newer
+  // of the two by CraftBeerPi's brewing clock. null from a CraftBeerPi without the helper (404): the screen shows no box.
+  const [strike, setStrike] = useState(null);
 
   const onMessage = useCallback((data) => {
     //console.log("WS", data);
@@ -140,6 +147,9 @@ export const CBPiProvider = ({ children }) => {
       case "timers":
           setTimers(data.data ? { ...data.data, received: Date.now() } : null);
           break;
+      case "strike":
+          setStrike((cur) => newerStrike(cur, data.data));
+          break;
       default:
         break;
     }
@@ -184,6 +194,8 @@ export const CBPiProvider = ({ children }) => {
       if (data.resttimer) setRestTimer({ ...data.resttimer, received: Date.now() });
       if (data.timers) setTimers({ ...data.timers, received: Date.now() });
       });
+    // the strike water helper's state, which a CraftBeerPi without the helper doesn't have (404)
+    axios.get("/step2/strike").then((res) => setStrike((cur) => newerStrike(cur, res.data))).catch(() => {});
   }, []);
 
   // Step API
@@ -228,7 +240,7 @@ export const CBPiProvider = ({ children }) => {
 
   const value = {
     state: { sensors, version, guiversion, codename, commit, actors, logic, kettle, fermenter, fermenterlogic, auth, plugins, temp, sensorData, sensorDataType, sensorInRange, spindledata,
-             actorTypes, sensorTypes, config, mashProfile, fermentersteps, FermenterProfile, mashBasic, stepTypes, stepTypesFermenter, connection, allnotifications, bf_recipes, system, resttimer, timers },
+             actorTypes, sensorTypes, config, mashProfile, fermentersteps, FermenterProfile, mashBasic, stepTypes, stepTypesFermenter, connection, allnotifications, bf_recipes, system, resttimer, timers, strike },
     actions: {
       delete_kettle,
       add_kettle,

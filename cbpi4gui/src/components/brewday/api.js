@@ -91,4 +91,11 @@ export const api = {
   // The temperature graphs' history: each log from `since` on (brewing clock seconds), about `points` readings each.
   // Reading a day of logs can take longer than a command.
   logWindow: (names, since, points) => call("POST", "/log/window", { names, since, points }, 20000),
+  // The strike water helper (its contract, version 1): USE and BACK TO, the HLT's water and the grain's temperature
+  // (null: back to the boil kettle's probe). Each carries the recipe's step ids, as START does: CraftBeerPi changes
+  // nothing for another recipe (409 recipe_changed). Each answers with what it applied and its whole state.
+  strikeUse: (temp, plan, steps) => post("/step2/strike", { do: "use", temp, plan, steps }),
+  strikeBack: (temp, steps) => post("/step2/strike", { do: "back", temp, steps }),
+  strikeWater: (vol, steps) => post("/step2/strike/water", { vol, steps }),
+  strikeGrain: (grain, steps) => post("/step2/strike/grain", { grain, steps }),
 };
