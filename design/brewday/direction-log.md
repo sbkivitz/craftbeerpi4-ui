@@ -1,5 +1,28 @@
 # Direction decision log
 
+## Timers' REMOVE and the boil kettle's MANUAL approved; MAN where AUTO is usual (22 Nov 2026)
+- The brewer, asked one question at a time through Brett: REMOVE on the row with one tap and UNDO for 10 seconds, and
+  BACK TO in the timer's box, both as proposed (TIMER-REMOVE.md). In MANUAL the boil element heats at the boil power,
+  one number for AUTO and by hand, as proposed (BOIL-MANUAL.md). Both are now the mockup's default; `?trow=today` and
+  `?bkman=today` keep the old ones for the comparison pages.
+- His addition: "make the 'MAN' under MODE yellow or some other indication that I'm not using auto when I probably
+  should be." Chosen: MAN boxed in Prompt Amber in the window, moving nothing, only while the boil kettle is in MANUAL
+  with a reading AUTO could work from and either heats by hand or has a step that boils or holds in it running. Its
+  tooltip and screen-reader words: "In MANUAL, BoilPower isn't running the boil kettle, as it does in AUTO.", his own
+  confusion on 8012 put plainly.
+- Why amber: it is a mode he probably needs to put right, which our rules already mark amber (AUTO with no target), and
+  machine lamps make yellow mean "abnormal" (IEC 60073). The frame is the second sign, as control rooms box a
+  controller out of its usual mode. Not red (faults), not orange (heat), not blue (never equipment state), not a new
+  hue (each hue means one thing, and a yellow beside amber and wort gold would be confused).
+- Why so narrow: MAN is the boil kettle's resting state for most of a brew day. Boxed whenever it's in MANUAL, the box
+  would be on through the mash and the sparge, he'd learn to ignore it, and amber would stop standing out. Not during
+  "Ready to boil?" (nothing heats in either mode), with no reading (MANUAL is then the only way to heat), or with no
+  connection.
+- Not chosen: a caution line or an alarm (heating by hand is allowed, and The By Hand Rule already cautions where it's
+  dangerous); a hint on the AUTO button (the mode row is the same in every state, and his eye goes to MODE); the same
+  box on the HLT and the mash tun now (he asked about the boil kettle; the HLT's MANUAL is usual under the HERMS and
+  after "Sparge started", so it needs its own conditions, and its heating by hand already has an amber line).
+
 ## The one clock, CraftBeerPi's (M120, 22 Nov 2026)
 - The brewer, on 8012 at 60×, set BrewStart to start at 12:04 and pressed START. CraftBeerPi's clock read 26 Nov
   07:22, and BrewStart began 4.7 real minutes later, while the title bar said about 10:05: it showed the PC's clock.

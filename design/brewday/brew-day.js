@@ -537,11 +537,11 @@ const SCENES = {
   }),
   /* BREWDAY_TIMER_NAMES left blank: no names to pick, and a line saying why; the name box still takes any */
   "timer-nonames": () => Object.assign(SCENES["timer-new"](), {names: [], open: {tedit: {id: null, name: "", ph: "Timer 3", set: 10 * 60}}}),
-  /* Stir's editor while it counts down: its time left changes at once. As built, with REMOVE; the proposal (?trow=new),
-     with BACK TO 15:00, as REMOVE is on the row */
+  /* Stir's editor while it counts down: its time left changes at once, and BACK TO 15:00 is there, as REMOVE is on the
+     row. As built before (?trow=today), with REMOVE */
   "timer-change": () => Object.assign(SCENES.timers(), {open: {tedit: {id: 1, name: "Stir", ph: "Stir", set: 15 * 60}}}),
-  /* Stir removed 3 s ago, at 14:32:28 with 7:15 to go. The proposal (?trow=new): its row keeps its place for 10 s, with
-     UNDO. As built, removing a timer with time left asks first, in its editor */
+  /* Stir removed 3 s ago, at 14:32:28 with 7:15 to go: its row keeps its place for 10 s, with UNDO. As built before
+     (?trow=today), removing a timer with time left asks first, in its editor */
   "timer-removed": () => {
     const s = SCENES.timers(), t = s.tmrs[0];
     if (TROW !== "new") return Object.assign(s, {open: {tedit: {id: t.id, name: t.name, ph: t.name, set: t.set, confirm: true}}});
@@ -560,9 +560,9 @@ const SCENES = {
   "other-recipe": () => Object.assign(SCENES.prebrew(), {open: {rbOpen: true}}),
   "hand-choose": () => Object.assign(SCENES["timers-hand"](), {open: {rbOpen: true}}),
   /* the boil kettle in MANUAL, brewing by hand: the wort just under a boil, the element on by hand, the boil power
-     45 %. With the proposal (?bkman=new, BOIL-MANUAL.md) the element runs at that 45 %, which the window reads as HAND
-     45 %, with the steps beside it. As built, at its own level, 70 % as on 8012, while the window shows BOIL 45 %.
-     #bk-hand-off: the same with the element off */
+     45 %. The element runs at that 45 %, which the window reads as HAND 45 %, with the steps beside it, and MODE's MAN
+     is boxed (bkManCue). As built before (?bkman=today), at its own level, 70 % as on 8012, while the window shows
+     BOIL 45 %. #bk-hand-off: the same with the element off */
   "bk-hand": () => {
     const s = SCENES.manual();
     Object.assign(s.v.bk, {pv: 207.6, sv: null, mode: "manual", bp: 45});
@@ -571,6 +571,16 @@ const SCENES = {
     return s;
   },
   "bk-hand-off": () => { const s = SCENES["bk-hand"](); Object.assign(s.a.bkEl, {on: false, pct: 0}); s.events.shift(); return s; },
+  /* the boil at 15:52:40, as #boiling, with the boil kettle put in MANUAL at 15:51:58 and its element off: the Boil
+     step's 90 min still count down, but BoilPower doesn't run the kettle, so MODE's MAN is boxed in Prompt Amber
+     (bkManCue). As built (?bkman=today) MAN looks as it always does */
+  "bk-man-boil": () => {
+    const s = SCENES.boiling();
+    Object.assign(s.v.bk, {pv: 211.6, mode: "manual", bp: 45});
+    Object.assign(s.a.bkEl, {on: false, pct: 0});
+    s.events.unshift(["15:51:58", "Boil kettle MANUAL", "confirmed", "ok"]);
+    return Object.assign(s, {base: "boiling"});
+  },
   /* brewing by hand, with three: PBW soak counting down, Yeast paused at 10:01:08, Timer 3 ready */
   "timers-hand": () => Object.assign(SCENES.manual(), {
     base: "manual",
@@ -1032,8 +1042,8 @@ function bkLine() {
   if (V.mode !== "auto") {
     const w = byHand("bk");
     if (w) return byHandLine("bk", w);
-    /* the proposal (?bkman=new): by hand the element runs at the boil power, so the line says at what. A boil kettle
-       boiling by hand needs no caution (The By Hand Rule) */
+    /* the new MANUAL: by hand the element runs at the boil power, so the line says at what. A boil kettle boiling by
+       hand needs no caution (The By Hand Rule) */
     if (BKMAN === "new") return el.on ? `Heating by hand at ${V.bp} %` : `MANUAL · heats at ${V.bp} % by hand`;
     return "MANUAL · element by hand";
   }
@@ -1267,8 +1277,8 @@ function bkLampHTML() {
   const why = st.link === "lost" ? PAUSED : pend ? WAIT : "", hh = h && !why;
   return `<button type="button" class="lamp" data-state="${s}" data-cmd="${cmd}"${hh ? " data-hold" : ""}${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}>${hh ? '<span class="fill"></span>' : ""}<span class="st">${t}</span><span class="nm">${n}</span></button>`;
 }
-/* the proposal's element in MANUAL (?bkman=new), narrow between the steps as in AUTO: its name left to the faceplate's
-   title and kept for screen readers, the line saying only what a press does. Switching it on by hand is heat, so held */
+/* the element in the new MANUAL, narrow between the steps as in AUTO: its name left to the faceplate's title and kept
+   for screen readers, the line saying only what a press does. Switching it on by hand is heat, so held */
 function bkHandLampHTML() {
   const a = st.a.bkEl, pend = st.pend["a:bkEl"], nm = '<span class="sr">BOIL ELEMENT · </span>';
   let s, t, n, h = false;
@@ -1278,10 +1288,11 @@ function bkHandLampHTML() {
   const why = st.link === "lost" ? PAUSED : pend ? WAIT : "", hh = h && !why;
   return `<button type="button" class="lamp" data-state="${s}" data-cmd="act:bkEl"${hh ? " data-hold" : ""}${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}>${hh ? '<span class="fill"></span>' : ""}<span class="st">${t}</span><span class="nm">${n}</span></button>`;
 }
-/* the steps show only while AUTO can use the boil power: not in MANUAL, where they would seem to set the element's
-   own level, nor in a hold, nor while the boil kettle's box is open, which has steps of its own. In the proposal
-   (?bkman=new) the element runs at the boil power by hand too, so they stay in MANUAL, with a target to hold as well:
-   MANUAL doesn't use the target, and the line (element off) or OUT (heating) shows the level they change */
+/* the steps show while the boil power is what the element heats at: in AUTO, not while it holds a temperature, and in
+   the new MANUAL, where the element runs at the boil power by hand too, with a target to hold as well (MANUAL doesn't
+   use the target, and the line, element off, or OUT, heating, shows the level they change). Not in MANUAL as built
+   before (?bkman=today), where they would seem to set the element's own level, nor while the boil kettle's box is
+   open, which has steps of its own */
 const bkNudges = () => BK === "power" && (st.v.bk.mode === "auto" ? !bkHolding() : BKMAN === "new") && !(st.edit && st.edit.v === "bk");
 /* the new boil kettle's Keep boiling choice: keep the wort at a boil, or let the boil power alone drive the
    temperature. A small checkbox at the end of the nameplate row; the box is the LED, lit Setpoint Green with a tick
@@ -1362,7 +1373,19 @@ function auxHTML(v) {
   const el = v === "hlt" ? st.a.hltEl : v === "bk" ? st.a.bkEl : null;
   const mode = v === "hlt" && st.v.mt.mode === "auto" ? "HERMS" : st.v[v].mode === "auto" ? "AUTO" : "MAN";
   const pct = el && el.on ? el.pct : 0;
-  return `<dl class="aux"><dt>OUT</dt><dd>${el ? pct + " %" : "– –"}<span class="outbar"${el ? "" : ' style="visibility:hidden"'} aria-hidden="true"><i style="width:${pct}%"></i></span></dd><dt>MODE</dt><dd>${mode}</dd></dl>`;
+  const md = v === "bk" && bkManCue() ? `<span class="mc" title="${esc(MAN_CUE)}">MAN</span><span class="sr">. ${MAN_CUE}</span>` : mode;
+  return `<dl class="aux"><dt>OUT</dt><dd>${el ? pct + " %" : "– –"}<span class="outbar"${el ? "" : ' style="visibility:hidden"'} aria-hidden="true"><i style="width:${pct}%"></i></span></dd><dt>MODE</dt><dd>${md}</dd></dl>`;
+}
+/* MANUAL where AUTO is usual (the new MANUAL): the boil kettle in MANUAL with a reading AUTO could work from, while its
+   element heats by hand or a step that boils or holds a temperature in it runs. Its MODE then says MAN boxed in Prompt
+   Amber, so that heating by hand isn't taken for BoilPower's boil. Not while the boil waits for the brewer (the
+   recipe "ready", held), when nothing heats in either mode, nor with no connection, when nothing on the window is
+   current */
+const MAN_CUE = "In MANUAL, BoilPower isn't running the boil kettle, as it does in AUTO.";
+function bkManCue() {
+  const V = st.v.bk, r = st.recipe, s = r && RECIPE.steps[r.cur];
+  if (BKMAN !== "new" || st.link === "lost" || V.mode === "auto" || V.pv == null) return false;
+  return st.a.bkEl.on || !!(s && s.k === "bk" && s.temp > 0 && r.state === "running");
 }
 function hermsRowHTML() {
   const why = st.link === "lost" ? PAUSED : `The mash tun's AUTO runs this vessel for the HERMS: it switches the HLT element and sets this target up to the mash tun's target plus ${HERMS_DELTA} °F. Switch the mash tun to MANUAL to take the HLT over.`;
@@ -1375,8 +1398,8 @@ function svCell(v) {
   /* the new boil kettle: a hold reads like the HLT's target; while the target is BOIL the green number is the boil power, and its button */
   if (BK === "power") {
     const ho = bkHoldT();
-    /* the proposal (?bkman=new): in MANUAL the green number is the power the element runs at by hand, so it reads HAND,
-       not BOIL, which is AUTO's */
+    /* the new MANUAL: the green number is the power the element runs at by hand, so it reads HAND, not BOIL, which is
+       AUTO's */
     return ho != null ? ["SV", f1(ho) + u("°F")] : [BKMAN === "new" && V.mode !== "auto" ? "HAND" : "BOIL", boilReadHTML()];
   }
   if (bkHolding()) return ["HOLD", f1(V.hold) + u("°F")];
@@ -3370,7 +3393,7 @@ function trowHTML(t, off) {
   const btn = done ? b("cmdbtn", p === "plus5" ? "ADDING…" : "+5 MIN", "", {cmd: `tm2:plus5:${t.id}`, why}) + b("cmdbtn tok", p === "ok" ? "SENDING…" : "OK", "stops the alarm", {cmd: `tm2:ok:${t.id}`, why})
     : b("cmdbtn", p === "start" ? "STARTING…" : p === "pause" ? "PAUSING…" : run ? "PAUSE" : "START", t.state === "paused" ? "carry on" : "", {cmd: `tm2:go:${t.id}`, why});
   const editing = !!(st.tedit && st.tedit.id === t.id);
-  /* the proposal: two lines, the name and its state over the time and two buttons. REMOVE sits beside START or PAUSE in
+  /* two lines, the name and its state over the time and two buttons. REMOVE sits beside START or PAUSE in
      every state but a run-out one, always in the same place; START or PAUSE keeps the far right, where it was. A run-out
      timer keeps its +5 MIN and OK across the row. While its editor is open the timer keeps the one-line row as built,
      with START or PAUSE only: the editor fits a 1180 × 860 window with nothing to spare, and REMOVE is back when it
@@ -3427,7 +3450,7 @@ function teditHTML(off) {
     : `<div class="tfield tmin"><label for="tmin">Minutes</label>${b("cmdbtn", "−1", "", {cmd: "te:step:-1", label: "One minute less"})}<input id="tmin" type="text" inputmode="numeric" maxlength="3" autocomplete="off" value="${e.set / 60}">${b("cmdbtn", "+1", "", {cmd: "te:step:1", label: "One minute more"})}</div>
       <div class="tpre" role="group" aria-label="Minutes">${TPRE.map(m => b("cmdbtn", String(m), "", {cmd: `te:min:${m}`, pressed: e.set === m * 60, label: `${m} minutes`})).join("")}</div>`;
   const acts = !t ? [b("cmdbtn", "CANCEL", "", {cmd: "te:x"}), b("cmdbtn", pT === "save" ? "SAVING…" : "SAVE", "start it later", {cmd: "te:save", why}), b("cmdbtn tgo", pT === "start" ? "STARTING…" : "START", "counts down now", {cmd: "te:start", why})]
-    /* the proposal: REMOVE is on the row, so the editor doesn't repeat it. A timer counting down or paused can go back to
+    /* REMOVE is on the row, so the editor doesn't repeat it. A timer counting down or paused can go back to
        its own time here, stopped, as OK does after its alarm and a kitchen timer's clear does: the editor stays open, now
        a stopped timer's, so a name typed and not yet saved stays */
     : TROW === "new" ? (live ? [b("cmdbtn", pT === "reset" ? "SENDING…" : `BACK TO ${tfmt(t.set)}`, "ready to start again", {cmd: "te:reset", why}), b("cmdbtn tgo", pT === "name" ? "SAVING…" : "DONE", "", {cmd: "te:done", why})]
@@ -3505,7 +3528,7 @@ function cmdTe(x, y) {
     if ((t.state === "running" || t.state === "paused") && !e.confirm) { e.confirm = true; return renderAll(); }
     return send("t:" + t.id, "rm", `${t.name} removed`, () => { tAnswered(t, "no longer needed"); st.tmrs = st.tmrs.filter(z => z !== t); st.tedit = null; });
   }
-  /* the proposal's BACK TO: the timer goes back to its own time, stopped; its editor stays open, now a stopped timer's */
+  /* BACK TO: the timer goes back to its own time, stopped; its editor stays open, now a stopped timer's */
   if (x === "reset") return send("t:" + t.id, "reset", `${t.name} back to ${tfmt(t.set)}, stopped with ${tfmt(t.left)} to go`, () => { t.state = "stopped"; t.left = t.run = t.set; delete t.interrupted; e.set = t.set; });
   /* a typed name another timer has is refused as its greyed button is, before anything is sent */
   const twin = (!t || name !== t.name) && tTwin(name, t);
@@ -3530,8 +3553,8 @@ function cmdTm2(x, id, y) {
   if (x === "undo") return tUndo(+id);
   const t = tById(+id), key = "t:" + id;
   if (!t) return;
-  /* the proposal's REMOVE, on the row: one tap, no question, in any state but a run-out one. The row keeps its place for
-     10 s with UNDO (tgoneHTML) */
+  /* REMOVE on the row: one tap, no question, in any state but a run-out one. The row keeps its place for 10 real
+     seconds with UNDO (tgoneHTML) */
   if (x === "rm") {
     const live = t.state === "running" || t.state === "paused";
     return send(key, "rm", `${t.name} removed${live ? `, ${tfmt(t.left)} to go` : ""}`, () => {
@@ -3554,8 +3577,8 @@ function cmdTm2(x, id, y) {
   if (x === "ok") return send(key, "ok", `${t.name}: alarm answered`, () => { answer(); t.state = "stopped"; t.left = t.run = t.set; });
   if (x === "plus5") return send(key, "plus5", `${t.name}: 5 more minutes`, () => { answer(); t.state = "running"; t.left = t.run = 300; });
 }
-/* the proposal's UNDO, within 10 s of REMOVE: CraftBeerPi puts the timer back as it was, in its place. One that was
-   counting down has counted on meanwhile, as if it had never gone */
+/* UNDO, within 10 s of REMOVE: CraftBeerPi puts the timer back as it was, in its place. One that was counting down has
+   counted on meanwhile, as if it had never gone */
 function tUndo(id) {
   const g = st.tgone;
   if (!g || g.t.id !== id) return;
@@ -3987,7 +4010,7 @@ function load(name) {
   });
   document.querySelectorAll(".mock a[data-trow]").forEach(a => {
     const q = new URLSearchParams(location.search);
-    if (a.dataset.trow === "new") q.set("trow", "new"); else q.delete("trow");
+    if (a.dataset.trow === "today") q.set("trow", "today"); else q.delete("trow");
     a.href = `?${q}#${key}`;
     a.setAttribute("aria-current", a.dataset.trow === TROW ? "true" : "false");
   });
@@ -3999,7 +4022,7 @@ function load(name) {
   });
   document.querySelectorAll(".mock a[data-bkman]").forEach(a => {
     const q = new URLSearchParams(location.search);
-    if (a.dataset.bkman === "new") q.set("bkman", "new"); else q.delete("bkman");
+    if (a.dataset.bkman === "today") q.set("bkman", "today"); else q.delete("bkman");
     a.href = `?${q}#${key}`;
     a.setAttribute("aria-current", a.dataset.bkman === BKMAN ? "true" : "false");
   });
@@ -4037,25 +4060,26 @@ if (GRAPHS) { document.documentElement.dataset.graphs = GRAPHS; graphSetup(QS); 
    boil-kettle.html compares the first two. */
 const BK = ["words", "today"].includes(QS.get("bk")) ? QS.get("bk") : "power";
 document.documentElement.dataset.bk = BK;
-/* the boil kettle's MANUAL: ?bkman=new is the proposal in BOIL-MANUAL.md: in MANUAL the element runs at the boil power,
-   the one green number, which reads HAND there; the −5 % … +5 % steps stay beside the element, and OUT matches the green
-   number while it heats. Without it, MANUAL as built: the element at its own level, which the screen neither shows nor
-   sets */
-const BKMAN = BK === "power" && QS.get("bkman") === "new" ? "new" : "today";
+/* the boil kettle's MANUAL: by default (BOIL-MANUAL.md, approved on 22 Nov) in MANUAL the element runs at the boil power,
+   the one green number, which reads HAND there; the −5 % … +5 % steps stay beside the element, OUT matches the green
+   number while it heats, and MODE's MAN is boxed in Prompt Amber where AUTO is usual (bkManCue). ?bkman=today is
+   MANUAL as built before: the element at its own level, which the screen neither shows nor sets. boil-manual.html
+   compares the two */
+const BKMAN = BK === "power" && QS.get("bkman") !== "today" ? "new" : "today";
 /* the timers: several, named, with sound (the default; ?timers=new is the same, as the identity test asks for it), or
    ?timers=today, the one rest timer, which the screen keeps for an older CraftBeerPi without the timers */
 const TIMERS = QS.get("timers") === "today" ? "today" : "new";
 document.documentElement.dataset.timers = TIMERS;
-/* the recipe column: ?col=new is the proposal in RECIPE-COLUMN.md, with the timer rows of ?trow=new: on one screen the
+/* the recipe column: ?col=new is the proposal in RECIPE-COLUMN.md, with the approved timer rows: on one screen the
    timers fold into one line when the current step wouldn't be whole beside them, and open in the step list's room; a
    recipe not begun has OTHER RECIPE beside COMPARE PROBES; brewing by hand, the recipe book folds behind CHOOSE A
    RECIPE. Without it, the column as built */
 const COL = TIMERS === "new" && QS.get("col") === "new" ? "new" : "today";
 document.documentElement.dataset.col = COL;
-/* the timer's row: ?trow=new is the proposal in TIMER-REMOVE.md: REMOVE on every row beside START or PAUSE, one tap,
-   with UNDO in its place for 10 s; BACK TO its own time in its editor; + TIMER in the section's heading. Without it,
-   the row as built */
-const TROW = TIMERS === "new" && (QS.get("trow") === "new" || COL === "new") ? "new" : "today";
+/* the timer's row: by default (TIMER-REMOVE.md, approved on 22 Nov) REMOVE on every row beside START or PAUSE, one tap,
+   with UNDO in its place for 10 real seconds; BACK TO its own time in its editor; + TIMER in the section's heading.
+   ?trow=today is the row as built before; timers.html compares the two */
+const TROW = TIMERS === "new" && (QS.get("trow") !== "today" || COL === "new") ? "new" : "today";
 document.documentElement.dataset.trow = TROW;
 /* the drawing after the boil. During the whirlpool and the hop stand the wort pump serves the boil kettle, not the
    HERMS coil, and the drawing stays simple: rather than pipes and valves drawn across from where the pump sits, it

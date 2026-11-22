@@ -48,15 +48,16 @@ Timers: the default (#timers, #timer-done, #timer-new, #timer-names, #timer-nona
 ?timers=new shows the same. ?timers=today is the one rest timer, which the screen shows with an older CraftBeerPi
 without the timers.
 ?names=Hop stand,Yeast tries a BREWDAY_TIMER_NAMES list (blank: none), read as CraftBeerPi reads the setting.
-?trow=new is the proposal of 22 Nov (TIMER-REMOVE.md): REMOVE on every timer's row, with UNDO in its place for 10 s,
-BACK TO its own time in its editor and + TIMER in the heading (#timer-change, #timer-removed); timers.html compares it
-with the rows as built.
-?col=new is the recipe column's proposal (RECIPE-COLUMN.md), with ?trow=new's rows: on one screen the timers fold into
+Timer rows: by default (TIMER-REMOVE.md, approved on 22 Nov), REMOVE on every timer's row, with UNDO in its place for
+10 real seconds, BACK TO its own time in its editor and + TIMER in the heading (#timer-change, #timer-removed).
+?trow=today is the rows as built before; timers.html compares the two.
+?col=new is the recipe column's proposal (RECIPE-COLUMN.md), with the new rows: on one screen the timers fold into
 one line when the current step wouldn't be whole beside them; OTHER RECIPE beside COMPARE PROBES on a recipe not begun;
 brewing by hand, the recipe book folds behind CHOOSE A RECIPE (#timers-fold, #timers-open, #other-recipe, #hand-choose).
-?bkman=new is the boil kettle's MANUAL proposal (BOIL-MANUAL.md): by hand the element heats at the boil power, which the
-window reads as HAND in MANUAL, with the steps beside the element (#bk-hand, #bk-hand-off); boil-manual.html compares it
-with the faceplate as built.
+The boil kettle's MANUAL: by default (BOIL-MANUAL.md, approved on 22 Nov), by hand the element heats at the boil power,
+which the window reads as HAND in MANUAL, with the steps beside the element, and MODE's MAN is boxed in Prompt Amber
+where AUTO is usual (#bk-hand, #bk-hand-off, #bk-man-boil). ?bkman=today is the faceplate as built before;
+boil-manual.html compares the two.
 Title bar: the BREWERY_NAME setting at every width, so a rig and a simulator can't be taken for each other.
 ?name=Simulator 8012 tries another name; blank shows CraftBeerPi. Two lines at most, and a name of more than 24
 characters is drawn smaller (0.7 of the size) on a monitor and a phone; from 701 to 1023 px wide it keeps the full size.
@@ -139,6 +140,7 @@ whirlpool.html shows them side by side; ?focus=rig is for that page.
   <a href="#hand-choose">Choosing a recipe by hand</a>
   <a href="#bk-hand">Boil kettle heating by hand</a>
   <a href="#bk-hand-off">Boil kettle in MANUAL, off</a>
+  <a href="#bk-man-boil">Boil kettle in MANUAL mid-boil</a>
   <a href="#timer-names">Eight names in Settings</a>
   <a href="#timer-nonames">No names in Settings</a>
   <a href="#timers-hand">Timers by hand</a>
@@ -146,10 +148,10 @@ whirlpool.html shows them side by side; ?focus=rig is for that page.
   <span class="lay">Brewery name: <a data-nm="" href="?">default</a> <a data-nm="EBrews - Simulator" href="?name=EBrews - Simulator">EBrews</a> <a data-nm="Simulator 8012" href="?name=Simulator 8012">a simulator</a> <a data-nm="EBrews - A CraftBeerPi Brewery" href="?name=EBrews - A CraftBeerPi Brewery">30 characters</a> <a data-nm="Old Mill Lane Garage Brewing Company" href="?name=Old Mill Lane Garage Brewing Company">36 characters</a></span>
   <span class="lay">Wort pump after the boil: <a data-wp="chill" href="?">default: moves, with chiller</a> <a data-wp="today" href="?wp=today">released build</a> <a data-wp="move" href="?wp=move">moves, no chiller</a> <a data-wp="swirl" href="?wp=swirl">stays, kettle swirls</a> <a href="whirlpool.html">side by side</a></span>
   <span class="lay">Timers: <a data-tm="new" href="?">default</a> <a data-tm="today" href="?timers=today">older CraftBeerPi</a></span>
-  <span class="lay">Timer rows: <a data-trow="today" href="?">as built</a> <a data-trow="new" href="?trow=new">proposal: REMOVE on the row</a> <a href="timers.html">side by side</a></span>
+  <span class="lay">Timer rows: <a data-trow="new" href="?">default: REMOVE on the row</a> <a data-trow="today" href="?trow=today">as built before</a> <a href="timers.html">side by side</a></span>
   <span class="lay">Recipe column: <a data-col="today" href="?">as built</a> <a data-col="new" href="?col=new">proposal: timers fold, OTHER RECIPE</a> <a href="column.html">side by side</a></span>
   <span class="lay">Boil kettle: <a data-bk="power" href="?bk=power">default</a> <a data-bk="today" href="?bk=today">older BoilPower</a></span>
-  <span class="lay">Boil kettle's MANUAL: <a data-bkman="today" href="?">as built</a> <a data-bkman="new" href="?bkman=new">proposal: by hand at the boil power</a> <a href="boil-manual.html">side by side</a></span>
+  <span class="lay">Boil kettle's MANUAL: <a data-bkman="new" href="?">default: by hand at the boil power</a> <a data-bkman="today" href="?bkman=today">as built before</a> <a href="boil-manual.html">side by side</a></span>
   <span class="lay">Layout: <a data-layout="a" href="?layout=a">A · recipe right</a> <a data-layout="b" href="?layout=b">B · recipe left</a></span>
 </nav>
 <div class="app" id="app" data-link="ok">

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-22T20:07:05.925Z",
+  "generatedAt": "2026-11-22T20:42:27.187Z",
   "title": "Design System: CraftBeerPi Brew Day",
   "extensions": {
     "colorMeta": {
@@ -1104,6 +1104,11 @@
         "section": "components"
       },
       {
+        "name": "The Usual Mode Rule",
+        "body": "Where a vessel is in MANUAL while AUTO would usually run it, its MODE says so, in the window where the brewer already looks: MAN boxed in Prompt Amber (amber letters in a 2px amber frame with rounded corners), moving nothing. On the boil kettle that is MANUAL with a probe reading AUTO could work from, while its element heats by hand or a step that boils or holds a temperature in it runs (the Boil, a whirlpool held at 170 °F). Not otherwise: MAN is the kettle's resting state for most of a brew day, and a box shown all the time would be ignored. Not while the boil waits for the brewer to start it, as nothing heats then in either mode; not with no reading, as MANUAL is then the only way to heat; not with no connection. It is no caution and makes no sound, since heating by hand is allowed: it says only that BoilPower isn't running the kettle, which its tooltip and the screen reader put in words (\"In MANUAL, BoilPower isn't running the boil kettle, as it does in AUTO.\"). Amber because it waits on the brewer, as AUTO with no target does (The Mode Tells The Truth Rule), and the frame says it without colour, as a control room marks a controller out of its usual mode. On 22 Nov a simulator's boil kettle heated by hand at 70 % while the brewer thought BoilPower was running it, and he asked: \"make the 'MAN' under MODE yellow or some other indication that I'm not using auto when I probably should be\".",
+        "section": "components"
+      },
+      {
         "name": "The Start Over Rule",
         "body": "Once nothing runs and some step has begun, STOP's place holds RESET, \"back to step 1\". A reset can't be undone: CraftBeerPi forgets which steps are done, the minutes the stopped step had run (a 40 min rest stopped at 16 runs all 40 again) and what the steps kept about this brew, and takes down the brew's questions. So RESET asks first, in the recipe column, saying what CraftBeerPi forgets and what stays: \"Kettles, pumps and timers stay as they are.\" Its answers say what each does, RESET TO STEP 1 and STAY AT STEP 3, with no default. RESET TO STEP 1 switches nothing: the same recipe stays loaded, every step not started, waiting for a held START, and NEXT STEP greyed until then. To switch everything off there is ALL OFF; for another recipe, the RECIPE BOOK tab, or UNLOAD to brew by hand (The Way Out Rule). LOG says \"Recipe reset to step 1\", \"confirmed\" here or \"from another screen\"; the questions taken down say \"no longer needed\". The graphs lose their step marks, which CraftBeerPi forgets too. On 13 Nov the brewer wrote \"Seems to me that there needs to be a way to reset the brewday progress after hitting Stop\", and chose \"The same recipe, back at step 1, waiting for START\".",
         "section": "components"
@@ -1163,6 +1168,8 @@
       "Do keep unavailable controls visible and explain why when they are tapped, in the note line (#ffd9a0) or a toast.",
       "Do say on the line under the window, in Prompt Amber, when a vessel's AUTO runs with no target, and what won't heat because of it.",
       "Do say on the line under the window, in Prompt Amber, while an element heats by hand, that nothing will stop it; in light red once it's past its target or near the boil, with CraftBeerPi's error in the title bar.",
+      "Do box the boil kettle's MAN in Prompt Amber while it heats by hand, or while a step that boils or holds in it runs, and only then.",
+      "Do put REMOVE on every timer's row, one tap, and keep the row's place for 10 real seconds with UNDO.",
       "Do keep the recipe on the brew-day screen: down the left on a monitor, below the faceplates on narrower screens.",
       "Do colour and animate a pipe only while its pump is confirmed running: cyan (#46b8ea) for hot liquor, gold (#e9b33b) for wort.",
       "Do draw the hand valves as the recipe needs them and say so under the boil kettle (\"VALVES ARE SET BY HAND\"); CraftBeerPi can't see them.",

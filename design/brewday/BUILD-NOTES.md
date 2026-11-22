@@ -5562,6 +5562,134 @@ new: the log window's `now` and `scale` already say where its clock is and how f
 - `DESIGN.md`: the title bar, the pre-brew check's clock sentence, The One Clock Rule, one Do and one Don't.
 - `.impeccable\decisions\direction-log.md`; `.impeccable\design.json`, regenerated.
 
+## Timers: REMOVE on the row, with UNDO, and BACK TO in the box: ready to build (22 Nov)
+
+The brewer approved `proposal\TIMER-REMOVE.md` as proposed: REMOVE on every row, one tap, with UNDO for 10 seconds, and
+going back to the full time in the timer's box. The design is DESIGN.md's Timers section; TIMER-REMOVE.md has the
+reasons and the measurements. CraftBeerPi has everything it needs since core 4.7.7.post52.
+
+### What to build (screen.js, brewday.css)
+
+1. **The row on two lines** (`trowHTML`): the name and its state over the time, then REMOVE and START or PAUSE at the
+   right, each at least 84 × 56 px. Copy `.trow.tr2`, `.tr2 .tsel` and the rules after it, `.trow .trm`, `.tr2 .toff`
+   and the `.tmrs[data-editing] .tr2` rules from the mockup's `brew-day.css`.
+   - REMOVE is the quieter button: Soft Steel 600 lettering on a Hairline Slate edge, Panel White under the pointer.
+   - A run-out timer keeps +5 MIN and OK across its row; after OK it is ready, with REMOVE and START.
+   - While its own editor is open, a timer keeps the one-line row with START or PAUSE only, so the editor's buttons
+     stay on the screen at 1180 × 860.
+2. **+ TIMER in the heading**, beside SOUND (`timersHTML`, `.tmrs .thr`, `.tmrs .tplus2`), instead of its row under the
+   timers. A new timer's editor still opens at the end of the list. Greyed, and saying why when tapped: "Four timers at
+   most. Remove one to add another." at four; "One timer at a time: close the one that's open first." while an editor
+   is open.
+3. **REMOVE** (`cmdTm2`, "rm"): `DELETE /timers/{id}`, as the editor's REMOVE sends today, with no question, in any
+   state but a run-out one. While it waits: REMOVING…, with START or PAUSE greyed. LOG: "Stir removed, 7:15 to go", or
+   "Yeast removed" for a ready one.
+4. **The removed row** (`tgoneHTML`; `.trow.tgone`, `.tgone .tgn`, `.tgone .tn`, `.tgone .ts`, `.trow.tgone .tbtn`,
+   `.trow.tgone .tundo`): only on the screen where REMOVE was pressed.
+   - It keeps the row's height and its buttons' width, measured as REMOVE is pressed, so the timer below doesn't move.
+   - On Panel Slate: the name and "removed" in Dim Steel, and UNDO ("put it back") where the two buttons were.
+   - It goes 10 real seconds after REMOVE (`Date.now()`, at any speed of CraftBeerPi's clock), unless UNDO is on its
+     way. Other screens simply lose the timer.
+5. **UNDO** (`tUndo`): `POST /timers/{id}/undo` (`api.js` has no call for it yet). CraftBeerPi puts the timer back
+   with its id, in its place, as it would be now. LOG: "Stir put back, 7:05 to go".
+   - 409, with CraftBeerPi's sentence, shown in the timers' note line for 6 s, and LOG has the command "failed" with
+     it, in light red: "Four timers at most. Remove one to put Stir back." or "Another timer is called Stir now. Rename
+     it to put Stir back." The removed row stays for the rest of its 10 seconds, so UNDO can be pressed again.
+   - 404, after CraftBeerPi's 12 seconds: the screen names the timer itself, as CraftBeerPi's answer has only its
+     number by then: "Stir can't be put back now: a removed timer can be put back for 10 seconds." The row goes.
+6. **BACK TO 15:00 in the editor** (`teditHTML`, `cmdTe` "reset"), while the timer counts down or is paused, hint
+   "ready to start again": `POST /timers/{id}/reset` (no call for it in `api.js` yet either). The editor stays open,
+   now a stopped timer's (CANCEL, SET), so a name typed and not yet saved is kept. LOG: "Stir back to 15:00, stopped
+   with 7:12 to go". A 409 (it ran out meanwhile): CraftBeerPi's "Stir has run out: answer it with OK or +5 MIN." in
+   the note line; the editor closes and the row shows +5 MIN and OK. The editor no longer has REMOVE, nor its question.
+7. **Moments for the demo**: `#timer-change` (Stir's editor while it counts down) and `#timer-removed` (Stir just
+   removed), from the mockup.
+
+### In CraftBeerPi
+
+Nothing new: `DELETE /timers/{id}`, `POST /timers/{id}/undo` and `POST /timers/{id}/reset` are in core 4.7.7.post52.
+CraftBeerPi keeps a removed timer for 12 real seconds (`TimersController.UNDO_FOR` and `UNDO_GRACE`).
+
+### Checked
+
+- `files\tm2_presses.py`: 72 presses on the default, at 1440 × 900 and 390 × 844, all pass, with the rows as built
+  before (`?trow=today`) at the end; `files\tm2_col_presses.py` (34), with the column as built and these rows.
+- `files\clock_presses.py`: the removed row lasts 10 real seconds on a simulator at 60×.
+- Pictures against your copy (UI 1fca41c), every moment at 1440 × 900 and 390 × 844: with `?trow=today&bkman=today`
+  the same in every moment but the new `#bk-man-boil`; the default against your copy's `?trow=new&bkman=new` is in the
+  next section's Checked.
+
+## The boil kettle's MANUAL at the boil power, and MAN where AUTO is usual: ready to build (22 Nov)
+
+The brewer approved `proposal\BOIL-MANUAL.md` as proposed: in MANUAL the boil element heats at the boil power, one
+number for AUTO and by hand. He added: "make the 'MAN' under MODE yellow or some other indication that I'm not using
+auto when I probably should be." The design is DESIGN.md's boil kettle parts and The Usual Mode Rule; BOIL-MANUAL.md
+has the reasons.
+
+### What to build (screen.js, brewday.css)
+
+1. **HAND in MANUAL** (`svCell`): the framed green number reads HAND in MANUAL and BOIL in AUTO, in the same place,
+   green and frame, with "change". In MANUAL it shows the element's own level (`manual_power`), which BoilPower keeps
+   equal to `Boil_Power` while AUTO isn't running, so it can never show a level the element won't heat at.
+2. **The line under the window** (`bkLine`): "MANUAL · heats at 45 % by hand" with the element off, "Heating by hand
+   at 45 %" while it heats. With a temperature to hold (the whirlpool's 170 °F), SV stays in the window and the line is
+   The By Hand Rule's: "Heating by hand · won't stop at target".
+3. **The steps in MANUAL** (`bkNudges`): −5 %, −1 %, +1 % and +5 % stay either side of BOIL ELEMENT in MANUAL, as in
+   AUTO, and send `set_boil_power` as there. BoilPower changes the element's level with it, and its power at once while
+   it heats, so OUT follows. The power box does the same.
+4. **The element's button in MANUAL** (`bkHandLampHTML`): narrow between the steps, as in AUTO, its name kept for
+   screen readers: "hold to turn on" (held, as before) or "tap to turn off". Where the steps have a row of their own
+   (windows about 900 to 970 and 1180 to 1320 px wide), "BOIL ELEMENT · hold to turn on", as now.
+5. **LOG** (`actLabel`): "BOIL ELEMENT on at 45 %" by hand. A change with the element off in MANUAL: "Boil power 44 %
+   (was 45 %)", with "used when you heat by hand" in place of "kept for the boil in AUTO".
+6. **MAN where AUTO is usual** (`bkManCue`, `MAN_CUE`, `auxHTML`; `.aux dd .mc`): MODE's MAN in the window, boxed in
+   Prompt Amber (2 px frame, 4 px corners, its margins giving the frame's room back, so nothing moves). When all of:
+   - the boil kettle is in MANUAL, the connection is up, and its probe gives a reading;
+   - and its element is on, or the current step works the boil kettle with a temperature (the step's Kettle is the boil
+     kettle and it has a Temp: the Boil, a whirlpool held at 170 °F) and is running. Not while the boil waits for the
+     brewer to start it ("Ready to boil?"), as nothing heats then in either mode.
+   Its `title` and, after MAN for screen readers (`.sr`): "In MANUAL, BoilPower isn't running the boil kettle, as it
+   does in AUTO." No sound, no alarm and no line of its own.
+7. **Moments for the demo**: `#bk-hand` (by hand, the element on; MAN boxed), `#bk-hand-off` (off; MAN plain) and
+   `#bk-man-boil` (the boil running, the kettle put in MANUAL, the element off; MAN boxed).
+
+### In CraftBeerPi
+
+BoilPower 0.0.3.post13 has it: while AUTO isn't running, `_heat_by_hand_at` keeps the element's own level at
+`Boil_Power`, as AUTO stops, when the boil power is set, when a recipe's start puts back the usual boil power, and as
+CraftBeerPi starts. So the Hardware page's switch heats at the boil power too.
+
+One thing for you: nothing BoilPower declares tells post13 from an older one (it has no new action). With an older
+BoilPower the steps in MANUAL would change `Boil_Power` while the element went on heating at its own level, so the
+screen should keep MANUAL as built before there. Your choice how it tells, for example a declared marker or the
+plugin's version.
+
+### Checked
+
+- `files\bk_presses.py`: 23 presses on the default, at 1920 × 950, all pass: HAND, OUT, the line, the steps off and
+  heating, the power box, LOG, AUTO; MAN boxed while heating by hand, with its sentence, moving nothing, and plain again
+  when off or in AUTO; boxed mid-boil with the element off and in a whirlpool hold put in MANUAL; plain with no reading,
+  with no connection, while the boil waits for the brewer and during the sparge; and as built before
+  (`?bkman=today`).
+- In every moment, MAN is boxed only in `#bk-hand` and `#bk-man-boil`.
+- Pictures against your copy (UI 1fca41c), every moment at 1440 × 900 and 390 × 844: the default against your copy's
+  `?trow=new&bkman=new` differs only where MAN is boxed (`#bk-hand`) and in the new `#bk-man-boil`.
+
+### Changed
+
+For both sections:
+
+- `proposal\brew-day.js`: the defaults (`TROW`, `BKMAN`; `?trow=today` and `?bkman=today` keep the old ones),
+  `bkManCue`, `MAN_CUE`, `auxHTML`, the moment `#bk-man-boil`, and comments. `proposal\brew-day.css`: `.aux dd .mc`.
+  `proposal\brew-day.html`: the notes and the strip's links. `timers.html`, `boil-manual.html`, `column.html` and
+  `review.html`: their "today" side asks for the old versions by name.
+- `proposal\TIMER-REMOVE.md` and `proposal\BOIL-MANUAL.md`: approved, with the brewer's answers; BOIL-MANUAL.md has
+  the MAN section.
+- `DESIGN.md`: the Timers section (Section, Row, Removed, Run out, Editor); the boil power button, the step buttons,
+  the faceplate's window, line and lamp buttons, the power editor's words; Prompt Amber's and Progress Blue's uses (the
+  second is the clock's tag, left out of the last copy); The Usual Mode Rule; two Do's.
+- `.impeccable\decisions\direction-log.md`; `.impeccable\design.json`, regenerated.
+
 ## Open questions about the drawing
 
 Both were answered on 10 Nov. The valves have been in the drawing since then; the path after the boil was
