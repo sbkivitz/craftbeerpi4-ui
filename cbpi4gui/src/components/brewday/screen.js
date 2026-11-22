@@ -1328,7 +1328,9 @@ function renderAll() {
        side by side, a timer's alarm), the versions' line steps aside on a monitor, so the step list keeps the current
        step whole (brewday.css) */
     $("#recipe").toggleAttribute("data-asking", !!(st.confirmNext || st.confirmReset || st.pbOpen || st.cmpOpen || (M.TIMERS && st.tmrs.some(t => t.state === "done"))));
-    // the pre-brew check's box and the probes side by side take the step list's room on one screen, as a timer's editor does
+    /* the pre-brew check's box and the probes side by side take the step list's room on one screen, as a timer's editor
+       does, and the timers' too, so the box isn't squeezed and the page doesn't grow. A timer's editor open as the box
+       opens stays open, with what was typed in it: it makes way with the timers until the box closes (brewday.css) */
     $("#recipe").toggleAttribute("data-pb", !!(st.pbOpen || st.cmpOpen));
     morph($("#recipe"), recipeHTML() + verHTML());
     pbFit(before);
@@ -2309,6 +2311,9 @@ function tmlHTML() {
   return `<button type="button" class="tml" data-cmd="tjump"><span class="tl">TIMERS</span><span id="tml-t">${tmlText()}</span></button>`;
 }
 const tmlText = () => st.tmrs.filter(t => t.state !== "stopped").map(t => t.state === "done" ? `<span class="d">${esc(t.name)} TIME'S UP</span>` : `${esc(t.name)} ${t.state === "paused" ? "paused " : ""}${tfmt(t.left)}`).join(" · ");
+/* the one-screen layout (brewday.css): from 1180 px wide the page never scrolls, and the recipe column's parts make way
+   for one another */
+const ONE_SCREEN = window.matchMedia("(min-width:1180px)");
 /* the step list scrolls, where it has to, so the current step is whole in view: on the one-screen layout the list is
    the part of the column that gives up height, to the timers, a question or an editor, with or without the timers */
 function keepStepInView() {
@@ -3155,7 +3160,8 @@ const handlers = {
       return;
     }
     if (e.key === "Escape" && moreOpen()) { closeMore(); const t = $('.tabs a[data-tab="More"]'); if (t) t.focus(); return; }
-    if (e.key === "Escape" && st.tedit) { st.tedit = null; renderAll(); return; }
+    /* on one screen a box open in the column has the timers make way, a timer's editor with them, so Escape is for the box */
+    if (e.key === "Escape" && st.tedit && !(ONE_SCREEN.matches && (st.pbOpen || st.cmpOpen))) { st.tedit = null; renderAll(); return; }
     if (e.key === "Escape" && (st.edit || st.logOpen || st.confirmNext || st.confirmReset || st.pbOpen || st.cmpOpen)) { st.edit = null; st.logOpen = false; st.confirmNext = false; st.confirmReset = false; st.pbOpen = false; st.cmpOpen = false; renderAll(); }
   },
   keyup: e => { if (hold && (e.key === " " || e.key === "Enter")) { e.preventDefault(); holdEnd(true); } },
