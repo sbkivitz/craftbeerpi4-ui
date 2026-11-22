@@ -1,4 +1,4 @@
-/* The Recipe book, a recipe's steps, importing, and Brew steps, in the brew-day screen's world (DESIGN.md of the brew-day screen,
+/* The Recipe Book, a recipe's steps, importing, and Brew Steps, in the brew-day screen's world (DESIGN.md of the brew-day screen,
    from craftbeerpi4-ui-impeccable). The frame (title bar, last event, tabs) is layout B's, rule for rule, as Settings and
    Hardware have it; everything after "recipes" is these pages' own. */
 :root{
@@ -12,7 +12,7 @@
   --sans:"Barlow","Segoe UI",system-ui,sans-serif;
   --cond:"Barlow Condensed","Roboto Condensed","Arial Narrow","Segoe UI",sans-serif;
   --r:6px;--gap:12px;--pad:20px;--tabs-h:64px;--mock-h:38px;--row-l:520px;--row-c:400px;
-  /* the Recipe book's columns: the name, then the numbers that tell recipes apart, in the same place on every row */
+  /* the Recipe Book's columns: the name, then the numbers that tell recipes apart, in the same place on every row */
   --bkc:minmax(0,1fr) 54px minmax(120px,168px) 74px 98px;--bka:156px
 }
 html.bare{--mock-h:0px}
@@ -133,7 +133,7 @@ html.bare .mock{display:none}
 .col .desc{margin:0;font:500 15px/1.35 var(--sans);color:var(--text-2)}
 
 /* a recipe's steps, as Brew Day lists them: the number on a darker band, the name, its temperature and minutes, the
-   boil's additions; on the right what kind of step it is (here, where nothing runs) or how far it has got (Brew steps) */
+   boil's additions; on the right what kind of step it is (here, where nothing runs) or how far it has got (Brew Steps) */
 .steps{flex:1;min-height:0;overflow:auto;margin:0;padding:0 2px 0 0;list-style:none;display:flex;flex-direction:column;gap:6px;overscroll-behavior:contain;scroll-padding:8px}
 .steps>li{display:block}
 .step{display:grid;grid-template-columns:36px minmax(0,1fr) auto;column-gap:12px;row-gap:3px;align-items:center;width:100%;min-height:58px;padding:8px 12px 8px 6px;border:1px solid var(--line);border-radius:var(--r);background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),var(--panel-2);color:var(--text);text-align:left;touch-action:manipulation}
@@ -228,7 +228,7 @@ button.step:hover{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transpa
 .lnk:hover{color:#fff}
 .lnk[aria-disabled=true]{color:var(--text-3);cursor:not-allowed}
 
-/* ---------- the Recipe book: one row per recipe, newest first, its numbers in fixed columns so versions line up ---------- */
+/* ---------- the Recipe Book: one row per recipe, newest first, its numbers in fixed columns so versions line up ---------- */
 .book{display:flex;flex-direction:column;gap:6px;padding-bottom:24px}
 .bkh{display:grid;grid-template-columns:var(--bkc) var(--bka);column-gap:14px;padding:2px 9px 2px 15px;font:600 14px/1 var(--cond);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
 .bkl{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
@@ -248,7 +248,7 @@ button.step:hover{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transpa
 .bk[aria-current=true]{background:var(--active);border-color:var(--active-edge)}
 .bk[aria-current=true] .bs,.bk[aria-current=true] .c.d,.bk[aria-current=true] .hit{color:var(--active-ink)}
 .bk[aria-current=true] .lch .on,.bk[aria-current=true] .lch .st2{color:var(--active-ink)}
-/* the recipe on Brew day, in LOAD's place: what it is doing, in Brew Day's own words, with a lamp: green while it runs */
+/* the recipe on Brew Day, in LOAD's place: what it is doing, in Brew Day's own words, with a lamp: green while it runs */
 .lch{display:grid;gap:3px;justify-items:start;margin:0;font:600 15px/1.1 var(--cond);letter-spacing:.06em;text-transform:uppercase;color:var(--text)}
 .lch .on{font-size:13px;letter-spacing:.1em;color:var(--text-3)}
 .lch .lm{display:inline-flex;align-items:center;gap:7px}

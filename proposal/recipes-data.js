@@ -1,4 +1,4 @@
-/* The Recipe book mockup's data. The simulator's (http://127.0.0.1:8012), read once and never written
+/* The Recipe Book mockup's data. The simulator's (http://127.0.0.1:8012), read once and never written
    to: its four recipes, its vessels, probes and switches, and the settings an import uses. Made up for the mockup, and
    saying so in their descriptions: House Pale Ale, Oatmeal Stout and Hefeweizen; the two BeerSmith files and what
    importing them gives; and the Brewfather list. */
@@ -23,9 +23,12 @@ window.CBPI_RECIPES = (() => {
     boil(90, [[60, "3.00 oz Centennial"], [15, "6.00 oz Willamette"], [15, "1 Whirlfloc Tablet"], [5, "3.00 oz Citra"]]),
     wpHop("Cool down to 170 F. Then add 1.50 oz Calypso."), wp(170, 20)];
 
-  /* the Recipe book, as GET /recipe/ lists it (basic data, file, modified) with each recipe's steps (GET /recipe/{file}) */
+  /* the Recipe Book, as GET /recipe/ lists it (basic data, file, modified) with each recipe's steps (GET /recipe/{file}).
+     v5's mash_numbers are its BeerSmith export's, as the import keeps them in its basic data, in litres and kg, with
+     the three the HLT's water is worked out from (boil_l, top_up_kettle_l, lauter_dead_l: server change 7) */
   const BOOK = [
-    {file: "YhweWUoDCyYKB887DJ9EXd", name: "Craftbeerpi Test Recipe v5", author: "John Doe", imported_from: "BeerXML", modified: at("2026-11-13T13:53:00"), steps: v5steps},
+    {file: "YhweWUoDCyYKB887DJ9EXd", name: "Craftbeerpi Test Recipe v5", author: "John Doe", imported_from: "BeerXML", modified: at("2026-11-13T13:53:00"), steps: v5steps,
+      mash_numbers: {grain_kg: 9.07184, infuse_l: 31.2675, for_grain_l: 28.390752, infusions_l: 40.731, boil_l: 87.0649728, top_up_kettle_l: 0, lauter_dead_l: 0}},
     {file: "FtHtz5YsgsSFEikqEieXJb", name: "Craftbeerpi Test Recipe v4", author: "John Doe", imported_from: "BeerXML", modified: at("2026-11-05T15:50:00"),
       steps: [mashIn(126), rest("Saccharification", 126, 20), rest("Mash Step", 149, 40),
         boil(90, [[15, "6.00 oz Willamette"], [15, "1 Whirlfloc Tablet"], [5, "3.00 oz Citra"]]),
@@ -78,7 +81,9 @@ window.CBPI_RECIPES = (() => {
     SENSORS: [{id: HLTS, name: "HLT Temp"}, {id: MTS, name: "Mash Temp"}, {id: BKS, name: "Boil Temp"}],
     ACTORS: [{id: "ekAhWurViFMGBSQHoUMEr7", name: "HLT Heater"}, {id: "BrewDayHLTPump00000001", name: "HLT Pump"}, {id: "TZf9NpePBSrStdEqr6VoTX", name: "Mash Pump"}, {id: "CPgMajE4XGucCT8fbw2xQf", name: "Boil Heater"}, {id: "TB4KRvhTsWJXEJro2VdT7k", name: "Glycol Pump"}],
     /* the settings an import goes by (UploadController.get_config_values), as the simulator has them */
-    CONFIG: {MASH_TUN: MT, BoilKettle: BK, steps_boil_temp: 210.2, steps_whirlpool_temp: 170, steps_sparge: "SpargeStep", AddMashInStep: "Yes", AddMashOutStep: "Yes", AutoMode: "Yes", AUTHOR: "John Doe", brewfather_user_id: "", brewfather_api_key: "", steps_boil_lid_alert: "Turn on the Steam Slayer mister", CONFIRM_BEFORE_BOIL: "Yes"},
+    CONFIG: {MASH_TUN: MT, BoilKettle: BK, steps_boil_temp: 210.2, steps_whirlpool_temp: 170, steps_sparge: "SpargeStep", AddMashInStep: "Yes", AddMashOutStep: "Yes", AutoMode: "Yes", AUTHOR: "John Doe", brewfather_user_id: "", brewfather_api_key: "", steps_boil_lid_alert: "Turn on the Steam Slayer mister", CONFIRM_BEFORE_BOIL: "Yes",
+      /* the new setting for server change 7, in the brewery's units: gal per lb with °F (L per kg with °C) */
+      GRAIN_ABSORPTION: 0.12},
     BOOK, FILES, BREWFATHER,
     /* today, in the mockup: brew day's morning, as on the brew-day mockup's pre-brew check */
     TODAY: "2026-11-22"

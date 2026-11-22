@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Recipe book · CraftBeerPi proposal (mockup)</title>
+<title>Recipe Book · CraftBeerPi proposal (mockup)</title>
 <!--
 DIRECTION CONTRACT (Impeccable; source: proposal/RECIPES.md)
-THESIS: The Recipe book shows a recipe the way Brew Day will show it, in the place Brew Day shows it, and you choose,
-change and import beside it. One word, LOAD, puts a recipe on Brew day, everywhere. It refuses the unlabelled icons
+THESIS: The Recipe Book shows a recipe the way Brew Day will show it, in the place Brew Day shows it, and you choose,
+change and import beside it. One word, LOAD, puts a recipe on Brew Day, everywhere. It refuses the unlabelled icons
 whose meaning lives in a hover tooltip.
 OWN-WORLD: The brew-day touch panel unchanged: Garage Slate page, Cabinet Black title bar and tabs, Panel Slate column and
 plates, Barlow Condensed capitals, Brew Day's numbered step rows, Settings' rows with the plain name first and
@@ -17,7 +17,7 @@ STORY: The brewer finds the recipe he wants by its name or its numbers, sees its
 it with one tap (or answers one question when a brew has begun), and changes a step beside its preview. A new step goes
 where its kind belongs; MOVE, then PUT IT HERE, puts any step anywhere in two taps; a recipe without BrewStart offers it
 as step 1, filled in from the rig, with only its time left to set.
-FIRST VIEWPORT: Title bar, last event, tabs with RECIPE BOOK lit. Left: the recipe on Brew day, as Brew Day's recipe
+FIRST VIEWPORT: Title bar, last event, tabs with RECIPE BOOK lit. Left: the recipe on Brew Day, as Brew Day's recipe
 column shows it, with LOAD, EDIT and COPY in START, STOP and NEXT STEP's places. Right: FIND A RECIPE, + NEW and IMPORT
 over the book, a row per recipe, newest first, its numbers in fixed columns, LOAD at the end of each.
 FORM: the recipe as Brew Day's column, 3rd of 7, with the book and the editor beside it; staging: Brew Day's recipe
@@ -35,13 +35,14 @@ strip at the top; add ?bare to hide it. Brew Day's own part (OTHER RECIPE in its
 </head>
 <body>
 <nav class="mock" id="mock" aria-label="Mockup moments (not part of the design)">
-  <strong>Recipe book mockup.</strong>
+  <strong>Recipe Book mockup.</strong>
   <span class="grp">The book:</span>
   <a href="#book">As it opens</a>
   <a href="#choose">v4 opened</a>
   <a href="#loading">LOAD v4</a>
   <a href="#loaded">v4 loaded</a>
   <a href="#ask">LOAD over a stopped brew</a>
+  <a href="#ask-lost">LOAD over a recipe not in the book</a>
   <a href="#running">LOAD while a step runs</a>
   <a href="#brewstart">BrewStart waiting overnight</a>
   <a href="#finished">After a brew</a>
@@ -51,7 +52,7 @@ strip at the top; add ?bare to hide it. Brew Day's own part (OTHER RECIPE in its
   <a href="#edit">EDIT v4, 3 changes</a>
   <a href="#boil">The boil's additions</a>
   <a href="#add">+ STEP</a>
-  <a href="#saved">Saved while it's on Brew day</a>
+  <a href="#saved">Saved while it's on Brew Day</a>
   <a href="#copy">COPY</a>
   <a href="#new">+ NEW</a>
   <a href="#delete">Delete asks first</a>
@@ -63,7 +64,7 @@ strip at the top; add ?bare to hide it. Brew Day's own part (OTHER RECIPE in its
   <a href="#reimported">Imported again</a>
   <a href="#refused">Not imported</a>
   <a href="#brewfather">Brewfather</a>
-  <span class="grp">Brew steps:</span>
+  <span class="grp">Brew Steps:</span>
   <a href="#steps">Ready to start</a>
   <a href="#steps-running">A step running</a>
   <a href="#to-book">SAVE TO BOOK</a>
@@ -93,9 +94,9 @@ strip at the top; add ?bare to hide it. Brew Day's own part (OTHER RECIPE in its
   </section>
 
   <nav class="tabs" aria-label="Screens">
-    <a href="#tab" data-tab="Brew day">Brew day</a>
-    <a href="#tab" data-tab="Brew steps"><span class="long">Brew steps</span><span class="short">Steps</span></a>
-    <a href="#tab" data-tab="Recipe book" aria-current="page"><span class="long">Recipe book</span><span class="short">Recipes</span></a>
+    <a href="#tab" data-tab="Brew Day">Brew Day</a>
+    <a href="#tab" data-tab="Brew Steps"><span class="long">Brew Steps</span><span class="short">Steps</span></a>
+    <a href="#tab" data-tab="Recipe Book" aria-current="page"><span class="long">Recipe Book</span><span class="short">Recipes</span></a>
     <a href="#tab" data-tab="Analytics">Analytics</a>
     <a href="#tab" data-tab="Hardware">Hardware</a>
     <a href="#tab" data-tab="Settings">Settings</a>
@@ -106,7 +107,7 @@ strip at the top; add ?bare to hide it. Brew Day's own part (OTHER RECIPE in its
   <main class="main" id="main" data-view="list">
     <div class="tool" id="tool"></div>
     <aside class="col" id="col" aria-label="Recipe"></aside>
-    <section class="pane" id="pane" aria-label="Recipe book">
+    <section class="pane" id="pane" aria-label="Recipe Book">
       <div id="work"></div>
     </section>
   </main>

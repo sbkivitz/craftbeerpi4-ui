@@ -1,6 +1,6 @@
-/* Recipe book mockup: the Recipe book, a recipe's steps, importing, and Brew steps, in the brew-day screen's world.
+/* Recipe Book mockup: the Recipe Book, a recipe's steps, importing, and Brew Steps, in the brew-day screen's world.
    A recipe is shown as Brew Day's recipe column shows it, in the same place; the book, a step's settings and importing
-   sit beside it. LOAD puts a recipe on Brew day: one tap, unless a brew has begun (then it asks) or a step runs (then it
+   sit beside it. LOAD puts a recipe on Brew Day: one tap, unless a brew has begun (then it asks) or a step runs (then it
    says why not). A new step goes in where its kind belongs in a brew; MOVE, then PUT IT HERE, moves a step any distance
    in two taps; a recipe without BrewStart offers it as step 1, filled in from the rig. Vanilla JS like the Settings and
    Hardware mockups. A mockup: nothing here talks to CraftBeerPi, and a command "answers" after a second. Recipes and
@@ -40,6 +40,9 @@ const kindName = t => (CAT.KINDS[t] || {}).n || t || "No kind chosen";
 const nameIn = s => s.name || kindName(s.type);
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+// BrewStart's Timing: only "Ready by" heats; a step saved with no Timing runs as Start at, as it did before Timing existed
+const readyBy = p => norm((p || {}).Timing) === "Ready by";
+const hm = t => { const m = /^\s*(\d{1,2}):(\d{2})/.exec(String(t ?? "")); return m ? `${m[1].padStart(2, "0")}:${m[2]}` : ""; };
 const todayAt = hm => Date.parse(`${D.TODAY}T${hm}:00`) / 1000;
 function dateWords(ep) {
   const d = new Date(ep * 1000), iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -64,12 +67,13 @@ function additions(p) {
   }
   return out;
 }
-/* a step as Brew Day's recipe column lists it: its name, its temperature and minutes, a note, the boil's additions */
+/* a step as Brew Day's recipe column lists it (live.js stepModel): its name, its temperature and minutes, a note, the
+   boil's additions; a BrewStart on Ready by gives the water's temperature, when it's ready by and how much there is */
 function stepView(s) {
   const p = s.props || {}, temp = num(p.Temp), t = num(p.Timer), v = {n: s.name || kindName(s.type)};
-  if (s.type === "BrewStart") {
-    const rt = num(p.Ready_Temp), vol = num(p.Volume);
-    v.p = [rt != null ? `${fmt(rt)} ${U}` : "", p.StartTime ? `${p.Timing === "Start at" ? "starts at" : "ready by"} ${p.StartTime}` : "", vol != null ? `${fmt(vol)} ${p.Volume_Unit || "gal"}` : ""].filter(Boolean).join(" · ");
+  if (s.type === "BrewStart" && readyBy(p)) {
+    const rt = num(p.Ready_Temp), vol = num(p.Volume), at = hm(p.StartTime);
+    v.p = [rt != null ? `${fmt(rt)} ${U}` : "", at ? `ready by ${at}` : "", vol != null && vol > 0 ? `${fmt(vol)} ${p.Volume_Unit === "L" || p.Volume_Unit === "gal" ? p.Volume_Unit : D.UNIT === "C" ? "L" : "gal"}` : ""].filter(Boolean).join(" · ");
   } else v.p = [temp != null ? `${s.type === "SpargeStep" ? "water " : ""}${fmt(temp)} ${U}` : "", t ? `${fmt(t)} min` : ""].filter(Boolean).join(" · ");
   if (s.type === "MashInStep") v.note = temp != null ? `Add the malt when it reaches ${fmt(temp)} ${U}` : "Add the malt when it is up to temperature";
   else if (s.type === "NotificationStep" && p.Notification) v.note = unitText(p.Notification);
@@ -104,13 +108,13 @@ function fresh() {
     view: "list",       // 899 px and narrower, one at a time: list, recipe or plate
     pick: null,         // 899 px and narrower: the plate shown on its own
     q: "",
-    loaded: null,       // the recipe on Brew day: CraftBeerPi's brew steps
+    loaded: null,       // the recipe on Brew Day: CraftBeerPi's brew steps
     pend: {},           // commands waiting for CraftBeerPi's answer
     ask: null,          // a question that waits for an answer, in the place it was asked
     notes: {},          // why a control can't be used, said where it was pressed, for six seconds
-    ed: null,           // the Recipe book's copy being changed
-    bs: null,           // Brew day's copy being changed (Brew steps)
-    offer: null,        // after SAVE: the copy on Brew day is older than the book's, and LOAD AGAIN would bring it up to date
+    ed: null,           // the Recipe Book's copy being changed
+    bs: null,           // Brew Day's copy being changed (Brew Steps)
+    offer: null,        // after SAVE: the copy on Brew Day is older than the book's, and LOAD AGAIN would bring it up to date
     imp: {file: "kept", result: null, bf: false, bq: "", busy: null},
     banner: null,
     link: "ok",
@@ -123,9 +127,9 @@ const sorted = () => [...st.book].sort((p, q) => q.modified - p.modified || p.na
 function loadFrom(file, state = "ready", cur = 0, extra = {}) {
   const r = book(file);
   const steps = clone(r.steps).map((s, i) => ({...s, status: state === "finished" ? "D" : i < cur ? "D" : i === cur ? ({ready: "I", running: "A", stopped: "S"})[state] : "I"}));
-  st.loaded = {file, name: r.name, at: "07:38", steps, left: null, ran: null, ...extra};
+  st.loaded = {file, name: r.name, at: "07:38", steps, left: null, ran: null, mash_numbers: r.mash_numbers ? clone(r.mash_numbers) : null, ...extra};
 }
-/* where Brew day is with the recipe loaded, in Brew Day's words: not begun, running, stopped (or waiting for the brewer
+/* where Brew Day is with the recipe loaded, in Brew Day's words: not begun, running, stopped (or waiting for the brewer
    at a later step), finished. begun: a step has started, so loading another makes CraftBeerPi forget how far it got */
 function brew() {
   const L = st.loaded;
@@ -141,22 +145,26 @@ function brew() {
 }
 const statusWords = b => b.state === "finished" ? "FINISHED" : `${b.state === "running" ? "RUNNING" : b.state === "ready" ? "READY TO START" : "STOPPED"} · STEP ${b.cur + 1} OF ${b.n}`;
 const isLoaded = file => !!st.loaded && st.loaded.file === file;
+/* whether the recipe on Brew Day can be loaded again: the Recipe Book still has the copy it was loaded from. Steps
+   built on Brew Steps, or a recipe whose copy was deleted, can't, so LOAD and UNLOAD ask before replacing them */
+const loadedInBook = () => !!(st.loaded && st.loaded.file && book(st.loaded.file));
 /* LOAD, the same rules everywhere, Brew Day included: one tap while nothing has begun; a question once a brew has
-   begun; while a step runs, greyed, saying in brewing words what runs */
+   begun, or when the recipe it replaces isn't in the Recipe Book; while a step runs, greyed, saying in brewing words
+   what runs */
 function loadRule() {
   if (st.link === "lost") return {why: PAUSED};
   if (st.pend.load || st.pend.unload) return {why: WAIT};
   const b = brew();
   if (b.state === "running") return {why: runningWhy()};
-  if (b.begun) return {ask: true};
+  if (b.begun || (b.state !== "none" && !loadedInBook())) return {ask: true};
   return {};
 }
 function runningWhy() {
-  const L = st.loaded, s = L.steps[brew().cur], p = s.props || {};
-  const what = s.type === "BrewStart"
-    ? `BrewStart is waiting to have the ${nameOf(D.KETTLES, p.Heat_Kettle) || "water"} at ${fmt(num(p.Ready_Temp))} ${U} by ${p.StartTime}`
-    : `${s.name}${L.left != null ? `, ${mmss(L.left)} left` : ""}`;
-  return `${L.name} is running: ${what}. Stop it on Brew day first.`;
+  const L = st.loaded, s = L.steps[brew().cur], p = s.props || {}, nx = L.steps[brew().cur + 1];
+  const what = s.type !== "BrewStart" ? `${s.name}${L.left != null ? `, ${mmss(L.left)} left` : ""}`
+    : readyBy(p) ? `BrewStart is waiting to have the ${nameOf(D.KETTLES, p.Heat_Kettle) || "water"} at ${fmt(num(p.Ready_Temp))} ${U} by ${hm(p.StartTime)}`
+    : `BrewStart is waiting until ${hm(p.StartTime)} to start ${nx ? nameIn(nx) : "the next step"}`;
+  return `${L.name} is running: ${what}. Stop it on Brew Day first.`;
 }
 // where the brew stopped, for a question: "stopped at step 3, Saccharification, after 16 of its 40 min"
 function whereStopped() {
@@ -164,7 +172,7 @@ function whereStopped() {
   return b.state === "stopped" ? `stopped at step ${b.cur + 1}, ${s.name}${L.ran != null && t ? `, after ${L.ran} of its ${fmt(t)} min` : ""}` : `is at step ${b.cur + 1}, ${s.name}, waiting for you`;
 }
 
-/* ---------- changing a recipe: the book's copy (st.ed) or Brew day's (st.bs, the Brew steps page) ---------- */
+/* ---------- changing a recipe: the book's copy (st.ed) or Brew Day's (st.bs, the Brew Steps page) ---------- */
 const E = () => st.page === "steps" ? st.bs : st.ed;
 function startEdit(file, cur) {
   const r = book(file), doc = {name: r.name, author: r.author || "", desc: r.desc || "", steps: keyed(r.steps)};
@@ -207,7 +215,7 @@ const typeOf = (type, label) => (CAT.TYPES[type] || {})[label] || (/^Hop_\d$|Tim
 const unitOf = (m, s) => m.unit === "deg" ? U : m.unit === "vol" ? (s.props.Volume_Unit || "gal") : m.unit || "";
 function shownValue(s, label, v) {
   const t = typeOf(s.type, label), m = meta(s.type, label);
-  if (norm(v) === "") return m.blank || "blank";
+  if (norm(v) === "") return m.blankAs ? `${(m.opts || {})[m.blankAs] || m.blankAs}, left blank` : m.blank || "blank";
   if (t === "kettle") return nameOf(D.KETTLES, v) || "not found";
   if (t === "sensor") return nameOf(D.SENSORS, v) || "not found";
   if (t === "actor") return nameOf(D.ACTORS, v) || "not found";
@@ -228,8 +236,8 @@ function newStep(type) {
   return s;
 }
 const hasBrewStart = steps => steps.some(s => s.type === "BrewStart" && !s._removed);
-/* the first place a step can go: on Brew steps, after every step that has begun (done, running or stopped), since
-   CraftBeerPi runs the steps still to come in order; in the book, anywhere */
+/* the first place a step can go: on Brew Steps, after the last step that has begun (done, running, stopped or
+   failed), since CraftBeerPi runs the steps still to come in order; in the book, anywhere */
 function firstFree(ed) {
   if (st.page !== "steps") return 0;
   let f = 0;
@@ -276,36 +284,55 @@ function moveTo(ed, s, g) {
 }
 
 /* ---------- BrewStart: filled in from the rig, and its time in words ---------- */
-/* the newest BrewStart there is: on Brew day's steps, or in the newest recipe in the book that has one */
+/* the newest BrewStart there is: on Brew Day's steps, or in the newest recipe in the book that has one */
 function newestBrewStart() {
   const onDay = st.loaded && st.loaded.steps.find(s => s.type === "BrewStart");
-  if (onDay) return {s: onDay, from: `${st.loaded.name} on Brew day`};
+  if (onDay) return {s: onDay, from: `${st.loaded.name} on Brew Day`};
   for (const r of sorted()) { const s = r.steps.find(x => x.type === "BrewStart"); if (s) return {s, from: r.name}; }
   return null;
 }
 // the HLT: the vessel this recipe's sparge heats, or the one called HLT
 const hltOf = steps => { const sp = steps.find(s => s.type === "SpargeStep" && s.props.Kettle); return sp ? sp.props.Kettle : (D.KETTLES.find(k => /\bHLT\b|hot liquor/i.test(k.name)) || {}).id || ""; };
-/* a new BrewStart: Ready by, with the HLT, its element, the water and the Campden choice of the newest BrewStart, and
-   the water temperature of this recipe's mash in. The time is left for the brewer: it is the one thing only he knows,
-   and SAVE waits for it. The day is Tomorrow from noon (the night before), Today before */
+const GAL_L = 3.785411784, LB_KG = 0.45359237;
+/* the water a recipe needs, all of it through the HLT, from its import's figures (mash_numbers, in litres and kg): what
+   goes into the boil kettle before the boil, less anything topped up there, plus what the grain keeps and what is lost
+   under the mash. The grain's share is the Grain absorption setting's, since a BeerXML file has no figure for it. In
+   the brewery's volume unit; null when the import didn't give the figures */
+function recipeWater(mn) {
+  const C = D.CONFIG, a = num(C.GRAIN_ABSORPTION), boil = mn ? num(mn.boil_l) : null, grain = mn ? num(mn.grain_kg) : null;
+  if (boil == null || grain == null || a == null) return null;
+  const perKg = D.UNIT === "F" ? a * GAL_L / LB_KG : a, toU = l => D.UNIT === "F" ? l / GAL_L : l;
+  const before = boil - (num(mn.top_up_kettle_l) || 0), kept = grain * perKg;
+  return {total: toU(before + kept + (num(mn.lauter_dead_l) || 0)), before: toU(before), kept: toU(kept), lost: toU(num(mn.lauter_dead_l) || 0),
+    unit: D.UNIT === "F" ? "gal" : "L", rate: `${a} ${D.UNIT === "F" ? "gal/lb" : "L/kg"}`};
+}
+const v1 = n => (Math.round(n * 10) / 10).toFixed(1);
+// the recipe a new BrewStart joins: Brew Day's copy on Brew Steps, else the book's copy being changed
+const recipeNumbers = () => st.page === "steps" ? (st.loaded || {}).mash_numbers : st.ed && book(st.ed.file) ? book(st.ed.file).mash_numbers : null;
+/* a new BrewStart: Ready by, with the HLT, its element and the Campden choice of the newest BrewStart, the water this
+   recipe needs (else the newest BrewStart's: the last brew's), and the water temperature of its mash in. The time is
+   left for the brewer: it is the one thing only he knows, and SAVE waits for it. The day is Tomorrow from noon (the
+   night before), Today before */
 function brewStartProps(ed) {
   const L = ed ? live(ed) : [], src = newestBrewStart(), q = src ? src.s.props : {}, mi = L.find(s => s.type === "MashInStep");
+  const w = recipeWater(recipeNumbers()), unit = D.UNIT === "F" ? "gal" : "L";
   const props = {Timing: "Ready by", Mode: st.clock >= "12:00" ? "Tomorrow" : "Today", StartDate: "", StartTime: "",
     Heat_Kettle: q.Heat_Kettle || hltOf(L), Ready_Temp: mi && num(mi.props.Temp) != null ? mi.props.Temp : q.Ready_Temp ?? "",
-    Volume: q.Volume ?? "", Volume_Unit: q.Volume_Unit || (D.UNIT === "F" ? "gal" : "L"), Grain_Temp: "", Heater_Watts: q.Heater_Watts ?? "",
+    Volume: w ? Math.round(w.total * 10) / 10 : q.Volume ?? "", Volume_Unit: w ? unit : q.Volume_Unit || unit, Grain_Temp: "", Heater_Watts: q.Heater_Watts ?? "",
     Campden_Reminder: q.Campden_Reminder || "No", NotifyBefore: "", AutoNext: "Yes"};
   const got = [props.Heat_Kettle && `the ${nameOf(D.KETTLES, props.Heat_Kettle)}`, num(props.Heater_Watts) != null && `its ${fmt(num(props.Heater_Watts))} W element`,
-    num(props.Volume) != null && `${fmt(num(props.Volume))} ${props.Volume_Unit} of water`, props.Campden_Reminder === "Yes" && "the Campden reminder"].filter(Boolean);
-  const from = src && got.length ? `Filled in from ${src.from}, the newest recipe with a BrewStart: ${andList(got)}.` : "No recipe has a BrewStart yet, so the element and the water are blank.";
-  const temp = mi && num(mi.props.Temp) != null ? ` The water temperature is ${nameIn(mi)}'s, ${fmt(num(mi.props.Temp))} ${U}; on Brew day the strike water box can change it.` : "";
-  return {props, fill: `${from}${temp}`};
+    !w && num(props.Volume) != null && `${fmt(num(props.Volume))} ${props.Volume_Unit} of water, the last brew's`, props.Campden_Reminder === "Yes" && "the Campden reminder"].filter(Boolean);
+  const from = src && got.length ? `Filled in from ${src.from}, the newest recipe with a BrewStart: ${andList(got)}.` : "No recipe has a BrewStart yet, so the element is blank.";
+  const water = w ? ` The water, ${v1(w.total)} ${w.unit}, is what this recipe needs, worked out from the recipe file: ${v1(w.before)} ${w.unit} before the boil, and ${v1(w.kept)} ${w.unit} the grain keeps (Grain absorption in Settings, ${w.rate})${w.lost ? `, and ${v1(w.lost)} ${w.unit} lost under the mash` : ""}.`
+    : num(props.Volume) == null ? " No water figure yet: Brew Day asks for it." : "";
+  const temp = mi && num(mi.props.Temp) != null ? ` The water temperature is ${nameIn(mi)}'s, ${fmt(num(mi.props.Temp))} ${U}; on Brew Day the strike water box can change it.` : "";
+  return {props, fill: `${from}${water}${temp}`};
 }
-const hm = t => /^\d{1,2}:\d{2}$/.test(norm(t)) ? norm(t).padStart(5, "0") : "";
 const ymd = t => /^\d{4}-\d{2}-\d{2}$/.test(norm(t)) ? norm(t) : "";
 /* when a BrewStart's time comes, as the plugin works it out: Today and Tomorrow count from when START is pressed, and a
    time that has passed by then starts nothing by itself */
 function whenHTML(ed, s) {
-  const p = s.props || {}, t = hm(p.StartTime), mode = p.Mode || "Today", ready = p.Timing !== "Start at";
+  const p = s.props || {}, t = hm(p.StartTime), mode = norm(p.Mode) || "Today", ready = readyBy(p);
   if (!t || (mode === "Date" && !ymd(p.StartDate))) return "";
   const day = new Date(`${mode === "Date" ? ymd(p.StartDate) : D.TODAY}T12:00:00`);
   if (mode === "Tomorrow") day.setDate(day.getDate() + 1);
@@ -321,7 +348,7 @@ function whenHTML(ed, s) {
    SAVE): the time always; the vessel and the element's watts for Ready by, which works out from them when to heat */
 function needOf(s, label) {
   if (s.type !== "BrewStart" || s._removed) return "";
-  const p = s.props || {}, ready = p.Timing !== "Start at";
+  const p = s.props || {}, ready = readyBy(p);
   if (label === "StartTime" && !hm(p.StartTime)) return "Needed: without a time, BrewStart can't start.";
   if (label === "StartDate" && p.Mode === "Date" && !ymd(p.StartDate)) return "Needed with DATE.";
   if (label === "Heat_Kettle" && ready && !norm(p.Heat_Kettle)) return "Needed for Ready by: the vessel to heat.";
@@ -349,7 +376,7 @@ function paintFrame() {
   $(".bname", br).textContent = nm;
   br.toggleAttribute("data-long", long);
   if (long) br.title = nm; else br.removeAttribute("title");
-  document.title = `${nm} · ${st.page === "steps" ? "Brew steps" : "Recipe book"} (mockup)`;
+  document.title = `${nm} · ${st.page === "steps" ? "Brew Steps" : "Recipe Book"} (mockup)`;
   const bn = $("#banner"), lost = st.link === "lost";
   if (lost) { bn.dataset.tone = "alarm"; bn.innerHTML = `${ICON.warn}<span class="msg"><b>No connection</b>Controls are paused.</span>`; }
   else if (st.banner) { bn.dataset.tone = "prompt"; bn.innerHTML = `${ICON.bell}<span class="msg"><b>${esc(st.banner[0])}</b>${esc(st.banner[1])}</span><button type="button" class="act" data-bok>OK</button>`; }
@@ -362,7 +389,7 @@ function paintFrame() {
   const ho = $("#alloff");
   if (lost) { ho.setAttribute("aria-disabled", "true"); ho.dataset.why = PAUSED; } else { ho.removeAttribute("aria-disabled"); delete ho.dataset.why; }
   $("#clock").textContent = st.clock;
-  $$(".tabs a").forEach(a => { if ((a.dataset.tab === "Recipe book" && st.page === "book") || (a.dataset.tab === "Brew steps" && st.page === "steps")) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+  $$(".tabs a").forEach(a => { if ((a.dataset.tab === "Recipe Book" && st.page === "book") || (a.dataset.tab === "Brew Steps" && st.page === "steps")) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
 }
 function event(text, res, cls) { st.events.unshift([st.clock + ":" + String(10 + (st.events.length * 7) % 49).padStart(2, "0"), text, res, cls]); }
 
@@ -374,11 +401,11 @@ function cmd(cls, label, small, o = {}) {
 }
 function loadBtn(file, where) {
   const r = book(file), pend = st.pend.load === file, rule = loadRule(), why = pend ? WAIT : rule.why || "";
-  const small = where === "col" ? (pend ? "waiting for CraftBeerPi" : "onto Brew day") : "";
-  return cmd("", pend ? "LOADING…" : "LOAD", small, {busy: pend, why, data: ` data-load="${esc(file)}" data-from="${where}"`, label: pend ? `Loading ${r.name}` : `Load ${r.name} onto Brew day`});
+  const small = where === "col" ? (pend ? "waiting for CraftBeerPi" : "onto Brew Day") : "";
+  return cmd("", pend ? "LOADING…" : "LOAD", small, {busy: pend, why, data: ` data-load="${esc(file)}" data-from="${where}"`, label: pend ? `Loading ${r.name}` : `Load ${r.name} onto Brew Day`});
 }
 function lampChip(b) {
-  return `<p class="lch" data-s="${b.state}"><span class="on">On Brew day</span><span class="lm"><i aria-hidden="true"></i>${b.state === "finished" ? "FINISHED" : statusWords(b).split(" · ")[0]}</span>${b.state === "finished" ? "" : `<span class="st2">${statusWords(b).split(" · ")[1]}</span>`}</p>`;
+  return `<p class="lch" data-s="${b.state}"><span class="on">On Brew Day</span><span class="lm"><i aria-hidden="true"></i>${b.state === "finished" ? "FINISHED" : statusWords(b).split(" · ")[0]}</span>${b.state === "finished" ? "" : `<span class="st2">${statusWords(b).split(" · ")[1]}</span>`}</p>`;
 }
 
 /* ---------- the recipe column ---------- */
@@ -421,20 +448,20 @@ function moveBarHTML(ed) {
 function colHTML() {
   if (st.page === "steps") return colStepsHTML();
   const r = st.open && book(st.open);
-  if (!r) return `<h2>The Recipe book is empty</h2><p class="rmeta">Import a recipe from BeerSmith or Brewfather, or write one with + NEW.</p>`;
+  if (!r) return `<h2>The Recipe Book is empty</h2><p class="rmeta">Import a recipe from BeerSmith or Brewfather, or write one with + NEW.</p>`;
   const ed = st.pane === "edit" ? st.ed : null, back = `<a href="#list" class="back" data-back="list">‹ All recipes</a>`;
   if (ed) {
     const d = ed.doc, n = changes(ed);
     return `${back}<h2>${esc(d.name || "No name yet")}</h2>
-      <p class="rmeta">Changing the Recipe book's copy${n ? ` · <b>${n} ${n === 1 ? "change" : "changes"} not saved</b>` : ""}</p>
+      <p class="rmeta">Changing the Recipe Book's copy${n ? ` · <b>${n} ${n === 1 ? "change" : "changes"} not saved</b>` : ""}</p>
       <div class="rctl">${cmd("", "+ STEP", "add one", {data: " data-addstep"})}${cmd("", "NAME", "and notes", {data: ' data-go="r"'})}${cmd("", "CLOSE", "back to the book", {data: " data-close"})}</div>
       ${st.ask && st.ask.kind === "leave" && narrow() ? leaveHTML() : ""}
       ${ed.mv ? moveBarHTML(ed) : ""}${d.steps.length ? stepsListHTML(d.steps, {ed, cur: ed.cur, bsadd: !hasBrewStart(d.steps)}) : `<p class="empty"><b>No steps yet</b>+ STEP adds the first.</p>`}`;
   }
   const b = brew(), on = isLoaded(r.file) && b.state !== "finished";
-  const meta = on ? `<span class="on${b.state === "running" ? " run" : ""}">On Brew day · ${statusWords(b).toLowerCase().replace("ready to start", "ready to start")}</span>`
-    : `Recipe book${r.imported_from ? ` · imported from ${esc(r.imported_from)}, ${dateWords(r.modified)}` : ` · changed ${dateWords(r.modified)}`}`;
-  const first = on ? cmd("", "BREW DAY", b.state === "running" ? "running there" : b.state === "ready" && !b.begun ? "start it there" : "where it is", {data: " data-tabgo=\"Brew day\""}) : loadBtn(r.file, "col");
+  const meta = on ? `<span class="on${b.state === "running" ? " run" : ""}">On Brew Day · ${statusWords(b).toLowerCase().replace("ready to start", "ready to start")}</span>`
+    : `Recipe Book${r.imported_from ? ` · imported from ${esc(r.imported_from)}, ${dateWords(r.modified)}` : ` · changed ${dateWords(r.modified)}`}`;
+  const first = on ? cmd("", "BREW DAY", b.state === "running" ? "running there" : b.state === "ready" && !b.begun ? "start it there" : "where it is", {data: " data-tabgo=\"Brew Day\""}) : loadBtn(r.file, "col");
   const ask = st.ask && st.ask.kind === "load" && st.ask.from === "col" ? loadAskHTML(st.ask.file) : "";
   return `${back}<h2>${esc(r.name)}</h2>
     <p class="rmeta">${meta}</p>
@@ -443,33 +470,36 @@ function colHTML() {
     ${ask}${offerHTML(r.file)}<p class="note" id="col-note">${esc(st.notes.col || "")}</p>
     ${stepsListHTML(r.steps, {bsadd: !hasBrewStart(r.steps)})}`;
 }
-/* after SAVE on the recipe that is on Brew day: Brew day keeps the copy it loaded, so the page says so, and LOAD AGAIN
+/* after SAVE on the recipe that is on Brew Day: Brew Day keeps the copy it loaded, so the page says so, and LOAD AGAIN
    brings the change across, by LOAD's own rules */
 function offerHTML(file) {
   if (st.offer !== file || !isLoaded(file)) return "";
   const b = brew();
-  if (b.state === "running" || b.begun) return `<p class="pnote">Brew day keeps the copy it loaded at ${esc(st.loaded.at)}, without this change, while its brew goes on. The change is for next time.</p>`;
-  return `<div class="pnote"><b>Brew day still has the copy loaded at ${esc(st.loaded.at)}</b>, without this change. LOAD AGAIN to brew with it.<div class="acts">${loadBtnAgain(file)}</div></div>`;
+  if (b.state === "running" || b.begun) return `<p class="pnote">Brew Day keeps the copy it loaded at ${esc(st.loaded.at)}, without this change, while its brew goes on. The change is for next time.</p>`;
+  return `<div class="pnote"><b>Brew Day still has the copy loaded at ${esc(st.loaded.at)}</b>, without this change. LOAD AGAIN to brew with it.<div class="acts">${loadBtnAgain(file)}</div></div>`;
 }
 function loadBtnAgain(file) {
   const pend = st.pend.load === file, rule = loadRule();
-  return cmd("", pend ? "LOADING…" : "LOAD AGAIN", pend ? "waiting for CraftBeerPi" : "replaces Brew day's copy", {busy: pend, why: pend ? WAIT : rule.why || "", data: ` data-load="${esc(file)}" data-from="col"`});
+  return cmd("", pend ? "LOADING…" : "LOAD AGAIN", pend ? "waiting for CraftBeerPi" : "replaces Brew Day's copy", {busy: pend, why: pend ? WAIT : rule.why || "", data: ` data-load="${esc(file)}" data-from="col"`});
 }
 function loadAskHTML(file) {
-  const r = book(file), L = st.loaded, b = brew();
-  return `<div class="confirm" role="group" aria-labelledby="ask-t" id="ask"><p id="ask-t">Load <b>${esc(r.name)}</b> in place of <b>${esc(L.name)}</b>? It ${whereStopped()}. CraftBeerPi forgets which steps are done. Kettles, pumps and timers stay as they are.</p><div class="acts"><button type="button" class="yes" data-yes="load">Load instead</button><button type="button" data-no>Stay at step ${b.cur + 1}</button></div></div>`;
+  const r = book(file), L = st.loaded, b = brew(), kept = loadedInBook(), old = L.name ? `<b>${esc(L.name)}</b>` : "the steps on Brew Day";
+  const text = b.begun
+    ? `Load <b>${esc(r.name)}</b> in place of ${old}? It ${whereStopped()}${kept ? "" : ", and it isn't in the Recipe Book, so it can't be loaded again"}. CraftBeerPi forgets which steps are done. Kettles, pumps and timers stay as they are.`
+    : `Load <b>${esc(r.name)}</b> in place of ${old}? ${L.name ? `${esc(L.name)} isn't` : "They aren't"} in the Recipe Book, so ${L.name ? "it" : "they"} can't be loaded again. SAVE TO BOOK on Brew Steps keeps ${L.name ? "it" : "them"}. Kettles, pumps and timers stay as they are.`;
+  return `<div class="confirm" role="group" aria-labelledby="ask-t" id="ask"><p id="ask-t">${text}</p><div class="acts"><button type="button" class="yes" data-yes="load">Load instead</button><button type="button" data-no>${b.begun ? `Stay at step ${b.cur + 1}` : "Don't load"}</button></div></div>`;
 }
 function colStepsHTML() {
   const L = st.loaded, b = brew();
-  if (!L || b.state === "none") return `<h2>No recipe loaded</h2><p class="rmeta">Brew day is brewing by hand.</p>
-    <div class="rctl two">${cmd("", "RECIPE BOOK", "choose one", {data: ' data-tabgo="Recipe book"'})}${cmd("", "+ STEP", "build steps here", {data: " data-addstep"})}</div>`;
+  if (!L || b.state === "none") return `<h2>No recipe loaded</h2><p class="rmeta">Brew Day is brewing by hand.</p>
+    <div class="rctl two">${cmd("", "RECIPE BOOK", "choose one", {data: ' data-tabgo="Recipe Book"'})}${cmd("", "+ STEP", "build steps here", {data: " data-addstep"})}</div>`;
   ensureBs();
   const ed = st.bs, n = changes(ed), un = unloadRule();
   const pendU = st.pend.unload, pendB = st.pend.tobook;
   const ask = st.ask && (st.ask.kind === "unload" ? unloadAskHTML() : st.ask.kind === "tobook" ? toBookHTML() : "");
-  return `<h2>${esc(L.name)}</h2>
-    <p class="rmeta"><span class="on${b.state === "running" ? " run" : ""}">On Brew day · ${statusWords(b).toLowerCase()}</span>${n ? ` · <b>${n} ${n === 1 ? "change" : "changes"} not saved</b>` : ""}</p>
-    <div class="rctl">${cmd("", "BREW DAY", b.state === "running" ? "running there" : "start it there", {data: ' data-tabgo="Brew day"'})}${cmd("", pendB ? "SAVING…" : "SAVE TO BOOK", pendB ? "waiting for CraftBeerPi" : "keep for next time", {busy: pendB, data: " data-tobook", why: pendB ? WAIT : n ? "SAVE your changes to the brew steps first, then keep them in the book." : "", live: true})}${cmd("", pendU ? "UNLOADING…" : "UNLOAD", pendU ? "waiting for CraftBeerPi" : "brew by hand", {busy: pendU, data: " data-unload", why: pendU ? WAIT : un.why || ""})}</div>
+  return `<h2>${esc(L.name || "Steps with no name")}</h2>
+    <p class="rmeta"><span class="on${b.state === "running" ? " run" : ""}">On Brew Day · ${statusWords(b).toLowerCase()}</span>${n ? ` · <b>${n} ${n === 1 ? "change" : "changes"} not saved</b>` : ""}</p>
+    <div class="rctl">${cmd("", "BREW DAY", b.state === "running" ? "running there" : "start it there", {data: ' data-tabgo="Brew Day"'})}${cmd("", pendB ? "SAVING…" : "SAVE TO BOOK", pendB ? "waiting for CraftBeerPi" : "keep for next time", {busy: pendB, data: " data-tobook", why: pendB ? WAIT : n ? "SAVE your changes to the brew steps first, then keep them in the book." : "", live: true})}${cmd("", pendU ? "UNLOADING…" : "UNLOAD", pendU ? "waiting for CraftBeerPi" : "brew by hand", {busy: pendU, data: " data-unload", why: pendU ? WAIT : un.why || ""})}</div>
     ${ask || ""}<p class="note" id="col-note">${esc(st.notes.col || "")}</p>
     ${ed.mv ? moveBarHTML(ed) : ""}${stepsListHTML(ed.doc.steps, {ed, cur: ed.cur, run: true, bsadd: b.state === "ready" && !b.begun && !hasBrewStart(ed.doc.steps)})}
     ${ed.mv ? "" : cmd("addstep", "+ STEP", "add one to this brew", {data: " data-addstep"})}`;
@@ -479,17 +509,21 @@ function unloadRule() {
   if (st.pend.load || st.pend.unload) return {why: WAIT};
   const b = brew();
   if (b.state === "running") return {why: runningWhy()};
-  return b.begun ? {ask: true} : {};
+  return b.begun || !loadedInBook() ? {ask: true} : {};
 }
+/* UNLOAD's question, in the brew-day screen's words for its own UNLOAD, so both screens ask the same */
 function unloadAskHTML() {
-  const L = st.loaded, b = brew();
-  return `<div class="confirm" role="group" aria-labelledby="ask-t" id="ask"><p id="ask-t">Unload <b>${esc(L.name)}</b>? It ${whereStopped()}. CraftBeerPi forgets which steps are done, and Brew day goes back to brewing by hand. The recipe stays in the Recipe book. Kettles, pumps and timers stay as they are.</p><div class="acts"><button type="button" class="yes" data-yes="unload">Unload</button><button type="button" data-no>Stay at step ${b.cur + 1}</button></div></div>`;
+  const b = brew(), kept = loadedInBook();
+  const text = b.begun
+    ? `Unload the recipe and brew by hand? CraftBeerPi forgets it ${whereStopped()}${kept ? ". The Recipe Book keeps the recipe" : ", and the recipe isn't in the Recipe Book, so it can't be loaded again"}. Kettles, pumps and timers stay as they are.`
+    : "Unload the recipe and brew by hand? It isn't in the Recipe Book, so it can't be loaded again. Kettles, pumps and timers stay as they are.";
+  return `<div class="confirm" role="group" aria-labelledby="ask-t" id="ask"><p id="ask-t">${text}</p><div class="acts"><button type="button" class="yes" data-yes="unload">Unload</button><button type="button" data-no>${b.begun ? `Stay at step ${b.cur + 1}` : "Don't unload"}</button></div></div>`;
 }
 function toBookHTML() {
   const L = st.loaded, r = book(L.file);
-  const name = `${L.name}, ${new Date(D.TODAY).getUTCDate()} ${MON[new Date(D.TODAY).getUTCMonth()]}`;
-  return `<div class="confirm" role="group" aria-labelledby="ask-t" id="ask"><p id="ask-t">Keep these steps in the Recipe book. ${r ? `<b>Replace ${esc(r.name)}</b> there, the copy they were loaded from, saved ${dateWords(r.modified)}? Or save them as a new recipe:` : "Save them as a new recipe:"}</p>
-    <input class="fld" id="tb-name" value="${esc(name)}" aria-label="The new recipe's name">
+  const name = L.name ? `${L.name}, ${new Date(D.TODAY).getUTCDate()} ${MON[new Date(D.TODAY).getUTCMonth()]}` : "";
+  return `<div class="confirm" role="group" aria-labelledby="ask-t" id="ask"><p id="ask-t">Keep these steps in the Recipe Book. ${r ? `<b>Replace ${esc(r.name)}</b> there, the copy they were loaded from, saved ${dateWords(r.modified)}? Or save them as a new recipe:` : "Save them as a new recipe:"}</p>
+    <input class="fld" id="tb-name" value="${esc(name)}" placeholder="Its name" aria-label="The new recipe's name"><p class="note" id="tb-note">${esc(st.notes.tb || "")}</p>
     <div class="acts">${r ? `<button type="button" class="yes" data-yes="replace">Replace the book's copy</button>` : ""}<button type="button"${r ? "" : ' class="yes"'} data-yes="asnew">Save as new</button></div>
     <div class="acts three"><button type="button" data-no>Cancel</button></div></div>`;
 }
@@ -503,11 +537,11 @@ function leaveHTML() {
 function toolHTML() {
   if (st.page === "steps") {
     const ed = st.bs, n = ed ? changes(ed) : 0;
-    if (!st.loaded) return `<h1>Brew steps<small>The steps of the recipe on Brew day. None is loaded.</small></h1>`;
-    return `<h1>Brew steps<small>Brew day's copy of ${esc(st.loaded.name)}, loaded at ${esc(st.loaded.at)}. Changes here are for this brew.</small></h1>${saveBtns(n, "for this brew")}`;
+    if (!st.loaded) return `<h1>Brew Steps<small>The steps of the recipe on Brew Day. None is loaded.</small></h1>`;
+    return `<h1>Brew Steps<small>Brew Day's copy of ${esc(st.loaded.name)}, loaded at ${esc(st.loaded.at)}. Changes here are for this brew.</small></h1>${saveBtns(n, "for this brew")}`;
   }
-  if (st.pane === "edit") return `<h1>Changing a recipe<small>The Recipe book's copy. Brew day's isn't changed.</small></h1>${saveBtns(changes(st.ed), "in the Recipe book")}`;
-  if (st.pane === "import") return `<h1>Import a recipe<small>It goes into the Recipe book. Brew day isn't changed.</small></h1><div class="btns ed nb">${cmd("", "RECIPE BOOK", "back to the list", {data: " data-list"})}</div>`;
+  if (st.pane === "edit") return `<h1>Changing a recipe<small>The Recipe Book's copy. Brew Day's isn't changed.</small></h1>${saveBtns(changes(st.ed), "in the Recipe Book")}`;
+  if (st.pane === "import") return `<h1>Import a recipe<small>It goes into the Recipe Book. Brew Day isn't changed.</small></h1><div class="btns ed nb">${cmd("", "RECIPE BOOK", "back to the list", {data: " data-list"})}</div>`;
   if (st.pane === "copy") return `<h1>Copy a recipe<small>The copy is a new recipe in the book.</small></h1><div class="btns ed nb">${cmd("", "CANCEL", "", {data: " data-list"})}</div>`;
   if (st.pane === "new") return `<h1>A new recipe<small>It starts with no steps.</small></h1><div class="btns ed nb">${cmd("", "CANCEL", "", {data: " data-list"})}</div>`;
   return `<div class="find fi"><label for="q">Find a recipe</label><input id="q" type="search" autocomplete="off" spellcheck="false" value="${esc(st.q)}"><button type="button" class="clr" data-clear aria-label="Clear the search"${st.q ? "" : " hidden"}>CLEAR</button></div>
@@ -527,7 +561,7 @@ function workHTML() {
   return bookHTML();
 }
 /* the book: a row per recipe, newest first, the numbers that tell recipes apart in fixed columns, LOAD at the end, or
-   what the recipe on Brew day is doing. FIND looks in names, where they came from, step names and additions */
+   what the recipe on Brew Day is doing. FIND looks in names, where they came from, step names and additions */
 function words() { return st.q.toLowerCase().split(/\s+/).filter(Boolean); }
 function hay(r) { return [r.name, r.desc, r.imported_from, ...r.steps.map(s => `${s.name} ${kindName(s.type)}`), ...r.steps.flatMap(s => s.type === "BoilStep" ? additions(s.props).map(a => `${a[1]} ${a[2]}`) : [])].join(" \u0001 ").toLowerCase(); }
 const hit = r => words().every(w => hay(r).includes(w));
@@ -564,9 +598,9 @@ function bookHTML() {
     <ul class="bkl" aria-label="Recipes, newest first">${list.map(bookRowHTML).join("")}</ul></div>`;
 }
 
-/* ---------- plates: the recipe's name and notes, each step, + STEP, delete; on Brew steps, an overview first ---------- */
+/* ---------- plates: the recipe's name and notes, each step, + STEP, delete; on Brew Steps, an overview first ---------- */
 function platesHTML() {
-  if (st.page === "steps" && !st.loaded) return `<div class="plates"><section class="plate pick"><div class="phd"><h2>Nothing is loaded</h2><p class="sum">Brew day is brewing by hand.</p></div><p class="lead">Choose a recipe in the <b>Recipe book</b> and LOAD it, and its steps appear here. Or build steps here with + STEP: they run on Brew day like a recipe's.</p></section>${E() && E().kinds ? kindsHTML() : ""}</div>`;
+  if (st.page === "steps" && !st.loaded) return `<div class="plates"><section class="plate pick"><div class="phd"><h2>Nothing is loaded</h2><p class="sum">Brew Day is brewing by hand.</p></div><p class="lead">Choose a recipe in the <b>Recipe Book</b> and LOAD it, and its steps appear here. Or build steps here with + STEP: they run on Brew Day like a recipe's.</p></section>${E() && E().kinds ? kindsHTML() : ""}</div>`;
   const ed = E(), steps = ed.doc.steps, back = `<a href="#recipe" class="back" data-back="recipe">‹ Steps</a>`;
   let h = "";
   if (st.page === "steps") h += overviewHTML();
@@ -579,8 +613,8 @@ function platesHTML() {
 const pickCls = k => E() && E().pick === k ? " pick" : "";
 function overviewHTML() {
   const L = st.loaded, b = brew();
-  return `<section class="plate${pickCls("o")}" id="p-o" data-k="o" aria-labelledby="h-o"><div class="phd"><h2 id="h-o">This brew's steps</h2><p class="sum">Brew day's copy of <b>${esc(L.name)}</b>, loaded at ${esc(L.at)} from the Recipe book.</p></div>
-    <p class="lead">Change a step here and SAVE: the change is for this brew. To keep it for next time, <b>SAVE TO BOOK</b>. The steps run on <b>Brew day</b>, where START is held for a second.</p>
+  return `<section class="plate${pickCls("o")}" id="p-o" data-k="o" aria-labelledby="h-o"><div class="phd"><h2 id="h-o">This brew's steps</h2><p class="sum">Brew Day's copy of <b>${esc(L.name)}</b>, loaded at ${esc(L.at)} from the Recipe Book.</p></div>
+    <p class="lead">Change a step here and SAVE: the change is for this brew. To keep it for next time, <b>SAVE TO BOOK</b>. The steps run on <b>Brew Day</b>, where START is held for a second.</p>
     ${b.state === "running" ? `<p class="lead">Step ${b.cur + 1}, ${esc(L.steps[b.cur].name)}, is running: CraftBeerPi doesn't change a step while it runs. The steps still to come can change.</p>` : ""}</section>`;
 }
 function recipePlateHTML() {
@@ -591,7 +625,7 @@ function recipePlateHTML() {
       <div class="ct"><textarea class="fld" id="i-r-${k}" rows="1" data-s="r" data-p="${k}"${multi ? "" : ""}>${esc(d[k])}</textarea>${stHTML(ch, ed.orig[k], "r", k)}</div></div>`;
   };
   return `<section class="plate${pickCls("r")}" id="p-r" data-k="r" aria-labelledby="h-r"><div class="phd"><h2 id="h-r">Name and notes</h2><p class="sum">${d.steps.length} ${d.steps.length === 1 ? "step" : "steps"} · ${esc(bookLine(d.steps.filter(s => !s._removed)).split(" · ").slice(1).join(" · ") || "no mash or boil yet")}</p></div>
-    <div class="part">${row("name", "Name", "As the Recipe book, Brew day and BrewScribe show it.")}${row("author", "Author", "Put on recipes you write or import: Settings, Recipe author.")}${row("desc", "Description", "A line or two of your own. Shown under the name in the book.", true)}</div></section>`;
+    <div class="part">${row("name", "Name", "As the Recipe Book, Brew Day and BrewScribe show it.")}${row("author", "Author", "Put on recipes you write or import: Settings, Recipe author.")}${row("desc", "Description", "A line or two of your own. Shown under the name in the book.", true)}</div></section>`;
 }
 // a changed row's status line: what it was, and UNDO
 function stHTML(changed, was, k, label, wasShown) {
@@ -601,14 +635,17 @@ function stHTML(changed, was, k, label, wasShown) {
 function stepPlateHTML(ed, s, i) {
   const kc = CAT.KINDS[s.type], ch = stepChange(ed, s), run = st.page === "steps" && isRunning(s), done = st.page === "steps" && s.status === "D";
   const L = live(ed), li = L.indexOf(s), free = firstFree(ed), begun = st.page === "steps" && s.status && s.status !== "I";
-  const moveWhy = begun ? "It has begun: it stays where it ran." : L.length - free < 2 ? (free ? "It is the only step still to come." : "It is the only step.") : "";
+  // CraftBeerPi keeps every step up to the last one that has begun in its place, a step still to come among them too
+  const held = st.page === "steps" && li < free;
+  const moveWhy = begun ? "It has begun, so it stays where it ran." : held ? `${nameIn(L[free - 1])} has begun, so the steps above it stay where they are.`
+    : L.length - free < 2 ? (free ? "It is the only step still to come." : "It is the only step.") : "";
   const tools = ch.tag === "removed" ? `<button type="button" class="lnk" data-unremove="${s._k}">UNDO</button>`
     : run ? "" : ed.mv === s._k ? `<button type="button" class="lnk" data-mvcancel>Cancel move</button>`
     : `<button type="button" class="lnk" data-move="${s._k}"${moveWhy ? ` aria-disabled="true" data-why="${esc(moveWhy)}"` : ""}>Move</button><button type="button" class="lnk" data-remove="${s._k}">${ch.tag === "new" ? "Drop it" : "Remove step"}</button>`;
   const head = `<div class="phd"><h2 id="h-${s._k}"><span class="n">${i + 1}</span>${esc(s.name || kindName(s.type))}</h2><div class="stools">${tools}</div>
     <p class="sum"><b>${esc(kindName(s.type))}</b>${kc ? ` · ${esc(kc.h)}` : " · A kind of step from a plugin."}${ch.moved && origOf(ed, s) ? ` Moved: it was step ${ed.orig.steps.indexOf(origOf(ed, s)) + 1}.` : ""}</p></div>`;
   if (ch.tag === "removed") return `<section class="plate removed${pickCls(s._k)}" id="p-${s._k}" data-k="${s._k}" aria-labelledby="h-${s._k}">${head}<p class="lead">Removed. It goes when you SAVE; UNDO keeps it.</p></section>`;
-  const lockNote = run ? `<p class="pnote"><b>Running now.</b> CraftBeerPi doesn't change a step while it runs. To change it, STOP the brew on Brew day first; or change the steps still to come.</p>`
+  const lockNote = run ? `<p class="pnote"><b>Running now.</b> CraftBeerPi doesn't change a step while it runs. To change it, STOP the brew on Brew Day first; or change the steps still to come.</p>`
     : done ? `<p class="pnote"><b>Done.</b> A change here counts only if the recipe is reset to step 1.</p>` : "";
   const moving = ed.mv === s._k ? `<p class="pnote mv">Moving it: tap <b>PUT IT HERE</b> in the steps where it goes, or FIRST or LAST above them.</p>` : "";
   const placed = ch.tag === "new" && s._where ? `<p class="pnote"><b>Went in as step ${li + 1}, ${esc(s._where)}.</b> MOVE puts it elsewhere.</p>` : "";
@@ -623,7 +660,7 @@ function stepPlateHTML(ed, s, i) {
 }
 function rowHTML(ed, s, label, locked) {
   const o = origOf(ed, s), isName = label === "name", isType = label === "type";
-  const m = isName ? {n: "Name", h: "As Brew day, the event line and BrewScribe show it."} : isType ? {n: "Kind of step", h: "What it does. Changing it keeps the settings the new kind also has."} : meta(s.type, label);
+  const m = isName ? {n: "Name", h: "As Brew Day, the event line and BrewScribe show it."} : isType ? {n: "Kind of step", h: "What it does. Changing it keeps the settings the new kind also has."} : meta(s.type, label);
   const v = isName ? s.name : isType ? s.type : (s.props || {})[label];
   const ov = !o ? undefined : isName ? o.name : isType ? o.type : (o.props || {})[label];
   const changed = !!o && !same(v, ov);
@@ -641,8 +678,9 @@ function ctlHTML(s, label, v, locked) {
   }
   const t = typeOf(s.type, label), m = meta(s.type, label);
   if (Array.isArray(t)) {
-    const opts = m.opts ? Object.keys(m.opts) : t;
-    return `<div class="seg" role="radiogroup" aria-labelledby="n-${s._k}-${label}" id="${id}">${opts.map(x => `<button type="button" role="radio" aria-checked="${String(norm(v) === x)}" data-set="${esc(x)}"${data}${locked ? ' aria-disabled="true" data-why="Running now: CraftBeerPi doesn\'t change a step while it runs."' : ""}>${esc((m.opts || {})[x] || x)}</button>`).join("")}</div>`;
+    // a blank setting shows the choice the step takes for it (blankAs): a BrewStart saved with no Timing runs as Start at
+    const opts = m.opts ? Object.keys(m.opts) : t, cur = norm(v) === "" && m.blankAs ? m.blankAs : norm(v);
+    return `<div class="seg" role="radiogroup" aria-labelledby="n-${s._k}-${label}" id="${id}">${opts.map(x => `<button type="button" role="radio" aria-checked="${String(cur === x)}" data-set="${esc(x)}"${data}${locked ? ' aria-disabled="true" data-why="Running now: CraftBeerPi doesn\'t change a step while it runs."' : ""}>${esc((m.opts || {})[x] || x)}</button>`).join("")}</div>`;
   }
   if (t === "kettle" || t === "sensor" || t === "actor") {
     const list = t === "kettle" ? D.KETTLES : t === "sensor" ? D.SENSORS : D.ACTORS;
@@ -664,7 +702,7 @@ function addsHTML(ed, s, locked) {
   };
   const full = used.length >= 6;
   return `${used.length ? `<div class="addh" aria-hidden="true"><span>Minutes left</span><span>What to add</span><span></span></div><ul class="addl">${used.map(line).join("")}</ul>` : `<p class="foot">No additions yet.</p>`}
-    <div class="addf">${cmd("", "+ ADDITION", full ? "six already" : `${6 - used.length} more possible`, {data: ` data-addadd="${s._k}"`, why: locked ? "Running now: CraftBeerPi doesn't change a step while it runs." : full ? "The boil step has six reminders. For a seventh, set a timer on Brew day." : ""})}<span class="fx">Six at most: the boil step has six reminders.</span></div>
+    <div class="addf">${cmd("", "+ ADDITION", full ? "six already" : `${6 - used.length} more possible`, {data: ` data-addadd="${s._k}"`, why: locked ? "Running now: CraftBeerPi doesn't change a step while it runs." : full ? "The boil step has six reminders. For a seventh, set a timer on Brew Day." : ""})}<span class="fx">Six at most: the boil step has six reminders.</span></div>
     ${rowHTML(ed, s, "First_Wort", locked)}${p.First_Wort === "Yes" ? rowHTML(ed, s, "First_Wort_text", locked) : ""}`;
 }
 function kindsHTML() {
@@ -683,9 +721,9 @@ function deletePlateHTML() {
   const r = book(st.ed.file);
   if (!r) return "";
   const asking = st.ask && st.ask.kind === "delete", pend = st.pend.del;
-  const on = isLoaded(r.file) ? " Brew day keeps its own copy until another recipe is loaded." : "";
-  return `<section class="plate${pickCls("del")}" id="p-del" data-k="del" aria-labelledby="h-del"><div class="phd"><h2 id="h-del">Delete this recipe</h2><p class="sum">Takes it out of the Recipe book. It asks first.</p></div>
-    ${asking ? `<div class="confirm" role="group" aria-labelledby="del-t" id="ask"><p id="del-t">Delete <b>${esc(r.name)}</b> from the Recipe book? This can't be undone.${on}</p><div class="acts"><button type="button" class="yes" data-yes="delete">${pend ? "Deleting…" : "Delete it"}</button><button type="button" data-no>Keep it</button></div></div>`
+  const on = isLoaded(r.file) ? " Brew Day keeps its own copy until another recipe is loaded." : "";
+  return `<section class="plate${pickCls("del")}" id="p-del" data-k="del" aria-labelledby="h-del"><div class="phd"><h2 id="h-del">Delete this recipe</h2><p class="sum">Takes it out of the Recipe Book. It asks first.</p></div>
+    ${asking ? `<div class="confirm" role="group" aria-labelledby="del-t" id="ask"><p id="del-t">Delete <b>${esc(r.name)}</b> from the Recipe Book? This can't be undone.${on}</p><div class="acts"><button type="button" class="yes" data-yes="delete">${pend ? "Deleting…" : "Delete it"}</button><button type="button" data-no>Keep it</button></div></div>`
       : `<p class="addf">${cmd("del", "DELETE", "asks first", {data: " data-del", live: true})}</p>`}</section>`;
 }
 
@@ -693,7 +731,7 @@ function deletePlateHTML() {
 function nameHTML() {
   const copy = st.pane === "copy", r = copy && book(st.open), v = copy ? `${r.name} copy` : "";
   return `<a href="#list" class="back" data-back="list">‹ All recipes</a><div class="plates"><section class="plate pick" aria-labelledby="h-nm"><div class="phd"><h2 id="h-nm">${copy ? `Copy ${esc(r.name)}` : "A new recipe"}</h2><p class="sum">${copy ? "Every step comes with it. The copy opens so you can change it." : "It opens with no steps; + STEP adds the first."}</p></div>
-    <div class="row"><div class="lb"><label class="nm" for="nm-in">Name</label><p class="wh">As the Recipe book and Brew day show it.</p></div><div class="ct"><input class="fld" id="nm-in" value="${esc(v)}" autocomplete="off"${copy ? "" : ' placeholder="Its name"'}><p class="note" id="nm-note">${esc(st.notes.nm || "")}</p></div></div>
+    <div class="row"><div class="lb"><label class="nm" for="nm-in">Name</label><p class="wh">As the Recipe Book and Brew Day show it.</p></div><div class="ct"><input class="fld" id="nm-in" value="${esc(v)}" autocomplete="off"${copy ? "" : ' placeholder="Its name"'}><p class="note" id="nm-note">${esc(st.notes.nm || "")}</p></div></div>
     <p class="addf">${cmd("go", copy ? "MAKE THE COPY" : "MAKE IT", copy ? "and open it" : "and add its steps", {data: " data-make", live: true})}${cmd("", "CANCEL", "", {data: " data-list"})}</p></section></div>`;
 }
 
@@ -702,7 +740,7 @@ function importHTML() {
   const I = st.imp, f = D.FILES[I.file], C = D.CONFIG;
   const rows = f ? f.recipes.map(x => {
     const busy = I.busy === x.id, got = I.result && I.result.ok && I.result.id === x.id;
-    return `<li class="imr${got ? " got" : ""}"><span class="in">${esc(x.name)}</span>${book(x.file || "") ? "" : ""}<span class="is">${got ? "Imported" : inBook(x.name) ? "Its earlier import is in the book; importing replaces it" : "Not in the book yet"}</span>${cmd("", busy ? "IMPORTING…" : got ? "IMPORT AGAIN" : "IMPORT", busy ? "waiting for CraftBeerPi" : "into the book", {busy, why: busy ? WAIT : I.busy ? WAIT : "", data: ` data-imp="${x.id}"`, live: true, label: `Import ${x.name} into the Recipe book`})}</li>`;
+    return `<li class="imr${got ? " got" : ""}"><span class="in">${esc(x.name)}</span>${book(x.file || "") ? "" : ""}<span class="is">${got ? "Imported" : inBook(x.name) ? "Its earlier import is in the book; importing replaces it" : "Not in the book yet"}</span>${cmd("", busy ? "IMPORTING…" : got ? "IMPORT AGAIN" : "IMPORT", busy ? "waiting for CraftBeerPi" : "into the book", {busy, why: busy ? WAIT : I.busy ? WAIT : "", data: ` data-imp="${x.id}"`, live: true, label: `Import ${x.name} into the Recipe Book`})}</li>`;
   }).join("") : "";
   const res = I.result ? resultHTML(I.result) : "";
   const fileH = f ? `<p class="fileh"><b>${esc(f.name)}</b><span>${f.kept ? "the last file sent, kept by CraftBeerPi" : "just sent"} · ${esc(f.kind)} · ${f.recipes.length} ${f.recipes.length === 1 ? "recipe" : "recipes"}</span></p><ul class="iml">${rows}</ul>` : "";
@@ -722,7 +760,7 @@ function importHTML() {
       <div class="drop${over}" id="drop"><p class="big">Drop a recipe file here</p><p class="or">or</p>${cmd("go", st.pend.upload ? "SENDING…" : "CHOOSE FILE", st.pend.upload ? "waiting for CraftBeerPi" : ".xml, .json or .sqlite", {busy: st.pend.upload, data: " data-choose", live: true})}</div>
       <p class="how"><b>From BeerSmith:</b> select the recipe in My Recipes, then File, Export Selected Items, BeerXML. One recipe a file is simplest.</p>
       ${fileH}
-      <p class="how">IMPORT puts the recipe in your Recipe book; Brew day isn't changed until you LOAD it. Importing a recipe again under the same name replaces the earlier import, never a recipe you've changed or saved here.</p></section>
+      <p class="how">IMPORT puts the recipe in your Recipe Book; Brew Day isn't changed until you LOAD it. Importing a recipe again under the same name replaces the earlier import, never a recipe you've changed or saved here.</p></section>
     <section class="plate pick" id="p-bf" aria-labelledby="h-bf"><div class="phd"><h2 id="h-bf">From Brewfather</h2><p class="sum">Your recipes in Brewfather's web app.</p></div>${bf}</section>
     <section class="plate pick" id="p-uses" aria-labelledby="h-uses"><div class="phd"><h2 id="h-uses">Imports use these settings</h2><p class="sum">What a recipe file can't say, CraftBeerPi takes from Settings as it imports.</p></div>${uses}</section></div>`;
 }
@@ -730,7 +768,7 @@ const inBook = name => st.book.some(r => r.name === name && r.imported_from);
 function resultHTML(R) {
   if (!R.ok) return `<div class="fail" role="alert"><b>Not imported</b><p>${esc(R.why)}</p><div class="acts">${cmd("", "SETTINGS", "Brewhouse", {data: ' data-tabgo="Settings"'})}</div></div>`;
   const r = book(R.file);
-  return `<div class="impok" role="status">${ICON.tick}<p><b>Imported ${esc(r.name)}.</b> ${R.replaced ? "Its earlier import in the Recipe book was replaced." : "It's in your Recipe book, at the top."} ${narrow() ? "Open it to check its steps before you brew it." : "Check its steps on the left before you brew it."}</p><ul class="bkl">${bookRowHTML(r)}</ul></div>
+  return `<div class="impok" role="status">${ICON.tick}<p><b>Imported ${esc(r.name)}.</b> ${R.replaced ? "Its earlier import in the Recipe Book was replaced." : "It's in your Recipe Book, at the top."} ${narrow() ? "Open it to check its steps before you brew it." : "Check its steps on the left before you brew it."}</p><ul class="bkl">${bookRowHTML(r)}</ul></div>
     ${R.warn ? `<div class="warn" role="note"><b>${esc(R.warn[0])}</b><p>${esc(R.warn[1])}</p></div>` : ""}`;
 }
 function bfHTML() {
@@ -746,7 +784,7 @@ function render() {
   $("#tool").innerHTML = toolHTML();
   $("#col").innerHTML = colHTML();
   $("#work").innerHTML = workHTML();
-  $("#pane").setAttribute("aria-label", st.page === "steps" ? "This brew's steps" : st.pane === "edit" ? "The recipe's settings" : st.pane === "import" ? "Import a recipe" : "Recipe book");
+  $("#pane").setAttribute("aria-label", st.page === "steps" ? "This brew's steps" : st.pane === "edit" ? "The recipe's settings" : st.pane === "import" ? "Import a recipe" : "Recipe Book");
   const ed = E(), n = ed ? changes(ed) : 0, bar = $("#savebar"), editing = st.page === "steps" ? !!st.loaded : st.pane === "edit";
   bar.hidden = !(editing && (n || st.pend.save));
   if (!bar.hidden) bar.innerHTML = `<p>${st.pend.save ? "Saving…" : `${n} ${n === 1 ? "change" : "changes"} not saved`}</p>${saveBtns(n, st.page === "steps" ? "for this brew" : "in the book")}`;
@@ -863,7 +901,7 @@ function doLoad(file) {
     st.loaded.at = st.clock;
     st.bs = null; st.offer = null;
     event(`${r.name} loaded`, "confirmed", "ok");
-    $("#sr").textContent = `${r.name} loaded onto Brew day, ready to start.`;
+    $("#sr").textContent = `${r.name} loaded onto Brew Day, ready to start.`;
     render();
   });
 }
@@ -875,7 +913,7 @@ function pressUnload() {
 }
 function doUnload() {
   st.ask = null; st.pend.unload = true; render();
-  later(() => { delete st.pend.unload; const n = st.loaded.name; st.loaded = null; st.bs = null; event(`${n} unloaded: Brew day is brewing by hand`, "confirmed", "ok"); render(); });
+  later(() => { delete st.pend.unload; const n = st.loaded.name || "The steps"; st.loaded = null; st.bs = null; event(`${n} unloaded: Brew Day is brewing by hand`, "confirmed", "ok"); render(); });
 }
 function save() {
   const ed = E();
@@ -894,7 +932,7 @@ function save() {
       Object.assign(r, {name: ed.doc.name, author: ed.doc.author, desc: ed.doc.desc, steps: keep.map(s => { const c = clone(s); delete c._k; return c; }), modified: todayAt(st.clock)});
       delete r.imported_from;
       ed.orig = clone(ed.doc);
-      event(`${r.name} saved in the Recipe book`, "confirmed", "ok");
+      event(`${r.name} saved in the Recipe Book`, "confirmed", "ok");
       if (isLoaded(r.file)) st.offer = r.file;
     }
     render();
@@ -939,8 +977,8 @@ document.addEventListener("click", e => {
   if (em && em.mv && ds.put === undefined && !("mvcancel" in ds) && !ds.move) em.mv = null;
   if (ds.tab) {
     e.preventDefault();
-    if (ds.tab === "Recipe book" || ds.tab === "Brew steps") {
-      const pg = ds.tab === "Recipe book" ? "book" : "steps";
+    if (ds.tab === "Recipe Book" || ds.tab === "Brew Steps") {
+      const pg = ds.tab === "Recipe Book" ? "book" : "steps";
       if (pg === st.page) return;
       if (dirty()) return toast("Mockup: with changes not saved, the page asks first, as Settings does: SAVE AND GO, GO WITHOUT SAVING or STAY.");
       st.page = pg; st.ask = null; st.view = pg === "steps" ? "recipe" : "list";
@@ -948,7 +986,7 @@ document.addEventListener("click", e => {
       return render();
     }
     if (ds.tab === "BrewScribe") return toast("Mockup: this opens BrewScribe in a browser tab of its own.");
-    return toast(`Mockup: this would open ${ds.tab}.${ds.tab === "Brew day" ? " Its OTHER RECIPE list uses the same rows and LOAD." : ""}`);
+    return toast(`Mockup: this would open ${ds.tab}.${ds.tab === "Brew Day" ? " Its OTHER RECIPE list uses the same rows and LOAD." : ""}`);
   }
   if (ds.tabgo) return toast(`Mockup: this would open ${ds.tabgo}.`);
   if ("log" in ds) return toast("Mockup: LOG lists the last eight events, as on the brew-day screen.");
@@ -974,16 +1012,19 @@ document.addEventListener("click", e => {
     if (ds.yes === "unload") return doUnload();
     if (ds.yes === "delete") {
       st.pend.del = true; render();
-      return later(() => { const r = book(st.ed.file); st.book = st.book.filter(x => x !== r); delete st.pend.del; st.ask = null; st.ed = null; st.pane = "list"; st.open = sorted()[0] ? sorted()[0].file : null; st.view = "list"; event(`${r.name} deleted from the Recipe book`, "confirmed", "ok"); render(); });
+      return later(() => { const r = book(st.ed.file); st.book = st.book.filter(x => x !== r); delete st.pend.del; st.ask = null; st.ed = null; st.pane = "list"; st.open = sorted()[0] ? sorted()[0].file : null; st.view = "list"; event(`${r.name} deleted from the Recipe Book`, "confirmed", "ok"); render(); });
     }
     if (ds.yes === "replace" || ds.yes === "asnew") {
-      const nm = ($("#tb-name") || {}).value || st.loaded.name;
-      st.ask = null; st.pend.tobook = true; render();
+      const nm = norm(($("#tb-name") || {}).value);
+      if (ds.yes === "asnew" && !nm) { st.notes.tb = "Give it a name first: the Recipe Book lists recipes by name."; render(); const f = $("#tb-name"); return f && f.focus(); }
+      st.ask = null; st.notes = {}; st.pend.tobook = true; render();
+      // CraftBeerPi keeps the steps as a book recipe and records it as where the steps on Brew Day came from (server
+      // change 4), so LOAD and UNLOAD know they can be loaded again
       return later(() => {
         delete st.pend.tobook;
         const steps = clone(st.loaded.steps).map(s => { delete s.status; return s; });
-        if (ds.yes === "replace") { const r = book(st.loaded.file); Object.assign(r, {steps, modified: todayAt(st.clock)}); delete r.imported_from; event(`${r.name} replaced in the Recipe book`, "confirmed", "ok"); }
-        else { const f = "new" + (KEY++); st.book.push({file: f, name: nm, author: D.CONFIG.AUTHOR, steps, modified: todayAt(st.clock)}); event(`${nm} saved in the Recipe book`, "confirmed", "ok"); }
+        if (ds.yes === "replace") { const r = book(st.loaded.file); Object.assign(r, {steps, modified: todayAt(st.clock)}); delete r.imported_from; event(`${r.name} replaced in the Recipe Book`, "confirmed", "ok"); }
+        else { const f = "new" + (KEY++); st.book.push({file: f, name: nm, author: D.CONFIG.AUTHOR, steps, modified: todayAt(st.clock)}); st.loaded.file = f; st.loaded.name = nm; if (st.bs) st.bs.doc.name = st.bs.orig.name = nm; event(`${nm} saved in the Recipe Book`, "confirmed", "ok"); }
         render();
       });
     }
@@ -1010,7 +1051,7 @@ document.addEventListener("click", e => {
     st.notes = {};
     const f = "made" + (KEY++), from = st.pane === "copy" ? book(st.open) : null;
     st.book.push({file: f, name: nm, author: D.CONFIG.AUTHOR, steps: from ? clone(from.steps) : [], modified: todayAt(st.clock)});
-    event(`${nm} ${from ? "copied" : "added"} to the Recipe book`, "confirmed", "ok");
+    event(`${nm} ${from ? "copied" : "added"} to the Recipe Book`, "confirmed", "ok");
     startEdit(f);
     if (!from) { st.ed.kinds = true; st.ed.cur = "kinds"; }
     st.view = narrow() ? (from ? "recipe" : "plate") : st.view;
@@ -1018,7 +1059,7 @@ document.addEventListener("click", e => {
     return render();
   }
   if ("addstep" in ds) {
-    if (st.page === "steps" && !st.loaded) { st.loaded = {file: null, name: "Brew steps", at: st.clock, steps: [], left: null}; st.bs = null; ensureBs(); }
+    if (st.page === "steps" && !st.loaded) { st.loaded = {file: null, name: "", at: st.clock, steps: [], left: null}; st.bs = null; ensureBs(); }
     const ed = E();
     ed.kinds = true; ed.from = ed.cur; ed.pick = "kinds"; ed.landKinds = true;
     if (narrow()) st.view = "plate";
@@ -1079,7 +1120,7 @@ document.addEventListener("click", e => {
     else { const s = stepByKey(k), o = origOf(ed, s); if (label === "name") s.name = o.name; else if (label === "type") { s.type = o.type; s.props = clone(o.props); } else s.props[label] = o.props[label]; }
     return render();
   }
-  if ("undoall" in ds) { const ed = E(); ed.doc = clone(ed.orig); ed.kinds = false; event(st.page === "steps" ? "Brew steps: changes put back" : `${ed.doc.name}: changes put back`, "done", "ok"); return render(); }
+  if ("undoall" in ds) { const ed = E(); ed.doc = clone(ed.orig); ed.kinds = false; event(st.page === "steps" ? "Brew Steps: changes put back" : `${ed.doc.name}: changes put back`, "done", "ok"); return render(); }
   if ("save" in ds) return save();
   if (ds.rmadd) { const s = stepByKey(ds.s), i = +ds.rmadd; s.props[`Hop_${i}`] = null; s.props[`Hop_${i}_text`] = null; return render(); }
   if (ds.addadd) {
@@ -1102,7 +1143,7 @@ function doImport(id) {
   I.busy = id; I.result = null; render();
   later(() => {
     I.busy = null;
-    if (I.refuse) { I.result = {ok: false, why: "No boil kettle is set, so the boil would go on 'Mash Tun', the mash kettle. Choose the boil kettle in Settings, BoilKettle. Nothing was added to the Recipe book."}; event("Recipe not imported", "from CraftBeerPi", "bad"); return render(); }
+    if (I.refuse) { I.result = {ok: false, why: "No boil kettle is set, so the boil would go on 'Mash Tun', the mash kettle. Choose the boil kettle in Settings, BoilKettle. Nothing was added to the Recipe Book."}; event("Recipe not imported", "from CraftBeerPi", "bad"); return render(); }
     const old = st.book.find(r => r.name === x.name && r.imported_from);
     const file = old ? old.file : "imp" + (KEY++);
     if (old) Object.assign(old, {steps: clone(x.steps), modified: todayAt(st.clock)});
@@ -1166,6 +1207,8 @@ const SCENES = {
   loading: () => { loadFrom(V5); st.open = V4; st.pend.load = V4; st.view = "recipe"; },
   loaded: () => { loadFrom(V4); st.loaded.at = "07:42"; st.open = V4; at("07:42", [["07:42:05", "Craftbeerpi Test Recipe v4 loaded", "confirmed", "ok"]]); st.view = "recipe"; },
   ask: () => { loadFrom(V5, "stopped", 2, {ran: 16}); st.open = V4; st.ask = {kind: "load", file: V4, from: "col"}; at("09:30", [["09:24:31", "Recipe stopped", "confirmed", "ok"]]); st.view = "recipe"; },
+  /* Rye Pale Ale on Brew Day, not begun, its book copy deleted: LOAD asks, as it can't be loaded again */
+  "ask-lost": () => { const x = D.FILES.export.recipes[1]; st.loaded = {file: "deletedRyePaleAle000001", name: x.name, at: "07:20", steps: clone(x.steps).map(s => ({...s, status: "I"})), left: null, ran: null}; st.open = V4; st.ask = {kind: "load", file: V4, from: "col"}; st.view = "recipe"; },
   running: () => { loadFrom(V5, "running", 2, {left: 23 * 60 + 41}); st.open = V4; st.notes.col = runningWhy(); at("09:12", [["09:08:10", "Saccharification started", "confirmed", "ok"]]); st.view = "recipe"; },
   brewstart: () => { loadFrom(BS, "running", 0); st.loaded.at = "15:58"; st.open = V5; st.notes.col = runningWhy(); at("16:20", [["16:02:44", "Recipe started", "confirmed", "ok"]]); st.view = "recipe"; },
   finished: () => { loadFrom(V5, "finished"); st.open = V5; at("13:05", [["12:58:02", "Brewing Complete: Now the yeast will take over", "from CraftBeerPi", ""]]); },
@@ -1174,7 +1217,7 @@ const SCENES = {
   edit: editScene(V4, ed => { const s = ed.doc.steps; s[1].name = "Protein Rest"; s[2].name = "Saccharification"; s[2].props.Timer = "45"; }, 2),
   boil: () => { editScene(V5, () => {}, 5)(); const k = st.ed.doc.steps[5]._k; st.after = () => { jump(k); const a = $(`#p-${k} .addh`), pane = $("#pane"); if (a && wide()) pane.scrollTop += a.getBoundingClientRect().top - pane.getBoundingClientRect().top - 90; }; },
   add: editScene(V4, ed => { ed.kinds = true; ed.from = ed.doc.steps[2]._k; ed.pick = "kinds"; }, "kinds"),
-  saved: () => { loadFrom(V5); st.open = V5; const r = book(V5); r.steps[2].props.Temp = "150"; r.modified = todayAt("07:52"); delete r.imported_from; st.offer = V5; at("07:52", [["07:52:10", "Craftbeerpi Test Recipe v5 saved in the Recipe book", "confirmed", "ok"]]); st.view = "recipe"; },
+  saved: () => { loadFrom(V5); st.open = V5; const r = book(V5); r.steps[2].props.Temp = "150"; r.modified = todayAt("07:52"); delete r.imported_from; st.offer = V5; at("07:52", [["07:52:10", "Craftbeerpi Test Recipe v5 saved in the Recipe Book", "confirmed", "ok"]]); st.view = "recipe"; },
   copy: () => { loadFrom(V5); st.open = V4; st.pane = "copy"; st.view = "plate"; st.focus = "#nm-in"; },
   new: () => { loadFrom(V5); st.open = V5; st.pane = "new"; st.view = "plate"; },
   delete: editScene(V3, () => { st.ask = {kind: "delete"}; }, "del"),
@@ -1183,7 +1226,7 @@ const SCENES = {
   "import-file": () => { loadFrom(V5); st.open = V5; st.pane = "import"; st.view = "plate"; st.imp.file = "export"; at("07:43", [["07:43:30", "XML Recipe BeerSmith export.xml has been uploaded", "from CraftBeerPi", ""]]); },
   imported: () => { loadFrom(V5); st.pane = "import"; st.view = "plate"; st.imp.file = "v6"; at("07:44"); const x = D.FILES.v6.recipes[0]; st.book.push({file: "impV6", name: x.name, author: "John Doe", imported_from: "BeerXML", steps: clone(x.steps), modified: todayAt("07:44")}); st.imp.result = {ok: true, id: "1", file: "impV6", replaced: false, warn: x.warn}; st.open = "impV6"; st.banner = x.warn; st.events.unshift(["07:44:10", "BeerXML recipe imported: Craftbeerpi Test Recipe v6. Kept in your Recipe Book.", "from CraftBeerPi", ""]); },
   reimported: () => { loadFrom(V5); st.pane = "import"; st.view = "plate"; st.imp.file = "export"; at("07:46"); book(V5).modified = todayAt("07:46"); st.imp.result = {ok: true, id: "1", file: V5, replaced: true}; st.open = V5; st.events.unshift(["07:46:12", "BeerXML recipe imported: Craftbeerpi Test Recipe v5. Its earlier copy in your Recipe Book was replaced.", "from CraftBeerPi", ""]); },
-  refused: () => { loadFrom(V5); st.open = V5; st.pane = "import"; st.view = "plate"; st.imp.file = "v6"; st.imp.refuse = true; at("07:44"); st.imp.result = {ok: false, why: "No boil kettle is set, so the boil would go on 'Mash Tun', the mash kettle. Choose the boil kettle in Settings, BoilKettle. Nothing was added to the Recipe book."}; st.events.unshift(["07:44:10", "Recipe not imported", "from CraftBeerPi", "bad"]); },
+  refused: () => { loadFrom(V5); st.open = V5; st.pane = "import"; st.view = "plate"; st.imp.file = "v6"; st.imp.refuse = true; at("07:44"); st.imp.result = {ok: false, why: "No boil kettle is set, so the boil would go on 'Mash Tun', the mash kettle. Choose the boil kettle in Settings, BoilKettle. Nothing was added to the Recipe Book."}; st.events.unshift(["07:44:10", "Recipe not imported", "from CraftBeerPi", "bad"]); },
   brewfather: () => { loadFrom(V5); st.open = V5; st.pane = "import"; st.view = "plate"; st.imp.bf = true; st.after = () => { const p = $("#p-bf"); if (p && wide()) $("#pane").scrollTop = p.offsetTop - $("#pane").offsetTop - 8; }; },
   steps: () => { loadFrom(V5); st.page = "steps"; st.view = "recipe"; },
   "steps-running": () => { loadFrom(V5, "running", 2, {left: 23 * 60 + 41}); st.page = "steps"; at("09:12", [["09:08:10", "Saccharification started", "confirmed", "ok"]]); ensureBs(); st.bs.doc.steps[3].props.Timer = "15"; st.view = "recipe"; st.after = () => jump(st.bs.doc.steps[3]._k); },
@@ -1199,7 +1242,7 @@ const SCENES = {
 };
 // a monitor opens the step's settings beside the column; one thing at a time, the steps stay in view, as after a move
 const inColumn = k => { if (!narrow()) return jump(k); const c = $(`#c-${k}`); if (c) c.scrollIntoView({block: "center"}); };
-/* the night before: v5 loaded on Brew day, not begun, on the Brew steps page. withLast adds a saved BrewStart as the last
+/* the night before: v5 loaded on Brew Day, not begun, on the Brew Steps page. withLast adds a saved BrewStart as the last
    step, where + on today's Brew Steps page puts every new step: the case MOVE is for */
 function evening(withLast) {
   loadFrom(V5); st.loaded.at = "20:31"; st.page = "steps"; st.view = "recipe";
