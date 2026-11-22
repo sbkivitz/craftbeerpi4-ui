@@ -21,6 +21,13 @@
   plumbed past the coil; the probe taken to cool with the pump stopped (`still_probe` above 0), where a misleading
   reading can be low as well as high; and MASH's "– – WORKING OUT" for the second before a new plan's forecast comes.
   The screen never asks for a forecast itself.
+- For core post56, two more. MashInStep's 179.6 °F (82 °C) ceiling: a BACK TO that would go over it is greyed and says
+  why, as one the HLT can't cool is (by hand, that the HLT's own TARGET still can), so the 400 `too_hot` only reaches a
+  screen that hadn't caught up, as a refusal's note rather than an alarm; and the "too far" sentence gets its second
+  cause, since "more than 27 °F above the rest" would be false for a USE over the ceiling on a rest above 152.6 °F.
+  The mash tun's control interval: asked for as a number missing, right after the recipe, rather than `off`, so the
+  box says what to set in Hardware instead of vanishing from brew night over one setting. Not chosen: an alarm for
+  `too_hot` (nothing waits for the brewer), and hiding the greyed BACK TO (The Say Why Rule).
 
 ## The boil kettle's MANUAL heats at the boil power; proposed (22 Nov 2026)
 - The brewer, on 22 Nov: "I don't know if the Manual function on the boil kettle makes sense". Then, from 8012:

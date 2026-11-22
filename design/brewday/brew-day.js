@@ -85,6 +85,10 @@ const SW_FROM = {grainLb: 20, forGrain: 7.5, dead: 0.76, tunLb: 33, bs: 134.6, b
 /* how far above the rest a strike temperature may be before the screen won't offer it: a mistyped grain bill would
    scald the enzymes before anyone noticed (MashInStep.MAX_STRIKE_RISE_C, 15 °C) */
 const SW_MAX_RISE = 27;
+/* the hottest strike water the box sets, °F (MashInStep.MAX_STRIKE_ABS_C, 82 °C), kept safely below what would scald
+   the first grain the water touches. A USE over it is too far to offer, and BACK TO to a plan over it is greyed.
+   MashInStep itself still heats to any temperature typed on Brew Steps */
+const SW_CEIL = 179.6;
 /* the strike water in use: within half a degree of the worked-out figure, so the grain warming a little through the
    morning doesn't take USE back from BACK TO */
 const SW_SAME = 0.5;
@@ -694,7 +698,8 @@ const SCENES = {
      The night before: #sw-plan, the recipe loaded and not begun, its strike water at the rest, as under Kal's way,
      and USE offered; #sw-forecast, the box opened out with FORECAST; #sw-volume, the HLT's water being changed there;
      #sw-grain-edit, the grain's temperature being given there, for grain kept indoors; #sw-grain, given on BrewStart;
-     #sw-hot, the strike water typed in too hot, so the mash would go over its rest; #sw-used, USE pressed. CraftBeerPi
+     #sw-hot, the strike water typed in too hot, so the mash would go over its rest; #sw-used, USE pressed; #sw-backhot,
+     USE pressed on a plan typed on Brew Steps as 185 °F, so BACK TO would pass the ceiling and is greyed. CraftBeerPi
      working USE out: #sw-working, the recipe just loaded and nothing worked out yet, and #sw-working-open with FORECAST
      open; #sw-reworking, the HLT's water just changed, the last figures shown until the new ones come; #sw-levers, USE
      worked out for the new water and FORECAST waiting for what would raise it most. #sw-refused: USE pressed on a
@@ -708,7 +713,7 @@ const SCENES = {
      imported, without the flow, and the HLT heating the strike water on its own AUTO. With a number missing: #sw-novol,
      BrewStart without a water volume; #sw-missing, a recipe built on Brew Steps, with no grain weight or mash water;
      #sw-noprobe, the boil kettle's probe giving no reading; #sw-grain-bad, BrewStart's grain temperature saved on Brew
-     Steps as 150 °F */
+     Steps as 150 °F; #sw-interval, the mash tun's control interval set to 2.5 s */
   "sw-plan": () => swDay(21 * 3600 + 12 * 60 + 5, {}),
   "sw-forecast": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {open: {swOpen: true}}),
   "sw-volume": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {open: {swOpen: true, swVol: {val: 13.5}}}),
@@ -781,7 +786,16 @@ const SCENES = {
   "sw-novol": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.sw.vol = null; return s; },
   "sw-missing": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.sw.from = null; return s; },
   "sw-noprobe": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.v.bk.pv = null; s.pb.none.bk = 300; return Object.assign(s, {pbLast: {bk: 61.4}, gap: {bk: 300}}); },
-  "sw-grain-bad": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.sw.grain = 150; return s; }
+  "sw-grain-bad": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.sw.grain = 150; return s; },
+  /* the strike water step's temperature typed on Brew Steps as 185 °F, and USE pressed at 21:12:31. The model's
+     answers stop at a 175 °F strike, so the mockup can't chart BACK TO's 185 °F: the moment is the box closed */
+  "sw-backhot": () => {
+    const s = swDay(21 * 3600 + 12 * 60 + 40, {used: true});
+    s.sw.was = 185;
+    s.events[0] = ["21:12:31", `Strike water set to ${s.sw.plan.toFixed(1)} °F, was 185.0 °F`, "confirmed", "ok"];
+    return s;
+  },
+  "sw-interval": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.sw.interval = 2.5; return s; }
 };
 /* the strike water's temperature once USE is pressed in the moments: USE for Test Recipe v5 with 15 gal in the HLT and
    the grain at 60.4 °F (the boil kettle's 61.4 °F, less its 1.0 °F offset), from the model's answers */
@@ -1812,14 +1826,18 @@ function swGrainOf() { const {S, bi} = swSteps(); return bi >= 0 ? S[bi].grain ?
    to: the boil kettle's probe, empty until the sparge, its own reading without its offset, as COMPARE PROBES reads it.
    The grain's: the brewer's figure, or without one the room's. Nothing stands in for the room: without a reading a
    room can have, the forecast waits for the probe. Nor for a grain temperature saved on BrewStart that no room has or
-   that isn't a number: the forecast waits for a new one, or for it to be blanked. What stays in the HLT is its water
-   less the strike water. Where the mash probe sits is the rig's setup (sw.probe): the coil's outlet unless set otherwise */
+   that isn't a number: the forecast waits for a new one, or for it to be blanked. Nor for the mash tun's control
+   interval (PID_HERMS's SampleTime, sw.interval; blank is 5 s) when it isn't a whole number of seconds, 1 or more,
+   which the forecast's replay steps through; it comes after the recipe, as a setting made before brew night. What
+   stays in the HLT is its water less the strike water. Where the mash probe sits is the rig's setup (sw.probe): the
+   coil's outlet unless set otherwise */
 function swIn() {
   const F = st.sw.from, {S, si, mi} = swSteps(), rest = S[mi].temp, plan = si >= 0 ? S[si].temp : st.v.hlt.sv;
   const room = st.v.bk.pv == null ? null : +(st.v.bk.pv - ((st.poff || {}).bk || 0)).toFixed(1), typed = swGrainOf();
   const gal = F && F.grainLb && F.forGrain ? swGal(F) : null, vol = swVolOf();
-  const N = {plan: plan ?? null, rest, room, typed, grain: typed ?? room, vol, step: si >= 0, gal, probe: st.sw.probe || "coil"};
+  const N = {plan: plan ?? null, rest, room, typed, grain: typed ?? room, vol, step: si >= 0, gal, probe: st.sw.probe || "coil", interval: st.sw.interval};
   if (gal == null) N.miss = "recipe";
+  else if (!swIntervalOk(N.interval)) N.miss = "sample_time";
   else if (room == null) N.miss = "probe";
   else if (room < ROOM_LO || room > ROOM_HI) N.miss = "room";
   else if (typed != null && !swGrainOk(typed)) N.miss = "grain";
@@ -1829,6 +1847,8 @@ function swIn() {
 /* a grain temperature the forecast can use: a number a room can have, as COMPARE PROBES counts one. BrewStart's, saved
    on Brew Steps, can be anything */
 const swGrainOk = t => typeof t === "number" && Number.isFinite(t) && t >= ROOM_LO && t <= ROOM_HI;
+/* a control interval the forecast can use: blank (the rig's own) or a whole number of seconds, 1 or more */
+const swIntervalOk = s => s == null || (typeof s === "number" && Number.isInteger(s) && s >= 1);
 /* a grain temperature in LOG's words, one that isn't a number included */
 const swGrainSays = t => typeof t === "number" && Number.isFinite(t) ? `${t.toFixed(1)} °F` : "not a number";
 /* the numbers USE is worked out from, as CraftBeerPi keeps them with its answer; none while one is missing. An answer
@@ -1855,7 +1875,7 @@ function swNumbers() {
     return Object.assign(N, F && !N.work && swSameIn(swNow(), F.for) ? {failed: F} : {wait: true});
   }
   const M = swModel(A.grain, A.vol, A.probe), lvIn = A.lvAt == null || st.t >= A.lvAt;
-  if (M.use - N.rest > SW_MAX_RISE) return Object.assign(N, {miss: "far", strike: M.use});
+  if (M.use - N.rest > SW_MAX_RISE || M.use > SW_CEIL) return Object.assign(N, {miss: "far", strike: M.use});
   return Object.assign(N, {ok: true, stale: !!N.work, A, strike: M.use, mid: lvIn ? M.mid : null, lv: lvIn ? M.lv : null, lvWait: !lvIn,
     restPeak: M.fc(N.rest).peak, fc: M.fc});
 }
@@ -1936,7 +1956,13 @@ const SW_MISS = {
   room: N => `The boil kettle's probe reads ${N.room.toFixed(1)}&nbsp;°F, ${N.room > ROOM_HI ? "warmer" : "colder"} than any room, so it can't stand for the room${N.typed == null ? " or the grain" : ""}.`,
   grain: N => `BrewStart's grain temperature ${typeof N.typed === "number" && Number.isFinite(N.typed) ? `is ${N.typed.toFixed(1)}&nbsp;°F, ${N.typed > ROOM_HI ? "warmer" : "colder"} than any room` : "isn't a number"}. The forecast can't use it.`,
   vol: () => "How much water is in the HLT, strike and sparge? The forecast needs it.",
-  far: N => `It works out at ${swT(N.strike)}, more than ${SW_MAX_RISE}&nbsp;°F above the rest: too far to trust. Check the grain weight and the water in BeerSmith.`
+  /* too far to offer: more than 27 °F above the rest, in today's words; or within that, over the ceiling, which only a
+     rest above 152.6 °F can bring */
+  far: N => N.strike - N.rest > SW_MAX_RISE
+    ? `It works out at ${swT(N.strike)}, more than ${SW_MAX_RISE}&nbsp;°F above the rest: too far to trust. Check the grain weight and the water in BeerSmith.`
+    : `It works out at ${swT(N.strike)}, over ${swT(SW_CEIL)}: too hot for strike water. Check the grain weight and the water in BeerSmith.`,
+  /* the mash tun's control interval, as the Hardware page names it and the values it suggests */
+  sample_time: N => `The mash tun's control interval ${typeof N.interval === "number" && Number.isFinite(N.interval) ? `is ${+N.interval}&nbsp;s` : "isn't a number"}. The forecast can't use it: set it to 2 or 5&nbsp;s in Hardware.`
 };
 /* CraftBeerPi's work on USE failed for these numbers: no USE, the strike water as it is, and where to read why */
 function swFailedSays(N) {
@@ -1945,17 +1971,20 @@ function swFailedSays(N) {
   return `CraftBeerPi couldn't work out a forecast for these numbers, so there's no USE. ${stays} What went wrong is in LOG.`;
 }
 /* USE or BACK TO refused by a CraftBeerPi that has moved on, reaching a screen that hadn't caught up: the strike water
-   already in the mash tun (409 moved), or the box no longer applying (409 off, why). Said under the box for 6 s, as
-   START's refusal is, with nothing logged; the box then follows CraftBeerPi */
+   already in the mash tun (409 moved), the box no longer applying (409 off, why), or the temperature over the ceiling
+   (400 too_hot, which an up-to-date screen never sends, as it greys BACK TO over it). Said under the box for 6 s, as
+   START's refusal is, with nothing logged; the box then follows CraftBeerPi. sample_time is for a CraftBeerPi that
+   reports the control interval as off rather than as a number missing */
 const SW_OFF = {
   no_recipe: "no recipe is loaded now",
   malt_in: "the malt is already in",
   not_herms: "the mash tun no longer runs PID_HERMS",
+  sample_time: "the forecast can't use the mash tun's control interval now",
   no_mash_in: "the recipe's first mash tun step isn't MashIn now",
   no_mash_tun: "CraftBeerPi doesn't find the mash tun now",
   no_hlt: "CraftBeerPi doesn't find the HLT now"
 };
-const swNotApplied = (what, T, why) => `${what} ${T.toFixed(1)} °F wasn't applied: ${why === "moved" ? "the strike water is already in the mash tun" : SW_OFF[why]}.`;
+const swNotApplied = (what, T, why) => `${what} ${T.toFixed(1)} °F wasn't applied: ${why === "moved" ? "the strike water is already in the mash tun" : why === "too_hot" ? `it's over ${SW_CEIL} °F, too hot for strike water` : SW_OFF[why]}.`;
 /* the window, a small PID window as the faceplates have: the strike water as planned, and where the mash lands as the
    grain goes in, a range while the rig is unmeasured. One line each, whatever the column's width, so nothing under it
    moves as they change. A mash the forecast takes over its rest, which the HERMS can't bring down, in Prompt Amber, with
@@ -2166,15 +2195,18 @@ function swHTML() {
   /* USE, or once it is in use BACK TO, in one place. While the HLT heats the strike water, a temperature below the
      water's is greyed: the HLT can't cool it, and the step would ask for the water at once, hotter than the box says.
      While CraftBeerPi works USE out, USE is greyed, with the last figure if there is one: CraftBeerPi refuses a figure
-     worked out from numbers that have changed since. BACK TO is never hotter, so it stays */
+     worked out from numbers that have changed since. BACK TO is never hotter, so it stays, unless the plan it goes
+     back to is over the ceiling, which the box doesn't set: then it's greyed and says so, and by hand that the HLT's
+     own TARGET can still set it */
   const alt = swAlt(N), used = alt != null && N.plan != null && Math.abs(N.plan - N.strike) < SW_SAME;
   let act = "";
   if (N.wait && phase !== "moved") act = b("cmdbtn swuse", "USE –&nbsp;–&nbsp;°F", "working it out", {cmd: "sw:use", why: SW_WORKING});
   else if (alt != null) {
     const H = st.v.hlt, water = (phase === "heat" && st.recipe.state === "running") || (!N.step && H.mode === "auto") ? H.pv : null;
     const cool = T => water != null && T < water - 0.5 ? `The water is already at ${water.toFixed(1)} °F, above ${T.toFixed(1)} °F, and the HLT can't cool it.` : "";
+    const hot = T => T > SW_CEIL ? `${T.toFixed(1)} °F is over ${SW_CEIL} °F, too hot for strike water, so BACK TO can't set it.${N.step ? "" : " TARGET can set the HLT to it."}` : "";
     const stale = N.stale ? `Not yet: ${swWhy(N)}, and CraftBeerPi is working USE out again. ${N.strike.toFixed(1)} °F was for ${swWas(N)}.` : "";
-    act = used ? b("cmdbtn", pend ? "SENDING…" : `BACK TO ${alt.toFixed(1)}&nbsp;°F`, st.sw.was != null ? "as it was" : "the rest", {cmd: "sw:back", why: why || cool(alt)})
+    act = used ? b("cmdbtn", pend ? "SENDING…" : `BACK TO ${alt.toFixed(1)}&nbsp;°F`, st.sw.was != null ? "as it was" : "the rest", {cmd: "sw:back", why: why || hot(alt) || cool(alt)})
       : b("cmdbtn swuse", pend ? "SENDING…" : `USE ${alt.toFixed(1)}&nbsp;°F`, N.stale ? "working it out" : N.step ? "aims under the rest" : "as the HLT's target", {cmd: "sw:use", why: why || stale || cool(alt)});
   }
   /* with the pump stopped for the dough-in, a Mash Tun reading more than 3 °F over the top of where the forecast lands

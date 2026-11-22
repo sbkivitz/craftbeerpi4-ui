@@ -365,6 +365,9 @@ The box's head: the window, then two buttons side by side under it.
 - While CraftBeerPi answers, the pressed button says `SENDING…` and is greyed.
 - Greyed while the HLT heats the strike water, if the temperature is below the water's: "The water is already at
   132.3 °F, above 126.0 °F, and the HLT can't cool it."
+- BACK TO greyed when the plan it goes back to is over 179.6 °F (82 °C), the hottest strike water the box sets, as with
+  a plan typed on Brew Steps as 185 °F: "185.0 °F is over 179.6 °F, too hot for strike water, so BACK TO can't set it."
+  By hand, adding "TARGET can set the HLT to it." MashIn itself still heats to any temperature typed on Brew Steps.
 - Greyed while USE is worked out: `USE – – °F` / "working it out", or with the last figure, `USE 132.4 °F` / "working it
   out". Pressed: "Not yet: CraftBeerPi is still working USE out for this recipe." or "Not yet: the HLT's water changed,
   and CraftBeerPi is working USE out again. 132.4 °F was for 15 gal in the HLT." (or "the grain's temperature changed",
@@ -498,6 +501,11 @@ now." or "CraftBeerPi doesn't find the HLT now." Also:
   another screen." (no steps). That refusal carries no state, so the screen asks CraftBeerPi for it.
 - USE when a number has gone missing since: "USE 132.4 °F wasn't applied: a number it's worked out from is missing
   now." The box then says which, in the buttons' place.
+- USE or BACK TO over 179.6 °F (400 `too_hot`), which only a screen that hadn't caught up sends, as BACK TO over it is
+  greyed and USE over it isn't offered: "BACK TO 185.0 °F wasn't applied: it's over 179.6 °F, too hot for strike
+  water." It's a refusal, not a failed command: nothing logged and no alarm. Nothing changed, so the box stays as it is.
+- While CraftBeerPi reports the mash tun's control interval as off rather than as a number missing (below): "USE
+  132.4 °F wasn't applied: the forecast can't use the mash tun's control interval now."
 
 The HLT's water and the grain's temperature, refused the same way, under the box for 6 s, with nothing logged: "The
 HLT's water wasn't set to 16.0 gal: …" and "The grain's temperature wasn't set to 70.0 °F: …" (THE PROBE: "The grain's
@@ -522,12 +530,19 @@ When a number is missing, the reason takes the buttons' place, and each says wha
 - "How much water is in the HLT, strike and sparge? The forecast needs it." with `HLT WATER` / "set it" beside it.
 - "No grain weight or mash water in this recipe, so where the mash lands isn't known. A recipe imported from BeerSmith
   has both." (a recipe built on Brew Steps)
+- "The mash tun's control interval is 2.5 s. The forecast can't use it: set it to 2 or 5 s in Hardware." ("isn't a
+  number" for one that isn't.) The forecast replays PID_HERMS's decisions, so it needs a whole number of seconds, 1 or
+  more; "control interval" and "2 or 5" are the Hardware page's own words for the mash tun's SampleTime. It comes
+  right after the recipe's sentence, as a setting made before brew night. Without it, the box would vanish from brew
+  night for one setting, and nothing would say why.
 - "The boil kettle's probe gives no reading, so the room's temperature isn't known, nor the grain's. Check its plug and
   cable." With the grain's temperature given, without "nor the grain's".
 - "The boil kettle's probe reads 140.0 °F, warmer than any room, so it can't stand for the room or the grain."
   (outside 35-120 °F, the same limits as COMPARE PROBES; with the grain's temperature given, without "or the grain")
 - "It works out at 160.5 °F, more than 27 °F above the rest: too far to trust. Check the grain weight and the water in
-  BeerSmith." (MashInStep's own limit, 15 °C)
+  BeerSmith." (MashInStep's own limit, 15 °C) Within 27 °F of the rest but over the ceiling, which only a rest above
+  152.6 °F can bring: "It works out at 181.2 °F, over 179.6 °F: too hot for strike water. Check the grain weight and the
+  water in BeerSmith." (MashInStep's ceiling, 82 °C)
 - "BrewStart's grain temperature is 150.0 °F, warmer than any room. The forecast can't use it." ("colder" below 35 °F;
   "BrewStart's grain temperature isn't a number. The forecast can't use it."), with `GRAIN` / "change it" beside it,
   which opens the grain's box.
@@ -619,6 +634,8 @@ PROBE blanks the grain temperature. Each is changed back the same way, and each 
 | A command that fails | React UI | No answer, or an error that isn't one of the refusals above (400 `bad_body`, 5xx): The Answer At The Button Rule, the alarm saying what is in force ("The strike water did not change. It is still 126.0 °F."), and LOG's "failed: {why}". |
 | The plan's forecast, coming | React UI | While `answer.forecasts` has none for `inputs.planned` (about a second on a Pi after the strike water is changed elsewhere), MASH is `– –` with WORKING OUT, and FORECAST shows the other choice alone; the tag goes after 10 s. The screen never calls `GET /step2/strike/forecast`: nothing in the design needs a forecast before it's set. |
 | The rig's other setups | React UI | `rig.through_coil` false: STRIKE's other words. `rig.still_probe` above 0: PUMP OFF's words, FORECAST's second sentence on what the probe reads, and the dough-in line, shown more than 3 °F outside where the mash lands, above or below. |
+| MashInStep's ceiling, 179.6 °F (82 °C) | React UI | `SW_CEIL` in `brew-day.js`. A USE over it counts as too far (`swNumbers`), so not even an answer kept from before core post56 can offer one; the "too far" sentence's second cause (`SW_MISS.far`); BACK TO to a plan over it greyed, with its reason (`hot` in `swHTML`); 400 `too_hot` as a refusal's note (`swNotApplied`), not a failed command. |
+| The mash tun's control interval | Server, then React UI | CraftBeerPi reports a SampleTime the replay can't step through as `miss` `sample_time`, right after `recipe`, rather than as `off`, which hides the box: so the box's phase has to be worked out with it too (today the check comes before MashIn on the Mash Tun is found). The screen: `SW_MISS.sample_time`, with the mash tun's SampleTime as the Hardware page shows it, from the kettle's settings or sent with the miss. |
 | A grain temperature the forecast can't use, and a failed forecast | React UI | `miss` `grain`: `swGrainOk`, `SW_MISS.grain`, with GRAIN / "change it" opening the grain's box (`swGrain` opens it at the probe's reading). `failed`: `swFailedSays` in the buttons' place, MASH's dashes, and LOG's "Strike water forecast failed: {detail}" once, with "failed" in the failed tone (`bad`). |
 | What would raise USE most, after USE | React UI | `levers` null with an answer: `swList`'s sentence "CraftBeerPi is still working out which of these would raise USE most …" in NOT MEASURED YET, until they come (`swNumbers`' `lvWait`). |
 | The Campden dose | React UI | From the server's `campden` (null with BrewStart's Campden reminder off, or by hand): FROM YOU's water line ("Campden for it: ¾ tablet.") and the HLT water's LOG line (" · Campden 1 tablet"). Written as BrewStart's `format_tablets` writes it (`swCampden` stands in for it). |
@@ -659,6 +676,21 @@ grain at 95 °F USE is now 131.2, 130.7, 130.1 and 129.6 °F. `strike-model.js` 
 still give USE at the rest itself, the box offers no USE, and FORECAST says why.
 
 ## How it was checked
+
+For core post56 (22 Nov, morning):
+
+- 22 presses (`sw8_presses.py`): BACK TO 185.0 °F greyed in `#sw-backhot`, its reason under the box when tapped, and
+  nothing sent or logged; by hand, its reason naming TARGET; BACK TO at 179.6 °F itself not greyed; the `too_hot` and
+  `sample_time` refusals' words; the "too far" sentence's two causes, and a USE of 181.2 °F on a 158 °F rest giving no
+  USE and the ceiling's sentence; the control interval at 2.5 s, 0 s and not a number, after the recipe's sentence and
+  before the probe's, with 2, 3, 5 and blank usable and 2.5, 0.5 and −2 not; set to 2 s, USE worked out again.
+- The two new moments measured from 360 × 740 to 1920 × 1080: `#sw-backhot` is as tall as `#sw-used`, and
+  `#sw-interval` no taller than `#sw-noprobe`; at every one-screen size the current step is whole and nothing is wider
+  than the screen. BACK TO's reason, while it shows for 6 s at 1180 × 860, leaves the step list short of the current
+  step, as any note there does (Known limits in DESIGN.md).
+- Pictures against the copy in `design/brewday` (UI 226c216), at five sizes, in the 25 strike water moments it has and
+  two others: all 135 the same. The earlier presses (`sw5_presses.py`, `sw5_edges.py`, `sw7_presses.py`) and the
+  proposals' (timers, column, boil kettle) all pass.
 
 Words for the server contract's gaps (22 Nov):
 
@@ -761,6 +793,8 @@ In `brew-day.html`, second in the strip:
 - `#sw-grain`: the grain's temperature given on BrewStart, 70 °F, FORECAST opened.
 - `#sw-hot`: the strike water typed in too hot.
 - `#sw-used`: USE pressed.
+- `#sw-backhot`: USE pressed on a plan typed on Brew Steps as 185 °F, so BACK TO 185.0 °F is greyed. The model's
+  answers stop at a 175 °F strike, so the mockup can't chart BACK TO's band here: the moment is the box closed.
 - `#sw-working`: the recipe just loaded, CraftBeerPi working USE out for the first time.
 - `#sw-working-open`: the same, FORECAST opened.
 - `#sw-reworking`: the HLT's water just set to 13.5 gal, the figures for 15 gal greyed until the new ones come.
@@ -780,6 +814,7 @@ In `brew-day.html`, second in the strip:
 - `#sw-missing`: a recipe built on Brew Steps, with no grain weight.
 - `#sw-noprobe`: the boil kettle's probe gives no reading.
 - `#sw-grain-bad`: BrewStart's grain temperature saved on Brew Steps as 150 °F.
+- `#sw-interval`: the mash tun's control interval set to 2.5 s.
 
 ## Where it came from
 
