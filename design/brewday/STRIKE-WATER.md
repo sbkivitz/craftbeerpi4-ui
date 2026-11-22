@@ -350,6 +350,10 @@ The window, a small PID window like the faceplates':
 - `MASH  LANDS 113-118 °F`, or in amber `MASH  UP TO 137 °F OVER THE REST`. A screen reader says "113 to 118". Each
   fits on one line at every size, from a 360 px phone up.
 - While USE is worked out: `MASH  – – WORKING OUT` with nothing worked out yet, or the last figures in grey.
+- The same `– – WORKING OUT` for the second or so after the strike water is changed elsewhere (its Temp edited on Brew
+  Steps, or by hand the HLT's target set), until CraftBeerPi sends the forecast for it. The screen doesn't ask for one
+  itself. If none has come after 10 s, the tag goes, so nothing claims to be working. With FORECAST open meanwhile, the
+  chart and its words show the other choice alone.
 
 The box's head: the window, then two buttons side by side under it.
 
@@ -372,7 +376,10 @@ Under the window, in the head:
   counting on.
 - During dough-in, with the pump stopped and the Mash Tun reading more than 3 °F above the top of where the mash lands
   (the probe at the coil's outlet only): "The Mash Tun's 132.2 °F isn't the mash: with the pump stopped, its probe
-  reads the water left in the HLT's coil."
+  reads the water left in the HLT's coil." Where the rig's setup takes the probe to cool with the pump stopped
+  (`still_probe` above 0), the line shows when the reading is more than 3 °F outside where the mash lands, above or
+  below, and says: "The Mash Tun's 102.4 °F isn't the mash: with the pump stopped, its probe reads the still water at
+  the coil's outlet." It takes as many lines as the other at every size.
 
 FORECAST's details, under the head:
 
@@ -399,7 +406,9 @@ FORECAST's details, under the head:
   heated only to the rest would."
 - "With USE, the Mash Tun may read up to 132 °F during dough-in. That won't be the mash: its probe sits at the coil's
   outlet, and with the pump stopped it reads the water left in the HLT's coil." (Once USE is in use: "During dough-in
-  the Mash Tun may read up to 132 °F. …"; the probe at the coil's outlet only.)
+  the Mash Tun may read up to 132 °F. …"; the probe at the coil's outlet only.) With `still_probe` above 0, the second
+  sentence is "Neither that nor the lower readings after it will be the mash: its probe sits at the coil's outlet, and
+  with the pump stopped the water there cools toward the room."
 - FROM THE RECIPE. GRAIN "20 lb". WATER "8.26 gal to the mash tun: 7.50 gal for the grain and 0.76 gal under the false
   bottom". MASH TUN "33 lb of steel". REST "126 °F".
 - FROM YOU, each line with CHANGE beside it:
@@ -417,7 +426,7 @@ FORECAST's details, under the head:
   its probe".
 - THE RIG'S SETUP. MASH PROBE "at the coil's outlet: with the pump running it reads the wort leaving the coil" (or "at
   the tun's outlet: it reads the mash leaving the tun"). STRIKE "the water goes to the mash tun through the coil, by
-  the HLT pump".
+  the HLT pump" (plumbed past the coil: "the water goes to the mash tun straight from the HLT, by the HLT pump").
 - NOT MEASURED YET. "USE allows for every one of these anywhere in its range, so a wrong guess lands the mash low, where
   the HERMS can bring it up." Then, each with its range: TO NEXT "0-10 min from the grain going in to pressing Next".
   TUN STEEL "45-100 % of it warmed by the water at once". TUN LOSS "4.45-15 W/K: how fast it loses heat with the pump
@@ -426,7 +435,9 @@ FORECAST's details, under the head:
   coil". MALT "0.38-0.42 cal/g °C: how much heat it holds". HLT LOSS "66-100 % of its heat loss at 15 gal, with
   6.74 gal left in it". HLT STEEL "10-17 kg with its coil, still hot when the water goes". PROBE LAG "44-65 s: how far
   the mash probe's reading trails the wort". PUMP OFF "the Mash Tun probe taken to read the HLT's water, as still wort
-  beside the coil would. Not checked on the rig yet" (the coil's outlet only). Then, once USE is worked out: "Knowing
+  beside the coil would. Not checked on the rig yet" (the coil's outlet only; with `still_probe` above 0, "the Mash Tun
+  probe taken to cool from the HLT's water 25 % of the way to the room, as still water in its pipe would. Not checked
+  on the rig yet", or "all the way" at 1). Then, once USE is worked out: "Knowing
   the minutes from the grain to Next, how much of the tun's steel warms and the tun's heat loss would raise USE the
   most: about 0.8, 0.7 and 0.6 °F. If every one proved to be the middle of its range, USE would be 137.3 °F." Until
   CraftBeerPi has worked those out, a few minutes after USE: "CraftBeerPi is still working out which of these would
@@ -437,7 +448,9 @@ FORECAST's details, under the head:
 The HLT's water box: the label "HLT WATER, IN GALLONS", and under it "All the water in the HLT now, strike and sparge.
 It is BrewStart's water volume, which also sets the Campden dose." Then −1, −.1, the figure, +.1, +1, `SET 15.0 gal`
 and `CANCEL`. Enter sets and Escape cancels. It says why it won't set: "Type how much water is in the HLT, in
-gallons." or "The HLT holds the strike water too, so at least 8.26 gal."
+gallons." or "The HLT holds the strike water too, so at least 8.26 gal." Where the volumes are in litres (BrewStart's
+Volume_Unit L, or by hand on a °C brewery): "HLT WATER, IN LITRES", `SET 56.8 L`, "… in litres.", as BrewStart's own
+form says "litres".
 
 The grain's box: the label "GRAIN TEMPERATURE, IN °F", and under it "For grain that spent the night away from the boil
 kettle. It is BrewStart's grain temperature: left blank, the kettle's probe is used." (brewing by hand: "… boil kettle.
@@ -445,7 +458,8 @@ Without it, the kettle's probe is used."). Then −1, −.1, the figure, +.1, +1
 figure is in use, `THE PROBE` / "the boil kettle's, 60.4 °F, instead" across the box. It opens with the figure in use,
 or the probe's, selected. Enter sets and Escape cancels. It says why it won't set: "Type the grain's temperature, in
 °F." or "The grain's temperature has to be between 35 and 120 °F." (what COMPARE PROBES counts as a room's). One box at
-a time: opening one closes the other.
+a time: opening one closes the other. On a °C brewery: "GRAIN TEMPERATURE, IN °C", "… in °C." and "… between 1.5 and
+49 °C."
 
 In LOG, and said to a screen reader with ": confirmed":
 
@@ -473,7 +487,35 @@ The same way, for a screen that hadn't caught up with CraftBeerPi, with the box 
 wasn't applied: the strike water is already in the mash tun." ("BACK TO 126.0 °F wasn't applied: …"), and when the box
 no longer applies, after "wasn't applied:": "no recipe is loaded now.", "the malt is already in.", "the mash tun no
 longer runs PID_HERMS.", "the recipe's first mash tun step isn't MashIn now.", "CraftBeerPi doesn't find the mash tun
-now." or "CraftBeerPi doesn't find the HLT now."
+now." or "CraftBeerPi doesn't find the HLT now." Also:
+
+- BACK TO, when another screen has moved the strike water since: "BACK TO 126.0 °F wasn't applied: the strike water was
+  changed on another screen. It's 131.8 °F now." By hand: "… the HLT's target was changed on another screen. …". The
+  figure is the strike water as CraftBeerPi sends it with the refusal, so it says what is in force.
+- USE or BACK TO on a recipe changed elsewhere, decided from CraftBeerPi's answer as START's refusal is: "USE 132.4 °F
+  wasn't applied: another recipe was loaded on another screen." (another name), "…: the recipe was changed on another
+  screen." (the same name, as for the same recipe loaded again from the Recipe Book) or "…: the recipe was cleared on
+  another screen." (no steps). That refusal carries no state, so the screen asks CraftBeerPi for it.
+- USE when a number has gone missing since: "USE 132.4 °F wasn't applied: a number it's worked out from is missing
+  now." The box then says which, in the buttons' place.
+
+The HLT's water and the grain's temperature, refused the same way, under the box for 6 s, with nothing logged: "The
+HLT's water wasn't set to 16.0 gal: …" and "The grain's temperature wasn't set to 70.0 °F: …" (THE PROBE: "The grain's
+temperature wasn't changed to the boil kettle's probe: …"), then the recipe's three reasons above, or "no recipe is
+loaded now." These close the small box, and the box follows CraftBeerPi. Two leave it open with the figure, so it can
+be put right: under the strike water, "…: the HLT holds the strike water too, so at least 8.26 gal.", and a grain
+temperature out of range, "…: it has to be between 35 and 120 °F.", each with CraftBeerPi's own figures.
+
+When CraftBeerPi doesn't answer, or answers with an error that isn't one of these refusals, the command has failed
+(The Answer At The Button Rule): its button shows it, the title bar has an alarm with OK, and LOG gets the command with
+"failed: {why}" in light red. The alarm says what is in force:
+
+- USE or BACK TO: "The strike water did not change. It is still 126.0 °F." By hand, as SET's: "The hot liquor tank
+  target did not change. It is still 126.0 °F."
+- The water: "The HLT's water did not change. It is still 15.0 gal." With none given before: "The HLT's water did not
+  change. None is given yet."
+- The grain: "The grain's temperature did not change. It is still 70.0 °F." From the probe before: "The grain's
+  temperature did not change. It is still the boil kettle's probe's, 60.4 °F."
 
 When a number is missing, the reason takes the buttons' place, and each says what to do:
 
@@ -573,7 +615,10 @@ PROBE blanks the grain temperature. Each is changed back the same way, and each 
 | The box: the window, the head (USE or BACK TO, FORECAST or CLOSE), the dough-in line, the missing-number sentences | React UI | `swHTML`, `swWin`, `swAlt` and `swPhase` in `brew-day.js`; styles under `.sw` in `brew-day.css`. One line per window row at every size. |
 | FORECAST: the head kept in reach, the chart, its key, its words and the numbers by where they come from | React UI | `.swhead` and `.swdet`: on one screen the box takes the step list's and the timers' room and the details scroll inside it (`.recipe[data-pb] .swdet`); where the page scrolls, the head is sticky. `drawSw` draws the chart at its own size, as the graphs draw theirs; `swWords` and `swList` write the words. The words describe the chart for everyone, and the ghost under them keeps the words' height when USE and BACK TO swap. |
 | Working out USE: the line with its seconds, MASH's dashes, the stale grey, the greyed USE and its reasons, the sentence above the chart | React UI | `swNumbers` (its `wait` and `stale`), `swWorkSays`, `swWas`, `swWhy`; `.swwk`, `.swm.stale`, `svg.stale` and `.swf.stale` in `brew-day.css`. The seconds are counted from when the server started, which it sends. |
-| A refused USE | React UI | `swRefuse`, `swRefusal` and `swChanged`: the note under the box, the new figure in USE's place, no LOG line; what moved, named from the two sets of numbers. A refusal for a screen that hadn't caught up (409 `moved`, or 409 `off` with its `why`): `swNotApplied` and `SW_OFF`, a note under the box for 6 s, nothing logged, the box then following CraftBeerPi. |
+| A refused USE | React UI | `swRefuse`, `swRefusal` and `swChanged`: the note under the box, the new figure in USE's place, no LOG line; what moved, named from the two sets of numbers. A refusal for a screen that hadn't caught up (409 `moved`, or 409 `off` with its `why`): `swNotApplied` and `SW_OFF`, a note under the box for 6 s, nothing logged, the box then following CraftBeerPi. The same for 409 `back_changed` (the plan now from its `strike`), 409 `recipe_changed` (START's three reasons from its `name` and `steps`, then the state fetched, as the refusal has none), 409 `missing`, and the water's and the grain's refusals ("The words"). |
+| A command that fails | React UI | No answer, or an error that isn't one of the refusals above (400 `bad_body`, 5xx): The Answer At The Button Rule, the alarm saying what is in force ("The strike water did not change. It is still 126.0 °F."), and LOG's "failed: {why}". |
+| The plan's forecast, coming | React UI | While `answer.forecasts` has none for `inputs.planned` (about a second on a Pi after the strike water is changed elsewhere), MASH is `– –` with WORKING OUT, and FORECAST shows the other choice alone; the tag goes after 10 s. The screen never calls `GET /step2/strike/forecast`: nothing in the design needs a forecast before it's set. |
+| The rig's other setups | React UI | `rig.through_coil` false: STRIKE's other words. `rig.still_probe` above 0: PUMP OFF's words, FORECAST's second sentence on what the probe reads, and the dough-in line, shown more than 3 °F outside where the mash lands, above or below. |
 | A grain temperature the forecast can't use, and a failed forecast | React UI | `miss` `grain`: `swGrainOk`, `SW_MISS.grain`, with GRAIN / "change it" opening the grain's box (`swGrain` opens it at the probe's reading). `failed`: `swFailedSays` in the buttons' place, MASH's dashes, and LOG's "Strike water forecast failed: {detail}" once, with "failed" in the failed tone (`bad`). |
 | What would raise USE most, after USE | React UI | `levers` null with an answer: `swList`'s sentence "CraftBeerPi is still working out which of these would raise USE most …" in NOT MEASURED YET, until they come (`swNumbers`' `lvWait`). |
 | The Campden dose | React UI | From the server's `campden` (null with BrewStart's Campden reminder off, or by hand): FROM YOU's water line ("Campden for it: ¾ tablet.") and the HLT water's LOG line (" · Campden 1 tablet"). Written as BrewStart's `format_tablets` writes it (`swCampden` stands in for it). |

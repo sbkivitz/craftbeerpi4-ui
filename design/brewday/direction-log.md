@@ -14,6 +14,13 @@
   1180 × 860, 1280 × 800 and 1366 × 768.
 - Not chosen: keeping the last figures greyed after a failure (they were for other numbers, and nothing is coming to
   replace them); an alarm in the title bar for it (nothing waits for the brewer).
+- Later the same day, for the build (core 4.7.7.post55, UI post29), words for its remaining interim ones: BACK TO
+  refused when another screen moved the plan ("… It's 131.8 °F now.", so it says what is in force); USE or BACK TO on a
+  recipe changed elsewhere, with START's three reasons; the water and the grain refused; a command with no answer, as
+  a failed command whose alarm says what is still in force; litres, as BrewStart's form says it; the strike water
+  plumbed past the coil; the probe taken to cool with the pump stopped (`still_probe` above 0), where a misleading
+  reading can be low as well as high; and MASH's "– – WORKING OUT" for the second before a new plan's forecast comes.
+  The screen never asks for a forecast itself.
 
 ## The boil kettle's MANUAL heats at the boil power; proposed (22 Nov 2026)
 - The brewer, on 22 Nov: "I don't know if the Manual function on the boil kettle makes sense". Then, from 8012:
