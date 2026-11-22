@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-22T19:25:48.143Z",
+  "generatedAt": "2026-11-22T20:07:05.925Z",
   "title": "Design System: CraftBeerPi Brew Day",
   "extensions": {
     "colorMeta": {
@@ -1114,6 +1114,11 @@
         "section": "components"
       },
       {
+        "name": "The One Clock Rule",
+        "body": "Brew Day has one clock, CraftBeerPi's (cbpi.api.clock), and every time it shows is on it: the title bar's clock, LOG's times, the graphs' times, STARTS, ready by and estimated completion, and every count CraftBeerPi keeps (the step and rest timers, the timers, the boil's pause, how long CraftBeerPi has been working USE out). Nothing reads the PC's or the phone's clock. On the rig CraftBeerPi's clock is the Pi's, so nothing changes there. A simulator's runs SIM_TIME_SCALE times as fast from the moment it starts, so its time and date soon leave the screen's. The title bar then adds CraftBeerPi's date where it isn't the screen's, and its speed where it isn't 1×: \"THU 26 NOV · 60× SPEED\". While it does, a LOG line from another of CraftBeerPi's days says its date: \"26 Nov 23:58:40\". Until CraftBeerPi has said where its clock is, the title bar shows \"– –:– –\" rather than another clock's time. The screen asks when the page opens, once a minute and when the connection comes back, and counts on between. Only the screen's own waits are in real seconds, at any speed: a held START, the 10 s UNDO, the 5 s wait for an answer, a note's 6 s, the beep every 3 s while an alarm waits, CHECKING…'s 6 s and \"Last reading N s ago\". On 22 Nov the brewer set a BrewStart to start at 12:04 on 8012 and pressed START. CraftBeerPi's clock, at 60×, read 26 Nov 07:22, and BrewStart began 4.7 real minutes later, while the title bar said about 10:05. His rule for the simulators is that \"60x should give same results 60x faster\".",
+        "section": "components"
+      },
+      {
         "name": "The Warn, Never Block Rule",
         "body": "A check before a start warns and never blocks. It names what didn't pass in the brewer's words, says what to do, and offers START ANYWAY, held as START is. It says no more than it checked: a probe gives a reading, never that it works, since one stuck on an old reading still gives one, and it switches nothing to test it; the switches are the brewer's to check. It is a notice, not an alarm: no sound and nothing in the title bar, because an unmet start condition needs nothing until someone tries to start (ISA-18.2). Where a difference has an ordinary cause, it says so in the plain colour: probes a few degrees apart are likely where the vessels sit, so amber is kept for what no room explains (The Amber Means Waiting Rule).",
         "section": "components"
@@ -1165,6 +1170,7 @@
       "Do keep tap targets at least 44px tall: lamp buttons 72px and command buttons 62px on a monitor (66px and 56px when the screen is 1000px tall or less), 56px and 50px on a phone.",
       "Do set vessel names, tags, tabs and button labels in Barlow Condensed capitals, and give every changing number tabular figures.",
       "Do show the brewery's name from Settings in the title bar at every width, phone included: it is what tells the rig from a simulator.",
+      "Do show every time on CraftBeerPi's clock, and on a simulator say its date and speed beside the title bar's time.",
       "Do say before the press when a tab opens another program in a browser tab of its own: an icon after its name, and words for screen readers.",
       "Do change a question's line in the event log from \"waiting for you\" to \"answered\" or \"no longer needed\" once it goes, in the plain colour, so Prompt Amber in the log always means something still waits.",
       "Do log lines that arrive together in the order things happened: a step's change, then what CraftBeerPi says because of it.",
@@ -1205,7 +1211,8 @@
       "Don't let a helper change a target or a recipe's plan by itself, or ask \"Are you sure?\" before a change that one tap undoes.",
       "Don't promise more than a forecast with unmeasured parts can keep, or guess a number that's missing: \"aims under the rest\", not \"never over\", and say what's missing.",
       "Don't call PID_HERMS's own overshoot the strike's doing: amber is for a strike that takes the mash over the rest beyond what water heated only to the rest would.",
-      "Don't give two different jobs one word: COMPARE PROBES' DONE adds the readings to LOG, so a button that only closes says CLOSE."
+      "Don't give two different jobs one word: COMPARE PROBES' DONE adds the readings to LOG, so a button that only closes says CLOSE.",
+      "Don't read the PC's or the phone's clock for a time shown on Brew Day: on a simulator it isn't CraftBeerPi's, and the brewer would plan by the wrong one."
     ]
   }
 }

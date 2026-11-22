@@ -689,6 +689,13 @@ const SCENES = {
   "unload-ask": () => Object.assign(SCENES.stopped(), {base: "stopped", open: {confirmUnload: true}}),
   /* steps built on Brew Steps and never saved to the Recipe Book: UNLOAD asks before they begin, as they'd be gone */
   "unload-notinbook": () => { RECIPE.name = "Quick Pale Ale"; return Object.assign(pbMorning(), {base: "prebrew", events: [["07:36:02", "Hot liquor tank MANUAL", "confirmed", "ok"]], open: {confirmUnload: true}}); },
+  /* a simulator at 60× (SIM_TIME_SCALE), as 8012 runs: the #sw-plan night before on its clock, 21:12 on Thursday 26 Nov
+     while it is Sunday 22 Nov on the screen's own. Everything on CraftBeerPi's clock runs 60 times as fast, the title
+     bar's clock included, which says the date and the speed under the time; past its midnight the date moves on, and
+     LOG's lines from the day before say theirs. #sim-clock-1x: the same evening on a simulator at 1×, its clock the
+     screen's, so the title bar shows the time alone, as on the rig */
+  "sim-clock": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {base: "sw-plan", sim: {scale: 60, day0: "2026-11-26", pc: "2026-11-22"}}),
+  "sim-clock-1x": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {base: "sw-plan", sim: {scale: 1, day0: "2026-11-22", pc: "2026-11-22"}}),
   /* LOAD in the by-hand list over a finished recipe the Recipe Book doesn't have (Rye Pale Ale, built on Brew Steps):
      it asks first, as its steps would be gone */
   "load-notinbook": () => { RECIPE.name = "Rye Pale Ale"; return Object.assign(SCENES.finished(), {base: "finished", open: {confirmLoad: 0}}); },
@@ -1081,6 +1088,43 @@ const pad = n => String(n).padStart(2, "0");
 const mmss = s => `${Math.floor(s / 60)}:${pad(s % 60)}`;
 const hhmm = t => `${pad(Math.floor(t / 3600) % 24)}:${pad(Math.floor(t / 60) % 60)}`;
 const hhmmss = t => `${hhmm(t)}:${pad(t % 60)}`;
+/* CraftBeerPi's clock, which every brewing time on the screen is on (The One Clock Rule): st.t, its seconds from the
+   moment's midnight. A simulator's (st.sim) runs SIM_TIME_SCALE times as fast and has a date of its own, day0 being
+   its date at st.t 0; the screen's own date is pc. The title bar adds CraftBeerPi's date where it isn't the screen's,
+   and its speed where it isn't 1× */
+const DOW = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"], MON3 = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+const DOW_SAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"], MON_SAY = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const dayOf = t => Math.floor(t / 86400);
+/* how many of CraftBeerPi's seconds go by in a real second: SIM_TIME_SCALE on a simulator, else 1 */
+const SC = () => st && st.sim ? st.sim.scale : 1;
+function clockDay(t) { const d = new Date(st.sim.day0 + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + dayOf(t)); return d; }
+const ymd = d => d.toISOString().slice(0, 10);
+/* what the title bar adds to the time, or null for the time alone */
+function clockTag() {
+  const sim = st.sim;
+  if (!sim) return null;
+  const d = clockDay(st.t), other = ymd(d) !== sim.pc, fast = sim.scale !== 1;
+  return other || fast ? {d, other, fast, scale: sim.scale} : null;
+}
+function clockSet() {
+  const el = $("#clock"), g = clockTag();
+  /* the rig, and a simulator on the screen's date at 1×: the time alone, as ever */
+  if (!g) { el.removeAttribute("data-sim"); if (el.childElementCount || el.textContent !== hhmm(st.t)) el.textContent = hhmm(st.t); return; }
+  const {d, other, fast, scale} = g;
+  /* the weekday and SPEED give way on a phone (.lg), so the brewery's name keeps its room */
+  const line = [other ? `<span class="lg">${DOW[d.getUTCDay()]} </span>${d.getUTCDate()} ${MON3[d.getUTCMonth()]}` : "", fast ? `${scale}×<span class="lg"> SPEED</span>` : ""].filter(Boolean).join(" · ");
+  const said = `CraftBeerPi's clock${other ? `, ${DOW_SAY[d.getUTCDay()]} ${d.getUTCDate()} ${MON_SAY[d.getUTCMonth()]}` : ""}${fast ? `, running ${scale} times as fast` : ""}`;
+  const html = `<span class="ct">${hhmm(st.t)}</span><span class="cd" aria-hidden="true">${line}</span><span class="sr">${said}</span>`;
+  if (el.innerHTML !== html) el.innerHTML = html;
+  el.setAttribute("data-sim", "");
+}
+/* while the title bar adds a date or a speed, a LOG line from another of CraftBeerPi's days says its date, as
+   "26 Nov 23:58:40" (e[5]: the line's day). On the rig LOG shows times alone */
+function logDate(e) {
+  if (!clockTag() || (e[5] || 0) === dayOf(st.t)) return "";
+  const d = new Date(st.sim.day0 + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + (e[5] || 0));
+  return `${d.getUTCDate()} ${MON_SAY[d.getUTCMonth()].slice(0, 3)} `;
+}
 const PAUSED = "No connection. Controls are paused.";
 const WAIT = "Waiting for CraftBeerPi to answer.";
 const HELD_NEXT = "The boil is waiting for you. To start it, hold START here or START THE BOIL at the top.";
@@ -2503,7 +2547,7 @@ function bannerHTML() {
   return `${x.tone === "prompt" ? ICON.bell : ICON.warn}<span class="msg"><b>${esc(x.title)}${x.more ? ` · ${x.more} more waiting` : ""}</b>${x.text.replace("{age}", `<span id="ban-age">${st.age}</span>`)}</span>${act}`;
 }
 function eventHTML() {
-  const e = st.events[0], row = e => `<time>${e[0]}</time>${esc(e[1])} · <span class="res ${e[3]}">${e[2]}</span>${e[4] ? ` · <span class="res">${esc(e[4])}</span>` : ""}`;
+  const e = st.events[0], row = e => `<time>${logDate(e)}${e[0]}</time>${esc(e[1])} · <span class="res ${e[3]}">${e[2]}</span>${e[4] ? ` · <span class="res">${esc(e[4])}</span>` : ""}`;
   return `<span class="line">${row(e)}</span><button type="button" class="logbtn" data-cmd="log" aria-expanded="${!!st.logOpen}" aria-controls="log">LOG</button>${st.logOpen ? `<ol class="log" id="log" aria-label="Recent events">${st.events.slice(0, 8).map(e => `<li>${row(e)}</li>`).join("")}</ol>` : ""}`;
 }
 const needleAngle = pv => -120 + 240 * (Math.min(220, Math.max(50, pv)) - 50) / 170;
@@ -2646,7 +2690,7 @@ function renderAll() {
   $("#app").toggleAttribute("data-editing", !!st.edit);
   $("#link").dataset.link = st.link;
   $("#link-t").textContent = lost ? "No connection" : "Connected";
-  $("#clock").textContent = hhmm(st.t);
+  clockSet();
   const ho = $("#alloff");
   ho.textContent = st.pend.alloff ? "SWITCHING OFF…" : "ALL OFF";
   if (lost || st.pend.alloff) { ho.setAttribute("aria-disabled", "true"); ho.dataset.why = lost ? PAUSED : WAIT; } else { ho.removeAttribute("aria-disabled"); delete ho.dataset.why; }
@@ -2714,7 +2758,7 @@ function renderAll() {
 /* ---------- commands (simulated: each one answers after a short delay) ---------- */
 let toastT;
 function toast(text) { const t = $("#toast"); t.textContent = text; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3800); }
-function logEvent(what, res, tone, cav = "") { st.events.unshift([hhmmss(st.t), what, res, tone, cav]); }
+function logEvent(what, res, tone, cav = "") { st.events.unshift([hhmmss(st.t % 86400), what, res, tone, cav, dayOf(st.t)]); }
 /* a question's line says "waiting for you", in Prompt Amber, only while CraftBeerPi waits for its answer. Once it goes,
    answered on any screen or taken down by CraftBeerPi, the same line says so in the plain colour and keeps the time of
    the question; the answer itself is logged on a line of its own. So amber in the log always means something still
@@ -3492,7 +3536,7 @@ function cmdTm2(x, id, y) {
     const live = t.state === "running" || t.state === "paused";
     return send(key, "rm", `${t.name} removed${live ? `, ${tfmt(t.left)} to go` : ""}`, () => {
       const row = $("#tr-" + t.id), btns = row && row.querySelector(".tbtn");
-      st.tgone = {t: Object.assign({}, t), idx: st.tmrs.indexOf(t), h: row ? row.offsetHeight : 0, w: btns ? btns.offsetWidth : 0, at: st.t};
+      st.tgone = {t: Object.assign({}, t), idx: st.tmrs.indexOf(t), h: row ? row.offsetHeight : 0, w: btns ? btns.offsetWidth : 0, at: st.t, real: Date.now()};
       st.tmrs = st.tmrs.filter(z => z !== t);
       if (st.tedit && st.tedit.id === t.id) st.tedit = null;
     });
@@ -3572,7 +3616,7 @@ function unlockSound(target) {
 document.addEventListener("pointerdown", e => unlockSound(e.target), true);
 document.addEventListener("pointerup", e => { if (e.pointerType !== "mouse") unlockSound(e.target); }, true);
 /* every brewing second: count the running timers down and the finished ones up; raise a finished one's alarm when the
-   title bar is free (behind another prompt it waits its turn); beep every 3 s while any alarm waits */
+   title bar is free (behind another prompt it waits its turn); beep every 3 real seconds while any alarm waits */
 function tmTick() {
   let changed = false;
   for (const t of st.tmrs) {
@@ -3592,12 +3636,14 @@ function tmTick() {
     } else if (t.state === "done") { const o = $("#tt-" + t.id); if (o) o.textContent = tUpText(t); }
   }
   if (!st.banner) { const d = st.tmrs.find(t => t.state === "done"); if (d) { st.banner = tBanner(d); changed = true; } }
-  /* a removed timer's row goes 10 real seconds after REMOVE (the mockup's brewing clock runs at real time), unless its
-     UNDO is on its way. CraftBeerPi keeps the timer 12 s, for a press still on its way */
-  if (st.tgone && st.t - st.tgone.at >= 10 && !st.pend["t:" + st.tgone.t.id]) { st.tgone = null; changed = true; }
+  /* a removed timer's row goes 10 real seconds after REMOVE, at any speed of CraftBeerPi's clock, unless its UNDO is on
+     its way. CraftBeerPi keeps the timer 12 real seconds, for a press still on its way (TimersController.UNDO_FOR and
+     UNDO_GRACE). At 1× CraftBeerPi's seconds are real ones, so they count it, as in a moment set up with no real time */
+  const g0 = st.tgone, gone = g0 && (SC() !== 1 && g0.real != null ? Date.now() - g0.real >= 10000 : st.t - g0.at >= 10);
+  if (gone && !st.pend["t:" + st.tgone.t.id]) { st.tgone = null; changed = true; }
   if (changed) renderAll();
   else { const m = $("#tml-t"); if (m) m.innerHTML = tmlText(); }
-  if (st.tmrs.some(t => t.state === "done") && st.t % 3 === 0) ring(3);
+  if (st.tmrs.some(t => t.state === "done") && st.t % (3 * SC()) === 0) ring(3);
 }
 function run(cmd) {
   const [k, x, y] = cmd.split(":");
@@ -3769,14 +3815,17 @@ document.addEventListener("click", e => {
   requestAnimationFrame(() => { if (document.activeElement === document.body) document.querySelector(`[data-cmd="${cmd}"]`)?.focus({preventScroll: true}); });
 });
 
-/* ---------- clock, step timer, rest timer, reading age ---------- */
-setInterval(() => {
+/* ---------- clock, step timer, rest timer, reading age ----------
+   one of CraftBeerPi's seconds a tick: a real second, or a SIM_TIME_SCALE-th of one on a simulator (st.sim, load) */
+function tick() {
   if (!st) return;
   st.t++;
-  $("#clock").textContent = hhmm(st.t);
-  if (GRAPHS) graphTick();
+  clockSet();
+  /* the graphs get a row every 10 real seconds, at any speed, as the readings reach the live screen */
+  if (GRAPHS && st.t % (10 * SC()) === 0) graphTick();
   if (st.link === "lost") {
-    st.age++;
+    /* how long since the last reading is the screen's own wait, so it counts real seconds */
+    if (st.t % SC() === 0) st.age++;
     document.querySelectorAll(".age").forEach(n => { n.textContent = `Last reading ${st.age} s ago`; });
     const ba = $("#ban-age"); if (ba) ba.textContent = st.age;
     return;
@@ -3854,7 +3903,23 @@ setInterval(() => {
     }
   }
   if (TIMERS === "new") tmTick();
-}, 1000);
+}
+/* at 1× a tick a second; a simulator's moment (st.sim) runs its clock, and everything on it, SIM_TIME_SCALE times as
+   fast: every 50 ms the seconds due by the real time since it began, so the page keeps up at any size */
+let tickT = setInterval(tick, 1000), tickSc = 1;
+function startTick() {
+  const sc = st.sim ? st.sim.scale : 1;
+  if (sc === 1 && tickSc === 1) return;
+  clearInterval(tickT); tickSc = sc;
+  if (sc === 1) { tickT = setInterval(tick, 1000); return; }
+  const t0 = performance.now();
+  let done = 0;
+  tickT = setInterval(() => {
+    const due = Math.floor((performance.now() - t0) / 1000 * sc), n = Math.min(due - done, sc);
+    for (let i = 0; i < n; i++) tick();
+    done = Math.max(done + n, due - sc);
+  }, 50);
+}
 
 /* ---------- scenes ---------- */
 function load(name) {
@@ -3898,6 +3963,7 @@ function load(name) {
   /* a probe that has given no reading for a while: its graph has a gap, dark, for that time */
   if (st.hist && st.gap) Object.entries(st.gap).forEach(([v, s]) => st.hist.v[v].forEach(row => { if (row[0] > st.t - s) row[1] = null; }));
   applyLocks(); renderAll();
+  startTick();
   /* a moment can show a greyed button tapped: its reason in its note line (tap) */
   if (st.tap) { const el = document.querySelector(`[data-cmd="${st.tap}"]`); delete st.tap; if (el) explain(el); }
   /* a moment can show FORECAST's details scrolled to a part of them (swAt) */

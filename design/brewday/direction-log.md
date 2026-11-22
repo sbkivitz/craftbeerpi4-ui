@@ -1,5 +1,28 @@
 # Direction decision log
 
+## The one clock, CraftBeerPi's (M120, 22 Nov 2026)
+- The brewer, on 8012 at 60×, set BrewStart to start at 12:04 and pressed START. CraftBeerPi's clock read 26 Nov
+  07:22, and BrewStart began 4.7 real minutes later, while the title bar said about 10:05: it showed the PC's clock.
+  Brett decided, by the brewer's own rule for the simulators ("60x should give same results 60x faster"): one clock,
+  CraftBeerPi's, and nothing reads the PC's. He left the title bar's look to me.
+- Chosen: the title bar's time is CraftBeerPi's. On a simulator a small tag beside it adds what the time alone can't
+  say: CraftBeerPi's date where it isn't the screen's, and its speed where it isn't 1× ("THU 26 NOV · 60× SPEED"; on a
+  phone "26 NOV · 60×" under the time, so the brewery's name keeps its room). The rig, and a simulator at 1× on the
+  same date, show the time alone, as ever. While the tag shows, a LOG line from another of CraftBeerPi's days says its
+  date. Until CraftBeerPi says where its clock is, "– –:– –", never another clock's time.
+- Blue (Progress Blue on Progress Track Navy), because the tag says where the screen is in time, not the state of
+  anything (The One Blue Rule). Not amber: nothing waits on the brewer. Not a grey: it has to be seen at a glance, as
+  it is the one thing that says a time on this screen isn't the wall clock's.
+- The line drawn between the two clocks: everything CraftBeerPi does or reports is on its clock, how long it has been
+  working USE out included, because that is how long it took in the simulated brew. Only the screen's own waits are
+  real seconds: a held START, UNDO's 10 s (the server keeps a removed timer on real seconds too), the 5 s wait for an
+  answer, notes, the beep every 3 s, CHECKING… and the age of the last reading.
+- Not chosen: the PC's time beside CraftBeerPi's (two clocks are what caused this); the date always (the rig's would
+  never differ, and a constant date is noise); a time difference at 1× ("2 h behind"), for a Pi whose clock the
+  internet hasn't set: the pre-brew check covers it at START, and its date shows when that differs.
+- For the BrewStart edit, next: its "now" is CraftBeerPi's, Today and Tomorrow are CraftBeerPi's dates, and on a
+  simulator a time also says how far off it is in real minutes.
+
 ## UNLOAD: a way out of a loaded recipe (22 Nov 2026)
 - The brewer, on 8012 with Test Recipe v5 loaded and not begun: no way to abort once a recipe is loaded. Brett approved
   building the fix today (web UI post32) and left the friction to me, with RESET's question as the model for a brew

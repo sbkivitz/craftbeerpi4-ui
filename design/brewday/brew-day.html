@@ -60,6 +60,9 @@ with the faceplate as built.
 Title bar: the BREWERY_NAME setting at every width, so a rig and a simulator can't be taken for each other.
 ?name=Simulator 8012 tries another name; blank shows CraftBeerPi. Two lines at most, and a name of more than 24
 characters is drawn smaller (0.7 of the size) on a monitor and a phone; from 701 to 1023 px wide it keeps the full size.
+The time is CraftBeerPi's clock (The One Clock Rule). #sim-clock is a simulator at 60× whose clock is on another day:
+its date and speed sit beside the time, and LOG's lines from the day before say their date. #sim-clock-1x is a
+simulator at 1× on the screen's own date: the time alone, as on the rig.
 Tabs: BREWSCRIBE, last, opens BrewScribe in a browser tab of its own; ?brewscribe=none shows the screen where
 BrewScribe isn't installed.
 Versions: the recipe column's last line, made up and fixed in the demo; ?ver=release shows an installed release's, the
@@ -94,6 +97,8 @@ whirlpool.html shows them side by side; ?focus=rig is for that page.
   <a href="#unload-refused">UNLOAD refused</a>
   <a href="#unload-failed">UNLOAD got no answer</a>
   <a href="#load-notinbook">LOAD over steps not in the Recipe Book</a>
+  <a href="#sim-clock">A simulator at 60×: its clock</a>
+  <a href="#sim-clock-1x">A simulator at 1×</a>
   <a href="#sparge">Sparge</a>
   <a href="#sparge-heat">Sparge step: heating the water</a>
   <a href="#sparge-ready">Sparge step: waiting for you</a>

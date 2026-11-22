@@ -5468,6 +5468,100 @@ Robin knows of these.
   Rule's last sentence, and The Way Out Rule.
 - `.impeccable\decisions\direction-log.md`; `.impeccable\design.json`, regenerated (the new rule).
 
+## The one clock, CraftBeerPi's: ready to build (M120, 22 Nov)
+
+On 8012, at 60×, the brewer set BrewStart to start at 12:04 and pressed START. CraftBeerPi's clock read 26 Nov 07:22,
+and BrewStart began 4.7 real minutes later, while the title bar said about 10:05. The title bar and LOG read the PC's
+clock (`daySeconds()`); everything CraftBeerPi does runs on its own (`cbpi.api.clock`). You decided there is one clock,
+CraftBeerPi's, and nothing reads the PC's. The design is DESIGN.md's The One Clock Rule. CraftBeerPi needs nothing
+new: the log window's `now` and `scale` already say where its clock is and how fast it runs.
+
+### What to build (screen.js, brewday.css)
+
+1. **One clock for the screen.** `brewNow()` (screen.js, by `syncBrewClock()`) becomes the clock for every time shown,
+   not only the boil's pause.
+   - `syncBrewClock()` asks as the page opens, once a minute from `liveTick` (today it asks only while the heat is
+     paused), and again when the connection comes back. Between answers it counts on from the last one at its
+     `scale`, as now.
+   - Until the first answer the clock is unknown, and `brewNow()` returns null. Today it falls back to the graphs'
+     history (`H.now() + H.day()`), whose clock starts as the PC's until its own first answer (`fixed` in history.js).
+     Take that fallback out, or use it only once the history has had its answer.
+   - The graphs' history can keep its own asking, or read this clock; they ask the same endpoint and agree to within a
+     second. Your call.
+2. **The title bar's time.** In `liveTick` and `renderAll`, `st.t` is CraftBeerPi's time of day,
+   `daySeconds(new Date(brewNow() * 1000))`, and null while `brewNow()` is. `#clock` shows `hhmm(st.t)`, or "– –:– –"
+   while it's null. `blankMoment`'s `t` starts null.
+3. **The tag** (`clockTag` and `clockSet` in the mockup; copy `.clock[data-sim]`, `.clock .cd`, `.clock .sr` and the
+   phone rules from `brew-day.css`).
+   - CraftBeerPi's date is the local date of `new Date(brewNow() * 1000)`, compared with the screen's, `new Date()`.
+     The speed is the clock's `scale`, compared with 1.
+   - Neither differs: the time alone, as today, with no spans and no `data-sim`. Either does:
+     `<span class="ct">21:12</span><span class="cd" aria-hidden="true">…</span><span class="sr">…</span>`, and
+     `data-sim` on `#clock`.
+   - The tag's words: the date as "THU 26 NOV", the speed as "60× SPEED", joined by " · ", each only where it differs.
+     On a phone the weekday and "SPEED" are hidden (`.lg`): "26 NOV · 60×". A speed that isn't whole shows as it is,
+     "2.5×".
+   - For a screen reader (`.sr`): "CraftBeerPi's clock, Thursday 26 November, running 60 times as fast", or either
+     part alone.
+   - Sizes: 15 px on a monitor, beside the time; on a phone (700 px and narrower) 12 px, under the time, in a column
+     (`flex-direction: column`), so the title bar keeps its height there.
+4. **LOG** (`logEvent`).
+   - Each line's time is CraftBeerPi's: `hhmmss(st.t)` from `brewNow()`. `e[5]` stays `Date.now()`, for what it does
+     now: keeping lines and grouping a burst.
+   - Keep each line's CraftBeerPi date with it, in a field of its own. Lines kept from before (`loadEvents`) have none,
+     and show no date.
+   - While the title bar shows the tag, a line whose date isn't CraftBeerPi's date now shows it before the time:
+     "26 Nov 23:58:40" (`logDate`). On the rig, and wherever the tag doesn't show, LOG is as today.
+   - A line logged before the first answer takes its time from that answer, counted back by the real seconds since
+     the line (its `e[5]`). "Connecting to CraftBeerPi", shown until the first connection, has no time.
+5. **What stays in real seconds**, all `Date.now()` already, listed so none of them moves to CraftBeerPi's clock: the
+   5 s wait for an answer (`st.expect`), a note's 6 s, the beep while an alarm waits (`rangAt`), CHECKING… (`PB_CLOCK`),
+   "Last reading N s ago" (`lostAt`) and START's hold. When the timers' REMOVE is built, its UNDO row lasts 10 real
+   seconds too: CraftBeerPi keeps a removed timer on real seconds (`TimersController.UNDO_FOR` and `UNDO_GRACE`).
+6. **Already on CraftBeerPi's clock**, checked, no change: the graphs' times and DAY (history.js), the boil's pause
+   (`pausedFor`), the timers (`liveTmTick`, counted on with the scale), how long CraftBeerPi has been working USE out
+   (`swElapsed`; CraftBeerPi stamps `since` on its clock, so at 60× a 20 s run reads 20 min, which is how long it took
+   in the simulated brew), the step's time left, STARTS (BrewStart's own text), "Estimated completion" (SpargeStep's
+   words) and every time CraftBeerPi writes in a notification. `graphNow()`'s fallback to `daySeconds()` is used only
+   without the history; make it `brewNow()` too, so nothing reads the PC's clock.
+7. **The BrewStart edit's "now"**, for when it's built (designed next): it is `brewNow()`; Today and Tomorrow are
+   CraftBeerPi's dates; and on a simulator a time also says how far off it is in real time. Its words come with that
+   design.
+8. **Moments for the demo**: `#sim-clock` (a simulator at 60× whose clock reads 26 Nov while the screen's says 22 Nov)
+   and `#sim-clock-1x` (at 1×, on the same date: the time alone). A moment's `sim: {scale, day0, pc}` gives the speed,
+   CraftBeerPi's date at the moment's midnight and the screen's date. The demo's clock runs `scale` of CraftBeerPi's
+   seconds a real second (`startTick`), and everything on it with it. No other moment's picture changes.
+
+### Limits
+
+- A Pi whose clock the internet hasn't set yet (in the minute after it starts) shows its own time in the title bar,
+  as CraftBeerPi has it, and its date where that isn't the screen's. Before, the title bar showed the screen's time:
+  right, but not the one CraftBeerPi acts on. The pre-brew check says so at START, as now.
+- Times are shown in the screen's time zone. The Pi and the screen share one on the rig.
+
+### Checked
+
+- `files\clock_presses.py`: 17 presses, all pass. The rig and a simulator at 1× show the time alone, and the rig's LOG
+  shows times alone past midnight. At 60×: the date and speed, the screen reader's words, 60 of CraftBeerPi's seconds a
+  real second, its midnight rolling the date, LOG's line from the day before saying its date, a 1 min timer running out
+  in a real second; the beep every 3 real seconds, "Last reading" in real seconds, UNDO's row there after 2 real
+  seconds and gone after 10. On a phone, the short tag and nothing wider than the screen.
+- `files\clock_measure.py`, at 360 × 780, 390 × 844, 700 × 900, 820 × 1180, 1024 × 768, 1180 × 860, 1280 × 800,
+  1366 × 768, 1440 × 900 and 1920 × 1080: with the tag, the title bar keeps its height (121 px on a phone, 127 px at
+  820, 71 px on one screen), the brewery's name its size and lines, and the tag stays on the screen.
+- The earlier suites, all passing: `unload_presses.py` (61), `bk_presses.py` (12), `sw7_presses.py` (28),
+  `sw8_presses.py` (30), `tm2_presses.py` (72), `tm2_col_presses.py` (34) and `review_check.py` (36).
+- Pictures against your copy (UI f4b1010), every moment at 1440 × 900 and 390 × 844, twice: only the two new moments
+  differ. One moment in each run differed once and was the same when taken again.
+
+### Changed
+
+- `proposal\brew-day.js` (the clock and its tag, LOG's dates, the demo's clock at a simulator's speed, the screen's own
+  waits in real seconds, two moments), `proposal\brew-day.css` (the tag), `proposal\brew-day.html` (two moments'
+  links) and this section.
+- `DESIGN.md`: the title bar, the pre-brew check's clock sentence, The One Clock Rule, one Do and one Don't.
+- `.impeccable\decisions\direction-log.md`; `.impeccable\design.json`, regenerated.
+
 ## Open questions about the drawing
 
 Both were answered on 10 Nov. The valves have been in the drawing since then; the path after the boil was
