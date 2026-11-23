@@ -31,6 +31,7 @@ import axios from "axios";
 import { catalog, G, PLUGIN, PLUGIN_ORDER, ELSEWHERE } from "./catalog";
 import * as DEMO from "./demo-data";
 import { play, soundOf, burstSeconds } from "../brewday/alarm";
+import { call, why as callWhy } from "../brewday/api";
 // As text, exactly as written (config-overrides.js): settings.css for the shadow root; settings-frame.css, the mockup's
 // .app rules (one screen tall from 620 px, scrolling below 1180 px, room for the phone's save bar), for the document, where
 // they apply only while <html> has data-page=settings
@@ -48,6 +49,11 @@ const PAUSED = "No connection. Controls are paused.";
 /* ---------- the page: one at a time, as the brew-day screen ---------- */
 let host = null, sr = null, env = {}, DEMO_MODE = false, gen = 0, timers = [], off = [];
 let CFG = {}, TH = {}, M = {}, F = true, st = null, actx = null, tryT = 0, copyT = 0;
+/* each probe's log, as a row of the Logs and data group's last part: dl-1, dl-2, ... by probe, and dl-all, {id, name, n,
+   h, syn} each, so FIND and the rows read them as they read a setting's */
+let LOGS = {};
+const isLog = k => /^dl-/.test(String(k));
+const fin = x => typeof x === "number" && Number.isFinite(x);
 const $ = (s, r = sr) => r.querySelector(s), $$ = (s, r = sr) => [...r.querySelectorAll(s)];
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
 const phone = () => matchMedia("(max-width:700px)").matches;
@@ -107,13 +113,13 @@ function phoneReady() {
 function fresh() {
   st = {saved: {}, draft: {}, row: {}, q: "", cur: null, shown: {}, view: "index", pg: null, leave: null, leaveTo: null,
     link: "ok", lostAt: null, saving: false, later: [], failKey: null, extra: {}, test: null, fault: null, testWill: "sent",
-    events: [["14:31:52", "Mash Tun at target, 149.0 °F", "confirmed", "ok"]]};
+    dl: {}, events: [["14:31:52", "Mash Tun at target, 149.0 °F", "confirmed", "ok"]]};
   for (const k in CFG) st.saved[k] = CFG[k].v;
   // the demo's ?name= is the Brewery name setting too, so its row says the same as the title bar (the mockup's)
   if (DEMO_MODE && env.name != null) st.saved.BREWERY_NAME = env.name;
 }
 const all = () => Object.assign({}, CFG, st.extra);
-const meta = k => (!away(k) && M[k]) || HOWS[k] || {};
+const meta = k => (!away(k) && M[k]) || HOWS[k] || LOGS[k] || {};
 const src = k => (all()[k] || {}).s || "craftbeerpi";
 const typ = k => (all()[k] || {}).t || "string";
 const val = k => (k in st.draft ? st.draft[k] : st.saved[k]);
@@ -136,7 +142,13 @@ const ctlOf = k => {
 const invalid = k => {
   if (!isChanged(k)) return "";
   const m = meta(k), v = String(st.draft[k] == null ? "" : st.draft[k]).trim();
-  if (ctlOf(k) === "num") return v === "" || !isFinite(Number(v)) ? `Type a number, like ${esc(st.saved[k])}.` : "";
+  if (ctlOf(k) === "num") {
+    // a setting that means something empty (m.empty) may be left empty; one with a range says it
+    if (v === "" && m.empty) return "";
+    const range = fin(m.min) && fin(m.max) ? `from ${m.min} to ${m.max}` : "";
+    if (v === "" || !isFinite(Number(v))) return range ? `Type a number ${range}${m.empty ? ", or leave it empty" : ""}.` : `Type a number, like ${esc(st.saved[k])}.`;
+    return range && (Number(v) < m.min || Number(v) > m.max) ? `Type a number ${range}${m.empty ? ", or leave it empty" : ""}.` : "";
+  }
   if (m.topic && v && !TOPIC_OK.test(v)) return v.length > 64 ? "A topic can be 64 characters at most." : "A topic can hold only letters, digits, - and _.";
   if ((m.link || m.server) && v && !WEB.test(v)) return "A web address starts with http:// or https://.";
   return "";
@@ -202,6 +214,8 @@ function partsOf(g) {
     const loose = Object.keys(all()).filter(k => !hidden(k) && ["craftbeerpi", "steps"].includes(src(k)) && !known(k)).sort();
     return loose.length ? [...g.parts, {h: "Not sorted yet", pl: "new to this page, by their keys", rows: loose}] : g.parts;
   }
+  // each probe's log, deleted from here (not in the demo, whose mockup doesn't draw it): last, as it's rarely needed
+  if (g.id === "logs" && !DEMO_MODE && Object.keys(LOGS).length) return [...g.parts, {h: "Deleting logs", pl: "rarely needed", rows: Object.keys(LOGS)}];
   return g.parts;
 }
 /* the groups this CraftBeerPi has: one that needs a plugin's setting shows only where that plugin is installed */
@@ -232,7 +246,7 @@ function ctlHTML(k) {
     return seg + (m.means ? `<p class="fx" id="x-${k}">${esc(m.means[String(v)] || "")}</p>` : "");
   }
   if (c === "select") return `<select class="fld" id="${id}" ${hd}>${opts(k).map(([o, l]) => `<option value="${esc(o)}"${String(v == null ? "" : v) === o ? " selected" : ""}>${esc(l)}</option>`).join("")}</select>`;
-  if (c === "num") return `<div class="numf"><input id="${id}" class="${m.wide ? "wide" : ""}" inputmode="decimal" autocomplete="off" spellcheck="false" value="${esc(v)}" ${hd}>${m.unit ? `<span aria-hidden="true">${esc(m.unit)}</span>` : ""}</div>${m.calc ? `<p class="fx" id="x-${k}">${calc(k)}</p>` : ""}`;
+  if (c === "num") return `<div class="numf"><input id="${id}" class="${m.wide ? "wide" : ""}" inputmode="decimal" autocomplete="off" spellcheck="false" value="${esc(v)}"${m.empty ? ' placeholder="empty"' : ""} ${hd}>${m.unit ? `<span aria-hidden="true">${esc(m.unit)}</span>` : ""}</div>${m.calc ? `<p class="fx" id="x-${k}">${calc(k)}</p>` : m.empty ? `<p class="fx" id="x-${k}">${blankish(v) ? esc(m.empty) : ""}</p>` : ""}`;
   if (c === "secret") {
     const set = !blankish(v), open = st.shown[k] || !set;
     let h = `<div class="sec"><input class="fld" id="${id}" type="${open ? "text" : "password"}" autocomplete="off" spellcheck="false" value="${esc(set ? v : "")}" ${hd}><button type="button" class="cmd" data-show="${k}" aria-pressed="${!!st.shown[k]}"${set ? "" : ' aria-disabled="true"'}>${st.shown[k] ? "Hide" : "Show"}<small>${st.shown[k] ? "dots again" : set ? (m.topic ? "the topic" : /token/i.test(k) ? "the token" : "the key") : "nothing set"}</small></button></div>`;
@@ -249,6 +263,7 @@ const goHTML = go => (go || []).map(([t, s, u]) => `<a class="cmd out" href="${e
 const spell = v => { const s = String(v == null ? "" : v).trim(), m = s.match(/^(cbpi-)(.*)$/), rest = m ? m[2] : s; return `<span class="lab">To type it</span>${m ? `<span class="g">${esc(m[1])}</span>` : ""}${(rest.match(/.{1,4}/g) || []).map(x => `<span class="g">${esc(x)}</span>`).join("")}`; };
 function rowHTML(k) {
   if (isHow(k)) return howHTML(k);
+  if (isLog(k)) return logHTML(k);
   const m = meta(k), c = ctlOf(k), labelled = c === "seg" || c === "sound", step = STEPS.has(k) && !away(k);
   const tags = [m.adv && "Advanced", m.restart === "on" ? "On after a restart" : m.restart && "After a restart"].filter(Boolean);
   const nm = labelled ? `<p class="nm" id="n-${k}" data-t>${marked(nameOf(k))}</p>` : `<label class="nm" id="n-${k}" for="f-${k}" data-t>${marked(nameOf(k))}</label>`;
@@ -268,10 +283,59 @@ function seeHTML(k) {
   const g = groupOf(k);
   return `<p class="see"><span>${esc(nameOf(k))}: <b>${esc(shown(k, val(k)))}</b>, chosen in ${esc(g.name)}.</span><a href="#r-${k}" data-goto="${k}">Change it in ${esc(g.name)}</a></p>`;
 }
+/* ---------- each probe's log: its readings, deleted here, each asking first in place, with no answer drawn as the
+   default (DELETE /log/{probe id}) ---------- */
+const DL_MS = 5000;
+const dlName = k => (k === "dl-all" ? "All probes' logs" : `${LOGS[k].name}'s log`);
+function dlQuestion(k) {
+  return k === "dl-all"
+    ? ["Delete every probe's log?", "Brew Day's graphs and Figures lose all their readings. It can't be undone."]
+    : [`Delete ${LOGS[k].name}'s log?`, "Brew Day's graphs and Figures lose its readings. It can't be undone."];
+}
+function logHTML(k) {
+  const d = st.dl[k] || {}, every = k === "dl-all", lost = st.link === "lost";
+  const btn = d.s === "wait"
+    ? `<button type="button" class="cmd busy" data-dl="${k}" aria-disabled="true">Deleting…<small>waiting for CraftBeerPi</small></button>`
+    : `<button type="button" class="cmd" data-dl="${k}"${lost || d.ask ? ' aria-disabled="true"' : ""}>${every ? "Delete all" : "Delete"}<small>${lost ? "no connection" : every ? "every probe's log" : "its log"}</small></button>`;
+  const [q, more] = dlQuestion(k);
+  const ask = d.ask ? `<div class="note" role="group" aria-labelledby="q-${k}" tabindex="-1" id="a-${k}"><p id="q-${k}"><b>${esc(q)}</b> ${esc(more)}</p><div class="acts"><button type="button" class="cmd" data-dlyes="${k}">${every ? "Delete all" : "Delete"}<small>for good</small></button><button type="button" class="cmd" data-dlno="${k}">Keep<small>change nothing</small></button></div></div>` : "";
+  const s = d.s === "ok" ? ["st ok", "✓ Deleted"] : d.s === "bad" ? ["st no", `Didn't delete <span class="why2">· ${esc(d.msg)}</span>`] : ["st", ""];
+  return `<div class="row log" id="r-${k}" data-k="${k}">
+<div class="lb"><p class="nm" id="n-${k}" data-t>${marked(nameOf(k))}</p><p class="wh" id="w-${k}">${marked(helpOf(k))}</p><p class="why" id="y-${k}" hidden></p></div>
+<div class="ct">${ask}${btn}<div class="${s[0]}" id="s-${k}">${s[1]}</div></div></div>`;
+}
+function rebuildLog(k) {
+  const el = $("#r-" + k);
+  if (!el) return;
+  const wrap = document.createElement("div");
+  wrap.innerHTML = logHTML(k);
+  el.replaceWith(wrap.firstElementChild);
+  if (words().length) paintFind();
+}
+async function deleteLog(k) {
+  const ids = k === "dl-all" ? Object.keys(LOGS).filter(x => x !== "dl-all").map(x => LOGS[x].id) : [LOGS[k].id];
+  st.dl[k] = {s: "wait"};
+  rebuildLog(k);
+  const g = gen;
+  const res = await Promise.all(ids.map(id => call("DELETE", `/log/${encodeURIComponent(id)}`, undefined, DL_MS)));
+  if (g !== gen || !st) return;
+  const no = res.filter(r => !r.ok);
+  if (!no.length) {
+    st.dl[k] = {s: "ok"};
+    if (env.frame) env.frame.log(k === "dl-all" ? "All probes' logs deleted" : `${dlName(k)} deleted`, "confirmed", "ok");
+    say(`${dlName(k)} deleted`);
+  } else {
+    const w = callWhy(no[0]);
+    st.dl[k] = {s: "bad", msg: k === "dl-all" && no.length < ids.length ? `${ids.length - no.length} of ${ids.length} deleted; ${w}` : w};
+    if (env.frame) env.frame.log(`Delete ${k === "dl-all" ? "all probes' logs" : dlName(k)}`, `failed: ${w}`, "bad");
+    say(`${dlName(k)}: didn't delete, ${w}`);
+  }
+  rebuildLog(k);
+}
 function plateHTML(g, i) {
   return `<section class="plate" id="g-${g.id}" data-g="${g.id}" aria-labelledby="h-${g.id}">
 <header class="phd"><a class="up" href="#groups" data-back>‹ All groups</a><h2 id="h-${g.id}"><span class="n">${i + 1}</span>${esc(g.name)}</h2>${g.state ? `<p class="pst" id="pst-${g.id}"></p>` : ""}<p class="sum">${esc(g.sum)}</p></header>
-${g.see && g.see in all() ? seeHTML(g.see) : ""}${partsOf(g).map((p, j) => `<div class="part"${p.steps ? " data-steps" : ""}${p.off ? ` data-pl="${esc(p.pl)}" data-off="${esc(p.off)}"` : ""}${p.h ? ` role="group" aria-labelledby="p-${g.id}-${j}"` : ""}>${p.h ? `<h3 id="p-${g.id}-${j}">${esc(p.h)}${p.pl ? `<span class="pl">${esc(p.pl)}</span>` : ""}</h3>` : ""}${p.rows.filter(k => k in all() || isHow(k)).map(rowHTML).join("")}${p.foot ? `<p class="foot">${esc(p.foot)}</p>` : ""}</div>`).join("")}
+${g.see && g.see in all() ? seeHTML(g.see) : ""}${partsOf(g).map((p, j) => `<div class="part"${p.steps ? " data-steps" : ""}${p.off ? ` data-pl="${esc(p.pl)}" data-off="${esc(p.off)}"` : ""}${p.h ? ` role="group" aria-labelledby="p-${g.id}-${j}"` : ""}>${p.h ? `<h3 id="p-${g.id}-${j}">${esc(p.h)}${p.pl ? `<span class="pl">${esc(p.pl)}</span>` : ""}</h3>` : ""}${p.rows.filter(k => k in all() || isHow(k) || isLog(k)).map(rowHTML).join("")}${p.foot ? `<p class="foot">${esc(p.foot)}</p>` : ""}</div>`).join("")}
 </section>`;
 }
 function giHTML(g, i) {
@@ -501,6 +565,7 @@ function paintRow(k) {
   if (m.cloud) $("#n-" + k).innerHTML = marked(nameOf(k));
   if (m.hc) { const w = $("#w-" + k); if (w && !w.hidden) w.innerHTML = marked(helpOf(k)); }
   if (m.calc) { const x = $("#x-" + k); if (x) x.textContent = calc(k); }
+  else if (m.empty) { const x = $("#x-" + k); if (x) x.textContent = blankish(val(k)) ? m.empty : ""; }
   if (m.hs) { const w = $("#w-" + k); if (w) w.innerHTML = marked(helpOf(k)); }
   if (m.means) { const x = $("#x-" + k); if (x) x.textContent = m.means[String(val(k))] || ""; }
   if (m.topic) { const x = $("#x-" + k), on = !!st.shown[k] && !blankish(val(k)); if (x) { x.hidden = !on; if (on) x.innerHTML = spell(val(k)); } }
@@ -537,7 +602,7 @@ function paintFind() {
     let n = 0;
     $$(".part", plate).forEach(p => {
       let pn = 0;
-      $$(".row", p).forEach(r => { const ok = hit(r.dataset.k); r.classList.toggle("miss", !ok); if (ok) { pn++; if (!isHow(r.dataset.k)) total++; } });
+      $$(".row", p).forEach(r => { const ok = hit(r.dataset.k); r.classList.toggle("miss", !ok); if (ok) { pn++; if (!isHow(r.dataset.k) && !isLog(r.dataset.k)) total++; } });
       p.classList.toggle("empty", on && !pn);
       n += pn;
     });
@@ -706,7 +771,8 @@ const savedLine = (ok, no) => no.length
 /* CraftBeerPi's answers: every change at once, each waited for, none longer than SAVE_MS. then(true) once all saved */
 async function send(ks, then) {
   const g = gen, before = {}, sent = {};
-  ks.forEach(k => { before[k] = st.saved[k]; sent[k] = typ(k) === "number" && isFinite(Number(String(st.draft[k]).trim())) ? Number(String(st.draft[k]).trim()) : st.draft[k]; });
+  // a number setting left empty goes as empty, not as 0 (only one that means something empty, m.empty, saves so)
+  ks.forEach(k => { before[k] = st.saved[k]; const t = String(st.draft[k] == null ? "" : st.draft[k]).trim(); sent[k] = typ(k) === "number" && t === "" ? "" : typ(k) === "number" && isFinite(Number(t)) ? Number(t) : st.draft[k]; });
   const res = await Promise.all(ks.map(k => axios.put(`/config/${k}/`, {value: sent[k]}, {timeout: SAVE_MS}).then(() => null, e => e)));
   if (g !== gen || !st) return;
   const at = now().slice(0, 5), ok = [], no = [];
@@ -781,6 +847,22 @@ function onClick(e) {
     if ("show" in ds) return toast(meta(ds.show).topic ? "No topic yet: MAKE ONE, or type one." : "Nothing is set yet: type the key in the box.");
     if ("copy" in ds) return toast("No topic yet to copy: MAKE ONE, or type one.");
     if ("test" in ds) return toast(st.test && st.test.s === "wait" ? "A test is on its way: its answer comes in a few seconds." : (testOff() || ["", "The test can't go just now."])[1]);
+    if (ds.dl) return toast(st.link === "lost" ? PAUSED : (st.dl[ds.dl] || {}).s === "wait" ? "Deleting: CraftBeerPi's answer comes in a few seconds." : "Answer the question above it first: DELETE or KEEP.");
+    return;
+  }
+  /* a probe's log: DELETE asks first, in place; DELETE there sends it, KEEP closes the question */
+  if (ds.dl) {
+    st.dl[ds.dl] = {ask: true};
+    rebuildLog(ds.dl);
+    const a = $("#a-" + ds.dl);
+    if (a) a.focus();
+    return;
+  }
+  if (ds.dlno) { const k = ds.dlno; delete st.dl[k]; rebuildLog(k); const b2 = $(`[data-dl="${k}"]`); if (b2) b2.focus(); return; }
+  if (ds.dlyes) {
+    const k = ds.dlyes;
+    if (st.link === "lost") return toast(PAUSED);
+    deleteLog(k).then(() => { const b2 = st && $(`[data-dl="${k}"]`); if (b2) b2.focus(); });
     return;
   }
   if (ds.g && b.classList.contains("gi")) { e.preventDefault(); return jump(ds.g); }
@@ -908,14 +990,27 @@ const thingsOf = d => ({
   step: (d.stepTypes || []).map(s => s.name)
 });
 const LIST_TYPES = new Set([...LISTED, "step"]);
+/* the probes' logs, a row each, then one for them all: the same keys while the probes stay the same, so a question open
+   on one stays open */
+function logsOf(th) {
+  const sensors = th.sensor || [], out = {};
+  if (!sensors.length) return out;
+  const HELP = "Its readings, for Brew Day's graphs and Figures", SYN = "delete clear remove log logs readings history graph graphs figures";
+  sensors.forEach(([id, name], i) => { out[`dl-${i + 1}`] = {id, name: String(name || id), n: String(name || id), h: HELP, syn: SYN}; });
+  out["dl-all"] = {id: null, name: "All probes' logs", n: "All probes' logs", h: "Every probe's readings, for Brew Day's graphs and Figures", syn: SYN};
+  return out;
+}
 function live(d) {
   const cfg = cfgOf(d.config), th = thingsOf(d), link = d.connected ? "ok" : "lost";
   if (!Object.keys(cfg).length) return;
   const first = !Object.keys(CFG).length;
   const keysMoved = first || Object.keys(cfg).sort().join("|") !== Object.keys(CFG).sort().join("|");
   const thMoved = JSON.stringify(th) !== JSON.stringify(TH);
+  const logs = logsOf(th), logsMoved = JSON.stringify(logs) !== JSON.stringify(LOGS);
+  const linkMoved = link !== st.link;
   const prev = CFG;
-  CFG = cfg; TH = th;
+  CFG = cfg; TH = th; LOGS = logs;
+  if (logsMoved) for (const k of Object.keys(st.dl)) if (!(k in LOGS)) delete st.dl[k];
   if (link !== st.link) { st.link = link; if (link === "lost") st.lostAt = now().slice(0, 5); }
   // CraftBeerPi's own values: another screen's save, or this page's own coming back
   const moved = [];
@@ -934,7 +1029,7 @@ function live(d) {
   if (outdated && !(st.test && st.test.s === "wait")) { st.test = null; st.fault = null; }
   for (const k of Object.keys(st.saved)) if (!(k in cfg) && !(k in st.extra)) { delete st.saved[k]; delete st.draft[k]; delete st.row[k]; }
   const f = fahrenheit(cfg);
-  if (first || keysMoved || f !== F) {
+  if (first || keysMoved || f !== F || logsMoved) {
     F = f; M = catalog(F);
     render();
     return;
@@ -948,6 +1043,8 @@ function live(d) {
   if (moved.includes("INFLUXDBCLOUD")) ["INFLUXDBNAME", "INFLUXDBUSER", "INFLUXDBPWD"].forEach(paintRow);
   // phone alerts: the service, the steps and the switches go by what is saved, and the test's lines by its answer
   if (outdated || moved.some(k => PHONE.has(k))) { paintAll(); if (moved.includes(SVC) && words().length) paintFind(); }
+  // the probes' DELETE buttons wait while there's no connection
+  if (linkMoved) Object.keys(LOGS).forEach(rebuildLog);
   paintChrome();
 }
 
@@ -993,7 +1090,7 @@ export function createSettings(el, o = {}) {
     render();
     if (!["boil", "cloud", "plugin"].includes(name) && !/^(phone|pushover)/.test(name)) { $("#pane").scrollTop = 0; window.scrollTo(0, 0); }
   } else {
-    CFG = {}; TH = {}; F = true; M = catalog(F);
+    CFG = {}; TH = {}; LOGS = {}; F = true; M = catalog(F);
     fresh();
   }
   return {
@@ -1013,6 +1110,6 @@ function teardown() {
   const app = host && host.closest(".app");
   if (app) app.removeAttribute("data-dirty");
   if (sr) sr.innerHTML = "";
-  host = null; sr = null; st = null; env = {}; CFG = {}; TH = {};
+  host = null; sr = null; st = null; env = {}; CFG = {}; TH = {}; LOGS = {};
   gen++;
 }

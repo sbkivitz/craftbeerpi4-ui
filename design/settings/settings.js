@@ -72,6 +72,7 @@ const M = {
   MQTTUpdate: {n: "MQTT resend interval", ctl: "select", restart: "any", order: ["30", "60", "120", "300", "0"], lab: {"30": "Every 30 s", "60": "Every 60 s", "120": "Every 2 min", "300": "Every 5 min", "0": "Never"}, h: "Sends kettle and fermenter state over MQTT this often, even when nothing changed."},
 
   BREWSTART_LANGUAGE: {n: "Language", restart: "any", keep: 1, h: "BrewStart's settings and messages. Its step form changes after a restart."},
+  BREWSTART_EFFICIENCY: {n: "BrewStart efficiency", unit: "%", min: 10, max: 100, blank: "empty", empty: "Empty: BrewStart uses 90 %", h: "The share of the HLT element's power that heats the water, in %. Blank: the built-in 90 %. USE on Figures sets it from past brews.", syn: "figures hlt heating heat-up ready by"},
   SIM_TIME_SCALE: {n: "Simulation speed", unit: "× real time", h: "Simulated seconds per real second. 1 is real time; 60 rehearses an hour-long ramp in a minute. Every simulated vessel at once."},
 
   MIN_MEMORY: {n: "Warn when free memory falls below", unit: "MB", h: "CraftBeerPi needs about this much to run properly."},
@@ -134,7 +135,7 @@ const G = [
     parts: [{rows: ["MIN_MEMORY", "max_dashboard_number", "slow_pipe_animation"]}]}
 ];
 const PLUGIN = {cbpi4_BrewStart: ["BrewStart", ""], simvessel: ["SimVessel", "on the simulator only"]};
-const PLUGIN_ORDER = ["BREWSTART_LANGUAGE", "SIM_TIME_SCALE"];
+const PLUGIN_ORDER = ["BREWSTART_LANGUAGE", "BREWSTART_EFFICIENCY", "SIM_TIME_SCALE"];
 /* words that belong to settings kept elsewhere, for FIND when nothing here matches */
 const ELSEWHERE = /\b(pid|hysteresis|kp|ki|kd|gain|gains|logic|boil ?power|threshold|offset|calibrat\w*|gpio|pin)\b/i;
 const ICON_OK = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M6.5 12.5l3.5 3.5 7-8" fill="none" stroke="#0a1016" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
