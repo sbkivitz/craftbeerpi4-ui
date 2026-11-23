@@ -54,10 +54,10 @@ import FRAME_CSS from "./recipes-frame.css";
 import { brewNow, brewScale } from "../brewday/screen";
 
 /* the page's own rules, for a state the mockup doesn't draw: + BrewStart, and BrewStart among + STEP's kinds, greyed
-   while CraftBeerPi's clock or the Recipe Book's steps are still coming (bsWhy), as a greyed command is; a recipe without
-   BeerSmith's mash figures (NOFIG), on its book row and in its column, quieter than what the row says of it; the question
-   before importing a BeerXML recipe of a name the book has, whose answers each say what they do; and on Brew Steps, the
-   recipe's author over its notes */
+   while CraftBeerPi's clock, Brew Day's steps or the Recipe Book's steps are still coming (bsWhy), as a greyed command
+   is; a recipe without BeerSmith's mash figures (NOFIG), on its book row and in its column, quieter than what the row
+   says of it; the question before importing a BeerXML recipe of a name the book has, whose answers each say what they
+   do; and on Brew Steps, the recipe's author over its notes */
 const OWN_CSS = `
 .bsadd[aria-disabled=true],.kind[aria-disabled=true]{color:var(--text-3);cursor:not-allowed}
 .bsadd[aria-disabled=true]:hover,.kind[aria-disabled=true]:hover{background:none}
@@ -109,6 +109,7 @@ const hhmmOf = d => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 const isoOf = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 const today = () => { const d = cbNow(); return d ? isoOf(d) : null; };
 const CLOCK_WAIT = "Waiting for CraftBeerPi's clock.";
+const STEPS_WAIT = "Waiting for Brew Day's steps from CraftBeerPi.";
 /* times of day as the brewer reads them, by CLOCK_FORMAT (util/timefmt.js): "7:00 AM" or "07:00". Times kept in a step
    stay "HH:MM" */
 const clockFmt = () => clockFormat(D.config);
@@ -489,13 +490,15 @@ function brewWords(p) {
 }
 /* whether a new BrewStart's water can't come from the recipe it joins: no BeerSmith mash figures, or no Grain absorption */
 const waterFromPast = () => !recipeWater(recipeNumbers(), C("GRAIN_ABSORPTION"), D.unit);
-/* why adding a BrewStart waits: CraftBeerPi's clock isn't known yet (its day), the Recipe Book's steps are still
-   coming, where its HLT, element and Campden choice come from when Brew Day has no BrewStart, or, for a recipe whose
-   own water can't be worked out, CraftBeerPi's past brews */
+/* why adding a BrewStart waits: CraftBeerPi's clock isn't known yet (its day); Brew Day's steps haven't come (GET
+   /system/ not answered, so a BrewStart there isn't known), which on a slow Pi can come after the clock and the book;
+   the Recipe Book's steps are still coming, where its HLT, element and Campden choice come from when Brew Day has no
+   BrewStart; or, for a recipe whose own water can't be worked out, CraftBeerPi's past brews */
 function bsWhy() {
   const fromPast = waterFromPast();
   if (fromPast && st.past === undefined) askPast();
   if (!cbNow()) return CLOCK_WAIT;
+  if (!D.loaded) return STEPS_WAIT;
   const onDay = st.loaded && st.loaded.steps.some(s => s.type === "BrewStart");
   if (!onDay && !st.bookFail && !(st.bookRead && st.book.every(r => Array.isArray(r.steps) || r.bad))) return WAIT;
   if (fromPast && st.past === "wait") return PAST_WAIT;
