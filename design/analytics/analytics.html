@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Figures · CraftBeerPi proposal (mockup)</title>
+<!--
+DIRECTION CONTRACT (Impeccable; source: proposal/ANALYTICS.md)
+THESIS: The Analytics tab becomes a page of brewery figures learned from past brews, each beside the setting it would
+change. A row per brew and a column per figure, so how many brews a figure rests on, and how close they agree, are read
+down the column; the column's foot is a small PID window, what the brews measured over what is set now, with USE.
+It refuses a chart of raw readings with no question behind it, and any figure that changes a setting by itself.
+OWN-WORLD: The brew-day touch panel unchanged: Garage Slate page, Cabinet Black title bar and tabs, Panel Slate ledger,
+PID Window Black windows, Barlow Condensed capitals, tabular figures; Process Red for what was measured, Setpoint Green
+for what is set, blue only for where you are (the brew opened, the stretch of its day a figure comes from), Selection
+Blue for USE, BACK TO as a plain command (The Offer, Don't Apply Rule).
+STORY: The brewer opens FIGURES, reads which brewery the figures come from, scans a column to see how many brews agree,
+opens a brew to see the stretch of its day the figure comes from, leaves out a brew that was different, and presses USE;
+the change shows in SET and LOG, and BACK TO undoes it in the same place.
+FIRST VIEWPORT: Title bar, last event, tabs with FIGURES lit; the page's head (where the figures come from, a link to
+BrewScribe's Past brews); the ledger: brews down the left, newest first; HLT heating, strike water, mash rests, grain
+absorption and the boil kettle across, in the order of a brew day; the foot's five windows.
+FORM: a ledger of brews with a foot of PID windows; seed:8687368c27094395 (dealt lead of my seven structures). Raised
+from the split-flap board: fixed columns, rows ranked by time, a changed figure restyles in place.
+
+Approved by the brewer on 23 Nov: the ledger, USE after 2 brews that agree, BrewStart planning with a learned
+efficiency, and the tab named FIGURES. This is the mockup. The bench's brews and figures are measured from the bench simulator's archived logs
+(http://127.0.0.1:8000, read once from its log folder; analytics-bench.js). The rig's are made up and say so. The
+moments are in the strip at the top; add ?bare to hide it. Nothing here talks to CraftBeerPi.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="analytics.css">
+</head>
+<body>
+<nav class="mock" id="mock" aria-label="Mockup moments (not part of the design)">
+  <strong>Figures mockup.</strong>
+  <span class="grp">Today:</span>
+  <a href="#compare">Today beside the proposal</a>
+  <span class="grp">The bench simulator (8000), from its logs:</span>
+  <a href="#bench">As it opens</a>
+  <a href="#bench-hlt">A heat-up opened</a>
+  <a href="#bench-use">USE 85 % pressed</a>
+  <a href="#bench-inuse">85 % in use</a>
+  <a href="#bench-mash">Mash rests</a>
+  <a href="#bench-boil">Boils that disagree</a>
+  <a href="#bench-out">One left out</a>
+  <a href="#offline">Connection lost</a>
+  <a href="#use-refused">USE refused</a>
+  <a href="#use-failing">USE with no answer</a>
+  <a href="#use-failed">USE failed</a>
+  <a href="#old-brewstart">An older BrewStart</a>
+  <a href="#old-core">An older CraftBeerPi</a>
+  <span class="grp">The rig, made-up figures:</span>
+  <a href="#rig">As it opens</a>
+  <a href="#rig-hlt">BrewStart's plan</a>
+  <a href="#rig-strike">Strike water</a>
+  <a href="#rig-mash">Rests that came over</a>
+  <a href="#rig-grain">Grain absorption</a>
+  <span class="grp">And:</span>
+  <a href="#phone">Phone</a>
+  <a href="#sizes">Three sizes</a>
+  <a href="#alt">The other two layouts</a>
+  <button type="button" id="mock-clock">Clock: 12-hour</button>
+</nav>
+<div class="app" id="app" data-link="ok">
+  <header class="topbar">
+    <p class="brand"><span class="bname" id="bname">CraftBeerPi Brewery</span></p>
+    <div class="banner" id="banner" data-tone="ok" role="status"></div>
+    <p class="link" id="link" data-link="ok"><i aria-hidden="true"></i><span id="link-t">Connected</span></p>
+    <button class="alloff" type="button">ALL OFF</button>
+    <p class="clock num" id="clock"></p>
+  </header>
+  <section class="status" aria-label="The last event">
+    <div class="event" id="event"></div>
+  </section>
+  <nav class="tabs" aria-label="Screens">
+    <a href="#tab" data-tab="Brew Day">Brew Day</a>
+    <a href="#tab" data-tab="Brew Steps"><span class="long">Brew Steps</span><span class="short">Steps</span></a>
+    <a href="#tab" data-tab="Recipe Book"><span class="long">Recipe Book</span><span class="short">Recipes</span></a>
+    <a href="#tab" data-tab="Figures" aria-current="page">Figures</a>
+    <a href="#tab" data-tab="Hardware">Hardware</a>
+    <a href="#tab" data-tab="Settings">Settings</a>
+    <a href="#tab" data-tab="More">More</a>
+    <a href="#tab" data-tab="BrewScribe" class="ext"><span class="lbl">Brew<wbr><span class="nw">Scribe<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M5 1.8H2.4a.6.6 0 0 0-.6.6v7.2c0 .3.3.6.6.6h7.2c.3 0 .6-.3.6-.6V7M7.2 1.8h3v3M10.2 1.8 5.6 6.4"/></svg></span></span><span class="sr"> (opens in its own tab)</span></a>
+  </nav>
+  <main class="main" id="main"></main>
+</div>
+<section class="view" data-for="compare" aria-label="Today beside the proposal (mockup view)"></section>
+<section class="view" data-for="sizes" aria-label="The proposal at three sizes (mockup view)"></section>
+<section class="view" data-for="alt" aria-label="The other two layouts (mockup view)"></section>
+<div class="toast" id="toast" role="status" hidden></div>
+<script src="analytics-bench.js"></script>
+<script src="analytics.js"></script>
+</body>
+</html>

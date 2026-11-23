@@ -1,0 +1,330 @@
+/* Brewery figures: the FIGURES tab (what was Analytics), in the brew-day screen's world (design/brewday/DESIGN.md).
+   Three parts, which port.mjs relies on: the frame (title bar, last event and tabs, layout B, which the brew-day screen
+   draws in the build); the page's own rules, from "figures" on; and the mockup's own, from "mockup only" to the end. */
+:root{
+  --bg:#0f161d;--bar:#0a1016;--panel:#17212b;--panel-2:#1e2b37;--hover:#253545;--line:#2a3b4b;--edge:#33475a;--face:#030609;
+  --text:#e8eef3;--text-2:#b6c3cf;--text-3:#8b9cad;--stale:#6b7785;
+  --pv:#ff4b3e;--sv:#3ddc6f;--run:#3ddc6f;--heat:#ff7b1c;--liquor:#46b8ea;--wort:#e9b33b;
+  --prompt:#ffb21e;--prompt-bg:#3a2a06;--prompt-ink:#fff1d2;--note:#ffd9a0;
+  --alarm:#ff4a4a;--alarm-bg:#6e1414;--fault-bg:#2b1315;--alarm-ink:#ffc9c4;
+  --select:#2a6fc0;--active:#1c5796;--active-edge:#3c7fcc;--active-ink:#dce9f7;--progress:#9bcbff;--progress-track:#0d2b48;
+  --focus:#8cc2ff;--answer:#f4f6f8;--answer-ink:#10161c;--grid:#16202a;--gap-ink:#0b1117;
+  --sunk:inset 0 3px 10px rgb(0 0 0/.9),inset 0 0 0 1px #1a2530,0 1px 0 rgb(255 255 255/.06);
+  --sans:"Barlow","Segoe UI",system-ui,sans-serif;
+  --cond:"Barlow Condensed","Roboto Condensed","Arial Narrow","Segoe UI",sans-serif;
+  --r:6px;--gap:12px;--pad:20px;--tabs-h:64px;--mock-h:38px;
+  --brew-w:clamp(210px,15vw,280px)
+}
+html.bare{--mock-h:0px}
+*{box-sizing:border-box}
+html{color-scheme:dark;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:400 16px/1.35 var(--sans);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+::selection{background:#2a6fc0;color:#fff}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;margin:0;top:0;left:0}
+.num{font-variant-numeric:tabular-nums}
+*{scrollbar-width:thin;scrollbar-color:#3a4c5e transparent}
+
+/* ---------- the frame: the brew-day screen's title bar, last event and tabs, layout B, copied rule for rule from
+   design/recipes/recipes.css; copy them again whenever its frame changes. Only .app is this page's own ---------- */
+.app{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto minmax(0,1fr);height:max(calc(100dvh - var(--mock-h)),620px)}
+.topbar{display:flex;align-items:center;gap:16px;padding:10px var(--pad);background:var(--bar);border-bottom:1px solid var(--line)}
+.topbar p{margin:0}
+.brand{display:flex;align-items:center;gap:12px;margin-right:auto!important;max-width:12em;font:700 clamp(22px,2.1vw,34px)/1 var(--cond);letter-spacing:.04em;text-transform:uppercase}
+.brand .bname{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:break-word}
+.link{display:flex;align-items:center;gap:8px;font:600 16px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase;color:var(--text-2)}
+.link i{width:12px;height:12px;border-radius:50%;background:var(--run)}
+.link[data-link=lost]{color:#ffc9c4}
+.link[data-link=lost] i{background:transparent;border:3px solid var(--alarm);animation:blink 1s steps(2,start) infinite}
+.alloff{min-height:48px;padding:0 16px;border:2px solid #7d8fa2;border-radius:var(--r);background:var(--panel-2);color:var(--text);font:700 17px/1 var(--cond);letter-spacing:.06em}
+.alloff:not([aria-disabled=true]):hover{border-color:#ff8a80;background:#2b1315}
+.alloff[aria-disabled=true]{opacity:.5;cursor:not-allowed}
+.clock{font:600 clamp(26px,2.4vw,40px)/1 var(--cond);font-variant-numeric:tabular-nums;min-width:3.2ch;text-align:right;white-space:nowrap}
+.clock .ap{font-size:.5em;letter-spacing:.04em}
+@media (min-width:1180px){.alloff,.clock{flex:none}}
+.status{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--gap);padding:8px var(--pad) 0}
+.banner,.event{display:flex;align-items:center;gap:12px;min-height:48px;padding:8px 10px 8px 14px;border-radius:var(--r);background:var(--panel);border:1px solid var(--line)}
+.banner{font:600 18px/1.2 var(--cond);letter-spacing:.03em}
+.banner svg{flex:none;width:26px;height:26px}
+.banner .msg{flex:1;min-width:0}
+.event{position:relative;font:500 18px/1.2 var(--cond);letter-spacing:.02em;min-width:0}
+.event .line{flex:1;min-width:0;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.event time{color:var(--text-3);margin-right:10px;font-variant-numeric:tabular-nums}
+.res{color:var(--text-2)}.res.ok{color:var(--run)}.res.bad{color:#ff9b93}.res.wait{color:var(--prompt)}
+.logbtn{flex:none;min-height:44px;padding:0 14px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);font:600 16px/1 var(--cond);letter-spacing:.08em}
+.logbtn:hover{background:#253545}
+.loglist{position:absolute;right:0;top:calc(100% + 6px);z-index:40;width:min(720px,calc(100vw - 24px));margin:0;padding:6px;list-style:none;background:var(--panel);border:1px solid var(--edge);border-radius:var(--r);box-shadow:0 18px 40px rgb(0 0 0/.5)}
+.loglist[hidden]{display:none}
+.loglist li{padding:9px 10px;font:500 17px/1.25 var(--cond);letter-spacing:.02em}
+.loglist li+li{border-top:1px solid var(--line)}
+.tabs{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);min-height:56px;margin-top:10px;background:var(--bar);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.tabs a{display:flex;align-items:center;justify-content:center;padding:0 6px;font:600 clamp(15px,1.15vw,19px)/1.05 var(--cond);letter-spacing:.08em;text-transform:uppercase;color:var(--text-2);text-decoration:none;text-align:center}
+.tabs a+a{border-left:1px solid var(--line)}
+.tabs a:hover{background:var(--panel)}
+.tabs a[aria-current=page]{background:var(--select);color:#fff}
+.tabs .short{display:none}
+.tabs .ext .nw{white-space:nowrap}
+.tabs .ext svg{width:.8em;height:.8em;margin-left:.3em;vertical-align:-.05em;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.topbar .banner{flex:0 1 auto;min-width:0;margin:0 auto;min-height:50px;padding:5px 18px 5px 14px}
+.topbar .banner[data-tone=ok]{background:#11331f;border-color:#2b6a42;color:#c9f2d6;text-transform:uppercase;letter-spacing:.08em}
+.topbar .banner[data-tone=ok] svg{color:var(--run)}
+.topbar .banner[data-tone=alarm]{background:var(--alarm-bg);border:2px solid var(--alarm);color:#fff}
+.topbar .banner .msg b{display:block;font-size:20px;letter-spacing:.06em;text-transform:uppercase}
+.banner .act{position:relative;overflow:hidden;flex:none;min-height:48px;padding:0 20px;border:0;border-radius:var(--r);background:#f4f6f8;color:#10161c;font:700 18px/1 var(--cond);letter-spacing:.06em}
+@media (min-width:701px) and (max-width:1023px){
+  .topbar{flex-wrap:wrap;row-gap:8px}
+  .topbar .banner{order:1;flex:1 1 100%;margin:0;max-width:none}
+  .brand{flex:1 1 0;min-width:0;max-width:none}
+}
+.toast{position:fixed;left:50%;bottom:28px;z-index:60;transform:translateX(-50%);width:max-content;max-width:min(560px,calc(100% - 24px));padding:12px 16px;border-radius:var(--r);background:#e8eef3;color:var(--answer-ink);font:500 16px/1.35 var(--sans);box-shadow:0 12px 30px rgb(0 0 0/.45)}
+.toast[hidden]{display:none}
+
+/* ---------- figures ---------- */
+/* buttons: the brew-day screen's command and quiet buttons */
+.cmd{position:relative;overflow:hidden;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:56px;min-width:112px;padding:6px 16px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);color:var(--text);font:700 19px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase;text-align:center;text-decoration:none;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.cmd small{display:block;font:500 13px/1.1 var(--cond);letter-spacing:.04em;text-transform:none;color:var(--text-3)}
+.cmd:hover{background:var(--hover)}
+.cmd:not(.go):not([aria-disabled=true]):hover small{color:var(--text-2)}
+.cmd.go{background:var(--select);border-color:var(--select);color:#fff}
+.cmd.go small{color:#fff}
+.cmd.go:not([aria-disabled=true]):hover{background:#3477c8}
+.cmd[aria-disabled=true]{background:var(--panel-2);border-color:var(--edge);color:var(--text-3);cursor:not-allowed}
+.cmd[aria-disabled=true] small{color:var(--text-3)}
+.cmd.busy{cursor:progress}
+/* a command with no answer, or an answer that isn't a refusal: the button says so until it's pressed again (The Answer At The Button Rule) */
+.cmd.failed{border:2px solid var(--alarm);background:var(--fault-bg);color:var(--text)}
+.cmd.failed small{color:var(--alarm-ink)}
+.cmd.failed:not([aria-disabled=true]):hover{background:#3a1a1d}
+.cmd.busy::before{content:"";position:absolute;inset:0 0 auto;height:6px;background:repeating-linear-gradient(-45deg,#a9bccd 0 6px,#33475a 6px 12px);background-size:17px 6px;animation:march .6s linear infinite}
+.quiet{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);color:var(--text);font:600 15px/1 var(--cond);letter-spacing:.08em;text-transform:uppercase;text-decoration:none;white-space:nowrap}
+.quiet:hover{background:var(--hover)}
+.quiet svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.quiet[aria-disabled=true]{color:var(--text-3);cursor:not-allowed}
+
+.main{display:grid;grid-template-rows:auto minmax(0,1fr);gap:10px;padding:var(--gap) var(--pad);min-height:0}
+
+/* the page's head: which brewery the figures come from, and where else to look */
+.fhead{display:flex;align-items:center;gap:14px 18px;flex-wrap:wrap;padding:10px 12px 10px 16px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.fhead h1{margin:0;font:700 clamp(22px,1.6vw,28px)/1.05 var(--cond);letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}
+.fhead .from{flex:1 1 420px;min-width:0;margin:0;font:500 16px/1.35 var(--sans);color:var(--text-2)}
+.fhead .from b{font-weight:600;color:var(--text)}
+.fhead .tools{display:flex;gap:8px;flex-wrap:wrap}
+/* a simulator's brews: the clock's simulator tag, as the title bar's (The One Clock Rule's colours) */
+.simtag{display:inline-block;padding:4px 7px 3px;border:1px solid var(--active-edge);border-radius:4px;background:var(--progress-track);font:600 15px/1 var(--cond);letter-spacing:.08em;color:var(--progress);white-space:nowrap;text-transform:uppercase;vertical-align:1px}
+
+/* the ledger: a row per brew, a column per figure; each column's foot is a small PID window, what the brews measured
+   over what is set now */
+.ledger{position:relative;min-height:0;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overscroll-behavior:contain}
+.ledger table{width:100%;min-width:1080px;border-collapse:separate;border-spacing:0;table-layout:fixed}
+.ledger col.brew{width:var(--brew-w)}
+.ledger thead th{position:sticky;top:0;z-index:3;padding:10px 12px 9px;background:var(--panel);border-bottom:1px solid var(--line);text-align:left;vertical-align:bottom}
+.ledger thead th+th,.ledger td+td,.ledger tfoot th+td,.ledger tfoot td+td{border-left:1px solid var(--line)}
+.colh{display:block;font:700 19px/1.05 var(--cond);letter-spacing:.06em;text-transform:uppercase;color:var(--text)}
+.colh small{display:block;margin-top:4px;font:500 14px/1.2 var(--cond);letter-spacing:.03em;text-transform:none;color:var(--text-3)}
+.ledger tbody td{padding:0;border-bottom:1px solid var(--line);vertical-align:top}
+.ledger tbody tr:last-child td{border-bottom:0}
+.cellbtn{display:flex;flex-direction:column;justify-content:center;gap:3px;width:100%;min-height:62px;padding:8px 12px;border:0;background:none;text-align:left;color:var(--text)}
+.cellbtn:hover{background:var(--panel-2)}
+.cellbtn .v{font:600 21px/1.05 var(--cond);letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.cellbtn .v .u{font-size:.72em;letter-spacing:.04em;color:var(--text-2);margin-left:.15em}
+.cellbtn .s{font:500 15px/1.2 var(--cond);letter-spacing:.02em;color:var(--text-2)}
+.cellbtn .none{font:600 18px/1 var(--cond);color:var(--text-3)}
+.cellbtn .why{font:500 14px/1.2 var(--cond);letter-spacing:.02em;color:var(--text-3)}
+.cellbtn.date .d{font:700 18px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+.cellbtn.date .d time{font-weight:600;color:var(--text-2);letter-spacing:.03em;margin-left:6px;text-transform:none}
+.cellbtn.date .w{font:500 15px/1.2 var(--cond);letter-spacing:.02em;color:var(--text-2)}
+/* the brew opened: the current step's blue, as on Brew Day's recipe column */
+.ledger tbody tr[aria-current=true] td{background:var(--active);border-bottom-color:var(--active-edge)}
+.ledger tbody tr[aria-current=true] .cellbtn:hover{background:#2160a6}
+/* on the blue row, Soft Steel is 4.1:1 and Dim Steel 2.6:1: everything but the figures is Current Step Ink (6.0:1) */
+.ledger tbody tr[aria-current=true] .s,.ledger tbody tr[aria-current=true] .w,.ledger tbody tr[aria-current=true] .why,.ledger tbody tr[aria-current=true] .none,.ledger tbody tr[aria-current=true] .u,.ledger tbody tr[aria-current=true] time,.ledger tbody tr[aria-current=true] .chip,.ledger tbody tr[aria-current=true] .out .v{color:var(--active-ink)}
+.ledger tbody tr[aria-current=true] .chip{border-color:var(--active-edge)}
+.ledger tbody tr[aria-current=true] td.focus .cellbtn{box-shadow:inset 0 0 0 2px var(--progress)}
+/* a brew left out of a figure: its value stays, in Dim Steel, with why and a chip in words */
+.cellbtn.out .v,.cellbtn.out .v .u{color:var(--text-3)}
+.chip{display:inline-block;width:max-content;padding:2px 6px 1px;border:1px solid var(--edge);border-radius:4px;font:600 12px/1.2 var(--cond);letter-spacing:.08em;text-transform:uppercase;color:var(--text-2)}
+
+/* the evidence: the brew day's graph for the figure, in a PID window, with how the figure was worked out beside it */
+.evrow td{padding:0!important;background:#121b24!important;border-bottom:1px solid var(--active-edge)!important}
+.ev{display:grid;grid-template-columns:minmax(0,1fr) clamp(300px,26vw,440px);gap:12px;padding:10px 12px}
+.ev .graphs{display:grid;gap:8px;min-width:0}
+.gwin{position:relative;padding:8px 10px 6px;background:var(--face);border:1px solid #000;border-radius:4px;box-shadow:var(--sunk)}
+.gwin h3{position:absolute;left:12px;top:7px;margin:0;font:700 15px/1 var(--cond);letter-spacing:.08em;text-transform:uppercase;color:var(--text-2);pointer-events:none}
+.gwin svg{display:block;width:100%;height:auto;overflow:visible;margin-top:2px}
+.gwin .key{display:flex;flex-wrap:wrap;gap:4px 14px;margin:4px 0 0;padding:0;list-style:none;font:600 13px/1.2 var(--cond);letter-spacing:.05em;text-transform:uppercase;color:var(--text-3)}
+.gwin .key i{display:inline-block;width:16px;height:3px;margin-right:6px;vertical-align:3px;border-radius:2px}
+.g-grid{stroke:var(--grid);stroke-width:1}
+.g-lab{fill:var(--text-3);font:600 12px var(--cond);letter-spacing:.03em;paint-order:stroke;stroke:var(--face);stroke-width:3px}
+.g-pv{fill:none;stroke:var(--pv);stroke-width:2.2;stroke-linejoin:round;filter:drop-shadow(0 0 3px rgb(255 75 62/.45))}
+.g-sv{fill:none;stroke:var(--sv);stroke-width:1.6}
+.g-out{fill:rgb(255 123 28/.6)}
+.g-band{fill:rgb(28 87 150/.38);stroke:var(--active-edge);stroke-width:1}
+.g-bandlab{fill:var(--active-ink);font:700 12px var(--cond);letter-spacing:.07em;paint-order:stroke;stroke:var(--face);stroke-width:3px}
+.g-mark{stroke:#7f91a3;stroke-width:1;stroke-dasharray:3 3}
+.g-marktag{fill:#c3cfda;font:700 12px var(--cond);letter-spacing:.04em}
+.g-tagbox{fill:#1e2b37;stroke:#3b4d5e}
+.g-entry{fill:var(--text);stroke:var(--face);stroke-width:1.5}
+.g-entrylab{fill:var(--text);font:600 12px var(--cond);letter-spacing:.03em;paint-order:stroke;stroke:var(--face);stroke-width:3px}
+.g-gap{fill:var(--gap-ink)}
+.g-hband{fill:rgb(255 75 62/.22);stroke:var(--pv);stroke-width:1}
+.g-hbandlab{fill:#ffb3ac;font:700 12px var(--cond);letter-spacing:.07em;paint-order:stroke;stroke:var(--face);stroke-width:3px}
+.g-dot{fill:var(--pv)}
+.work{display:flex;flex-direction:column;gap:10px;min-width:0;padding:4px 2px}
+.work h3{margin:0;font:700 20px/1.1 var(--cond);letter-spacing:.05em;text-transform:uppercase}
+.work h3 small{display:block;margin-top:4px;font:500 15px/1.2 var(--cond);letter-spacing:.03em;text-transform:none;color:var(--text-3)}
+.work p{margin:0;font:500 16px/1.4 var(--sans);color:var(--text-2)}
+.work p b{font-weight:600;color:var(--text)}
+.work dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 14px;margin:0;font:500 16px/1.25 var(--cond);letter-spacing:.02em}
+.work dt{color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;font-size:14px;font-weight:600;padding-top:2px}
+.work dd{margin:0;color:var(--text);font-variant-numeric:tabular-nums}
+.work .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto;padding-top:4px}
+.work .acts .cmd{min-height:52px;min-width:0;font-size:17px}
+.note{margin:0;font:500 15px/1.35 var(--sans);color:var(--note)}
+.note.bad{margin-top:6px;color:var(--alarm-ink)}
+.note:empty{display:none}
+
+/* the foot: one small PID window per figure */
+.ledger tfoot th,.ledger tfoot td{position:sticky;bottom:0;z-index:3;padding:8px 10px 10px;background:#131c25;border-top:2px solid var(--edge);vertical-align:top;text-align:left}
+.ledger tfoot th{font-weight:inherit}
+.legend{display:flex;flex-direction:column;gap:6px;font:500 14.5px/1.3 var(--sans);color:var(--text-2)}
+.legend b{font:700 15px/1 var(--cond);letter-spacing:.08em;text-transform:uppercase}
+.legend .m{color:var(--pv)}.legend .st{color:var(--sv)}
+.fw{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;column-gap:8px;row-gap:0;padding:6px 10px 4px;background:var(--face);border:1px solid #000;border-radius:4px;box-shadow:var(--sunk);min-width:0}
+.fw .tag{font:600 13px/1 var(--cond);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+.fw .pv{font:600 clamp(34px,2.3vw,44px)/1 var(--cond);font-variant-numeric:tabular-nums;color:var(--pv);text-shadow:0 0 18px rgb(255 75 62/.38);white-space:nowrap;overflow:hidden;text-overflow:clip}
+.fw .pv .u{font-size:.42em;letter-spacing:.04em;margin-left:.1em;vertical-align:.7em}
+.fw .sv{font:600 clamp(20px,1.35vw,25px)/1.1 var(--cond);font-variant-numeric:tabular-nums;color:var(--sv);text-shadow:0 0 14px rgb(61 220 111/.32);white-space:nowrap}
+.fw .sv .u{font-size:.62em;margin-left:.1em}
+.fw .sv .was{font:500 14px/1 var(--cond);letter-spacing:.03em;color:var(--text-3);text-shadow:none;margin-left:8px;white-space:normal}
+.fw .pv.none{color:var(--text-3);text-shadow:none;font-size:clamp(30px,2.2vw,40px)}
+.fw .sv.none{color:var(--text-3);text-shadow:none}
+.fw svg.strip{grid-column:1/-1;display:block;width:100%;height:26px;margin-top:2px;overflow:visible}
+.fw .pv.range{font-size:clamp(26px,1.8vw,34px)}
+.st-axis{stroke:#2a3846;stroke-width:1}
+.st-set{stroke:var(--sv);stroke-width:2}
+.st-setlab{fill:var(--sv);font:600 11px var(--cond);letter-spacing:.06em}
+.st-dot{fill:var(--pv)}
+.st-out{fill:none;stroke:var(--stale);stroke-width:1.5}
+.st-range{stroke:var(--pv);stroke-width:1;opacity:.6}
+.verdict{margin:6px 0 0;font:500 14.5px/1.3 var(--sans);color:var(--text-2)}
+.verdict b{font-weight:600;color:var(--text)}
+.footact{display:flex;gap:8px;margin-top:6px}
+.footact .cmd{flex:1;min-width:0;min-height:52px;padding:5px 8px;font-size:18px}
+.footact .quiet{flex:1;justify-content:center}
+
+/* phone, tablet and narrow windows: one figure at a time (the ledger reads down a column) */
+.pick{display:none}
+@media (max-width:1279px),(max-height:859px){
+  .pick{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:0;border:1px solid var(--edge);border-radius:var(--r);overflow:hidden;background:var(--panel-2)}
+  .pick button{min-height:52px;padding:4px 2px;border:0;background:none;font:600 15px/1.05 var(--cond);letter-spacing:.06em;text-transform:uppercase;color:var(--text-2)}
+  .pick button+button{border-left:1px solid var(--edge)}
+  .pick button[aria-pressed=true]{background:var(--select);color:#fff}
+}
+
+/* on one screen (1180 px and wider) the page doesn't scroll: only the brews do, between the column heads and the foot */
+@media (min-width:1280px) and (min-height:860px) and (max-height:1000px){
+  .cellbtn{min-height:56px;padding:6px 12px}
+  .fw .pv{font-size:clamp(34px,2.4vw,46px)}
+  .ledger tfoot th,.ledger tfoot td{padding:8px 10px 10px}
+  .footact .cmd{min-height:52px}
+}
+@media (max-width:1279px),(max-height:859px){
+  .app{height:auto;min-height:calc(100dvh - var(--mock-h))}
+  .ledger table{min-width:0}
+  .ev{grid-template-columns:minmax(0,1fr)}
+  .main{grid-template-rows:auto auto auto}
+  .ledger table,.ledger thead,.ledger tbody,.ledger tfoot,.ledger tr,.ledger th,.ledger td{display:block}
+  .ledger table{width:100%}
+  .ledger colgroup{display:none}
+  .ledger thead{display:none}
+  .ledger td+td,.ledger tfoot td+td{border-left:0!important}
+  /* the foot comes first: the figure is what the page is for, then the brews it came from */
+  .ledger{display:flex;flex-direction:column;overflow:visible}
+  .ledger tfoot{order:-1}
+  .ledger tfoot th,.ledger tfoot td{position:static;border-top:0;border-bottom:1px solid var(--line);background:var(--panel)}
+  .ledger tfoot th{display:none}
+  .ledger tfoot td:not(.sel),.ledger tbody td:not(.sel):not(.bcell){display:none}
+  .ledger tbody tr{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);border-bottom:1px solid var(--line)}
+  .ledger tbody td{border-bottom:0}
+  .ledger tbody tr.evrow{display:block}
+  .ledger tbody tr.evrow td{display:block}
+  .fw .pv{font-size:44px}
+  .fw .sv{font-size:26px}
+  .colh-phone{display:block;padding:0 0 8px}
+}
+@media (min-width:1280px) and (min-height:860px){.colh-phone{display:none}}
+/* one figure at a time on a tablet or laptop: the figure's window and its words side by side */
+@media (min-width:701px) and (max-width:1279px),(min-width:1280px) and (max-height:859px){
+  .ledger tfoot td.sel{display:grid!important;grid-template-columns:minmax(280px,420px) minmax(0,1fr);column-gap:16px;align-items:start}
+  .ledger tfoot td.sel .colh-phone{grid-column:1/-1}
+  .ledger tfoot td.sel .fw{grid-row:2/5}
+  .ledger tfoot td.sel .verdict{margin-top:0;font-size:16px}
+  .ledger tfoot td.sel .footact{max-width:360px}
+}
+
+/* phone: the frame's own phone rules (brew-day.css's, in its order) */
+@media (max-width:700px){
+  :root{--pad:12px;--gap:10px;--tabs-h:97px}
+  .app{padding-bottom:calc(var(--tabs-h) + env(safe-area-inset-bottom))}
+  .topbar{gap:10px;padding:8px var(--pad);display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;row-gap:8px}
+  .topbar .banner{grid-column:1/-1;grid-row:2;margin:0;max-width:none;min-height:44px;padding:5px 6px 5px 12px}
+  .clock{font-size:24px;min-width:0}
+  #link-t{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .alloff{flex:0 1 auto;max-width:108px;min-height:46px;padding:4px 10px;font-size:16px;line-height:1.05}
+  .event{font-size:16px;min-height:50px;padding:3px 3px 3px 12px}
+  .tabs{position:fixed;inset:auto 0 0;z-index:30;margin-top:0;border-bottom:0;padding-bottom:env(safe-area-inset-bottom);grid-auto-flow:row;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:48px}
+  .tabs .long{display:none}
+  .tabs .short{display:inline}
+  .tabs a{font-size:14px;letter-spacing:.05em}
+  .tabs a:nth-child(n+5){border-top:1px solid var(--line)}
+  .tabs a:nth-child(5){border-left:0}
+  .fhead{padding:10px 12px}
+  .fhead .from{flex-basis:100%;font-size:15px}
+  .fhead .tools{flex-basis:100%}
+  .fhead .tools .quiet{flex:1;justify-content:center}
+  .pick button{font-size:14px;letter-spacing:.04em}
+  .ev{padding:10px 8px}
+  .toast{bottom:calc(var(--tabs-h) + 18px)}
+}
+
+@keyframes march{to{background-position:17px 0}}
+@keyframes blink{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.link i,.cmd.busy::before{animation:none!important}}
+
+/* no connection: the figures stay (they come from the logs), greyed, and every command waits */
+.app[data-link=lost] .fw .pv,.app[data-link=lost] .fw .sv{color:var(--stale);text-shadow:none}
+.app[data-link=lost] .g-pv{stroke:var(--stale);filter:none}
+
+/* ---------- mockup only: not part of the design, and port.mjs leaves everything from here on out. The strip of
+   moments, its made-up label, and the views of today beside the proposal, the sizes and the other two layouts ---------- */
+/* mockup strip: deliberately not part of the design */
+.mock{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;min-height:38px;padding:4px var(--pad);background:#f2efe6;color:#1d232a;border-bottom:2px dashed #1d232a;font:500 14px/1.2 var(--sans)}
+.mock a{color:#1d232a;padding:4px 8px;border-radius:4px}
+.mock a[aria-current=true]{background:#1d232a;color:#f2efe6;text-decoration:none}
+.mock .grp{font-weight:600}
+.mock button{min-height:30px;padding:2px 10px;border:1px solid #1d232a;border-radius:4px;background:#fff;color:#1d232a;font:600 14px/1.2 var(--sans)}
+html.bare .mock{display:none}
+/* a mockup's own label for figures it made up: outside the design, in the strip's colours */
+.mockonly{display:inline-block;padding:3px 8px;border:2px dashed #1d232a;border-radius:4px;background:#f2efe6;color:#1d232a;font:600 13px/1.2 var(--sans);letter-spacing:0;text-transform:none;white-space:nowrap}
+
+.view{display:none}
+html[data-view] .app{display:none}
+html[data-view] .view[data-for]{display:none}
+html[data-view=compare] .view[data-for=compare],html[data-view=sizes] .view[data-for=sizes],html[data-view=phone] .view[data-for=sizes],html[data-view=alt] .view[data-for=alt]{display:block}
+.view{padding:16px var(--pad) 24px;background:#e9e5da;color:#1d232a;min-height:calc(100dvh - var(--mock-h));font:500 15px/1.4 var(--sans)}
+.view h2{margin:0 0 4px;font:700 20px/1.2 var(--sans)}
+.view p{margin:0 0 12px;max-width:80ch}
+.pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.pair figure,.sizes figure{margin:0}
+.pair figcaption,.sizes figcaption{margin:0 0 6px;font:600 15px/1.3 var(--sans)}
+.pair img{display:block;width:100%;height:auto;border:1px solid #1d232a}
+.scaled{position:relative;overflow:hidden;border:1px solid #1d232a;background:#0f161d}
+.scaled iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0}
+.sizes{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start}
+.alts{display:grid;gap:22px}
+.alts article{display:grid;gap:8px}
+.alts h3{margin:0;font:700 17px/1.2 var(--sans)}
+.alts .shot{display:block;width:100%;max-width:1200px;height:auto;border:1px solid #1d232a}
+
