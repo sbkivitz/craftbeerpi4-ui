@@ -19,7 +19,7 @@ import FermenterStepForm from "./components/fermenterprofile/FermenterStepForm";
 import Recipes from "./components/recipes";
 import FermenterRecipes from "./components/fermenterrecipes";
 import FermenterRecipeEditor from "./components/fermenterrecipes/FermenterRecipeEditor";
-import { Charting } from "./components/charting";
+import Figures from "./components/figures";
 import MainMenu from "./components/MainMenu";
 import { Spindledata } from "./components/spindledata";
 import SpindleCalForm from "./components/spindledata/SpindleCalForm";
@@ -176,8 +176,8 @@ const drawerWidth = 240;
 // rebuilt on every app render.
 //
 // The symptom is navigation that changes the address and leaves the previous
-// page on screen: click Settings, then Analytics, and the hash reads
-// #/charting while Settings is still rendered, until a manual reload. Nothing
+// page on screen: click Settings, then Figures, and the hash reads
+// #/figures while Settings is still rendered, until a manual reload. Nothing
 // throws, so there is no error anywhere to find it by.
 //
 // appBarHeight is a prop rather than a closure variable for the same reason.
@@ -251,6 +251,9 @@ const CraftBeerPiApp = () => {
           <Route path="brewsteps" element={<Recipes />} />
           <Route path="step/:id" element={<Recipes />} />
           <Route path="step" element={<Recipes />} />
+          {/* Figures, in the same frame with FIGURES lit; the old Analytics address opens it too. */}
+          <Route path="figures" element={<Figures />} />
+          <Route path="charting" element={<Figures />} />
           <Route element={<AppLayout appBarHeight={appBarHeight} /> } >
                   <Route path="dashboard" element={<Dashboard2 />}/>   
                   <Route path="fixdash/:dashboardid" element={<FixDashboard />}/>
@@ -267,7 +270,6 @@ const CraftBeerPiApp = () => {
                   <Route path="fermenterstep/:id/:fermenterid" element={<FermenterStepForm />}/>
                   <Route path="fermenterstep/:fermenterid" element={<FermenterStepForm />}/>
                   <Route path="fermenterstep" element={<FermenterStepForm />}/>
-                  <Route path="charting" element={<Charting />}/>              
                   <Route path="data" element={<Spindledata />}/>                  
                   <Route path="data/:archive/:diagram" element={<Spindledata />}/> 
                   <Route path="calibrate" element={<SpindleCalForm />}/>

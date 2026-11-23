@@ -149,10 +149,10 @@ const TIMER_RAN_OUT = /^The \d+(?::\d\d){1,2} timer has run out\.$/;
 
 /* ---------- the screen's markup: the mockup's page, after layout B's moves ---------- */
 const MORE = [["#/dashboard", "Dashboard"], ["#/fermenterprofile", "Fermenter profile"], ["#/plugins", "Plugins"], ["#/system", "System"], ["#/about", "About"]];
-/* page: "" the brew-day screen; "settings", "hardware", "recipes" or "brewsteps", its frame (title bar, last event, tabs)
-   round the Settings, Hardware, Recipe Book or Brew Steps page, whose host (#sp) takes the brewhouse's place and which
-   draws itself (settings/page.js, hardware/page.js, recipes/page.js) */
-const PAGE_TAB = {settings: "Settings", hardware: "Hardware", recipes: "Recipe Book", brewsteps: "Brew Steps"};
+/* page: "" the brew-day screen; "settings", "hardware", "recipes", "brewsteps" or "figures", its frame (title bar, last
+   event, tabs) round the Settings, Hardware, Recipe Book, Brew Steps or Figures page, whose host (#sp) takes the
+   brewhouse's place and which draws itself (settings/page.js, hardware/page.js, recipes/page.js, figures/page.js) */
+const PAGE_TAB = {settings: "Settings", hardware: "Hardware", recipes: "Recipe Book", brewsteps: "Brew Steps", figures: "Figures"};
 function skeleton(demo, page) {
   const h = p => demo ? "#tab" : p;
   const cur = t => (PAGE_TAB[page] || "") === t ? ' aria-current="page"' : "";
@@ -175,7 +175,7 @@ function skeleton(demo, page) {
     <a href="${h("#/")}" data-tab=""${cur("")}>Brew day</a>
     <a href="${h("#/mashprofile")}" data-tab="Brew Steps"${cur("Brew Steps")}><span class="long">Brew steps</span><span class="short">Steps</span></a>
     <a href="${h("#/recipes")}" data-tab="Recipe Book"${cur("Recipe Book")}><span class="long">Recipe book</span><span class="short">Recipes</span></a>
-    <a href="${h("#/charting")}" data-tab="Analytics">Analytics</a>
+    <a href="${h("#/figures")}" data-tab="Figures"${cur("Figures")}>Figures</a>
     <a href="${h("#/hardware")}" data-tab="Hardware"${cur("Hardware")}>Hardware</a>
     <a href="${h("#/settings/All")}" data-tab="Settings"${cur("Settings")}>Settings</a>
     <a href="${h("#/more")}" data-tab="More"${demo ? "" : ' aria-haspopup="true" aria-expanded="false" aria-controls="bd-more"'}>More</a>

@@ -51,7 +51,7 @@ const Menu = ({onClose}) => {
         <MenuItem onClose={onClose} label="Fermenter Profile" path="/fermenterprofile"><BallotIcon /></MenuItem>
         <MenuItem onClose={onClose} label="Hardware" path="/hardware"><DeveloperBoardIcon /></MenuItem>
         <MenuItem onClose={onClose} label="Settings" path="/settings/All"><SettingsIcon /></MenuItem>
-        <MenuItem onClose={onClose} label="Analytics" path="/charting"><TimelineIcon /></MenuItem>
+        <MenuItem onClose={onClose} label="Figures" path="/figures"><TimelineIcon /></MenuItem>
         {state.spindledata? <MenuItem onClose={onClose} label="Spindle Data" path="/currentdata"><TroubleshootIcon /></MenuItem> : ""}
         <MenuItem onClose={onClose} label="Plugins" path="/plugins"><PowerIcon /></MenuItem>
         <MenuItem onClose={onClose} label="System" path="/system"><ComputerIcon /></MenuItem>
