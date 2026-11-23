@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Three Brew Day designs to choose on · CraftBeerPi brew-day screen (review)</title>
+<!--
+One page for the brewer to review the three designs waiting on him (22 Nov 2026): the timers' REMOVE (?trow=new,
+TIMER-REMOVE.md), the recipe column (?col=new, RECIPE-COLUMN.md) and the boil kettle's MANUAL (?bkman=new,
+BOIL-MANUAL.md). For each, the screen as built beside the proposal, cut out of the live mockup (&focus=…), a line on
+what changes, and one or two questions with the recommended answer marked. The answers are kept in this browser and
+gathered under YOUR ANSWERS, to send to Brett.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;display:grid;grid-template-rows:auto minmax(0,1fr);background:#080c10;color:#e8eef3;font:500 16px/1.4 "Barlow","Segoe UI",system-ui,sans-serif}
+:focus-visible{outline:3px solid #2a6fc0;outline-offset:2px}
+.bar{display:grid;gap:8px;padding:12px 16px;background:#f2efe6;color:#1d232a;border-bottom:2px dashed #1d232a}
+.bar h1{margin:0;font:700 20px/1.15 "Barlow",sans-serif}
+.bar p{margin:0;font-size:15px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tabs button{min-height:44px;padding:0 14px;border:1px solid #1d232a;border-radius:6px;background:#fff;color:#1d232a;font:600 16px/1 "Barlow",sans-serif;cursor:pointer}
+.tabs button:hover{background:#e6e1d4}
+.tabs button[aria-selected=true]{background:#1d232a;color:#f2efe6}
+.tabs .tick{display:inline-block;margin-left:6px;color:#1f7a3f;font-weight:700}
+.tabs button[aria-selected=true] .tick{color:#7ee2a0}
+main{min-height:0;overflow:auto;padding:16px 18px 40px}
+.what{max-width:900px;margin:0 0 12px;font-size:18px;line-height:1.45}
+.what b{color:#fff}
+.pick{display:inline-block;margin:0 0 14px;padding:6px 10px;border-radius:6px;background:#12301f;border:1px solid #2b6a42;color:#bff0cf;font-weight:600}
+.ctl{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin:0 0 10px}
+.grp{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.grp>span{font-weight:600;color:#c9d6e2;margin-right:2px}
+.grp button{min-height:40px;padding:0 12px;border:1px solid #3b4d5e;border-radius:6px;background:#162029;color:#e8eef3;font:600 15px/1 "Barlow",sans-serif;cursor:pointer}
+.grp button:hover{background:#203040}
+.grp button[aria-pressed=true]{background:#e8eef3;color:#10161c;border-color:#e8eef3}
+.hint{max-width:900px;margin:0 0 14px;color:#c9d6e2}
+.hint b{color:#fff}
+.pair{display:flex;flex-wrap:wrap;align-items:flex-start;gap:20px 26px;margin:0 0 22px}
+.frame{margin:0;display:grid;gap:8px;align-content:start}
+.frame h2{margin:0;font:700 21px/1.1 "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#fff}
+.frame h2 small{display:block;margin-top:4px;font:600 15px/1.25 "Barlow",sans-serif;letter-spacing:0;text-transform:none;color:#a9b8c6}
+.frame a{color:#9fd0ff;font-size:15px}
+.cut{position:relative;overflow:hidden;border-radius:8px;background:#0f161d;box-shadow:0 0 0 1px #2a3b4b,0 18px 44px rgb(0 0 0/.5)}
+.cut iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0;background:#0f161d}
+.qs{display:grid;gap:18px;max-width:900px;margin:0 0 8px;padding:16px;border:1px solid #2a3b4b;border-radius:8px;background:#0f161d}
+.q h3{margin:0 0 4px;font:700 19px/1.3 "Barlow",sans-serif;color:#fff}
+.q p{margin:0 0 10px;color:#c9d6e2}
+.choices{display:grid;gap:8px}
+.choices button{display:grid;gap:3px;justify-items:start;min-height:52px;padding:10px 14px;border:1px solid #3b4d5e;border-radius:6px;background:#162029;color:#e8eef3;text-align:left;font:600 17px/1.3 "Barlow",sans-serif;cursor:pointer}
+.choices button:hover{background:#203040}
+.choices button small{font:500 15px/1.35 "Barlow",sans-serif;color:#a9b8c6}
+.choices button[aria-pressed=true]{background:#e8eef3;color:#10161c;border-color:#e8eef3}
+.choices button[aria-pressed=true] small{color:#33404d}
+.rec{display:inline-block;margin-left:8px;padding:2px 7px;border-radius:4px;background:#12301f;border:1px solid #2b6a42;color:#bff0cf;font:700 12px/1.2 "Barlow",sans-serif;letter-spacing:.06em;text-transform:uppercase;vertical-align:2px}
+.choices button[aria-pressed=true] .rec{background:#1f7a3f;border-color:#1f7a3f;color:#fff}
+.next{min-height:44px;margin-top:6px;padding:0 16px;border:1px solid #e8eef3;border-radius:6px;background:transparent;color:#e8eef3;font:600 16px/1 "Barlow",sans-serif;cursor:pointer}
+.next:hover{background:#203040}
+.sum{max-width:900px;display:grid;gap:14px}
+.sum pre{margin:0;padding:14px 16px;border:1px solid #2a3b4b;border-radius:8px;background:#0f161d;color:#e8eef3;white-space:pre-wrap;font:500 16px/1.5 "Barlow",sans-serif;user-select:all}
+.sum .acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.sum .acts button{min-height:44px;padding:0 16px;border:1px solid #e8eef3;border-radius:6px;background:#e8eef3;color:#10161c;font:700 16px/1 "Barlow",sans-serif;cursor:pointer}
+.sum .acts button.sec{background:transparent;color:#e8eef3}
+.sum .said{color:#7ee2a0}
+</style>
+</head>
+<body>
+<header class="bar">
+  <h1>Three Brew Day designs to choose on</h1>
+  <p>Each shows the screen today beside my proposal. Both are live: tap them to try. Answer the questions under them; my pick is marked. Then send your answers to Brett from the last tab.</p>
+  <div class="tabs" role="tablist" aria-label="Designs" id="tabs"></div>
+</header>
+<main id="main"></main>
+<script>
+"use strict";
+const SIZES = {small: ["Small window", 1180, 860], laptop: ["Laptop", 1440, 900], window: ["Monitor", 1920, 950], phone: ["Phone", 390, 844]};
+const D = {
+  timers: {
+    tab: "1 · Timers",
+    title: "Timers: a way to stop and remove one",
+    what: "<b>Each timer gets its own REMOVE button, with UNDO for 10 seconds after.</b> Putting a timer back to its full time moves into its box, which opens when you tap its name.",
+    pick: "My pick: build the proposal.",
+    flag: "trow=new",
+    was: "trow=today",
+    focus: size => size === "phone" ? "tmrs" : "recipe",
+    sizes: ["window", "small", "phone"],
+    today: ["Today", "To remove a timer you tap its name, then REMOVE in the box that opens."],
+    proposal: ["Proposal", "REMOVE on every timer. UNDO takes its place for 10 seconds."],
+    scenes: [
+      ["timers", "Two timers", "<b>The mash, with Stir counting down and Yeast set up for later.</b> Try REMOVE on Stir in the proposal, then UNDO."],
+      ["timer-removed", "Just removed", "<b>Just after REMOVE on Stir.</b> Its row stays for 10 seconds with UNDO, so the timer below doesn't jump up under your finger."],
+      ["timer-change", "A timer's box", "<b>Stir's box, opened by tapping its name.</b> In the proposal it has BACK TO 15:00, which puts Stir back to its full time, stopped."],
+      ["timer-done", "Run out", "<b>Stir has run out.</b> No change here: +5 MIN and OK, as today."]
+    ],
+    qs: [
+      {id: "t1", q: "Remove a timer with one tap, with UNDO for 10 seconds?", more: "Today a timer that still has time left asks before it goes.",
+        choices: [["yes", "Yes, one tap and UNDO", "As in the proposal.", true], ["ask", "No, ask first", "A timer with time left asks before it's removed, as today."]]},
+      {id: "t2", q: "Where should \"back to its full time\" go?", more: "Like the clear button on a kitchen timer: the timer goes back to its full time, stopped, ready to start again.",
+        choices: [["box", "In the timer's box", "Tap its name, then BACK TO 15:00. As in the proposal.", true], ["row", "On the timer's row", "There's only room for it in REMOVE's place while the timer counts down."]]}
+    ]
+  },
+  column: {
+    tab: "2 · Recipe column",
+    title: "Recipe column: the current step always in view, and choosing a recipe",
+    what: "<b>When the timers would push the current step out of view, they shrink to one line that keeps counting.</b> Choosing another recipe happens in the column. Brewing by hand, the recipe list folds away and the timers get the room.",
+    pick: "My pick: build the proposal. It's shown with the REMOVE buttons from design 1.",
+    flag: "col=new",
+    was: "trow=today",
+    focus: () => "recipe",
+    sizes: ["small", "laptop", "window", "phone"],
+    today: ["Today", "The timers always take their full room, so the step list can shrink to a sliver."],
+    proposal: ["Proposal", "The timers fold into one line when the current step wouldn't fit beside them."],
+    scenes: [
+      ["timers-fold", "Heating, two timers", "<b>Brew morning: the HLT heats the strike water, with two timers.</b> Today the current step is a sliver on a small window; in the proposal the timers fold and the step is whole. Nothing folds on a big monitor or a phone."],
+      ["timers-open", "Timers opened", "<b>OPEN pressed on the folded line.</b> The timers take the step list's room until CLOSE."],
+      ["prebrew", "Recipe not begun", "<b>A recipe loaded and not begun.</b> The proposal puts OTHER RECIPE beside COMPARE PROBES."],
+      ["other-recipe", "Choosing another", "<b>OTHER RECIPE pressed.</b> The newest five recipes, each with LOAD. Once a recipe has begun this isn't offered, so a slip can't swap it."],
+      ["timers-hand", "By hand", "<b>Brewing by hand, with three timers.</b> In the proposal the timers have the column and the recipe list folds behind CHOOSE A RECIPE."],
+      ["hand-choose", "By hand, choosing", "<b>CHOOSE A RECIPE pressed.</b> The same list as OTHER RECIPE's, in the same place."]
+    ],
+    qs: [
+      {id: "c1", q: "When should the timers shrink to one line?",
+        choices: [["needed", "Only when the current step wouldn't fit", "As in the proposal. On a big monitor they stay open.", true], ["always", "Always, on every monitor", "One line that opens when you want their buttons."]]},
+      {id: "c2", q: "Brewing by hand, you asked to hide the recipe part but keep the timers. Is this what you meant?", more: "The proposal folds the recipe list behind CHOOSE A RECIPE, so the timers have the column.",
+        choices: [["yes", "Yes, that's it", "", true], ["other", "No, I meant something else", "Tell Brett what you had in mind."]]}
+    ]
+  },
+  boil: {
+    tab: "3 · Boil kettle MANUAL",
+    title: "Boil kettle: what MANUAL does",
+    what: "<b>In MANUAL the boil element heats at the same green number AUTO boils at, and the window reads HAND.</b> So the screen never shows a power the element isn't running at.",
+    pick: "My pick: build the proposal.",
+    flag: "bkman=new",
+    was: "bkman=today",
+    focus: () => "bk",
+    sizes: ["window", "small", "phone"],
+    today: ["Today", "By hand the element heats at a level of its own (70 % on 8012), which the screen doesn't show or change."],
+    proposal: ["Proposal", "One number: the element heats at it by hand (HAND) and AUTO boils at it (BOIL)."],
+    scenes: [
+      ["bk-hand", "Heating by hand", "<b>Just under a boil, the element on in MANUAL.</b> Today the window says 45 % while OUT says 70 %. In the proposal both say 45 %, and −5 % to +5 % change the element at once."],
+      ["bk-hand-off", "By hand, element off", "<b>The same, with the element off.</b> In the proposal the line under the window says what it will heat at."],
+      ["boiling", "Boiling in AUTO", "<b>A full boil in AUTO.</b> No change in AUTO."]
+    ],
+    qs: [
+      {id: "b1", q: "What should MANUAL do on the boil kettle?",
+        choices: [["same", "Heat at the boil power", "One number for AUTO and by hand, as in the proposal.", true],
+          ["own", "Heat at a number of its own", "Shown as HAND. Turning it up by hand doesn't change the boil power."],
+          ["none", "No MANUAL on the boil kettle", "Only AUTO and off. Then nothing could heat the kettle when AUTO can't, for example if its probe stops reading."]]}
+    ]
+  }
+};
+const ORDER = ["timers", "column", "boil"];
+const KEY = "bd-review-22nov";
+let A = {};
+try { A = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (_) { A = {}; }
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(A)); } catch (_) {} };
+const S = {tab: "timers", scene: {}, size: {}};
+ORDER.forEach(k => { S.scene[k] = D[k].scenes[0][0]; S.size[k] = D[k].sizes[0]; });
+function readHash() {
+  const q = new URLSearchParams(location.hash.slice(1)), t = q.get("tab");
+  if (D[t] || t === "answers") S.tab = t;
+  if (D[S.tab]) {
+    if (D[S.tab].scenes.some(s => s[0] === q.get("scene"))) S.scene[S.tab] = q.get("scene");
+    if (D[S.tab].sizes.includes(q.get("size"))) S.size[S.tab] = q.get("size");
+  }
+}
+readHash();
+const done = k => D[k].qs.every(q => A[q.id]);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"})[c]);
+function tabs() {
+  document.getElementById("tabs").innerHTML = ORDER.map(k => `<button type="button" role="tab" data-tab="${k}" aria-selected="${S.tab === k}">${D[k].tab}${done(k) ? '<span class="tick" aria-label="answered">✓</span>' : ""}</button>`).join("")
+    + `<button type="button" role="tab" data-tab="answers" aria-selected="${S.tab === "answers"}">Your answers</button>`;
+}
+const rect = new Map();
+const src = (k, side, full) => {
+  const d = D[k], q = [];
+  if (!full) q.push("bare", "focus=" + d.focus(S.size[k]));
+  if (side === "new") q.push(d.flag); else if (d.was) q.push(d.was);
+  return `brew-day.html?${q.join("&")}#${S.scene[k]}`;
+};
+function choiceHTML(q) {
+  return `<div class="q" role="group" aria-labelledby="${q.id}-h"><h3 id="${q.id}-h">${esc(q.q)}</h3>${q.more ? `<p>${esc(q.more)}</p>` : ""}
+    <div class="choices">${q.choices.map(([id, label, more, rec]) => `<button type="button" data-q="${q.id}" data-a="${id}" aria-pressed="${A[q.id] === id}"><span>${esc(label)}${rec ? '<span class="rec">My pick</span>' : ""}</span>${more ? `<small>${esc(more)}</small>` : ""}</button>`).join("")}</div></div>`;
+}
+function designHTML(k) {
+  const d = D[k], sc = d.scenes.find(s => s[0] === S.scene[k]), at = ORDER.indexOf(k);
+  const frame = (side, [h, sub]) => `<figure class="frame" data-side="${side}"><h2>${h}<small>${esc(sub)}</small></h2>
+    <div class="cut"><iframe title="${h}: ${esc(d.title)}"></iframe></div><a target="_blank" rel="noopener" href="${src(k, side, true)}">Open the whole screen</a></figure>`;
+  return `<p class="what">${d.what}</p><p class="pick">${esc(d.pick)}</p>
+    <div class="ctl"><div class="grp" role="group" aria-label="Moment"><span>Moment:</span>${d.scenes.map(s => `<button type="button" data-scene="${s[0]}" aria-pressed="${s[0] === S.scene[k]}">${s[1]}</button>`).join("")}</div>
+    <div class="grp" role="group" aria-label="Screen"><span>Screen:</span>${d.sizes.map(z => `<button type="button" data-size="${z}" aria-pressed="${z === S.size[k]}">${SIZES[z][0]}</button>`).join("")}</div></div>
+    <p class="hint">${sc[2]}</p>
+    <div class="pair" id="pair">${frame("today", d.today)}${frame("new", d.proposal)}</div>
+    <section class="qs" aria-label="Questions">${d.qs.map(choiceHTML).join("")}
+      <div><button type="button" class="next" data-tab="${ORDER[at + 1] || "answers"}">${ORDER[at + 1] ? `Next: ${D[ORDER[at + 1]].tab.replace(/^\d · /, "")}` : "Next: your answers"}</button></div></section>`;
+}
+function answerText() {
+  return ORDER.map((k, i) => `${i + 1}. ${D[k].title}\n` + D[k].qs.map(q => {
+    const c = q.choices.find(x => x[0] === A[q.id]);
+    return `   ${q.q} ${c ? c[1] + (c[3] ? " (Amber's pick)" : "") : "not answered yet"}`;
+  }).join("\n")).join("\n");
+}
+function answersHTML() {
+  const all = ORDER.every(done), picks = ORDER.every(k => D[k].qs.every(q => { const c = q.choices.find(x => x[0] === A[q.id]); return c && c[3]; }));
+  return `<section class="sum" aria-label="Your answers"><p class="what"><b>Your answers.</b> ${all ? (picks ? "All as I recommended." : "Thanks.") : "Some questions aren't answered yet."} Copy them and send them to Brett, or just tell him${picks ? " \"as recommended\"" : " which ones you'd change"}.</p>
+    <pre id="txt">${esc(answerText())}</pre>
+    <div class="acts"><button type="button" id="copy">Copy my answers</button><button type="button" class="sec" id="clear">Start again</button><span class="said" id="said" aria-live="polite"></span></div></section>`;
+}
+function render() {
+  tabs();
+  const m = document.getElementById("main");
+  rect.clear();
+  m.innerHTML = S.tab === "answers" ? answersHTML() : `<h2 class="sr" style="position:absolute;left:-9999px">${esc(D[S.tab].title)}</h2>` + designHTML(S.tab);
+  if (D[S.tab]) document.querySelectorAll(".frame").forEach(f => f.querySelector("iframe").setAttribute("src", src(S.tab, f.dataset.side)));
+  history.replaceState(null, "", D[S.tab] ? `#tab=${S.tab}&scene=${S.scene[S.tab]}&size=${S.size[S.tab]}` : "#tab=answers");
+  fit();
+}
+/* each page reports where its part is (brew-day.js reportFocus); the cut shows that part, scaled to half the room */
+addEventListener("message", e => {
+  const f = [...document.querySelectorAll(".frame")].find(f => f.querySelector("iframe").contentWindow === e.source);
+  if (!f || !e.data || e.data.type !== "plate") return;
+  rect.set(f.dataset.side, e.data);
+  fit();
+});
+function fit() {
+  if (!D[S.tab]) return;
+  const pair = document.getElementById("pair"), z = SIZES[S.size[S.tab]], w = z[1], h = z[2], m = 6;
+  if (!pair) return;
+  const frames = [...pair.querySelectorAll(".frame")], any = [...rect.values()][0];
+  const aw = Math.max(140, (pair.clientWidth - 26) / 2);
+  const rs = frames.map(f => rect.get(f.dataset.side) || any || {x: 0, y: 0, w: Math.min(w, 340), h: Math.min(h, 640)});
+  const s = Math.min(1, ...rs.map(x => aw / (x.w + 2 * m)));
+  frames.forEach((f, i) => {
+    const cut = f.querySelector(".cut"), fr = f.querySelector("iframe"), x = rs[i], cw = (x.w + 2 * m) * s;
+    fr.style.width = w + "px"; fr.style.height = h + "px";
+    f.style.width = cw + "px";
+    cut.style.width = cw + "px"; cut.style.height = ((x.h + 2 * m) * s) + "px";
+    fr.style.transform = `translate(${(-x.x + m) * s}px, ${(-x.y + m) * s}px) scale(${s})`;
+  });
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  if (b.dataset.tab) { S.tab = b.dataset.tab; render(); document.getElementById("main").scrollTop = 0; return; }
+  if (b.dataset.scene) { S.scene[S.tab] = b.dataset.scene; render(); return; }
+  if (b.dataset.size) { S.size[S.tab] = b.dataset.size; render(); return; }
+  if (b.dataset.q) {
+    A[b.dataset.q] = b.dataset.a; save();
+    document.querySelectorAll(`[data-q="${b.dataset.q}"]`).forEach(x => x.setAttribute("aria-pressed", x === b));
+    tabs();
+    return;
+  }
+  if (b.id === "copy") {
+    const t = answerText(), said = document.getElementById("said");
+    const ok = () => { said.textContent = "Copied. Paste them in your chat with Brett."; };
+    const fallback = () => { const r = document.createRange(); r.selectNodeContents(document.getElementById("txt")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); try { document.execCommand("copy"); ok(); } catch (_) { said.textContent = "Select the text above and copy it."; } };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(ok, fallback); else fallback();
+    return;
+  }
+  if (b.id === "clear") { A = {}; save(); render(); }
+});
+addEventListener("resize", fit);
+addEventListener("hashchange", () => { readHash(); render(); });
+render();
+</script>
+</body>
+</html>

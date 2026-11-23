@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The timers in a column beside the drawing · CraftBeerPi brew-day screen (proposal)</title>
+<!--
+One page for the brewer to approve his own idea for the timers (22 Nov 2026): a column beside the drawing of the
+brewery, which gets narrower instead of shorter so the vessels keep their size, and is full width again with no timers
+(D, ?col=new&tplace=side). Beside it, today's screen and C, the bar along the bottom (?col=new&tplace=bottom), which
+made the drawing shorter. Each card is a live copy of the mockup at the chosen window size, scaled to the card, and
+under it the drawing again at its real size: one pixel of the page for one of the screen's, so at 100 % zoom on a
+24-inch 1920 x 1080 monitor it is the size he would see. The heights were measured in the mockup, in the mash: the hot
+liquor tank's outline, from the top of its lid to its base, at 0.2767 mm a pixel. One question; the answer is kept in
+this browser, to send to Brett.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;display:grid;grid-template-rows:auto minmax(0,1fr);background:#080c10;color:#e8eef3;font:500 16px/1.4 "Barlow","Segoe UI",system-ui,sans-serif}
+:focus-visible{outline:3px solid #2a6fc0;outline-offset:2px}
+.bar{display:grid;gap:8px;padding:12px 16px;background:#f2efe6;color:#1d232a;border-bottom:2px dashed #1d232a}
+.bar h1{margin:0;font:700 20px/1.15 "Barlow",sans-serif}
+.bar p{margin:0;font-size:15px;max-width:980px}
+main{min-height:0;overflow:auto;padding:16px 18px 40px}
+.ctl{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin:0 0 10px}
+.grp{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.grp>span{font-weight:600;color:#c9d6e2;margin-right:2px}
+.grp button{min-height:40px;padding:0 12px;border:1px solid #3b4d5e;border-radius:6px;background:#162029;color:#e8eef3;font:600 15px/1 "Barlow",sans-serif;cursor:pointer}
+.grp button:hover{background:#203040}
+.grp button[aria-pressed=true]{background:#e8eef3;color:#10161c;border-color:#e8eef3}
+.hint{max-width:980px;margin:0 0 16px;color:#c9d6e2}
+.hint b{color:#fff}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:26px 22px;align-items:start;margin:0 0 22px}
+.opt{margin:0;display:grid;gap:8px;align-content:start;min-width:0}
+.opt h2{margin:0;font:700 21px/1.1 "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#fff}
+.opt p{margin:0;color:#c9d6e2;font-size:15px;line-height:1.4}
+.opt p b{color:#fff}
+.opt .mm{font:700 17px/1.3 "Barlow",sans-serif;color:#fff}
+.opt .mm small{font:500 15px/1.3 "Barlow",sans-serif;color:#a9b8c6}
+.opt a{color:#9fd0ff;font-size:15px}
+.opt h2 .rec{vertical-align:3px}
+.opt[data-pick] .cut{box-shadow:0 0 0 2px #2b6a42,0 18px 44px rgb(0 0 0/.5)}
+.cut{position:relative;overflow:hidden;border-radius:8px;background:#0f161d;box-shadow:0 0 0 1px #2a3b4b,0 18px 44px rgb(0 0 0/.5)}
+.cut iframe,.real iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0;background:#0f161d}
+.rl{margin:6px 0 0;font:600 14px/1.3 "Barlow",sans-serif;color:#a9b8c6}
+.realw{overflow-x:auto;border-radius:6px;box-shadow:0 0 0 1px #2a3b4b}
+.real{position:relative;overflow:hidden;background:#0f161d}
+table{border-collapse:collapse;margin:0 0 10px;font-size:15px}
+th,td{padding:6px 12px;border-bottom:1px solid #2a3b4b;text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{font:700 14px/1.2 "Barlow",sans-serif;color:#c9d6e2;vertical-align:bottom}
+tbody tr[aria-current=true] td{background:#162029;color:#fff}
+td.c{color:#ffd9a0}
+.tnote{max-width:980px;margin:0 0 22px;color:#a9b8c6;font-size:15px}
+.qs{display:grid;gap:14px;max-width:980px;margin:0 0 8px;padding:16px;border:1px solid #2a3b4b;border-radius:8px;background:#0f161d}
+.qs h3{margin:0 0 4px;font:700 19px/1.3 "Barlow",sans-serif;color:#fff}
+.qs p{margin:0;color:#c9d6e2}
+.qs p b{color:#fff}
+.choices{display:grid;gap:8px}
+.choices button{display:grid;gap:3px;justify-items:start;min-height:52px;padding:10px 14px;border:1px solid #3b4d5e;border-radius:6px;background:#162029;color:#e8eef3;text-align:left;font:600 17px/1.3 "Barlow",sans-serif;cursor:pointer}
+.choices button:hover{background:#203040}
+.choices button small{font:500 15px/1.35 "Barlow",sans-serif;color:#a9b8c6}
+.choices button[aria-pressed=true]{background:#e8eef3;color:#10161c;border-color:#e8eef3}
+.choices button[aria-pressed=true] small{color:#33404d}
+.rec{display:inline-block;margin-left:8px;padding:2px 7px;border-radius:4px;background:#12301f;border:1px solid #2b6a42;color:#bff0cf;font:700 12px/1.2 "Barlow",sans-serif;letter-spacing:.06em;text-transform:uppercase;vertical-align:2px}
+.choices button[aria-pressed=true] .rec{background:#1f7a3f;border-color:#1f7a3f;color:#fff}
+.acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.acts button{min-height:44px;padding:0 16px;border:1px solid #e8eef3;border-radius:6px;background:#e8eef3;color:#10161c;font:700 16px/1 "Barlow",sans-serif;cursor:pointer}
+.said{color:#7ee2a0}
+</style>
+</head>
+<body>
+<header class="bar">
+  <h1>The timers in a column beside the drawing</h1>
+  <p>Your idea: the timers in a column beside the drawing of the brewery, which gets narrower instead of shorter, so the vessels keep their size. With no timers the drawing is full width, as today. Below, today, the bar along the bottom (C) and this one (D), at each window size, with the drawing again at its real size on your 24-inch monitor. All are live: tap them to try. Then answer the one question at the bottom.</p>
+</header>
+<main id="main"></main>
+<script>
+"use strict";
+/* window sizes, in the order he's likely to use them; mm: the hot liquor tank's height in mm on a 24-inch 1920 x 1080
+   monitor, and cap: the vessels' names' capitals, in mm (today, C, D), measured in the mash */
+const SIZES = {
+  w950: {l: "Your monitor · 1920 × 950", w: 1920, h: 950, mm: [26, 18, 26], cap: [2.4, 1.6, 2.4]},
+  w1080: {l: "1920 × 1080", w: 1920, h: 1080, mm: [35, 27, 35], cap: [3.1, 2.4, 3.1]},
+  w1440: {l: "1440 × 900", w: 1440, h: 900, mm: [26, 17, 26], cap: [2.3, 1.5, 2.3]},
+  w1366: {l: "1366 × 768", w: 1366, h: 768, mm: [22, 14, 22], cap: [2.0, 1.2, 2.0]},
+  w1280: {l: "1280 × 800", w: 1280, h: 800, mm: [16, 7, 16], cap: [1.4, 0.6, 1.4]},
+  w1180: {l: "1180 × 860", w: 1180, h: 860, mm: [16, 7, 16], cap: [1.4, 0.6, 1.4]}
+};
+const CARDS = [
+  {id: "today", flag: "", h: "Today", i: 0,
+    p: "<b>As built now:</b> the timers in the recipe column, under the steps."},
+  {id: "c", flag: "col=new&tplace=bottom", h: "C · The bar along the bottom", i: 1,
+    p: "<b>The drawing gives up 68 px of its height to the bar.</b>"},
+  {id: "d", flag: "col=new&tplace=side", h: "D · Beside the drawing", i: 2, pick: true,
+    p: "<b>Your idea: the timers in a column beside the drawing.</b> The drawing gets narrower, not shorter, so the vessels keep their size. While a timer is set they sit closer together, so they don't line up under their own faceplates. With no timers the drawing is full width, as today."}
+];
+const SCENES = [
+  ["timers", "Two timers", "<b>The mash, with Stir counting down and Yeast set up for later.</b> In D the drawing is narrower while the timers are up."],
+  ["mash", "No timers", "<b>The mash with no timers.</b> In D the drawing is full width, as today, with + TIMER and SOUND in its top-right corner."],
+  ["timer-done", "A timer runs out", "<b>Stir has run out.</b> Its alarm is in the title bar in all three. Look at where the timer itself is."]
+];
+const KEY = "bd-timers-side-22nov";
+let A = "";
+try { A = localStorage.getItem(KEY) || ""; } catch (_) { A = ""; }
+const S = {size: "w950", scene: SCENES[0][0]};
+function readHash() {
+  const q = new URLSearchParams(location.hash.slice(1));
+  if (SIZES[q.get("size")]) S.size = q.get("size");
+  if (SCENES.some(s => s[0] === q.get("scene"))) S.scene = q.get("scene");
+}
+readHash();
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"})[c]);
+const src = (o, full) => `review/brew-day.html?${full ? "" : "bare&"}${o.flag}#${S.scene}`;
+const QS = [
+  {id: "d", h: "Yes, build D", pick: true, s: "The timers in a column beside the drawing."},
+  {id: "c", h: "No, keep C", s: "The bar along the bottom, with the drawing a third shorter on your monitor."},
+  {id: "later", h: "Not yet", s: "I'll tell Brett what I'd change."}
+];
+function tableHTML() {
+  const r = k => { const z = SIZES[k], m = z.mm; return `<tr${k === S.size ? ' aria-current="true"' : ""}><td>${esc(z.l)}</td><td>${m[0]} mm</td><td class="c">${m[1]} mm</td><td>${m[2]} mm</td></tr>`; };
+  return `<table aria-label="The hot liquor tank's height in the drawing, on a 24-inch monitor"><thead><tr><th>Window</th><th>Today</th><th>C</th><th>D</th></tr></thead><tbody>${Object.keys(SIZES).map(r).join("")}</tbody></table>`;
+}
+function render() {
+  const m = document.getElementById("main"), z = SIZES[S.size], sc = SCENES.find(s => s[0] === S.scene);
+  m.innerHTML = `<div class="ctl"><div class="grp" role="group" aria-label="Moment"><span>Moment:</span>${SCENES.map(s => `<button type="button" data-scene="${s[0]}" aria-pressed="${s[0] === S.scene}">${s[1]}</button>`).join("")}</div>
+    <div class="grp" role="group" aria-label="Window size"><span>Window:</span>${Object.keys(SIZES).map(k => `<button type="button" data-size="${k}" aria-pressed="${k === S.size}">${esc(SIZES[k].l)}</button>`).join("")}</div></div>
+    <p class="hint">${sc[2]} The vessels' heights are for a 24-inch 1920 × 1080 monitor. The drawings under the screens are at real size if this page is at 100 % zoom on that monitor.${S.size === "w1280" || S.size === "w1366" ? " <b>At this size the screen is taller than the window, today too,</b> so the bottom of the drawing, and in D of the timers' column, is below the window until you scroll." : ""}</p>
+    <div class="opts" id="opts">${CARDS.map(o => `<figure class="opt" data-o="${o.id}"${o.pick ? " data-pick" : ""}><h2>${esc(o.h)}${o.pick ? '<span class="rec">My pick</span>' : ""}</h2><p>${o.p}</p>
+      <p class="mm">Hot liquor tank ${z.mm[o.i]} mm tall <small>· names' capitals ${z.cap[o.i]} mm</small></p>
+      <div class="cut"><iframe title="${esc(o.h)}, the whole screen" src="${src(o)}" tabindex="-1"></iframe></div>
+      <p class="rl">The drawing, real size:</p><div class="realw"><div class="real"><iframe title="${esc(o.h)}, the drawing at real size" src="${src(o)}" tabindex="-1"></iframe></div></div>
+      <a target="_blank" rel="noopener" href="${src(o, true)}">Open the whole screen</a></figure>`).join("")}</div>
+    <h3 style="margin:0 0 8px;font:700 19px/1.3 Barlow,sans-serif">The hot liquor tank's height in the drawing</h3>${tableHTML()}
+    <p class="tnote">Measured in the mash, from the top of the tank's lid to its base.</p>
+    <section class="qs" aria-label="The question"><h3 id="q-h">Build D, the timers in a column beside the drawing?</h3>
+      <p><b>D keeps the vessels their size on every screen.</b> On your monitor the hot liquor tank stays 26 mm tall, against 18 mm in C. While a timer is set, the drawing is narrower and its vessels sit closer together. With none, it is full width.</p>
+      <p>The recipe column is all recipe, so the current step always fits. The cost: on a small window the column shows two timers at a time, and more scroll inside it.</p>
+      <div class="choices" role="group" aria-labelledby="q-h">${QS.map(q => `<button type="button" data-a="${q.id}" aria-pressed="${A === q.id}"><span>${esc(q.h)}${q.pick ? '<span class="rec">My pick</span>' : ""}</span><small>${esc(q.s)}</small></button>`).join("")}</div>
+      <div class="acts"><button type="button" id="copy">Copy my answer</button><span class="said" id="said" aria-live="polite"></span></div></section>`;
+  history.replaceState(null, "", `#scene=${S.scene}&size=${S.size}`);
+  m.querySelectorAll(".real iframe").forEach(fr => fr.addEventListener("load", () => setTimeout(() => crop(fr), 900)));
+  fit();
+}
+/* each copy is a whole screen at the chosen size, scaled down to its card's width */
+function fit() {
+  const z = SIZES[S.size];
+  document.querySelectorAll(".opt").forEach(f => {
+    const cut = f.querySelector(".cut"), fr = cut.querySelector("iframe"), s = Math.min(1, cut.clientWidth / z.w);
+    fr.style.width = z.w + "px"; fr.style.height = z.h + "px"; fr.style.transform = `scale(${s})`;
+    cut.style.height = (z.h * s) + "px";
+    const rf = f.querySelector(".real iframe");
+    if (rf) { rf.style.width = z.w + "px"; rf.style.height = z.h + "px"; }
+  });
+}
+/* the drawing at real size: the same screen unscaled, cropped to the drawing's box, with the timers' column beside it
+   where there is one (D), which the card scrolls across */
+function crop(fr) {
+  let r;
+  try {
+    const d = fr.contentDocument, g = d && d.getElementById("rig"), c = d && d.querySelector("#tside, .tside");
+    r = g && g.getBoundingClientRect();
+    if (r && c && c.getBoundingClientRect().height) { const q = c.getBoundingClientRect(); r = {left: Math.min(r.left, q.left), top: Math.min(r.top, q.top), width: Math.max(r.right, q.right) - Math.min(r.left, q.left), height: Math.max(r.bottom, q.bottom) - Math.min(r.top, q.top)}; }
+  } catch (_) { r = null; }
+  if (!r || !r.height) return;
+  const box = fr.parentElement, pad = 6;
+  box.style.width = (r.width + 2 * pad) + "px"; box.style.height = (r.height + 2 * pad) + "px";
+  fr.style.left = (pad - r.left) + "px"; fr.style.top = (pad - r.top) + "px";
+}
+const answer = () => { const q = QS.find(x => x.id === A); return q ? `Timers beside the drawing: ${q.h}${q.pick ? " (Amber's pick)" : ""}` : "Timers beside the drawing: not answered yet"; };
+document.addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  if (b.dataset.scene) { S.scene = b.dataset.scene; render(); return; }
+  if (b.dataset.size) { S.size = b.dataset.size; render(); return; }
+  if (b.dataset.a) {
+    A = b.dataset.a; try { localStorage.setItem(KEY, A); } catch (_) {}
+    document.querySelectorAll("[data-a]").forEach(x => x.setAttribute("aria-pressed", x === b));
+    return;
+  }
+  if (b.id === "copy") {
+    const t = answer(), said = document.getElementById("said");
+    const ok = () => { said.textContent = "Copied. Paste it in your chat with Brett."; };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(ok, () => { said.textContent = t; });
+    else said.textContent = t;
+  }
+});
+addEventListener("resize", () => { fit(); document.querySelectorAll(".real iframe").forEach(crop); });
+addEventListener("hashchange", () => { readHash(); render(); });
+render();
+</script>
+</body>
+</html>

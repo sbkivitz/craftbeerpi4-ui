@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Brew day · CraftBeerPi dashboard proposal (mockup)</title>
+<!--
+DIRECTION CONTRACT (Impeccable, final; source: .impeccable/decisions/direction-log.md)
+THESIS: A brewhouse control panel for one rig: a PID faceplate per vessel, the vessels as plumbed, the
+recipe beside them; it refuses the card grid of numbers and toggles.
+OWN-WORLD: Dark slate panel; black PID faces with a big red PV over a smaller green SV, plus OUT and MODE, and
+the vessel's temperature graph under them; buttons topped by lamp strips that also say their state (orange
+heating, green running, grey off, red failed); a line drawing of the rig with cyan liquor and gold wort pipes
+that move only while pumped.
+STORY: From across the garage the brewer sees what is heating, how close each vessel is, and the step now and
+next; heat starts only on a held press; every command answers at its own button.
+FIRST VIEWPORT: Left: recipe with Start, Stop, Next step. Right: three faceplates across the top, the line
+drawing below with each vessel under its own faceplate. Alarms in the title bar; last event and screen tabs
+under it.
+FORM: Brewhouse touch panel with process-mimic plumbing; layout B (D3); seed fad8ffb4.
+
+This is a mockup with demo data. It does not talk to CraftBeerPi.
+Pre-brew check (PRE-BREW-CHECK.md): #prebrew, #probes, #probes-apart, #probes-off, #probes-none, #checking,
+#check-clock, #check-now, #check-probe, #check-adds, #check-many, #check-noanswer, #check-noprobe, #check-slow and
+#check-unsure, first in the strip.
+Strike water (STRIKE-WATER.md): #sw-plan, #sw-forecast, #sw-volume, #sw-grain-edit, #sw-grain, #sw-hot, #sw-used,
+#sw-backhot, #sw-working, #sw-working-open, #sw-reworking, #sw-levers, #sw-refused, #sw-refused-moved, #sw-failed,
+#sw-tunprobe, #sw-wait, #sw-heat, #sw-move, #sw-late, #sw-doughin, #sw-hand, #sw-novol, #sw-missing, #sw-noprobe,
+#sw-grain-bad and #sw-interval, second in the strip. Its figures are the strike water model's (strike-model.js).
+#sw-where: the grain not answered yet the night before, so USE asks where it spent the night, through BrewStart's box.
+#sw-where-am: the same on brew morning with BrewStart finished, through the strike water box's own grain box.
+BrewStart, third in the strip: its row in the step list opens its box while BrewStart hasn't finished (the time, Ready
+by or Start at, the day, and where the grain spent the night), and + BrewStart above the first step adds one to a
+recipe without it: #bs-edit, #bs-indoors, #bs-past, #bs-startat, #bs-set, #bs-wait, #bs-new, #bs-new-open, #bs-sim and
+#bs-novol.
+Scenes: #mash (default), #sparge, #hop, #boilpower, #heatup, #pause, #boiling, #hold, #fail, #manual, #offline, #notarget,
+#notarget-hlt, and the rest in the strip. #sparge-ready and #boil-hold show the pumps CraftBeerPi switches off so their
+hoses can move. #byhand and #byhand-past show an element on by hand in MANUAL, before and after it passes its target.
+#stopped, #reset and #reset-done show the recipe stopped, RESET asking first, and the recipe back at step 1.
+UNLOAD, at the end of the recipe's status line, takes the recipe off Brew Day: #unloaded, #unload-ask,
+#unload-notinbook, #unload-held, #unload-running, #unload-wait, #unload-refused and #unload-failed. LOAD over a
+finished recipe the Recipe Book doesn't have asks first: #load-notinbook.
+Add ?bare to hide the mockup strip.
+Layouts: ?layout=b (default) or ?layout=a (the D1 alternative, kept for comparison; its drawing has no sparge line, so
+its HLT pump always goes back round the hot liquor tank).
+Graphs: in the faceplates by default. ?graphs=none shows the screen without them, as the released build has it;
+?graphs=panel is the other layout, a panel of graphs in place of the drawing, kept only for graphs.html.
+?span=10|30|day picks the starting span.
+Boil kettle: the default (?bk=power) has one-tap −5/−1/+1/+5 %, a pause for boil-overs, a usual boil power, TARGET (BOIL
+or a hold) and KEEP BOILING. ?bk=today is the faceplate the screen shows with an older BoilPower (one without
+set_boil_at); boil-kettle.html compares the two. ?bk=words is a words-only alternative, kept for comparison. ?focus=bk
+is for that page.
+Timers: the default (#timers, #timer-done, #timer-new, #timer-names, #timer-nonames, #timers-hand, #sound-allow);
+?timers=new shows the same. ?timers=today is the one rest timer, which the screen shows with an older CraftBeerPi
+without the timers.
+?names=Hop stand,Yeast tries a BREWDAY_TIMER_NAMES list (blank: none), read as CraftBeerPi reads the setting.
+Timer rows: by default (TIMER-REMOVE.md, approved on 22 Nov), REMOVE on every timer's row, with UNDO in its place for
+10 real seconds, BACK TO its own time in its editor and + TIMER in the heading (#timer-change, #timer-removed).
+?trow=today is the rows as built before; timers.html compares the two.
+?col=new is the recipe column's proposal (RECIPE-COLUMN.md), with the new rows: on one screen the timers shrink to tiles
+when the current step wouldn't be whole beside them, a tile in its last 3 minutes growing back where the step still
+fits, and fold into one line only as a last resort; OTHER RECIPE beside COMPARE PROBES on a recipe not begun;
+brewing by hand, the recipe book folds behind CHOOSE A RECIPE (#timers-fold, #timers-open, #other-recipe, #hand-choose).
+Where the timers live (TIMER-PLACE.md): ?col=new is A, in the recipe column; ?col=new&tplace=event is B, beside the
+last event under the title bar; ?col=new&tplace=bottom is C, a bar along the bottom. On one screen only; a phone is as
+today in all three. placement.html shows the three side by side.
+?col=new&tplace=side is D, a column beside the drawing, which is narrower while there are timers (timers-side.html).
+The boil kettle's MANUAL: by default (BOIL-MANUAL.md, approved on 22 Nov), by hand the element heats at the boil power,
+which the window reads as HAND in MANUAL, with the steps beside the element, and MODE's MAN is boxed in Prompt Amber
+where AUTO is usual (#bk-hand, #bk-hand-off, #bk-man-boil). ?bkman=today is the faceplate as built before;
+boil-manual.html compares the two.
+Title bar: the BREWERY_NAME setting at every width, so a rig and a simulator can't be taken for each other.
+?name=Simulator 8012 tries another name; blank shows CraftBeerPi. Two lines at most, and a name of more than 24
+characters is drawn smaller (0.7 of the size) on a monitor and a phone; from 701 to 1023 px wide it keeps the full size.
+The time is CraftBeerPi's clock (The One Clock Rule). #sim-clock is a simulator at 60× whose clock is on another day:
+its date and speed sit beside the time, and LOG's lines from the day before say their date. #sim-clock-1x is a
+simulator at 1× on the screen's own date: the time alone, as on the rig.
+Tabs: BREWSCRIBE, last, opens BrewScribe in a browser tab of its own; ?brewscribe=none shows the screen where
+BrewScribe isn't installed.
+Versions: the recipe column's last line, made up and fixed in the demo; ?ver=release shows an installed release's, the
+release numbers only; ?ver=none shows the screen without it, as the released build has it.
+The wort pump after the boil: by default (?wp=chill), from the boil's start the wort pump is drawn at the boil kettle,
+on a short loop through the chiller (#whirlpool shows it running). It stays there after the recipe finishes
+(#finished), until a recipe is loaded or reset, or while the mash tun's AUTO is on (#notarget).
+?wp=today is the released build's drawing (after the boil it goes back to recirculating, through the HERMS coil);
+?wp=move (no chiller) and ?wp=swirl (the pump stays, the kettle swirls) are alternatives kept for comparison.
+whirlpool.html shows them side by side; ?focus=rig is for that page.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="brew-day.css">
+</head>
+<body>
+<nav class="mock" id="mock" aria-label="Mockup scenes (not part of the design)">
+  <strong>Mockup with demo data.</strong> Show:
+  <span class="lay">Pre-brew check: <a href="#prebrew">Ready, before you fill</a> <a href="#probes">Probes side by side</a> <a href="#probes-apart">One a few degrees cooler</a> <a href="#probes-off">One probe looks off</a> <a href="#probes-none">A probe with no reading</a> <a href="#checking">START held: checking</a> <a href="#check-clock">Clock not set yet</a> <a href="#check-now">Clock set: every check passes</a> <a href="#check-probe">A probe gives no reading</a> <a href="#check-adds">Additions without a reminder</a> <a href="#check-many">Two checks didn't pass</a> <a href="#check-noanswer">No answer from CraftBeerPi</a> <a href="#check-noprobe">No probe chosen</a> <a href="#check-slow">Clock: slow to answer</a> <a href="#check-unsure">Clock not confirmed</a></span>
+  <span class="lay">Strike water: <a href="#sw-plan">The night before</a> <a href="#sw-forecast">FORECAST opened</a> <a href="#sw-volume">Changing the HLT water</a> <a href="#sw-grain-edit">Giving the grain's temperature</a> <a href="#sw-grain">Grain kept indoors</a> <a href="#sw-hot">Planned too hot</a> <a href="#sw-used">USE pressed</a> <a href="#sw-backhot">BACK TO too hot</a> <a href="#sw-working">Working out USE</a> <a href="#sw-working-open">Working, FORECAST open</a> <a href="#sw-reworking">Working out again</a> <a href="#sw-levers">Biggest unknowns still coming</a> <a href="#sw-refused">USE refused</a> <a href="#sw-refused-moved">USE pressed too late</a> <a href="#sw-failed">Forecast failed</a> <a href="#sw-tunprobe">Probe at the tun's outlet</a> <a href="#sw-wait">Waiting to heat</a> <a href="#sw-heat">Heating</a> <a href="#sw-move">Ready to move</a> <a href="#sw-late">USE once it's hot</a> <a href="#sw-doughin">Dough-in</a> <a href="#sw-hand">Brewing by hand</a> <a href="#sw-novol">No HLT water</a> <a href="#sw-missing">No grain weight</a> <a href="#sw-noprobe">No grain temperature</a> <a href="#sw-grain-bad">Grain temperature unusable</a> <a href="#sw-interval">Control interval unusable</a> <a href="#sw-where">USE waits for the grain</a> <a href="#sw-where-am">USE waits for the grain, brew morning</a></span>
+  <span class="lay">BrewStart: <a href="#bs-edit">Its box, the night before</a> <a href="#bs-indoors">Grain kept indoors</a> <a href="#bs-past">A time that has passed</a> <a href="#bs-startat">START AT instead</a> <a href="#bs-set">After SET</a> <a href="#bs-wait">While it waits</a> <a href="#bs-new">No BrewStart: + BrewStart</a> <a href="#bs-new-open">Adding one</a> <a href="#bs-sim">On a simulator at 60×</a> <a href="#bs-novol">No water figure</a></span>
+  <a href="#mash">Mid-mash</a>
+  <a href="#stopped">Stopped</a>
+  <a href="#reset">RESET asks first</a>
+  <a href="#reset-done">Reset to step 1</a>
+  <a href="#unloaded">Unloaded before it began</a>
+  <a href="#unload-ask">UNLOAD asks first</a>
+  <a href="#unload-notinbook">UNLOAD, not in the Recipe Book</a>
+  <a href="#unload-held">UNLOAD, the boil waiting</a>
+  <a href="#unload-running">UNLOAD while a step runs</a>
+  <a href="#unload-wait">UNLOAD, BrewStart waiting</a>
+  <a href="#unload-refused">UNLOAD refused</a>
+  <a href="#unload-failed">UNLOAD got no answer</a>
+  <a href="#load-notinbook">LOAD over steps not in the Recipe Book</a>
+  <a href="#sim-clock">A simulator at 60×: its clock</a>
+  <a href="#sim-clock-1x">A simulator at 1×</a>
+  <a href="#sparge">Sparge</a>
+  <a href="#sparge-heat">Sparge step: heating the water</a>
+  <a href="#sparge-ready">Sparge step: waiting for you</a>
+  <a href="#sparge-run">Sparge step: fly sparge</a>
+  <a href="#sparge-batch">Sparge step: batch sparge</a>
+  <a href="#boil-hold">Ready to boil?</a>
+  <a href="#hop">Hop addition due</a>
+  <a href="#boilpower">Turning the boil down</a>
+  <a href="#heatup">Heating to the boil</a>
+  <a href="#pause">Boil-over</a>
+  <a href="#pause-long">Pause forgotten</a>
+  <a href="#boiling">Boiling</a>
+  <a href="#hold">Whirlpool hold</a>
+  <a href="#whirlpool">Whirlpool, pump running</a>
+  <a href="#finished">Recipe finished, chilling</a>
+  <a href="#keepboil">Boil at 2 %, keep boiling</a>
+  <a href="#letfall">Boil at 2 %, let it fall</a>
+  <a href="#bktarget">Setting a hop stand by hand</a>
+  <a href="#handhold">Hop stand by hand</a>
+  <a href="#fail">A command failed</a>
+  <a href="#manual">Brewing by hand</a>
+  <a href="#offline">Connection lost</a>
+  <a href="#notarget">Mash tun AUTO, no target</a>
+  <a href="#notarget-hlt">HLT AUTO, no target</a>
+  <a href="#byhand">HLT heating by hand</a>
+  <a href="#byhand-past">By hand, past its target</a>
+  <a href="#timers">Timers in a recipe</a>
+  <a href="#timer-done">A timer runs out</a>
+  <a href="#timer-back">Back after a power cut</a>
+  <a href="#timer-back-done">Ran out during the power cut</a>
+  <a href="#timer-back-unknown">Power cut, length not known yet</a>
+  <a href="#timer-new">Adding a timer</a>
+  <a href="#timer-change">Changing a timer</a>
+  <a href="#timer-removed">A timer removed</a>
+  <a href="#timers-fold">Timers folded, heating</a>
+  <a href="#timers-open">Folded timers opened</a>
+  <a href="#other-recipe">Another recipe, not begun</a>
+  <a href="#hand-choose">Choosing a recipe by hand</a>
+  <a href="#bk-hand">Boil kettle heating by hand</a>
+  <a href="#bk-hand-off">Boil kettle in MANUAL, off</a>
+  <a href="#bk-man-boil">Boil kettle in MANUAL mid-boil</a>
+  <a href="#timer-names">Eight names in Settings</a>
+  <a href="#timer-nonames">No names in Settings</a>
+  <a href="#timers-hand">Timers by hand</a>
+  <a href="#sound-allow">Sound waiting for a tap</a>
+  <span class="lay">Brewery name: <a data-nm="" href="?">default</a> <a data-nm="EBrews - Simulator" href="?name=EBrews - Simulator">EBrews</a> <a data-nm="Simulator 8012" href="?name=Simulator 8012">a simulator</a> <a data-nm="EBrews - A CraftBeerPi Brewery" href="?name=EBrews - A CraftBeerPi Brewery">30 characters</a> <a data-nm="Old Mill Lane Garage Brewing Company" href="?name=Old Mill Lane Garage Brewing Company">36 characters</a></span>
+  <span class="lay">Wort pump after the boil: <a data-wp="chill" href="?">default: moves, with chiller</a> <a data-wp="today" href="?wp=today">released build</a> <a data-wp="move" href="?wp=move">moves, no chiller</a> <a data-wp="swirl" href="?wp=swirl">stays, kettle swirls</a> <a href="whirlpool.html">side by side</a></span>
+  <span class="lay">Timers: <a data-tm="new" href="?">default</a> <a data-tm="today" href="?timers=today">older CraftBeerPi</a></span>
+  <span class="lay">Timer rows: <a data-trow="new" href="?">default: REMOVE on the row</a> <a data-trow="today" href="?trow=today">as built before</a> <a href="timers.html">side by side</a></span>
+  <span class="lay">Recipe column: <a data-col="today" href="?">as built</a> <a data-col="new" href="?col=new">proposal: timers shrink, OTHER RECIPE</a> <a href="column.html">side by side</a></span>
+  <span class="lay">Where the timers live: <a href="?col=new">A · in the column</a> <a href="?col=new&amp;tplace=event">B · beside the last event</a> <a href="?col=new&amp;tplace=bottom">C · along the bottom</a> <a href="?col=new&amp;tplace=side">D · beside the drawing</a> <a href="placement.html">side by side</a></span>
+  <span class="lay">Boil kettle: <a data-bk="power" href="?bk=power">default</a> <a data-bk="today" href="?bk=today">older BoilPower</a></span>
+  <span class="lay">Boil kettle's MANUAL: <a data-bkman="new" href="?">default: by hand at the boil power</a> <a data-bkman="today" href="?bkman=today">as built before</a> <a href="boil-manual.html">side by side</a></span>
+  <span class="lay">Layout: <a data-layout="a" href="?layout=a">A · recipe right</a> <a data-layout="b" href="?layout=b">B · recipe left</a></span>
+</nav>
+<div class="app" id="app" data-link="ok">
+  <header class="topbar">
+    <p class="brand"><span class="bname">CraftBeerPi Brewery</span></p>
+    <p class="link" id="link" data-link="ok"><i aria-hidden="true"></i><span id="link-t">Connected</span></p>
+    <button class="alloff" id="alloff" data-cmd="alloff" type="button">ALL OFF</button>
+    <p class="clock" id="clock">14:32</p>
+  </header>
+
+  <section class="status" aria-label="Alarms and the last event">
+    <div class="banner" id="banner" data-tone="ok"></div>
+    <div class="event" id="event"></div>
+  </section>
+
+  <main class="main">
+    <section class="brewhouse" aria-label="Brewhouse">
+      <div class="rig" id="rig"></div>
+      <div class="now" id="now"></div>
+      <div class="plates" id="plates"></div>
+    </section>
+    <aside class="recipe" id="recipe" aria-label="Recipe"></aside>
+  </main>
+
+  <nav class="tabs" aria-label="Screens">
+    <a href="#tab" data-tab="" aria-current="page">Brew day</a>
+    <a href="#tab" data-tab="Brew Steps"><span class="long">Brew steps</span><span class="short">Steps</span></a>
+    <a href="#tab" data-tab="Recipe Book"><span class="long">Recipe book</span><span class="short">Recipes</span></a>
+    <a href="#tab" data-tab="Analytics">Analytics</a>
+    <a href="#tab" data-tab="Hardware">Hardware</a>
+    <a href="#tab" data-tab="Settings">Settings</a>
+    <a href="#tab" data-tab="More">More</a>
+    <a href="#tab" data-tab="BrewScribe" class="ext"><span class="lbl">Brew<wbr><span class="nw">Scribe<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M5 1.8H2.4a.6.6 0 0 0-.6.6v7.2c0 .3.3.6.6.6h7.2c.3 0 .6-.3.6-.6V7M7.2 1.8h3v3M10.2 1.8 5.6 6.4"/></svg></span></span><span class="sr"> (opens in its own tab)</span></a>
+  </nav>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+<p class="sr" id="sr" aria-live="polite"></p>
+<p class="sr" id="sr-alert" role="alert"></p>
+<script src="rig.js"></script>
+<script src="graphs.js"></script>
+<script src="strike-model.js"></script>
+<script src="brew-day.js"></script>
+</body>
+</html>

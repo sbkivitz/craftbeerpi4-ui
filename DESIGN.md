@@ -1,0 +1,812 @@
+---
+name: CraftBeerPi Brew Day
+description: A brewhouse control panel for one electric HERMS rig, readable from across the garage.
+colors:
+  # neutral: the slate panel
+  bg: "#0f161d"
+  bar: "#0a1016"
+  panel: "#17212b"
+  panel-2: "#1e2b37"
+  panel-hover: "#253545"
+  line: "#2a3b4b"
+  edge: "#33475a"
+  face: "#030609"
+  text: "#e8eef3"
+  text-2: "#b6c3cf"
+  text-3: "#8b9cad"
+  on-fill: "#ffffff"
+  stale: "#6b7785"
+  stale-text: "#737f8d"
+  # primary: readouts and lamps
+  pv: "#ff4b3e"
+  sv: "#3ddc6f"
+  run: "#3ddc6f"
+  heat: "#ff7b1c"
+  lamp-off: "#3a4856"
+  # secondary: the plumbing drawing
+  liquor: "#46b8ea"
+  wort: "#e9b33b"
+  drawing-ink: "#b9c6d2"
+  drawing-label: "#c3cfda"
+  drawing-idle: "#6f8194"
+  pipe-still: "#4a5a6b"
+  vessel-fill: "#1b2833"
+  # tertiary: prompts, alarms and selection
+  prompt: "#ffb21e"
+  prompt-bg: "#3a2a06"
+  prompt-ink: "#fff1d2"
+  note: "#ffd9a0"
+  alarm: "#ff4a4a"
+  alarm-bg: "#6e1414"
+  fault-bg: "#2b1315"
+  alarm-ink: "#ffc9c4"
+  ok-bg: "#11331f"
+  ok-ink: "#c9f2d6"
+  select: "#2a6fc0"
+  active: "#1c5796"
+  active-edge: "#3c7fcc"
+  active-ink: "#dce9f7"
+  progress: "#9bcbff"
+  progress-track: "#0d2b48"
+  focus: "#8cc2ff"
+  answer: "#f4f6f8"
+  answer-ink: "#10161c"
+  # the temperature graphs in the faceplates
+  graph-grid: "#16202a"
+  graph-gap: "#0b1117"
+typography:
+  pv:
+    fontFamily: "Barlow Condensed, Roboto Condensed, Arial Narrow, Segoe UI, sans-serif"
+    fontSize: "clamp(48px, calc(21 * var(--pu)), 110px)"
+    fontWeight: 600
+    lineHeight: 1
+    fontFeature: "'tnum'"
+  sv:
+    fontFamily: "Barlow Condensed, Roboto Condensed, Arial Narrow, Segoe UI, sans-serif"
+    fontSize: "clamp(26px, calc(9.5 * var(--pu)), 50px)"
+    fontWeight: 600
+    lineHeight: 1.05
+    fontFeature: "'tnum'"
+  readout:
+    fontFamily: "Barlow Condensed, Roboto Condensed, Arial Narrow, Segoe UI, sans-serif"
+    fontSize: "clamp(20px, calc(6.6 * var(--pu)), 32px)"
+    fontWeight: 600
+    lineHeight: 1
+    letterSpacing: "0.03em"
+    fontFeature: "'tnum'"
+  headline:
+    fontFamily: "Barlow Condensed, Roboto Condensed, Arial Narrow, Segoe UI, sans-serif"
+    fontSize: "clamp(22px, calc(7 * var(--pu)), 31px)"
+    fontWeight: 700
+    lineHeight: 1.05
+    letterSpacing: "0.03em"
+  title:
+    fontFamily: "Barlow Condensed, Roboto Condensed, Arial Narrow, Segoe UI, sans-serif"
+    fontSize: "clamp(18px, calc(7 * var(--pu)), 27px)"
+    fontWeight: 700
+    lineHeight: 1
+    letterSpacing: "0.06em"
+  lamp-state:
+    fontFamily: "Barlow Condensed, Roboto Condensed, Arial Narrow, Segoe UI, sans-serif"
+    fontSize: "clamp(18px, calc(6.4 * var(--pu)), 24px)"
+    fontWeight: 700
+    lineHeight: 1
+    letterSpacing: "0.05em"
+  button:
+    fontFamily: "Barlow Condensed, Roboto Condensed, Arial Narrow, Segoe UI, sans-serif"
+    fontSize: "clamp(16px, calc(5.6 * var(--pu)), 21px)"
+    fontWeight: 700
+    lineHeight: 1
+    letterSpacing: "0.06em"
+  row:
+    fontFamily: "Barlow Condensed, Roboto Condensed, Arial Narrow, Segoe UI, sans-serif"
+    fontSize: "20px"
+    fontWeight: 600
+    lineHeight: 1.1
+    letterSpacing: "0.02em"
+  detail:
+    fontFamily: "Barlow Condensed, Roboto Condensed, Arial Narrow, Segoe UI, sans-serif"
+    fontSize: "16px"
+    fontWeight: 500
+    lineHeight: 1.25
+    letterSpacing: "0.02em"
+  label:
+    fontFamily: "Barlow Condensed, Roboto Condensed, Arial Narrow, Segoe UI, sans-serif"
+    fontSize: "15px"
+    fontWeight: 600
+    lineHeight: 1
+    letterSpacing: "0.08em"
+  nav:
+    fontFamily: "Barlow Condensed, Roboto Condensed, Arial Narrow, Segoe UI, sans-serif"
+    fontSize: "clamp(15px, 1.15vw, 19px)"
+    fontWeight: 600
+    lineHeight: 1.05
+    letterSpacing: "0.08em"
+  body:
+    fontFamily: "Barlow, Segoe UI, system-ui, sans-serif"
+    fontSize: "16px"
+    fontWeight: 500
+    lineHeight: 1.35
+  fine-print:
+    fontFamily: "Barlow Condensed, Roboto Condensed, Arial Narrow, Segoe UI, sans-serif"
+    fontSize: "12px"
+    fontWeight: 500
+    lineHeight: 1.3
+    letterSpacing: "0.02em"
+rounded:
+  face: "4px"
+  panel: "6px"
+spacing:
+  list: "6px"
+  group: "8px"
+  stack: "10px"
+  gap: "12px"
+  pad: "20px"
+components:
+  faceplate:
+    backgroundColor: "{colors.panel}"
+    textColor: "{colors.text}"
+    typography: "{typography.title}"
+    rounded: "{rounded.panel}"
+    padding: "12px"
+  pid-face:
+    backgroundColor: "{colors.face}"
+    rounded: "{rounded.face}"
+    padding: "clamp(6px, calc(2.5 * var(--pu)), 12px) clamp(10px, calc(4 * var(--pu)), 18px)"
+  pid-pv:
+    textColor: "{colors.pv}"
+    typography: "{typography.pv}"
+  pid-sv:
+    textColor: "{colors.sv}"
+    typography: "{typography.sv}"
+  pid-aux:
+    textColor: "{colors.text}"
+    typography: "{typography.readout}"
+  graph:
+    backgroundColor: "{colors.face}"
+    height: "clamp(58px, calc(28dvh - 200px), 110px)"
+  graph-span:
+    textColor: "{colors.text-3}"
+    rounded: "3px"
+    padding: "6px 4px"
+  graph-span-current:
+    backgroundColor: "#0e171f"
+    textColor: "{colors.on-fill}"
+  lamp-button:
+    backgroundColor: "{colors.panel-2}"
+    textColor: "{colors.text}"
+    typography: "{typography.lamp-state}"
+    rounded: "{rounded.panel}"
+    padding: "17px 8px 8px"
+    height: "72px"
+  lamp-button-hover:
+    backgroundColor: "{colors.panel-hover}"
+  lamp-button-failed:
+    backgroundColor: "{colors.fault-bg}"
+    textColor: "{colors.text}"
+  lamp-strip-off:
+    backgroundColor: "{colors.lamp-off}"
+    height: "8px"
+  lamp-strip-heating:
+    backgroundColor: "{colors.heat}"
+    height: "8px"
+  lamp-strip-running:
+    backgroundColor: "{colors.run}"
+    height: "8px"
+  lamp-strip-failed:
+    backgroundColor: "{colors.alarm}"
+    height: "8px"
+  lamp-strip-paused:
+    backgroundColor: "{colors.prompt}"
+    height: "8px"
+  command-button:
+    backgroundColor: "{colors.panel-2}"
+    textColor: "{colors.text}"
+    typography: "{typography.button}"
+    rounded: "{rounded.panel}"
+    padding: "6px 4px"
+    height: "62px"
+  command-button-hover:
+    backgroundColor: "{colors.panel-hover}"
+  command-button-disabled:
+    textColor: "{colors.text-3}"
+  mode-segment-active:
+    backgroundColor: "#070c11"
+    textColor: "{colors.on-fill}"
+  answer-button:
+    backgroundColor: "{colors.answer}"
+    textColor: "{colors.answer-ink}"
+    rounded: "{rounded.panel}"
+    padding: "0 20px"
+    height: "48px"
+  set-button:
+    backgroundColor: "{colors.select}"
+    textColor: "{colors.on-fill}"
+    rounded: "{rounded.panel}"
+    height: "54px"
+  target-input:
+    backgroundColor: "{colors.face}"
+    textColor: "{colors.sv}"
+    rounded: "{rounded.panel}"
+    height: "54px"
+  boil-power-readout:
+    textColor: "{colors.sv}"
+    rounded: "3px"
+    padding: "0 .28em"
+  boil-power-readout-frame:
+    backgroundColor: "#3b4d5e"
+    height: "1px"
+  keep-boiling-box-on:
+    backgroundColor: "{colors.sv}"
+    rounded: "3px"
+    height: "20px"
+  keep-boiling-box-off:
+    backgroundColor: "{colors.face}"
+    textColor: "#7f91a3"
+    rounded: "3px"
+    height: "20px"
+  boil-step-button:
+    backgroundColor: "{colors.panel-2}"
+    textColor: "{colors.text}"
+    typography: "{typography.button}"
+    rounded: "{rounded.panel}"
+    padding: "6px 4px"
+    height: "72px"
+  power-input:
+    backgroundColor: "{colors.face}"
+    textColor: "{colors.sv}"
+    rounded: "{rounded.panel}"
+    height: "54px"
+  heat-off-button:
+    backgroundColor: "{colors.panel-2}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.panel}"
+    padding: "0 16px"
+    height: "48px"
+  heat-off-button-hover:
+    backgroundColor: "{colors.fault-bg}"
+  banner-clear:
+    backgroundColor: "{colors.ok-bg}"
+    textColor: "{colors.ok-ink}"
+    rounded: "{rounded.panel}"
+    height: "50px"
+  banner-prompt:
+    backgroundColor: "{colors.prompt-bg}"
+    textColor: "{colors.prompt-ink}"
+    rounded: "{rounded.panel}"
+    height: "50px"
+  banner-alarm:
+    backgroundColor: "{colors.alarm-bg}"
+    textColor: "{colors.on-fill}"
+    rounded: "{rounded.panel}"
+    height: "50px"
+  recipe-step:
+    backgroundColor: "{colors.panel-2}"
+    textColor: "{colors.text}"
+    typography: "{typography.row}"
+    rounded: "{rounded.panel}"
+    padding: "8px 12px 8px 6px"
+  recipe-step-current:
+    backgroundColor: "{colors.active}"
+    textColor: "{colors.text}"
+  step-progress-track:
+    backgroundColor: "{colors.progress-track}"
+    rounded: "{rounded.face}"
+    height: "8px"
+  step-progress-fill:
+    backgroundColor: "{colors.progress}"
+    height: "8px"
+  versions-line:
+    textColor: "{colors.text-3}"
+    typography: "{typography.fine-print}"
+  check-box:
+    backgroundColor: "{colors.prompt-bg}"
+    textColor: "{colors.prompt-ink}"
+    rounded: "{rounded.panel}"
+    padding: "12px"
+  check-mark-passed:
+    textColor: "{colors.run}"
+    size: "24px"
+  check-mark-not-passed:
+    backgroundColor: "{colors.prompt}"
+    textColor: "#241800"
+    rounded: "50%"
+    size: "24px"
+  check-mark-note:
+    textColor: "{colors.text-2}"
+    size: "24px"
+  compare-probes-panel:
+    backgroundColor: "{colors.panel-2}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.panel}"
+    padding: "12px"
+  compare-probes-row:
+    backgroundColor: "{colors.face}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.panel}"
+    padding: "6px 12px"
+  compare-probes-reading:
+    textColor: "{colors.pv}"
+    height: "30px"
+  compare-probes-row-off:
+    backgroundColor: "{colors.face}"
+    textColor: "{colors.prompt}"
+    rounded: "{rounded.panel}"
+    padding: "5px 11px"
+  strike-water-box:
+    backgroundColor: "{colors.panel-2}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.panel}"
+    padding: "0 10px 10px"
+  strike-water-window:
+    backgroundColor: "{colors.face}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.panel}"
+    padding: "6px 12px"
+  strike-water-temperature:
+    textColor: "{colors.sv}"
+  strike-water-over:
+    textColor: "{colors.prompt}"
+  strike-water-use:
+    backgroundColor: "{colors.select}"
+    textColor: "{colors.on-fill}"
+    rounded: "{rounded.panel}"
+    height: "54px"
+  strike-water-chart:
+    backgroundColor: "{colors.face}"
+    rounded: "{rounded.panel}"
+  strike-water-band:
+    backgroundColor: "#ff4b3e38"
+    textColor: "{colors.pv}"
+  strike-water-band-other:
+    textColor: "{colors.text-2}"
+  strike-water-working:
+    textColor: "{colors.text-2}"
+  strike-water-stale:
+    textColor: "{colors.stale-text}"
+  tab:
+    backgroundColor: "{colors.bar}"
+    textColor: "{colors.text-2}"
+    typography: "{typography.nav}"
+    height: "56px"
+  tab-hover:
+    backgroundColor: "{colors.panel}"
+  tab-current:
+    backgroundColor: "{colors.select}"
+    textColor: "{colors.on-fill}"
+---
+
+# Design System: CraftBeerPi Brew Day
+
+## Overview
+
+**Creative North Star: "The Brewhouse Touch Panel"**
+
+This is the screen on the front of a brewhouse control cabinet, made for one rig: the brewer's electric three-vessel HERMS. Each vessel gets a faceplate like a hardware PID controller: a big red measured temperature (PV) over a smaller green target (SV) in a black window, plus element power (OUT) and MODE, with the vessel's temperature graph under them in the same window. The boil kettle's faceplate works like the HLT's plus BOIL: while its target is BOIL its green number is the boil power, shown once and framed because it is also the boil power's button; while it holds a temperature it reads like the HLT's. The vessels appear once more as a clean line drawing, plumbed the way the rig is plumbed, each one under its own faceplate. The recipe runs down the left. The screen refuses the generic dashboard made of a card grid of numbers and toggle switches.
+
+Everything is read from across a garage, through steam, often with wet hands. So the panel holds a few large things rather than many small ones: condensed capitals, numbers that fill their windows, buttons 62-72px tall, and a hint on each button saying what a press will do. Colour works like indicator lamps on real equipment: each hue has one job, and every state shown by a colour is also written in words. The dark slate panel is the brewer's stated preference over a light theme, even though the garage is lit.
+
+The brewer has turned down dial gauges, plotting all three temperatures on one shared scale, and the shaded kettle pictures of an earlier version, which he called crude. A generic web-app look is what he named as the thing that would make a redesign feel wrong. This record describes layout B of the built mockup (`proposal/brew-day.html`, the default). Layout A (`?layout=a`: recipe on the right, steel kettle pictures, tabs along the bottom) is kept only for comparison and is not part of the system.
+
+**Key Characteristics:**
+- Dark slate panel; flat surfaces separated by 1px borders and small steps of tone.
+- One PID faceplate per vessel: PV big and red, SV smaller and green, OUT and MODE beside them, and the vessel's own temperature graph underneath.
+- Controls topped by an 8px lamp strip, with the state also written on the button.
+- A line drawing of the rig whose pipes take their liquid's colour and move only while pumped.
+- Barlow Condensed capitals for everything printed on the panel; regular Barlow only for sentences.
+- Heat starts only on a held press, and every command answers at its own button.
+
+## Colors
+
+A dark slate panel lit by indicator colours, where each hue means exactly one thing.
+
+### Primary
+The readout and lamp colours: the language of the faceplates.
+- **Process Red** (pv, #ff4b3e): the PV digits, with a soft red glow, each probe's own reading in COMPARE PROBES, and the strike water forecast's band for the water as planned (at 22 %, with a solid edge). The only red that is not a fault.
+- **Setpoint Green** (sv, #3ddc6f): the SV digits (on the boil kettle while its target is BOIL, the boil power in their place), the value being typed in the target and power editors, the usual boil power in the power editor, the lit KEEP BOILING box, the strike water's temperature in its window, as it's a target, and the rest's line on its forecast.
+- **Running Green** (run, #3ddc6f): the lamp strip of a running pump or recipe, the connection lamp, "✓ DONE" on finished steps, "confirmed" on the last-event line, RUNNING under a pump in the drawing, and the ring and tick of a pre-brew check that passed or of probes that agree. Same value as Setpoint Green, kept as its own token because it does a different job.
+- **Element Orange** (heat, #ff7b1c): the lamp strip of a heating element, the OUT power bar, a heating element in the drawing, and the hold-to-turn-on fill (at 32% opacity).
+- **Dark Lamp Grey** (lamp-off, #3a4856): the unlit lamp strip. Off is grey, never red.
+
+### Secondary
+The plumbing colours of the line drawing.
+- **Hot Liquor Cyan** (liquor, #46b8ea): hot liquor pipes and the HLT pump, only while that pump runs.
+- **Wort Gold** (wort, #e9b33b): wort pipes, the wort pump and the HERMS coil, only while the wort pump runs.
+- **Drawing Line Steel** (drawing-ink, #b9c6d2): the 3px outlines of vessels, legs and pumps.
+- **Drawing Label Steel** (drawing-label, #c3cfda): vessel and pump names inside the drawing.
+- **Idle Element Steel** (drawing-idle, #6f8194): an element or coil that is off.
+- **Still Pipe Slate** (pipe-still, #4a5a6b): a pipe whose pump is not running.
+- **Vessel Interior Slate** (vessel-fill, #1b2833): the inside of vessel and pump outlines.
+
+### Tertiary
+Attention and selection: prompts waiting for the brewer, faults, and "where you are".
+- **Prompt Amber** (prompt, #ffb21e) on **Dark Amber Wash** (prompt-bg, #3a2a06) with **Prompt Cream** text (prompt-ink, #fff1d2): anything waiting for the brewer: hop and mash-in prompts, the Next-step confirmation, an addition that is due, "waiting for you" on the last-event line, a paused boil element and the line that counts its pause, the line and TARGET hint of a vessel whose AUTO has no target, the pre-brew check's box when a check didn't pass, a COMPARE PROBES row whose probe looks off or gives no reading, the strike water's MASH row, with its forecast's band, when the water as planned would take the mash over its rest, and the boil kettle's MAN, boxed, where AUTO is usual (The Usual Mode Rule), BrewStart's row hints "set a time" and "where's the grain?", and the strike water box's USE while it waits for where the grain spent the night. In that box a check that passed is in **Quiet Cream** (#e2d6bd, 9.6:1 on the wash), quieter than Prompt Cream, so the one that didn't pass stands out.
+- **Note Amber** (note, #ffd9a0): the note line where a faceplate or the recipe column explains why a control can't be used, or says "keep holding".
+- **Alarm Red** (alarm, #ff4a4a) on **Alarm Oxblood** (alarm-bg, #6e1414): the alarm banner, the outline and strip of a failed command, the blinking connection lamp when the link is lost.
+- **Fault Wash** (fault-bg, #2b1315): the fill of a failed command's button, and ALL OFF under the pointer.
+- **Alarm Pink** (alarm-ink, #ffc9c4): "No connection" and "Last reading 48 s ago".
+- **All-Clear Wash** (ok-bg, #11331f) with **All-Clear Mint** text (ok-ink, #c9f2d6): the banner in the title bar when there are no alarms.
+- **Selection Blue** (select, #2a6fc0): the current screen tab, the SET button of the target and power editors, and the strike water's USE.
+- **Current Step Blue** (active, #1c5796) with **Current Step Edge** (active-edge, #3c7fcc) and **Current Step Ink** (active-ink, #dce9f7): the recipe step running now, and the "now" strip on a phone.
+- **Progress Blue** (progress, #9bcbff) on **Progress Track Navy** (progress-track, #0d2b48): the current step's 8px progress bar, and, with a 1px Current Step Edge frame, a simulator's date and speed beside the title bar's clock (The One Clock Rule).
+- **Focus Ring Blue** (focus, #8cc2ff): the 3px keyboard focus outline.
+- **Answer White** (answer, #f4f6f8) with **Answer Ink** (answer-ink, #10161c): the button that answers a banner or confirms a skip. The toast uses Panel White with the same ink.
+
+### Neutral
+- **Garage Slate** (bg, #0f161d): the page behind everything.
+- **Cabinet Black** (bar, #0a1016): the title bar and the tab bar.
+- **Panel Slate** (panel, #17212b): faceplates, the recipe column, the drawing's box, the last-event line.
+- **Raised Slate** (panel-2, #1e2b37): buttons, recipe step rows, the rest timer, recipe book rows.
+- **Hover Slate** (panel-hover, #253545): a button under the pointer.
+- **Hairline Slate** (line, #2a3b4b): 1px borders on panels and rows, and the dividers between tabs.
+- **Control Edge** (edge, #33475a): 1px borders on buttons.
+- **PID Window Black** (face, #030609): the readout window and the target input, and the strike water's window and its forecast's chart.
+- **Panel White** (text, #e8eef3): values, names and button labels.
+- **Soft Steel** (text-2, #b6c3cf): secondary lines: lamp button names, deviation lines, step details, tabs; and in COMPARE PROBES the ring with an "i" and "COOLER" or "WARMER" when the probes read a few degrees apart, a note that asks nothing; and on the strike water's forecast, the other choice's band as a dashed outline, and the headings of its numbers.
+- **Dim Steel** (text-3, #8b9cad): PV/SV/OUT/MODE tags, times, button hints and unavailable labels.
+- **On-Fill White** (on-fill, #ffffff): text on Selection Blue, on Alarm Oxblood, on the pressed mode button, and the current step's countdown.
+- **Stale Grey** (stale, #6b7785): readings and the OUT bar when the connection is lost, with the glow removed.
+- **Graph Grid** (graph-grid, #16202a): the gridlines of the temperature graphs.
+- **Graph Gap** (graph-gap, #0b1117): the stretch of a graph where there are no readings.
+
+### Named Rules
+**The Red Is Reserved Rule.** Red means the measured temperature (PV) or something gone wrong: an alarm, a failed command, a lost connection. Off and stop are never red; even ALL OFF is neutral at rest and warms to red only under the pointer.
+
+**The Say It Twice Rule.** Colour never carries a state alone. Lamp strips come with words (HEATING, RUNNING, OFF, DID NOT STOP), banners come with an icon and a title, pumped pipes come with moving dashes and arrow-heads, and finished steps say "✓ DONE".
+
+**The One Blue Rule.** Blue marks where you are and what you are choosing: the current tab, the current recipe step, the target and power editors and the focus ring. Blue never shows the state of equipment.
+
+**The Amber Means Waiting Rule (12 Nov 2026).** Prompt Amber marks only what is waiting for the brewer now. A question's line in the event log says "waiting for you" in amber while CraftBeerPi waits for its answer; once it goes, the same line says "answered", "no longer needed" or, where the page can't tell which (a page opened later, or the connection back), "no longer waiting", in the plain colour, and keeps the time it was asked. A warning from CraftBeerPi is amber while it waits in this screen's title bar for OK, and plain once it has gone from there; its line keeps "from CraftBeerPi". An OK on any screen, or in BrewScribe, takes a warning or an error from every screen's title bar, with no new line and no beep, and its lines add "seen", so the change isn't carried by colour alone; one that left without an OK (pushed out by newer ones, or kept from an earlier page) goes plain without it. Red stays red: it records that something went wrong, which stays true. If answered questions stayed amber, a brew day would leave a column of amber lines that need nothing, and the one really waiting would no longer stand out.
+
+## Typography
+
+**Display Font:** Barlow Condensed (with Roboto Condensed, Arial Narrow, Segoe UI, sans-serif), weights 500, 600 and 700
+**Body Font:** Barlow (with Segoe UI, system-ui, sans-serif), weight 500 for sentences
+**Label/Mono Font:** no mono face; numbers use Barlow Condensed with tabular figures
+
+**Character:** An industrial condensed sans, like the lettering on a control cabinet: tall, narrow and legible at a distance, usually in capitals with open spacing. Regular-width Barlow appears only when the screen speaks to the brewer in whole sentences.
+
+Faceplate and recipe sizes scale with their own panel. The plate unit (`--pu`) is 1% of the faceplate's width (1% of the recipe column's width inside the recipe), and every size is clamped between a floor and a ceiling.
+
+### Hierarchy
+- **Display: PV** (600, clamp(48px, 21 plate units, 110px), line-height 1, tabular): the measured temperature, red with a glow; the °F unit is 0.4em and raised. On a phone, clamp(44px, 16 units, 68px).
+- **SV** (600, clamp(26px, 9.5 units, 50px), line-height 1.05, tabular): the target, green, under the PV. On a phone, clamp(24px, 8.5 units, 36px).
+- **Readout** (600, clamp(20px, 6.6 units, 32px), 0.03em, tabular): the OUT and MODE values, each at least 2.55em wide (the width of "100 %"). The current step's countdown uses the same scale at 700, up to 27px, in white.
+- **Headline** (700, clamp(22px, 7 units, 31px), line-height 1.05, 0.03em, capitals): the recipe name. The brand in the title bar speaks in the same voice at clamp(22px, 2.1vw, 34px). It is the brewery's name from Settings (BREWERY_NAME), on two lines at most; a name of more than 24 characters is set at 0.7 of that size on a monitor and on a phone.
+- **Title** (700, clamp(18px, 7 units, 27px), line-height 1, 0.06em, capitals): vessel names on the faceplates. Section heads in the recipe column (Rest timer, Recipe book) are 700 20px capitals.
+- **Lamp state** (700, clamp(18px, 6.4 units, 24px), 0.05em): the state word on a lamp button. The name and next action under it are 500, 13-16px, Soft Steel.
+- **Button** (700, clamp(16px, 5.6 units, 21px), 0.06em): command labels such as TARGET, STOP, NEXT STEP and AUTO. Their hint lines are 500, 12-14px, Dim Steel, and Soft Steel under the pointer; on a Selection Blue button, white.
+- **Row** (600, 20px, line-height 1.1, 0.02em): recipe step titles. Banner text (18px) and recipe book names (19px) use the same voice.
+- **Detail** (500, 16px, line-height 1.25, 0.02em): temperatures and times on steps, additions, the deviation line under each window (15-19px) and the last-event line (18px).
+- **Label** (600, 15px, line-height 1, 0.06-0.1em, capitals): the PV, SV, OUT and MODE tags, step status, LOG, the connection label.
+- **Nav** (600, clamp(15px, 1.15vw, 19px), line-height 1.05, 0.08em, capitals): screen tabs; 14px on a phone.
+- **Body** (Barlow 500, 16px, line-height 1.35): sentences only: notes (15px), confirmation questions (17px), toasts (16px).
+- **Fine Print** (500, 12px, line-height 1.3, 0.02em, Dim Steel): only the versions' line at the end of the recipe column, the quietest words on the screen. Dim Steel on Panel Slate is 5.8:1.
+
+### Named Rules
+**The PV Leads Rule.** The PV is the largest thing on its faceplate, about twice the size of the SV, red above green. Never make them the same size and never swap the colours.
+
+**The Cabinet Lettering Rule.** Everything printed on the panel (names, tags, buttons, numbers) is Barlow Condensed, with names, tags, tabs and button labels in capitals and spacing between 0.02em and 0.1em. Regular-width Barlow is only for sentences addressed to the brewer.
+
+**The Steady Digits Rule.** Every number that changes (PV, SV, OUT, the clock, countdowns, event times) uses tabular figures, so the digits don't shift as they tick.
+
+## Layout
+
+On a monitor, brew day is one fixed screen. From the top: the title bar (brand on the left, the alarm banner in the middle, then the connection lamp, ALL OFF and the clock); the last-event line; the screen tabs; then the main area. The main area has the recipe column on the left (clamp(340px, 23vw, 440px)) and the brewhouse on the right: three faceplates in equal columns across the top, and the line drawing filling the space below them.
+
+Spacing uses a small set of steps: 6px between list rows and editor keys, 8px between buttons in a group, 10px between the rows of a faceplate or of the recipe column, 12px between panels and inside faceplates, 20px at the page edge. On a phone the page edge drops to 12px and the gap between panels to 10px.
+
+Tap targets stay large: lamp buttons are 72px tall (66px in the recipe controls), command buttons 62px, editor and confirmation buttons 54px, banner answers and ALL OFF 48px, and nothing is under 44px. The one exception is the boil kettle's step buttons on the narrowest windows (1180, 1280 and 900px wide): there they go down to 32px wide (still the row's full height), so BOIL ELEMENT beside them keeps its word and stays the biggest button. On a phone, lamp buttons are 56px and command buttons 50px.
+
+When the screen is 1000px tall or less, as in a browser window on a 1080-line monitor (the brewer's usual set-up), the faceplates tighten so the drawing keeps readable labels: lamp buttons 66px (padding 12px 8px 5px), the mode row 56px, 8px between faceplate rows, and closer-set span labels on the graphs. The PV and SV keep their size.
+
+How it changes with width:
+- **1180px and wider:** one screen, at least 860px tall. The page doesn't scroll; only the recipe's step list does, or, when brewing by hand, the recipe book's list.
+- **1179px and narrower:** one column, and the page scrolls. The brewhouse comes first and the recipe moves below it; the drawing keeps its 1200 × 470 shape.
+- **1023px and narrower:** the alarm banner has the title bar's second row to itself, under the brand, the connection, ALL OFF and the clock. Squeezed in between them, as at half a 1920 monitor, a question had 36-175px for its words and the bar ran past the screen. Down to 701px the brand takes the room left in its row, so a long brewery name keeps its full size there.
+- **899px and narrower:** the faceplates stack, one per row.
+- **700px and narrower (phone):** the drawing is hidden. A "now" strip in Current Step Blue (the step, time left, progress and the next step) sits above the faceplates. The alarm banner drops to a second row of the title bar, the brand keeps the brewery's name (on two lines when it needs them), the connection shows only its lamp, and the tabs become a fixed bar along the bottom: two rows of 48px, four and four with BrewScribe at the bottom right, and short names ("Steps", "Recipes"). Where BrewScribe isn't installed it is four then three, with "More" taking two places.
+
+### Named Rules
+**The One Screen Rule.** On a monitor, everything needed to run the brew (faceplates, drawing, recipe, alarms, last event) is visible at once, without scrolling the page. When height runs short, the drawing gives it up first, down to 140px; the PV digits never shrink for it. Only a screen under about 900px tall scrolls, and then only a little.
+
+**The Under Its Plate Rule.** Each vessel in the drawing sits directly under its own faceplate. The drawing is generated at the width of its box, with the vessels centred at one sixth, one half and five sixths of the width.
+
+**The Shared Rows Rule.** When the faceplates sit side by side (900px and wider), they share row heights through a CSS subgrid of six rows (name, window, deviation line, lamp buttons, mode row, note), so the windows and button rows line up across all three vessels.
+
+## Elevation & Depth
+
+The panel is flat. Surfaces sit in three tones (Garage Slate, Panel Slate, Raised Slate), separated by 1px borders, with no drop shadows at rest. Depth comes from light instead: the digits glow like LED segments, a lit lamp strip glows into its button, a heating element glows in the drawing, and the PID window is sunk into the faceplate. Only two things float above the panel: the event log list and the toast.
+
+### Shadow Vocabulary
+- **Sunken window** (`box-shadow: inset 0 3px 10px rgb(0 0 0 / .9), inset 0 0 0 1px #1a2530, 0 1px 0 rgb(255 255 255 / .06)`): the black PID window, which also has a 1px black border.
+- **PV glow** (`text-shadow: 0 0 18px rgb(255 75 62 / .38)`) and **SV glow** (`text-shadow: 0 0 14px rgb(61 220 111 / .32)`): the readout digits. Removed when readings go stale.
+- **Lamp glow** (`box-shadow: 0 2px 14px rgb(255 123 28 / .6)` when heating, `0 2px 14px rgb(61 220 111 / .5)` when running): under a lit lamp strip.
+- **Element glow** (an SVG Gaussian blur, standard deviation 3): a heating element in the drawing.
+- **Pressed ring** (`box-shadow: inset 0 0 0 2px #a9bfd4`): the active half of the AUTO | MANUAL switch.
+- **Floating list** (`box-shadow: 0 18px 40px rgb(0 0 0 / .5)`) and **toast** (`box-shadow: 0 12px 30px rgb(0 0 0 / .45)`): the only lifted surfaces.
+
+### Named Rules
+**The Lit, Not Lifted Rule.** Things look important because they are lit, not because they float. Glows belong to readings and to equipment that is on; panels and buttons never cast shadows.
+
+## Shapes
+
+Gently squared corners: 6px on every panel, button, banner, step row and list item; 4px on the PID window and the step progress bar; 3px on the OUT bar. Circles appear only for the 12px connection lamp and the 16px ring that marks steps still to come. The lamp strip runs straight across the top edge of its button and is clipped by the button's corners.
+
+Borders do the separating: 1px Hairline Slate around panels and rows, 1px Control Edge around buttons, 2px in the state colour around prompts, alarms and a failed command, and 2px #7d8fa2 around ALL OFF. Each recipe step's number sits in a darker 48px band at the left of its row.
+
+The drawing has its own simple geometry: tanks with domed tops, rounded bottoms and short legs; pipes that run only horizontally and vertically, with rounded joins; pumps drawn as a circle holding a triangle; hand valves drawn as a bowtie on the pipe; small arrow-heads along a pumped pipe.
+
+### Named Rules
+**The Dashed Means Someone Else Rule.** A dashed outline on a see-through button means another controller is in charge of that device (the vessel's AUTO, or the mash tun's HERMS running the hot liquor tank). It still explains itself when tapped. Solid buttons are yours to press.
+
+## Components
+
+Every control is chunky, labelled like a push-button on a cabinet, and says what a press will do.
+
+### Buttons
+- **Shape:** gently squared (6px), with a 1px Control Edge border.
+- **Lamp button** (anything that switches equipment, and the recipe's START): Raised Slate, 72px tall, padding 17px 8px 8px, with an 8px lamp strip across the top. The state word is large; under it, in Soft Steel, the device and what a press does ("HLT ELEMENT · tap to turn off", "BOIL ELEMENT · hold to turn on"). Two sit side by side on a faceplate, and a single one spans the row. On the boil kettle, while AUTO runs, the −5 %, −1 %, +1 % and +5 % step buttons sit either side of BOIL ELEMENT, which keeps twice their width and is never narrower than its state word (HEATING) needs; there its small line says only what a press does ("tap to pause"), because the faceplate's title already names the kettle's only element (screen readers still hear "BOIL ELEMENT").
+- **Command button** (TARGET, STOP, RESET, NEXT STEP, timer buttons, LOAD): Raised Slate, 62px tall (66px in the recipe controls, 48px in recipe book rows), with a hint line under the label ("change SV", "tap to stop", "back to step 1", "to Sparge").
+- **Quiet button** (LOG, and UNLOAD at the end of the recipe's status line): for what is needed now and then, never in the middle of brewing. Raised Slate, a 1px Control Edge border, 44px tall, a 600 condensed word in widely spaced capitals and no hint line; UNLOAD's word is Soft Steel, as the timers' REMOVE's, and Panel White under the pointer. UNLOAD is 112px wide, as wide as UNLOADING…, so it keeps its size while it waits.
+- **Boil power button** (only on a kettle whose logic can set a boil power: on this rig, the boil kettle): while the kettle's target is BOIL, the green boil power in its window ("45 %") is the button, with a small "change" beside it in Dim Steel, inside a 1px #3b4d5e frame that takes no room (hover #7f91a3; 2px Select Blue while its editor is open). Its tap area is at least 44px tall. It opens the power editor, as BOIL POWER in TARGET's editor does. It always sets the boil power (BoilPower's Boil_Power), in AUTO or MANUAL, and a running recipe step never locks it. TARGET sits beside AUTO/MANUAL, as on the other vessels, because a third button there doesn't fit at 1366 or 1440 wide. In MANUAL the element heats at the boil power too, and the same framed number reads HAND there: one number for AUTO and by hand, which the brewer chose on 22 Nov 2026 after a simulator showed BOIL 45 % while the element ran at a level of its own, 70 % ("the manual power seems stuck at 70% and I don't see an intuitive way to change it"). BoilPower keeps the element's own level equal to the boil power while AUTO isn't running, so the old Hardware page's switch heats at it too. A power set by hand is the boil power AUTO uses next. The brewer asked for the boil power back on 10 Nov 2026 ("I seem to have lost the critical ability to set the boil power percentage", then "I need to be able to adjust boil element power even while running a recipe"), and then for it to show once ("I don't need the heating element power echoed so many places"). On 11 Nov 2026 he asked for the element's power back beside the window ("BoilPower's display has lost its current 'out' element power number? Please put it back"): the green number is the setting, OUT is what the element is doing, and the element's button still says only HEATING.
+- **KEEP BOILING** (the boil kettle only, while its target is BOIL): a small checkbox at the right end of the nameplate row, label in 600 condensed Soft Steel. The box is the LED: lit Setpoint Green with a dark tick and a soft green glow while ticked, dark with a #7f91a3 edge while unticked, marching stripes while waiting, Stale Grey offline. It is no taller than the name; its tap area reaches 44px into the padding around it. One tap sets Keep_Boiling, in any mode. Ticked, BoilPower goes back to full power if the wort falls 3.6 °F below the boil point; unticked, it holds the boil power and lets the wort fall. The request, on 10 Nov 2026, was to "add a small checkbox with LED to choose keep at boil temp or let the boil power fully drive the temp".
+- **Step buttons** (−5 %, −1 %, +1 % and +5 %, on the boil kettle only): command buttons either side of BOIL ELEMENT while AUTO runs and in MANUAL, in the power editor's order (−5 −1 on the left, +1 +5 on the right, growing outward like a number line), as tall as the lamp, with nothing under the label. They share the row in the ratio 1 : 2 : 1 (each step, the element, each step), and are never under 44px wide. Where four 44px steps and HEATING don't fit beside each other, on a faceplate under 276px inside (windows about 900 to 970 and 1180 to 1320px wide, an iPad in landscape among them), the steps have a row of their own, 50px tall, under AUTO/MANUAL and TARGET, and BOIL ELEMENT has its row to itself with its name, as in MANUAL (17 Nov 2026). The row sits under the mode row, not under the element, so that nothing above it moves as the steps come and go (AUTO, MANUAL, a hold, the power box): on one screen the drawing gives up their height, down to 64px, and where the page scrolls their row keeps its place, empty, while they are away. One tap sends the new boil power at once; a tap that would pass 0 or 100 % stops there (2 % and −5 % gives 0 %), and only at 0 or 100 % itself is the button refused with a note. While one waits for CraftBeerPi, all four are greyed and only the one pressed shows the lamps' marching stripes, 6px, along its top. They are hidden while the kettle holds a temperature in AUTO (which doesn't use the boil power) and while the boil kettle's editor is open (it has steps of its own). In MANUAL they stay, because the element heats at the boil power by hand too (22 Nov 2026), and turning a boil-over down by hand has to be as quick as in AUTO; between them the element's button says "hold to turn on" or "tap to turn off". With a BoilPower that doesn't yet keep the element's own level equal to the boil power, they are hidden in MANUAL, where they would seem to set that level. Taken from the Grainfather's arrow keys; the brewer chose −5 % and +5 % on 10 Nov 2026, and asked for −1 % and +1 % as well on 11 Nov ("I'd like the +/-1 in addition to the +/- 5 you already have").
+- **Mode switch** (AUTO | MANUAL): two halves joined by a 1px divider, taking two thirds of the row, with TARGET in the last third. The active half is near-black (#070c11) with white text and a 2px inset ring. The hint under the other half says what pressing it does ("hold to start", "tap to stop AUTO").
+- **Answer button** (ADDED, DONE, TRY AGAIN or OK in banners; SKIP TO …, RESET TO STEP 1 and UNLOAD in the recipe's confirmations): Answer White with Answer Ink, 700 18px condensed, 48px tall in banners and 54px in the confirmation. The safe choice beside it (KEEP GOING, STAY AT STEP 3) is an ordinary Raised Slate button.
+- **ALL OFF:** always in the title bar. Raised Slate with a 2px #7d8fa2 border, 700 17px, 48px tall, one tap. Under the pointer the border turns #ff8a80 over Fault Wash. Greyed (no connection, or while CraftBeerPi switches everything off) it dims to half strength, and the pointer leaves it as it is. It stops a running recipe, puts every vessel in MANUAL, and switches off both elements and both pumps. (It was ALL HEAT OFF until the brewer asked for it to stop the pumps too, on 9 Nov 2026.)
+- **Hover / Focus:** hover lightens the fill to Hover Slate, and Dim Steel text on it turns Soft Steel, since Dim Steel on Hover Slate is 4.46:1, under the 4.5:1 a hint line needs; a pressed choice, an amber hint and a button's own colours stay as they are. Keyboard focus is a 3px Focus Ring Blue outline, 2px out from the edge, on everything.
+- **Unavailable:** marked `aria-disabled="true"` (an empty value counts as available, to the look and to a screen reader), never removed: Dim Steel text and a not-allowed cursor, the same on every button, DELETE's red included; a lamp button keeps its strip and state word, which still report the equipment. The pointer changes nothing on it, because lighting up would say a press will work. A tap explains why.
+
+### Cards / Containers
+- **Corner Style:** 6px.
+- **Background:** Panel Slate for faceplates, the recipe column, the drawing's box and the last-event line; Raised Slate for things inside them (step rows, the rest timer, recipe book rows).
+- **Shadow Strategy:** none; see Elevation & Depth.
+- **Border:** 1px Hairline Slate.
+- **Internal Padding:** 12px on faceplates (10px on a phone), 14px on the recipe column.
+- **Recipe confirmations** (NEXT STEP's, RESET's and UNLOAD's): a Dark Amber Wash box with a 2px Prompt Amber border inside the recipe column, under the three buttons. It asks in a full sentence and says what each answer does: "Skip the rest of Saccharification (23:41 left) and start Sparge at 168 °F?", SKIP TO SPARGE and KEEP GOING; "Reset the recipe to step 1, MashIn? CraftBeerPi forgets that steps 1 and 2 are done and that Saccharification has run 16 of its 40 minutes. Kettles, pumps and timers stay as they are.", RESET TO STEP 1 and STAY AT STEP 3; "Unload the recipe and brew by hand? CraftBeerPi forgets it stopped at step 3, Saccharification, after 16 of its 40 min. The Recipe Book keeps the recipe. Kettles, pumps and timers stay as they are.", UNLOAD and STAY AT STEP 3. Neither answer is the default. One is open at a time, and Escape closes it.
+- **Toast:** for explanations that don't belong to a faceplate or the recipe column: Panel White with Answer Ink, Barlow 500 16px, centred near the bottom of the screen, gone after about four seconds.
+
+### Inputs / Fields
+- **Target editor:** TARGET swaps the faceplate's mode row for the editor in place, with no pop-up: −1, −.1, the value, +.1, +1, then a wide SET 149.0 °F button (Selection Blue, white text) and CANCEL. Keys are 54px tall, and never under 44px wide: on a faceplate under 276px inside the value takes the editor's width and the four keys a row under it, with SET and CANCEL sharing the next row in halves (17 Nov 2026).
+- **Boil kettle's target editor:** TARGET opens the HLT's editor with a third row: BOIL over "full power to 210.2 °F", shown pressed (like an active AUTO) whenever the editor says BOIL, and BOIL POWER over "change", which swaps in the power editor. The value is BOIL or a temperature to hold: anything from the boil point less 3.6 °F up is BOIL (206.6 °F with the boil point at 210.2), so the steps run …205.6, 206.5, BOIL, and + is refused at BOIL. A typed 212 makes SET read SET BOIL before it is pressed. SET BOIL sends the boil point as the target. The brewer chose this on 10 Nov 2026: "Set the boil kettle's target to 170 °F, like the HLT, and it holds there".
+- **Power editor:** the boil power button (or BOIL POWER in TARGET's editor) swaps the boil kettle's mode row for an editor like the target editor, with its keys under the value on a narrow faceplate in the same way: −5, −1, the value, +1, +5, then SET 40 % and CANCEL. Whole numbers from 0 to 100; the keys stop at the ends. A third row holds BOIL AT 210.2 °F over "full power until then · change", which opens an editor of its own for the boil point (BoilPower's Boil_Threshold, 190-212 °F; above 212 °F it refuses, because the wort may never get there and the element would stay at full power), and USUAL 45 % in Setpoint Green over "starts each recipe · set in Hardware", a reading, not a button, its number and % kept on one line (with none set, "USUAL – –" over "none · set one in Hardware", and a recipe leaves the boil power as it is). A target at BOIL keeps aiming at the boil when the boil point changes. A recipe started from its first step puts the boil power back to the usual power, so a change made during one brew day doesn't carry over to the next. The editor stays open if the kettle's mode changes, because it always sets the boil power. When a confirmed level isn't in use yet, the last-event line says when it will be: "used once it boils at 210.2 °F, full power until then", "used when you heat by hand" (in MANUAL, the element off), "not used while it holds 170 °F" or "used when the heat carries on".
+- **Style:** the value field is a small PID window: PID Window Black, a 2px #3d7fd0 border, 6px corners, 600 28px condensed tabular digits in Setpoint Green.
+- **Behaviour:** Enter sets, Escape cancels. A target outside 32-230 °F, or a power outside 0-100 %, is refused with a note. The boil kettle's editors open with their number selected, so typing replaces it. While either editor is open, the other faceplates' button rows keep their height, and the drawing may shrink further (to 136px, or 64px with the graphs, because the boil kettle's editors have a third row) so that a two-line note under an editor never makes the page scroll on a screen 900px tall or more.
+
+### Navigation
+- **Title bar:** Cabinet Black with a 1px hairline below. The brand on the left, the alarm banner in the middle, then the connection lamp (a 12px Running Green dot and "Connected"), ALL OFF, and the clock (600, clamp(26px, 2.4vw, 40px), tabular). The clock is CraftBeerPi's (The One Clock Rule). On a simulator a tag beside it adds CraftBeerPi's date where it isn't the screen's and its speed where it isn't 1×: "THU 26 NOV · 60× SPEED", Barlow Condensed 600 capitals at 15px, Progress Blue (#9bcbff) on Progress Track Navy (#0d2b48) with a 1px #3c7fcc edge and a 4px radius, said in full to a screen reader ("CraftBeerPi's clock, Thursday 26 November, running 60 times as fast"). On a phone it sits under the time at 12px, "26 NOV · 60×", so the brewery's name keeps its room. Blue, because it says where the screen is in time, not the state of anything (The One Blue Rule). When the link is lost, the dot becomes a hollow Alarm Red ring that blinks (a change of shape, not only colour) and the label reads "No connection" in Alarm Pink. On a monitor or laptop only the banner gives way to a long prompt, by wrapping: ALL OFF keeps its one-line shape and the clock all its digits, whatever the prompt says. The brand is the brewery's name from Settings at every width, phone included, because it is what tells the rig from the simulators; the browser tab's title starts with it too. It is at most 12 times its font size wide on a monitor and two lines tall, ending in an ellipsis beyond that, with the whole name as its tooltip; under a long prompt it narrows to its longest word. A blank name shows "CraftBeerPi".
+- **Screen tabs:** equal-width tabs on Cabinet Black with 1px hairline dividers, Nav type in Soft Steel capitals. The current tab is Selection Blue with white text; hover is Panel Slate. On a monitor they sit under the last-event line, 56px tall. On a phone they become the fixed bottom bar described under Layout. The last tab, BREWSCRIBE, opens Porter's BrewScribe in a browser tab of its own (the same one each time, never reloaded): a box-and-arrow icon after its name says so before the press, with "opens in its own tab" for screen readers. Where its tab is narrow its name breaks between Brew and Scribe.
+
+### PID Faceplate
+The signature component: one per vessel, like the controller on a cabinet door. From the top:
+- the vessel name in Title capitals;
+- the black window: PV and SV on the left with small Dim Steel tags, then a 1px divider (#2a3846), then OUT (element power, over a 5px Element Orange bar) and MODE (AUTO, MAN or HERMS). On the boil kettle MAN is boxed in Prompt Amber where AUTO is usual (The Usual Mode Rule). A missing value reads "– –". Under them, in the same window, the vessel's temperature graph (see Temperature Graph). The boil kettle's window works like the HLT's plus BOIL: while its target is BOIL, its green readout is BOIL and the boil power ("BOIL 45 %", framed, because it is the boil power's button), HAND in MANUAL, and OUT beside it is what the element is doing now (100 % while it heats to the boil, the boil power once it boils or while it heats by hand, 0 % paused or off), so the setting and the reading sit side by side, as the HLT's SV and PV do; while it holds a temperature, it reads SV and that temperature, with OUT and MODE, as on the HLT. OUT and MODE always keep the room "100 %" takes, so the divider stays put as the power changes and lines up across the three windows; and the PV's size is limited by the window's width (the same limit for all three), so on a narrow window it shrinks just enough to stay 6px clear of the divider;
+- the deviation line in Soft Steel ("0.4 °F below target", "At target", "Boiling", "MANUAL · element by hand"), with the time to target added while the vessel heads for it ("6.7 °F below target · about 2 min", or "· under 1 min" in its last minute; the graph above it shows the rate the time comes from). While AUTO runs with no target, it says so in 600-weight Prompt Amber instead, and TARGET's hint turns Prompt Amber and says "set SV" (see The Mode Tells The Truth Rule). While an element heats by hand, it says nothing will stop it, in 600-weight Prompt Amber ("Heating by hand · won't stop at target", or "· until you turn it off" with no target), and once the vessel is 2 °F past its target, or near the boil, in 600-weight light red (#ff9b93): "3.3 °F above target · heating by hand", "Near the boil · heating by hand" (see The By Hand Rule). The boil kettle's line in AUTO says what BoilPower is doing: "Full power until it boils · about 20 min", "Boiling", "Below a boil · full power at 206.6 °F" (KEEP BOILING ticked) or "Not boiling · 10.9 °F below 210.2 °F" (unticked), "Heat paused for 0:26" in Prompt Amber; holding a temperature it uses the HLT's lines, because from BoilPower 0.0.3.post8 a PID holds it as the HLT's does. In MANUAL it says what the element heats at: "MANUAL · heats at 45 % by hand" while it's off, "Heating by hand at 45 %" while it heats (with a temperature to hold, The By Hand Rule's caution instead). Every one of these lines fits on one line at the narrowest faceplate (229px, at 1180px wide) with at least 8px to spare, three-digit numbers included ("108.0 °F below target · about 120 min"), so the buttons under it never move as it changes: the faceplates share their rows (The Shared Rows Rule), so one line on two would move all three faceplates' buttons. Under the HERMS the hot liquor tank's line reads like any other; MODE (HERMS) and the HERMS button under it say the mash tun runs it;
+- the lamp buttons for that vessel's element and pump; on the boil kettle, BOIL ELEMENT, with −5 % −1 % on its left and +1 % +5 % on its right while AUTO runs (not while it holds a temperature) and in MANUAL, where they change what the element heats at by hand, at once while it heats. Turning it on by hand is still a held press, and LOG names the power: "BOIL ELEMENT on at 45 %";
+- the mode row (AUTO | MANUAL and TARGET), or the target or power editor, or, while the mash tun's AUTO runs the HERMS, a dashed full-width HERMS button on the hot liquor tank that says who is in charge;
+- the note line in Note Amber, hidden when empty.
+
+### Temperature Graph
+Each vessel's graph sits in its own PID window, under the PV and SV it explains. The brewer chose this on 10 Nov 2026 over a DRAWING / GRAPHS switch that would have swapped the drawing for the graphs.
+- **Place and size:** a 1px #1a2530 line divides it from the readings above. The plot runs under PV and SV; the span labels sit under OUT and MODE, behind the window's divider. It is clamp(58px, calc(28dvh − 200px), 110px) tall on a monitor and 108px on a phone.
+- **Scale:** each vessel has its own, fitted to its readings and target, and never less than 4 °F tall over 10 minutes, 8 °F over 30 minutes or 20 °F over the day. Gridlines are 1px Graph Grid (#16202a), labelled at the left in 600 12px condensed Dim Steel, outlined in PID Window Black so a line can pass behind a label. Clock times run along the bottom when the graph is at least 90px tall; the three graphs share the same clock marks.
+- **Lines:** PV is a 2.2px Process Red line with a soft red glow, ending in a 3px dot at now. SV is a 1.6px Setpoint Green step line, drawn only while something sets the target (AUTO, the HERMS or the recipe). OUT is an Element Orange band at 60% along the bottom, labelled OUT, or "OUT – –" when there is no power reading to show. Where a step started, a 1px dashed line and a small tag with the step's number mark it. On the boil kettle, while its target is BOIL, the boil point is a 1.4px dashed Dim Steel line instead of the green one, because BoilPower doesn't hold it; a temperature it holds is the Setpoint Green line, as on the HLT.
+- **Spans:** 10 MIN, 30 MIN and DAY, stacked beside the plot in 600 13px condensed capitals; the current one has a 1px #7f91a3 border over #0e171f, with white text. Tapping a graph moves all three graphs to the next span; tapping a label goes straight to it. 30 MIN to start with, remembered on each device. DAY runs from the start of the brew day.
+- **Readings stopped:** the time with no readings is dark (Graph Gap, #0b1117). When the connection is lost, the lines turn Stale Grey without their glow, like the digits.
+- **For screen readers:** each graph is a button named for what it shows and what a press does ("Hot liquor tank temperature graph, the last 30 minutes. Press for the brew day so far."), described by a sentence ("Hot liquor tank, the last 30 minutes: rose from 128.3 to 154.2 °F; target 154.4 °F; element 62 %.").
+
+### Lamp Button States
+- **Off:** Dark Lamp Grey strip, "OFF".
+- **Heating:** Element Orange strip with its glow, "HEATING". The element's power is the window's OUT and the graph's OUT band, so the button doesn't repeat it (as asked on 11 Nov 2026: "I'd like the "HEATING xx %" button to only show HEATING since the percentage is shown in the graph and as a number on the right side of the PID display"). Layout A, which has no OUT and no graph, keeps "HEATING 62 %".
+- **Running:** Running Green strip with its glow, "RUNNING".
+- **Waiting for an answer:** grey diagonal stripes march along the strip (a 0.6s loop), "SWITCHING ON…" or "SWITCHING OFF…", with "waiting for CraftBeerPi" underneath. Between the boil kettle's step buttons, where PAUSING… wouldn't fit, the boil element keeps its state word (HEATING or PAUSED) and the small line says what is on its way ("pausing…", "heating…"), so the row never changes height.
+- **Failed:** 2px Alarm Red outline, Fault Wash fill, a red strip, "DID NOT STOP" or "DID NOT START", and underneath "still running · tap to try again".
+- **Run by someone else:** dashed outline, see-through, with "run by mash tun" or "run by AUTO" under the state.
+- **The boil element in AUTO:** not locked, unlike the other elements in AUTO. While heating it reads "HEATING" (the power is the green readout while boiling, and OUT while holding) over "BOIL ELEMENT · tap to pause". A tap pauses the heat for a boil-over: a Prompt Amber strip, glow and outline, "PAUSED" in Prompt Amber, and "BOIL ELEMENT · hold to heat" under it. AUTO, the recipe, its timer and the boil power carry on. After 2 brewing minutes paused, CraftBeerPi raises a kept prompt on every page, once per pause: "Boil Kettle heat still paused · The heat has been paused for 2 minutes. To heat again, press and hold PAUSED on the Boil Kettle." Carrying on, MANUAL or ALL OFF take it down. Taken from the Ss Brewtech eController's heater button; the brewer chose it on 10 Nov 2026.
+- **Being held:** Element Orange at 32% sweeps across the button from left to right over one second.
+
+### Alarm Banner and Last Event
+- **Banner:** in the middle of the title bar, at least 50px tall, always with an icon, a title and words. All clear: All-Clear Wash, a 1px #2b6a42 border, a green tick and "NO ALARMS" in All-Clear Mint capitals. Prompt: Dark Amber Wash, a 2px Prompt Amber border, a bell, the title in 20px capitals, Prompt Cream text and an answer button; prompts stay until answered. An answer that puts heat on (START THE BOIL, when the boil waits for the brewer) is held for one second like START, with "hold to start" under its name and the orange fill sweeping across it. Alarm: Alarm Oxblood, a 2px Alarm Red border, a warning triangle, white text and an answer button such as TRY AGAIN.
+- **Long questions:** a question over 140 characters with an answer button (the sparge's, about 200; the boil's, 300) keeps the banner's full width for its words on a phone, with its buttons under them at the right and the bell beside the title. Beside the button it was a column of three or four words a line, 400px tall.
+- **RECORD pH (asked for by the brewer on 22 Nov 2026; `proposal/PH-ENTRY.md`):** on the reminders BrewScribe says take a reading ("Check mash pH", CraftBeerPi's, and "BrewScribe: Check mash pH before mash-out", BrewScribe's), a second answer at the right end, where a timer's alarm has its main one: RECORD pH, "for BrewScribe" under it, or "pH 5.42 recorded" once BrewScribe has a reading for that stage, from either page. OK moves to its left, drawn as the lesser answer, and now closes the reminder through CraftBeerPi, so it goes from every screen ("Check mash pH answered: OK"). RECORD pH is greyed, with BrewScribe's sentence on a tap, while BrewScribe has no brew log open ("no BrewScribe log") or can't tell the vessel ("on BrewScribe's page"); without BrewScribe, or with no answer from it, it isn't there. A title keeps a unit's own spelling in its capitals: "CHECK MASH pH".
+- **The pH box:** RECORD pH opens it under the reminder, as LOG's list opens under LOG: over what is below on a window 701 px wide or more, kept on screen and clear of the reminder and ALL OFF; in the page under the reminder on a phone. MASH pH is set into its top edge, as BREWSTART is into its box's. From the top: "For BrewScribe's log: Early mash, Mash Tun."; BrewScribe's line about a reading already there ("BrewScribe has pH 5.42 for Early mash. A new reading here is kept as well, as the latest."); pH, with −.1, −.01, the reading, +.01 and +.1, and "recipe target 5.4" in Setpoint Green at the right when the recipe has one; "From the meter, to 2 decimals: type it, or step from 5.40."; on the end-of-mash reminder only, Sample temperature, °F, with −1, −.1, the figure, +.1 and +1, "If you took it: type it, or step from 68 °F.", and a line in light amber (#ffd9a0) outside the usual 50 to 95 °F ("140.0 °F is warmer than a cooled sample (50 to 95 °F): check it."); the line for what went wrong; SAVE pH 5.42 in Selection Blue, "closes the reminder too", and CANCEL; then a quiet ON BREWSCRIBE'S PAGE with the tab's own arrow. The reading starts empty and SAVE says "SAVE pH – –", greyed, until there is one (The Measured Value Rule). SAVE shows SAVING… until BrewScribe has it and the reminder has closed; LOG then says BrewScribe's sentence, "pH 5.42 saved in BrewScribe (Early mash, Mash Tun)", "confirmed". BrewScribe refusing it keeps the box and the reminder, with its sentence above SAVE; no answer in 5 s says it may not be saved, and SAVE again sends the same reading, which BrewScribe never saves twice.
+- **Last event:** a 48px line under the title bar: the time in Dim Steel tabular figures, what happened, and the result in its colour ("confirmed" in Running Green, "waiting for you" in Prompt Amber, a failure in light red). LOG opens the last eight events in a floating list, each whole; the line itself ends a long one with an ellipsis. CraftBeerPi's own notifications go in word for word, as "Title: message" with "from CraftBeerPi" (for example "HLT pump: Sparge has ended, so the HLT pump is off."); a warning or error OK'd on any screen adds "seen". Its questions go in the same way, "waiting for you" in Prompt Amber, and the answer as "Title answered: Button" ("Hop Alert answered: Added"). A question's line stays amber only while CraftBeerPi waits; once the question is answered or taken down, that line changes where it is (The Amber Means Waiting Rule). An answer given on another screen is one line in the words an answer here would log, with "from another screen" where an answer here has "confirmed" ("Hop Alert answered · from another screen"); the question isn't logged a second time. Lines that arrive together go in the order things happened: a step's change first, then what CraftBeerPi says because of it ("Sparge finished", then "HLT pump: Sparge has ended…", then the boil's question), except what a step says as it stops ("Whirlpool: Stand over…"), which goes just before its "finished" line. So the event line shows the consequence: the question that waits, or that the hoses can move. When the screen switches off a pump that has its own override switch, on its own or with ALL OFF, the result adds "its override switch can still run it" in Soft Steel, because "confirmed" only means CraftBeerPi switched its output off.
+
+### Recipe Column
+- The recipe name, a status line ("Running · step 3 of 7") with UNLOAD at its end (The Way Out Rule), then START (a lamp button, held for one second), STOP and NEXT STEP in three equal columns, then the step list, which is the only part of the monitor screen that scrolls (when brewing by hand, the recipe book's list takes that role). Where the steps don't all fit, the list scrolls itself so the current step is whole in view, whatever takes the column's height: the timers, a question or the versions line. Between the three buttons and the step list sit COMPARE PROBES on a recipe not begun, and the strike water box from a recipe's loading until its malt goes in (Pre-brew Check, Strike Water).
+- **The middle button:** STOP while a step runs. Once nothing runs and some step has begun (after STOP, a step that failed, or the boil waiting for the brewer), it is RESET, "back to step 1", as a stopwatch shows Reset once it's stopped; CraftBeerPi refuses a reset while a step runs. On a recipe not begun, it is STOP, greyed ("not running"). RESET asks first (Recipe confirmations), and RESET TO STEP 1 keeps the same recipe, every step back to not started, waiting for START (The Start Over Rule).
+- **A recipe not begun** (loaded, or reset): "Ready to start · step 1 of 7", START held, STOP greyed, and NEXT STEP greyed with "not started" under it; tapped, it says "MashIn hasn't started yet. To begin it, hold START." CraftBeerPi takes NEXT here as START, so it would put heat on with two taps. Under the three, COMPARE PROBES, "before you fill"; and a held START checks first (Pre-brew Check).
+- **The boil waiting for the brewer** ("Ready to boil?", CONFIRM_BEFORE_BOIL): nothing is active, so the status line says "Ready to start · step 5 of 7", the boil step says WAITING FOR YOU, the middle button is RESET and held START starts the boil, as START THE BOIL in the title bar does. NEXT STEP is greyed and, tapped, says "The boil is waiting for you. To start it, hold START here or START THE BOIL at the top.": CraftBeerPi takes NEXT here as starting the boil, so it would put heat on with two taps under a question about skipping it.
+- **UNLOAD** (asked for by the brewer on 22 Nov 2026, approved to build as web UI post32): a quiet button at the end of the status line, which takes the recipe off Brew Day so the column brews by hand, the recipe book's LOAD a tap away (The Way Out Rule). One tap on a recipe not begun; a question once a brew has begun and nothing runs, in RESET's place; greyed while a step runs, BrewStart waiting for its time included, and tapped, it says what runs: "Craftbeerpi Test Recipe v5 is running: Saccharification, 23:41 left. Stop it first." ("… BrewStart is waiting to have the HLT at 132.4 °F by 07:00. …", "… Boil, heating to 210.2 °F. …").
+- **Step row:** the number in the darker band, the title in Row type, temperature and minutes in Detail type, and the status at the right: "✓ DONE" in Running Green, or an empty ring for steps to come. A BrewStart step's details also give its ready time, with its day, and its water: "126 °F · ready by 07:00 Sat · 15 gal". Where the details take two lines, a figure never leaves its unit or day ("126 °F", "07:00 Sat", "15 gal", "40 min"), and a "·" ends a line rather than starting one.
+- **BrewStart's row** (asked for by the brewer on 22 Nov 2026; `proposal/BREWSTART-EDIT.md`): until BrewStart has finished, its row is a button that opens BrewStart's box. The night before it is the current step, so it is always in view. Under its state word (READY, or STARTS 05:30 while it waits), a small hint says what it waits for: "set a time" while it has no time and "where's the grain?" while the grain isn't answered for this brew, both in Prompt Amber, else "change"; on one line where the step's details keep their lines, wrapped under the state word where they wouldn't, so the row is never taller for it on one screen. Tapped while it says "where's the grain?", the box opens at that question. With no time its details say "no time set" in Prompt Amber.
+- **BrewStart's box:** in the recipe column, in the step list's room as the pre-brew check's box is, with BREWSTART set into its top edge; the strike water box and, on one screen, COMPARE PROBES step aside while it is open. READY BY first, the time the HLT's water is hot: −1 H, −15, the time (24-hour, "7", "700" or "7:00" taken as 07:00), +15, +1 H; then TODAY and TOMORROW with their dates ("TOMORROW · SAT 21"), by CraftBeerPi's clock. START AT INSTEAD, a quiet button, swaps it for START AT, the time heating starts; not while BrewStart waits. Under them the time in words, as the recipe pages say it: "The HLT's water is hot by 07:00 tomorrow, Sat 21 Nov: in 9 h 48 min.", with ", about 10 real minutes at 60×" on a simulator, or "Strike water starts at 05:30 tomorrow, Sat 21 Nov: in 8 h 18 min." A time that has passed is refused, SET greyed: "07:00 today has passed, so nothing would start by itself. For tomorrow morning, choose TOMORROW." Then WHERE IS THE GRAIN TONIGHT?, "Asked once a brew: USE depends on it.": IN THE GARAGE, with the boil kettle's reading, or INDOORS, with 64, 68 and 72 °F to pick or a figure to type; neither pressed until answered, the answer kept with the loaded recipe. Last, the water, as a fact the strike water box sets, so it is the part that may scroll: "The HLT's 6500 W element heats 15 gal to 126.0 °F. USE and HLT WATER in the strike water box change them." SET (hint "ready by 07:00 Sat") and CANCEL stay in view while the middle scrolls. The box saves the day as the date it stands for, never as Today or Tomorrow, because BrewStart counts those from when START is pressed, and a START after midnight would heat a day late. While BrewStart waits, the box says "BrewStart is waiting: heating starts about 05:30. A change here plans it again at once.", fixed at its top above the part that scrolls, as SET and CANCEL are fixed at its foot. A ready time sooner than BrewStart plans for heating the water can't be waited for: BrewStart then hands over at once (its `change_time`, as at START) and the strike water step heats. So the time in words says it first, the consequence leading: "Heating starts as soon as you press HEAT NOW: BrewStart plans 43 min for heating the water, and 06:00 today is 20 min away.", and SET reads HEAT NOW, its hint as SET's; a later time brings SET back. NEXT STEP, the other way to start the heating early, asks first; here the box the brewer opened is the question, and its main button names what it does. LOG: "BrewStart: ready by 06:30 Sat 21 Nov, was 07:00 Sat · grain indoors at 68.0 °F".
+- **+ BrewStart** (the recipe pages' row and words): on a recipe loaded and not begun without BrewStart, a dashed row above step 1, "+", BrewStart, "Hot water by a set time · goes in as step 1". It opens the same box for a new BrewStart, filled in as the recipe pages fill one, with the day TOMORROW from noon and TODAY before; ADD BREWSTART puts it in as step 1, and CANCEL adds nothing. LOG: "BrewStart added as step 1: ready by 07:00 Sat 21 Nov".
+- **Current step:** Current Step Blue with its edge and ink, a large white countdown ("23:41 LEFT"), and the 8px progress bar. Before its countdown, the step says what it waits for in the same place: HEATING, COOLING, WAITING, or WAITING FOR YOU in a brighter amber (#ffd27a) while CraftBeerPi's question under the step's name waits for the brewer, including a boil held before it starts. A step with no timer says NOW, and a SpargeStep after "Sparge started" says SPARGING. A SpargeStep's temperature is the sparge water's, so it reads "water 168 °F". During the boil, additions are listed by minute, name and amount; the one that is due is bold amber with "· add now", and added ones are dimmed with a tick. On one screen, where the title bar is always in view, the current step's note (its question, in other words) steps aside while the title bar shows that question, so the step stays whole where a box above the list has made it short.
+- **Brewing by hand:** the same column shows "No recipe running", the timers (below), and the recipe book with a LOAD button for each recipe, then RECIPE BOOK, BREW STEPS and COMPARE PROBES at its end. It is what the column shows with no recipe loaded (after UNLOAD, say) and after a recipe has finished. With an older CraftBeerPi, which has no timers, it shows one rest timer instead (600, up to 88px, tabular) with −5 MIN, +5 MIN and START TIMER, kept by CraftBeerPi so every screen shows the same countdown; START TIMER's hint says so ("alarm at zero, on every screen").
+- **The versions** (asked for on 13 Nov 2026: "it would be nice if the BrewDay dashboard showed the current version somewhere inconspicuous"): the column's last line, so the bottom left corner on a monitor and the end of the page on a phone, in Fine Print: "Web UI 0.5.1.a3.post12+0b299b8, built 13 Nov 11:12" then "CraftBeerPi 4.7.7.post36+a3b25a0", each kept whole, side by side where the column is wide enough and on two lines where it isn't. An installed release shows its release numbers only ("Web UI 0.5.1.a3.post12", "CraftBeerPi 4.7.7.post36"); until CraftBeerPi answers, the web UI's alone. It is plain text that can be selected and copied, never a button. On the one-screen layout it steps aside while a timer's editor is open, while something in the column waits for you (NEXT STEP's, RESET's or UNLOAD's question, a timer that has run out, or an open box such as COMPARE PROBES or FORECAST), and where the current step wouldn't be whole in the list without its room, because the step list needs the room then.
+
+### Timers (approved by the brewer and built 11 Nov 2026; REMOVE on the row, with UNDO, approved on 22 Nov 2026)
+Its last proposal and the brewer's answers are in `proposal/TIMER-REMOVE.md`.
+- **Section:** TIMERS (Title capitals) with + TIMER and the SOUND switch at its right, in the recipe column: below the step list while a recipe runs, in place of the rest timer when brewing by hand, and before the steps or recipe book wherever the page stacks. Up to four rows. A new timer's editor opens at the end of the list, where the timer will be. + TIMER is greyed, and says why when tapped, at four ("Four timers at most. Remove one to add another.") and while any timer's editor is open ("One timer at a time: close the one that's open first."). On the one-screen layout (1180px and wider) the step list, or by hand the recipe book and its two buttons, make way for an open editor rather than shrinking to a sliced row, and so does the strike water box while it's closed; the header still says which step runs, and alerts still come in the title bar. The other way round, on the one-screen layout the timers themselves make way while a box is open in the recipe column (the pre-brew check's box, COMPARE PROBES, or the strike water's FORECAST or one of its small boxes), so the box is never squeezed to a sliver and the page never grows; a timer that runs out meanwhile still shows in the title bar, with OK, and pulses the frame round the screen, and its row is back once the box closes. A timer's editor open at the time makes way with them, keeping what was typed, and is back as it was when the box closes; meanwhile Escape closes the box.
+- **Row:** Raised Slate, 6px corners, on two lines, 95px tall. On the left, the button that opens the editor: the name (600 20px Barlow Condensed) and its state in 14px Dim Steel capitals, Soft Steel under the pointer ("of 15:00", "PAUSED · of 15:00", "ready"), over the time (600, up to 44px, tabular). On the right, REMOVE, then START, PAUSE, or START with "carry on", each at least 84 × 56px. REMOVE is the quieter one, Soft Steel 600 lettering on a Hairline Slate edge, so the two don't look alike; START or PAUSE keeps its look and the far right, where the hand already goes. While CraftBeerPi answers one, it says REMOVING…, STARTING… or PAUSING… and the other is greyed; while the timer waits on anything else both keep their labels, greyed. A 4px Countdown Blue bar along the bottom edge shows this countdown's progress (Soft Steel while paused). While its own editor is open, a timer keeps a one-line row with START or PAUSE only, so the editor's buttons stay on the screen at 1180 × 860; REMOVE is back when it closes.
+- **Removed:** REMOVE takes the timer away at once, with no question, as UNDO makes a slip cheap. For 10 real seconds, at any speed of CraftBeerPi's clock, its row keeps its place and height, saying "Stir · removed" in Dim Steel, with UNDO ("put it back") across both buttons' room: the timer below doesn't move up under a hand still reaching, and a second tap where REMOVE was puts the timer back. UNDO puts it back in its place as it would be now, so one that was counting down has counted on. After the 10 seconds the row goes. On other screens the timer simply goes, and UNDO here puts it back on every screen. LOG: "Stir removed, 7:15 to go" ("Yeast removed" for a ready one) and "Stir put back, 7:05 to go". If CraftBeerPi refuses UNDO, which only happens when another screen has changed the timers meanwhile, the timers' note line says why for 6 s, and LOG has the command as failed: "Four timers at most. Remove one to put Stir back.", "Another timer is called Stir now. Rename it to put Stir back." (the row stays for the rest of its 10 seconds in both), or "Stir can't be put back now: a removed timer can be put back for 10 seconds." (the row goes).
+- **Run out:** the row turns Dark Amber Wash with a Prompt Amber border, "TIME'S UP" and the time counting up ("+0:12") in Prompt Amber, and two buttons across its width: +5 MIN and a Panel White OK ("stops the alarm"). After OK it is ready, with REMOVE and START.
+- **After a restart** (from CraftBeerPi 4.7.7.post42, which keeps its timers): a timer that was counting down comes back paused, and one that had run out comes back run out, with its alarm, counting up from when it ran out, the time off included. Until it is started or answered, a line across its row, under its name and state, says how long CraftBeerPi was off: "CraftBeerPi was off for 12 min" (or 40 s, 2 h 5 min, 3 days). While CraftBeerPi can't tell, because a Raspberry Pi without a clock board starts with a wrong time after a power cut until the network sets it, the line says "CraftBeerPi was off; how long isn't known yet", and a run-out timer shows "– –" where it counts up. The line is a sentence, so regular Barlow, 500 15px: Prompt Amber on a paused timer, because CraftBeerPi paused it and it waits for the brewer, and Prompt Cream on a run-out one, on its Dark Amber Wash. A timer the brewer paused keeps its plain line.
+- **Editor:** under its row, or for a new timer at the end of the list. A 2px Selection Blue border with its title (NEW TIMER, CHANGE STIR) set into the top edge like a legend. NAME box and the names to pick; MINUTES −1, box, +1 and six presets (5 10 15 20 30 60), 2px apart so each is at least 44px wide on a monitor's recipe column and a 360px phone, or, while it counts, "Time left" with −1 MIN, +1 MIN and +5 MIN applied at once; then the actions, the main one in Selection Blue (START, SET or DONE). While the timer counts down or is paused, BACK TO 15:00 ("ready to start again") puts it back to its own time, stopped, as OK does after its alarm and as a kitchen timer's clear does; the editor stays open, now a stopped timer's (CANCEL, SET), so a name typed and not yet saved is kept. LOG: "Stir back to 15:00, stopped with 7:12 to go". One that ran out meanwhile is refused: "Stir has run out: answer it with OK or +5 MIN.", and the editor closes. The editor has no REMOVE, as the row has it. While it is open the other timers shrink to a 44px line with name and time.
+- **Names to pick:** the names in CraftBeerPi's BREWDAY_TIMER_NAMES setting (default Hop stand, Yeast, Vorlauf), as 46px command buttons three to a row (two on a phone, where three left WHIRLPOOL split mid-word), in the setting's order, the first six; capitals, a long name wrapping up to three lines. A tap fills NAME and presses the button; a second tap clears it. Nothing is pre-filled: an unnamed timer is "Timer 3". A name another timer has is greyed, and its tap or a typed copy says "Another timer is already called Yeast. Give this one another name, so you can tell their alarms apart." A blank setting shows one muted line instead: "No names to pick: BREWDAY_TIMER_NAMES in Settings is blank."
+- **SOUND:** KEEP BOILING's lit box with "SOUND", a switch for this screen only (timers and CraftBeerPi's alerts). Until the browser allows sound after a reload: an unlit amber box and "SOUND · TAP TO ALLOW" in Prompt Amber. The first tap or key press anywhere allows it (not Escape, which a browser doesn't count); a press on SOUND itself allows it and keeps it on. Switching SOUND on, or allowing it, is silent (the request on 12 Nov 2026 was "I don't want to hear a sound when I click the "SOUND" box for the timer. ONly when timer expires"): the lit box and the label say it's on, and Settings' Try plays the sound on purpose. The press starts a silent one-sample sound, so Safari on an iPhone lets the alarms play later.
+- **Phone strip:** under the step strip's "Next" line, a 44px line "TIMERS Stir 7:12 · Yeast paused 6:12" (a finished one in Prompt Amber) that jumps to the section.
+
+### Pre-brew Check (approved by the brewer on 17 Nov 2026)
+Its proposal, the brewer's decisions and what the rig's own readings showed are in `proposal/PRE-BREW-CHECK.md`.
+- **START held on a recipe not begun** (loaded, or after RESET TO STEP 1; not START carrying on after a STOP or a power cut) checks three things first, while START says CHECKING… over "before it starts" with the marching stripes: every probe gives a reading, the Pi's clock is set, and every boil addition has a reminder. COMPARE PROBES is greyed meanwhile and says why when tapped.
+- **All pass:** the recipe starts as before, and LOG gets "Checked before starting: probes, clock, reminders · all passed" just before "Recipe started".
+- **Otherwise, the box:** NEXT STEP's Dark Amber confirm box, under START: "Not started yet: 1 check didn't pass." Then all three checks, always in the brewer's order (probes, clock, reminders), each with its 24px mark: a Running Green ring and tick where it passed, one quiet line; a Prompt Amber disc with a dark "!" where it didn't, saying what is wrong and what to do, its first words bold. Under them START ANYWAY (Answer White, held for one second) and DON'T START, neither drawn as the default. START ANYWAY's line in LOG names what it went past: "Recipe started · confirmed · started anyway: the Pi's clock wasn't set". DON'T START and Escape close it, changing nothing.
+- **The words,** by what CraftBeerPi answers (GET /step2/precheck). Every line that didn't pass says what is wrong, bold, then what to do.
+  - **Probes:** "All 3 probes give a reading." ("Both probes give a reading." with two kettles, "The probe gives a reading." with one, "There are no kettles to check." with none.) A probe with no reading: "The boil kettle's probe, Boil Temp, gives no reading, and hasn't for 3 min. Check its plug and cable."; where CraftBeerPi doesn't know for how long, the line has no "and hasn't for …". Two or more: "2 probes give no reading: the mash tun's (Mash Temp) and the boil kettle's (Boil Temp). Check their plugs and cables." A kettle with no probe in Hardware is a setting, not a cable, so it says so in the Hardware page's own words: "No probe is chosen for the boil kettle. Choose one in Hardware.", "The boil kettle's probe isn't found: CraftBeerPi no longer has it. Choose one in Hardware.", or "2 kettles need a probe chosen in Hardware: the mash tun (none chosen) and the boil kettle (not found)."; then any probe with no reading, after it on the same line.
+  - **Clock:** "The clock is set." Not set: "The Pi's clock isn't set yet. It comes from the internet a minute after the Pi starts; if not, check the Pi's network. Set during a rest, it can cut the rest short." When the Pi gives no clear answer (timedatectl failing, or answering neither yes nor no), waiting may not help, so: "The Pi didn't say whether its clock is set. If it has been on and online for a few minutes, you can start anyway. A clock set during a rest can cut the rest short." The title bar's clock is CraftBeerPi's (The One Clock Rule), so it shows the Pi's time as the Pi has it, right or not; only this check can say whether the internet has set it. When the Pi hasn't answered yet (the first ask after CraftBeerPi starts can take a few seconds), START stays on CHECKING… and asks again for up to 6 s, so the box opens with the clock's answer: a short line that later grew into a long one would push the box's buttons down while a hand may be reaching for them. Only if there's still no answer then: "The clock hasn't been checked yet: the Pi is slow to answer.", which the box's next ask, 5 s on, fills in where it is.
+  - **Reminders:** "All 4 boil additions have a reminder." ("Both boil additions have a reminder.", "The boil addition has a reminder.", "The boil has no additions to remind you of.") Without: "2 of 8 boil additions have no reminder: 1.50 oz Citra at 5 min and 1.00 oz Amarillo at 0 min (the boil step holds six). Watch the clock for them, or set a timer." The names are the import's, amount first, with the amount's number and unit kept together; "(each boil step holds six)" with more than one boil step.
+  - **A part CraftBeerPi couldn't work out:** "The probes weren't checked: CraftBeerPi ran into a problem." (or the clock, or the reminders); the other two still answer.
+  - A probe "gives a reading"; nothing says it works. START ANYWAY's line in LOG names what each line was: "the boil kettle's probe gave no reading", "no probe was chosen for the boil kettle", "the boil kettle's probe wasn't found", "2 kettles had no probe chosen", "the Pi's clock wasn't set", "the Pi's clock wasn't confirmed", "the clock wasn't checked", "2 additions had no reminder", "the probes weren't checked".
+- **The box follows CraftBeerPi while open:** a check that comes right turns its line to passed in its place, the first line to "Not started yet: every check passes.", and START ANYWAY to START. Those words fit on one line at every size from a 360 px phone up, as "1 check didn't pass." does, so the box doesn't grow when the last check comes right. While the recipe column keeps its width, the box keeps the tallest height its lines have needed, its answers at its foot, so nothing under a reaching hand moves; at another width (a window resized, a phone turned) its lines wrap anew and it is as tall as they are there. It never keeps a height measured while the page's fonts are still loading, which its lines lose once they come. It never starts by itself. The check belongs to the recipe START was held on: the screen notes which one (its steps) as the hold on START or START ANYWAY begins, and if another screen starts it, unloads it, or puts other steps in its place before it starts, the check ends. Nothing starts, CHECKING… gives way at once, the box closes (so it can't come back for the next recipe loaded), and the check's answer, when it comes, decides nothing; a hold that ends after that starts nothing either. A screen reader hears once "The recipe was started on another screen.", "The recipe was unloaded on another screen." or "Not started: another recipe was loaded on another screen." ("Not started: the recipe was changed on another screen." when its name is the same). A recipe started or unloaded shows itself; another in its place looks just like it but for its name and steps, so that sentence also shows under START for 6 s. The start itself names the steps START was held on (core 4.7.7.post46), so CraftBeerPi refuses a start for steps it no longer has loaded, or for a recipe already running, when this screen hasn't heard of the change yet: nothing starts, LOG gets no line, and the screen does what it does when it sees the change itself, its sentence taken from CraftBeerPi's answer (no steps: unloaded; the same name: changed, as for the same recipe loaded again from the Recipe Book, whose steps are new; another name: another recipe loaded; already running: started).
+- **No answer in 5 s:** "Not started yet: CraftBeerPi didn't answer the check, so nothing was checked. Hold START to try again." Each check says in its own place that it wasn't checked ("The probes weren't checked."), with the amber disc, so an answer that comes later fills them in where they are. The same two answers; START ANYWAY logs "started anyway: the check got no answer". An older CraftBeerPi without the check starts at once.
+- **COMPARE PROBES** ("before you fill"): under START, STOP and NEXT STEP on a recipe not begun, and at the end of the column when brewing by hand; not shown once a recipe has begun. It opens in its place: its title with DONE ("adds them to LOG") beside it; "With every vessel empty and at room temperature.", adding "Each reading is the probe's own, without its offset." when a probe has one; a row for each vessel like a small PID window, on PID Window Black (the vessel; its probe's name and its offset, "Mash Temp · offset +4.0 °F"; the probe's own reading in Process Red, 30px); one sentence on what they show, with its mark; and the rule in small print. The readings follow the probes while it is open. On a monitor it takes the step list's room and the timers' (Timers), and where the column is still too short for all of it, it scrolls there as the step list does, so the page never grows (The One Screen Rule).
+- **What the sentence says,** by how far apart the highest and lowest of the probes' own readings are: within 2.0 °F (1.1 °C), "All 3 agree, 1.1 °F apart at most.", with the Running Green tick; "All 3 agree: they read the same." where they are 0.0 apart, as every simulated probe is. Up to 10 °F (5.5 °C), it's likely where the vessels sit, said in the plain colour with a Soft Steel ring and "i" and "COOLER" or "WARMER" on that probe's row: "The boil kettle reads up to 3.8 °F below the other two. That's likely where it sits, not its probe. To be sure, put the probe in ice water: with its +1.0 °F offset it should read 33.0 °F, ±0.9 °F. If it doesn't, correct its offset in Hardware." Further apart, or a reading below 35 °F or above 120 °F (1.5 °C, 49 °C) whatever the others read, a probe looks off: the amber disc, a 2px Prompt Amber edge on its row and "LOOKS OFF". A probe with no reading shows "– –" and "NO READING", in amber too. A kettle with no probe in Hardware shows "– –" and only "NO PROBE CHOSEN" or "PROBE NOT FOUND" under its name, and the sentence starts with the check's words for it: "No probe is chosen for the boil kettle: choose one in Hardware." It names a probe only when the other two agree without it; when every probe reads something no room has, it says to look at what they share and to unplug them one at a time.
+- **LOG:** DONE, or START while it is open, logs "Probes compared, without offsets: HLT 63.4, mash tun 63.5, boil kettle 59.7 °F" and "agree" in Running Green, "3.8 °F apart" in the plain colour, or "a probe looks off", "every probe looks off" or "no reading" in light red. Escape closes it without a line.
+- **A notice, not an alarm:** no sound, nothing in the title bar, and the box only on the screen where START was held (The Warn, Never Block Rule).
+
+### Strike Water (approved by the brewer on 20 Nov 2026; the model's figures the same evening; words for the server contract's gaps 22 Nov)
+Its proposal, the brewer's decisions and how the forecast works are in `proposal/STRIKE-WATER.md`. Its figures are the bench's model of the whole HERMS (`strike_model.py`, bench 6f3c001), which the server runs; the mockup carries the model's answers for Test Recipe v5 in `proposal/strike-model.js`.
+- **Where and when:** in the recipe column under START, STOP and NEXT STEP (and COMPARE PROBES while it's there), from the recipe's loading until the malt goes in: while BrewStart waits, while the strike water step on the HLT heats and holds the water, and through dough-in. Not on the HLT's faceplate, whose rows the three faceplates share. It makes way for the pre-brew check's box, COMPARE PROBES and NEXT STEP's or RESET's question: one box at a time. On one screen, while closed, it makes way for a timer's editor too, as the step list does, and is back when the editor closes. Raised Slate with a Control Edge border; 152-172 px tall on one screen, 180-194 px while USE is worked out, 215-226 px with its dough-in line, 159-179 px with a number missing or a failed forecast.
+- **The window:** a small PID window on PID Window Black. STRIKE "8.26 gal AT 126.0 °F", the temperature in Setpoint Green, as it's a target. MASH "LANDS 113–118 °F": where the mash lands as the grain goes in, a range while the rig is unmeasured, which a screen reader hears as "113 to 118"; or "UP TO 137 °F OVER THE REST" in Prompt Amber when the water as planned would take the mash over its rest, which the HERMS can't cool. While USE is worked out, "– –" and "WORKING OUT" with nothing worked out yet, or the last figures in Stale Grey Text (#737f8d, a shade lighter than the faceplates' Stale Grey, for the window's smaller figures: 4.98:1). The same "– –" and WORKING OUT for the second or so after the strike water is changed elsewhere (its Temp edited on Brew Steps, or by hand the HLT's target set), until CraftBeerPi sends the forecast for it; the screen doesn't ask for one itself, and if none has come after 10 s the tag goes, so nothing claims to be working. With FORECAST open meanwhile, its chart and words show the other choice alone. Tags in Dim Steel capitals. Each row stays one line at every size from a 360 px phone up, so nothing under it moves as the figures change.
+- **USE and BACK TO:** under the window, beside FORECAST, taking two thirds of the row. USE 132.4 °F, "aims under the rest" ("as the HLT's target" brewing by hand), in Selection Blue with white words; once in use, BACK TO 126.0 °F, "as it was", a plain command button in the same place. One tap each, and no confirmation, since each undoes the other (The Offer, Don't Apply Rule). While CraftBeerPi answers, SENDING… greyed. While the HLT heats the strike water, a figure below the water's temperature is greyed, and tapped says why: "The water is already at 132.3 °F, above 126.0 °F, and the HLT can't cool it." BACK TO to a plan over 179.6 °F (82 °C), the hottest strike water the box sets (as with one typed on Brew Steps as 185 °F), is greyed the same way: "185.0 °F is over 179.6 °F, too hot for strike water, so BACK TO can't set it." (by hand adding "TARGET can set the HLT to it."); MashIn itself still heats to any temperature typed on Brew Steps. When CraftBeerPi works USE out again (the grain's or the room's temperature moves by more than half a degree, or a number it works from changes), the box offers USE at the new figure once it's ready. When USE comes out at the rest itself, with the strike water there already, there's nothing to offer: FORECAST alone takes the row, and says why ("USE would be the rest itself here, so there's nothing to change: …").
+- **What USE changes:** with BrewStart and the strike water step in the recipe, the plan, since a plain change to the HLT's target wouldn't last: the strike water step's temperature; BrewStart's while it hasn't started heating, so Ready by plans for it; and the HLT's target while the strike water step runs, when a move question already asked goes and the step asks again at the new temperature. LOG: "Strike water set to 132.4 °F, was 126.0 °F" and "Strike water set back to 126.0 °F". The step list shows the change on both steps. Brewing by hand, USE sets the HLT's target, as SET would: "Hot liquor tank target 132.4 °F for the strike water, was 126.0 °F".
+- **Working out USE:** CraftBeerPi works USE out in a process of its own, when the recipe loads and again when a number it works from changes; on the Pi that's expected to take 12-55 s. Meanwhile one short line under the window, in Soft Steel, counts the seconds: "Working out USE: 20 s so far." or "Working out USE again: 9 s so far." USE is greyed, "working it out", with dashes for its figure or the last one, and tapped says why: "Not yet: the HLT's water changed, and CraftBeerPi is working USE out again. 132.4 °F was for 15 gal in the HLT." BACK TO stays, being never hotter. Opened, FORECAST says above the chart what changed and what the greyed figures are for: "The HLT's water changed, so CraftBeerPi is working USE out again. Until then, these are the figures for 15 gal in the HLT."; its bands and words go grey too. It counts the time so far rather than promising an end, since the Pi's time is an estimate.
+- **USE waiting for the grain:** on a recipe with BrewStart, until where the grain spent the night is answered for this brew, USE reads "USE – – °F" with "where's the grain?" under it, the row's words, in the look CraftBeerPi's questions have in the title bar: the dark amber ground, a 2 px Prompt Amber edge, the words in their light amber and the hint in Prompt Amber, at USE's own size. Amber on Selection Blue would be only 3.6:1. It isn't greyed: a tap opens the question, in BrewStart's box until BrewStart has finished and in the grain's box after, where IN THE GARAGE stands beside SET. Answered, USE is blue again with its figure. The book keeps no grain figure, so unanswered grain would be the boil kettle's probe, which errs hot when the grain spent the night indoors; USE is the one place the grain changes anything, so that is where the question can't be skipped.
+- **What would raise USE most** comes after USE: eleven more plans, which take about 3-6 minutes on the Pi, and USE doesn't wait for them. Until they're in, FORECAST's NOT MEASURED YET ends, in the same type, "CraftBeerPi is still working out which of these would raise USE most if it were known: that comes a few minutes after USE." in place of "Knowing … would raise USE the most …"; the ranges above it show as usual.
+- **When the forecast fails:** CraftBeerPi's work on USE can fail. MASH reads "– –", and in the buttons' place: "CraftBeerPi couldn't work out a forecast for these numbers, so there's no USE. The strike water stays as planned, at 126.0 °F. What went wrong is in LOG." (brewing by hand: "The HLT's target stays at 126.0 °F."). The last figures aren't shown, even greyed: they were for other numbers, and nothing is coming to replace them. LOG, once: "Strike water forecast failed: {what went wrong}", its result "failed" in light red, as a failed command's. Nothing in the title bar and no sound, as nothing waits for the brewer. Once a number it works from changes, "Working out USE…" takes its place.
+- **A refused USE:** CraftBeerPi refuses a figure worked out from numbers that have changed since, as on a phone woken from sleep. Nothing changes, so nothing is logged; the new figure takes USE's place, and a note under the box says so for 6 s, and to a screen reader, as START's refusal does: "USE 132.4 °F wasn't applied: BrewStart's grain temperature is now 70.0 °F, so USE is 131.8 °F." Still being worked out: "…, and CraftBeerPi is working USE out again.", and the box shows it working. A refusal that reaches a screen that hadn't caught up with the water going to the mash tun, or with the box no longer applying, says why in the same place, and the box then follows CraftBeerPi: "USE 132.4 °F wasn't applied: the strike water is already in the mash tun." ("BACK TO 126.0 °F wasn't applied: …"), or "… no recipe is loaded now.", "… the malt is already in.", "… the mash tun no longer runs PID_HERMS.", "… the recipe's first mash tun step isn't MashIn now.", "… CraftBeerPi doesn't find the mash tun now." or "… CraftBeerPi doesn't find the HLT now." BACK TO, when another screen has moved the strike water since: "BACK TO 126.0 °F wasn't applied: the strike water was changed on another screen. It's 131.8 °F now." (by hand "the HLT's target"). On a recipe changed elsewhere, START's three reasons, from CraftBeerPi's answer: "USE 132.4 °F wasn't applied: another recipe was loaded on another screen.", "…: the recipe was changed on another screen." or "…: the recipe was unloaded on another screen." A number gone missing since: "USE 132.4 °F wasn't applied: a number it's worked out from is missing now.", and the box says which. A temperature over 179.6 °F (400 too_hot), which only a screen that hadn't caught up sends: "BACK TO 185.0 °F wasn't applied: it's over 179.6 °F, too hot for strike water.", a refusal like the others, not a failed command, and the box stays as it is. While core post56 reports the mash tun's control interval as off rather than as a number missing: "… the forecast can't use the mash tun's control interval now."; from post57 it's a number missing.
+- **The water or the grain refused:** the same way, under the box for 6 s with nothing logged: "The HLT's water wasn't set to 16.0 gal: …", "The grain's temperature wasn't set to 70.0 °F: …" or "The grain's temperature wasn't changed to the boil kettle's probe: …", then the recipe's three reasons or "no recipe is loaded now.", and the box follows CraftBeerPi. Under the strike water ("…: the HLT holds the strike water too, so at least 8.26 gal.") or out of range ("…: it has to be between 35 and 120 °F."), the small box stays open with the figure, so it can be put right.
+- **A command that fails:** no answer, or an error that isn't one of these refusals, is a failed command (The Answer At The Button Rule): its button shows it, LOG gets "failed: {why}" in light red, and the title bar's alarm says what is in force: "The strike water did not change. It is still 126.0 °F." (by hand, as SET's: "The hot liquor tank target did not change. …"), "The HLT's water did not change. It is still 15.0 gal." ("… None is given yet."), "The grain's temperature did not change. It is still 70.0 °F." ("… It is still the boil kettle's probe's, 60.4 °F.").
+- **FORECAST** ("in detail") opens the box out. Its head stays as it was, in reach: the window, USE or BACK TO, and the same button, now CLOSE, "the forecast", which closes it again, as Escape does. The button never moves, and tells a screen reader whether the details are open. Under the head, past a Hairline Slate line, the details: the chart of the mash for an hour from the grain going in, on PID Window Black (the plan's band in Process Red at 22 % with a solid edge, Prompt Amber when it goes over the rest; the other choice's band as a dashed Soft Steel outline; the rest as a Setpoint Green line; degrees down the right, minutes along the foot), labelled for a screen reader and described under it in words for everyone ("lands 113–118 °F as the grain goes in"); why it's a range ("USE errs low: even at the top of the range, it takes the mash no higher than water heated only to the rest would."); what the Mash Tun's probe may read during dough-in; then every number by where it comes from, under Soft Steel headings: FROM THE RECIPE; FROM YOU, the HLT's water and the grain's temperature, each with CHANGE; MEASURED ON THE RIG, the room (the boil kettle's probe) and the HLT; THE RIG'S SETUP, where the mash probe sits and how the strike water moves; NOT MEASURED YET, each number with its range, in the order of how much knowing it would raise USE, then the three that matter most with how much, and USE if every one proved to be the middle of its range; and BEERSMITH, its figure and what it would do here. On one screen the open box takes the step list's room and the timers' (Timers), and only the details scroll, inside it, while nothing else in the column gives up height: at least 225 px of them at a time, on a window 860 px tall, so the chart and its key always show whole; where the page scrolls, the head stays at the top of the screen while the details pass under it.
+- **PID_HERMS's own overshoot:** amber, "over the rest", means the strike's own doing: a forecast more than half a degree above both the rest and where water heated only to the rest would take the mash. Where PID_HERMS takes the mash over the rest by itself and it shows at a tenth of a degree (with the mash probe at the tun's outlet: 127.5 °F), the words give each figure's highest and say "Going over the rest is PID_HERMS's own overshoot, which it makes whatever the strike: with the water heated only to the rest, it takes the mash to 127.5 °F."
+- **The HLT's water:** BrewStart's Water volume, all the water in the HLT, strike and sparge, given the night before; it also sets the Campden dose. CHANGE opens a box laid out as TARGET's: "HLT WATER, IN GALLONS" ("IN LITRES" where the volumes are in litres, as BrewStart's own form says it), then "All the water in the HLT now, strike and sparge. It is BrewStart's water volume, which also sets the Campden dose.", −1 −.1, the figure, +.1 +1, SET and CANCEL. Less than the strike water is refused, with the reason. With none given, the question takes the buttons' place: "How much water is in the HLT, strike and sparge? The forecast needs it.", beside HLT WATER, "set it". Brewing by hand, CraftBeerPi keeps the figure for the brew day. LOG: "HLT water set to 12.0 gal, was 15.0 gal". While BrewStart's Campden reminder is on, FROM YOU's water line gives the dose for the water, as BrewStart works it out (one tablet per 20 gal, rounded up to a quarter): "15 gal in the HLT, strike and sparge: BrewStart's water volume. Campden for it: ¾ tablet. …", and so does LOG as it's set, which is when the dose matters: "HLT water set to 16.0 gal, was 15.0 gal · Campden 1 tablet".
+- **The grain's temperature:** BrewStart's Grain temperature, given the night before only for grain kept away from the boil kettle; left blank, the boil kettle's probe stands for it, less its offset. FROM YOU says which: "Grain at 60.4 °F: the boil kettle's probe, as BrewStart's grain temperature is blank. Grain that spent the night somewhere warmer lands the mash higher: give its temperature." or "Grain at 70 °F: BrewStart's grain temperature. Left blank, the boil kettle's probe would stand for it, at 60.4 °F." Its CHANGE opens the same kind of box, "GRAIN TEMPERATURE, IN °F" ("IN °C" on a °C brewery, 1.5-49 °C), saying "For grain that spent the night away from the boil kettle. It is BrewStart's grain temperature: left blank, the kettle's probe is used.", with THE PROBE, "the boil kettle's, 60.4 °F, instead", across its foot while a figure is in use. 35-120 °F, as COMPARE PROBES counts a room. LOG: "Grain temperature set to 70.0 °F, was the boil kettle's probe" and "Grain temperature from the boil kettle's probe, was 70.0 °F". Brewing by hand, a figure kept for the brew day. One box at a time. The room is always the boil kettle's probe: the empty mash tun starts at it, and both vessels lose heat to it.
+- **During dough-in,** with the pump stopped for the malt and the Mash Tun reading more than 3 °F over the top of where the mash lands, a line under the window in Soft Steel: "The Mash Tun's 132.2 °F isn't the mash: with the pump stopped, its probe reads the water left in the HLT's coil." Only with the probe at the coil's outlet, as on the rig; nearer the range, nothing is said, since what it reads then hasn't been measured. Where the rig's setup takes the probe to cool with the pump stopped instead (`still_probe` above 0), the line shows more than 3 °F outside where the mash lands, above or below: "The Mash Tun's 102.4 °F isn't the mash: with the pump stopped, its probe reads the still water at the coil's outlet." (the same number of lines at every size). MashIn asks for the malt within seconds of the water arriving, the strike water at the rest too, as the probe reads the water that came through the coil. The box goes once the malt is in.
+- **A number missing:** MASH reads "– –" and the reason takes the buttons' place, saying what to do: no grain weight or mash water ("No grain weight or mash water in this recipe, so where the mash lands isn't known. A recipe imported from BeerSmith has both."); the mash tun's control interval when the forecast can't use it, a setting made before brew night, so it comes next ("The mash tun's control interval is 2.5 s. The forecast can't use it: set it to 2 or 5 s in Hardware.", the Hardware page's own words), and the box never vanishes for one setting. It shows only for a fraction from 1 to 60 s, such as 2.5: PID_HERMS runs any other SampleTime it can't use at its 5 s default and says so in a notice, and the forecast does the same; no reading from the boil kettle's probe, or one no room has, since nothing stands in for the room; a figure more than 27 °F over the rest, "too far to trust", or within that over 179.6 °F, the hottest strike water the box sets ("It works out at 181.2 °F, over 179.6 °F: too hot for strike water. Check the grain weight and the water in BeerSmith."); no HLT water (above); BrewStart's grain temperature, saved on Brew Steps, outside 35-120 °F or not a number ("BrewStart's grain temperature is 150.0 °F, warmer than any room. The forecast can't use it." or "… isn't a number. …"), beside GRAIN, "change it", which opens the grain's box with THE PROBE across its foot. SET or THE PROBE puts it right, and USE is worked out as usual; if the numbers come back to those of the last answer, it holds again at once.
+- **It never** changes anything by itself, shows a figure worked out from numbers that have changed as if it were current, asks "Are you sure?", uses MashInStep's own strike fields (left blank on the rig) or records anything, which is BrewScribe's job. Kal's way is simply not pressing USE: the box always says where the mash lands with the water as planned.
+- **Known limits (20 Nov 2026):** with timers in the column on one screen, the closed box can leave the step list too short for the current step: with two timers on a 1920×950 window in the night-before, heating and dough-in moments, and with one on windows 900 px tall or less. The list then shows what it can of the current step, from its top. Not designed yet: a fix would shrink or hide something the brewer has approved. At 1180×860 a refused USE's note, two lines under the box, leaves the step list a few pixels short of the current step for its 6 s, as any note there does; during dough-in, with the box's line about the Mash Tun's reading, 12 px short at 1180×860, 1280×800 and 1366×768.
+
+### Rig Line Drawing
+- 3px Drawing Line Steel outlines over Vessel Interior Slate, with names inside the tanks (700 24px condensed, Drawing Label Steel). The hot liquor tank shows the HERMS coil and an element, the mash tun a false bottom drawn as dots, the boil kettle an element.
+- Idle coils and elements are Idle Element Steel. The coil turns Wort Gold while the wort pump runs and the wort is drawn going through it, and Liquor Cyan while the sparge water runs through it; an element turns Element Orange, with its glow, while it heats.
+- Pipes are 5px and Still Pipe Slate when idle. While their pump is confirmed running they take their liquid's colour, white dashes (5px on, 19px off) flow along them once every 0.9s, and arrow-heads in the same colour show the direction.
+- Each pump's line branches, as on the rig. The wort pump's line splits at a tee just past the pump: round the HERMS coil and back into the mash tun, or down and across to the boil kettle. The HLT pump's line splits at the top corner: back round the hot liquor tank, or along the sparge line over the hot liquor tank and down its side into the HERMS coil's inlet. The sparge water runs through the coil, flushing the wort out of it, and on into the top of the mash tun along the coil's own line, as the wort does while recirculating (the brewer sparges this way, always: "I actually run the HLT water through the HERMS coil and then into the Mash Tun to clean out the coil"). So the coil's inlet is fed from below by the wort pump's line and from above by the sparge line, and the coil, its inlet and its line to the mash tun take the colour of whichever runs. Where the sparge line crosses the coil's outlet it hops over it, a 10-unit half circle, so the two don't read as joined.
+- **Hand valves:** one on each branch, four in all: the coil line (the wort pump's way into the coil), the boil kettle line, the HLT return and the sparge line (the HLT pump's way into the coil). Open is a hollow bowtie whose outline takes the liquid's colour while that pipe flows; closed is a solid Drawing Line Steel bowtie. Each valve says OPEN or CLOSED in the tag style. Under the boil kettle, two lines in the tag style say where the positions come from: "VALVES ARE SET BY HAND", then "SHOWN FOR RECIRCULATING" or "SHOWN FOR STEP 4 (SPARGE)". While a SpargeStep waits for "Sparge started", each valve that has to change keeps its drawn position, takes a Prompt Amber outline, and its tag says where it must go, in Prompt Amber: "SET OPEN" or "SET CLOSED"; the second line reads "SET THEM FOR STEP 4 (SPARGE)" in Prompt Amber. The HLT return's run is too short for "SET CLOSED", so that tag sits left of the riser, level with its valve, while it is marked.
+- Each pump is labelled underneath, with RUNNING in Running Green or OFF in Dim Steel. While a pump with its own override switch is off, a third line in the tag style reads "UNLESS OVERRIDE SWITCH IS ON".
+- **After the boil starts** (the brewer chose it on 12 Nov 2026, "2. The pump moves, with the chiller drawn on its loop"): the wort pump's hoses are on the boil kettle, so the drawing puts the pump there, the moment its step stops being "Ready to boil?". It sits under the kettle on a short loop: out of the kettle's bottom, through the pump, through a CHILLER box (Vessel Interior Slate, a 2.5px Drawing Line Steel outline, its name inside, never lit itself), and up into the kettle's top through the runoff's own riser and inlet. Its labels go beside it, as the valve note has the space under the kettle. Its old place by the mash tun is left empty, as its hoses are, and nothing on the mash tun's side lights, the coil included. The valves are drawn as before the boil: for recirculating, so a running HLT pump still goes round the hot liquor tank. It stays there after the recipe finishes, for the chill and the transfer, while CraftBeerPi keeps the finished recipe's steps (confirmed on 12 Nov 2026: "Yes, keep it at the kettle until then"). It goes back by the mash tun when a recipe is loaded or reset, and while the mash tun's AUTO is on, because its HERMS runs the wort pump through the coil.
+- Because the graphs make the drawing shorter, its labels are set larger as it shrinks: up to 1.3 times for pump names, states and tags, and up to 1.15 times for vessel names. In a browser window they come out about as big as they were before the graphs. A tag that hangs under its valve moves down as it grows, so it never touches the bowtie: the sparge valve's keeps about a third of its own height clear.
+
+### Connection Lost and Reduced Motion
+- **Connection lost:** the connection lamp blinks; the banner says "No connection" and how old the readings are; readings turn Stale Grey without their glow (the smaller OUT and MODE values and the units Dim Steel, since Stale Grey is under 4.5:1 at their size) and show "Last reading 48 s ago"; the drawing drops to half strength, with the pipes stopped and the pumps reading "LAST: RUNNING"; lamp strips dim to 35%; and every control is paused with "No connection. Controls are paused."
+- **Reduced motion:** the flowing pipe dashes, the marching stripes and the blinking connection lamp stop. The one-second hold fill still runs, because it shows how long to keep pressing.
+
+### Hardware Page (approved by the brewer on 16 Nov 2026)
+The brew-day frame with HARDWARE lit, Settings' tool row (FIND, + ADD, UNDO, SAVE), and Settings' rows and notes. Its build notes are `proposal/HARDWARE-BUILD-NOTES.md`.
+- **Hardware list:** groups by vessel in brewhouse order, numbered on a dark band like a recipe step. A kettle's line says what its AUTO runs and shows AUTO OFF/ON or a CHANGED, NEW or DIDN'T SAVE chip, with a FILE button beside it that saves the kettle's settings file. Its line also says its target. Under it, its probe, element and pump: the kind in small capitals, the name, and the reading in Process Red in a sunken window like the PID window's, or a switch's GPIO pin in a sunken box and its lamp button; under them, across the line, its type (and a probe's whole OneWire address, then its Sensor ID). The reading needs the window: on the line's Raised Slate, Process Red is under 4.5:1 at that size. Where the list is too narrow to keep the pin beside the name (a phone, or a laptop's recipe column), the pin moves onto the type's line, "GPIOPWMActor · GPIO 6". With no connection, the readings there are Dim Steel, since Stale Grey is under 4.5:1 at that size. A probe, element or pump not chosen, or no longer there, is a dashed line saying so. A part two kettles share is listed once; the other kettle's line for it is dashed and says "with the HLT". "Not in a kettle" comes last, saying "none" when it's empty, then the Fermenters link. Names and addresses wrap; they never end in "…".
+- **The drawing as the way in:** the Rig Line Drawing with every part marked, a probe drawn into each vessel, and each pump labelled with the name CraftBeerPi has for it. The part pointed at, or open, is drawn in Current Step Edge, and tapping a part opens it. On a monitor a nameplate under each vessel lists its kettle, probe, element and pump, wired and live, as faceplates sit under the vessels on Brew Day. Where a nameplate would be too narrow to hold a name beside its reading (a window under about 1240 px wide), the nameplates give way, as on a tablet, and the line over the drawing points to the list instead. From 701 to 1179 px wide the drawing is docked at the bottom of the window and the tool row at the top, and the list, or the item open, scrolls between them. A phone has no drawing.
+- **An item's page:** a header (on a monitor, a small copy of the drawing with its part lit; the kind and its wiring, "ELEMENT · GPIO 6"; the name; what it is, in a sentence; its reading or lamp button), then its own rows (name, kind, a kettle's probe, element and pump), then a kettle's Settings file group, then its control's settings as Settings' rows, grouped by what they do, and Delete last, which asks first and names what uses the item. A kettle's control keeps its own settings when another is chosen, as CraftBeerPi's own form does.
+- **Before SAVE, what saving switches off:** an amber note says when saving will switch a kettle's AUTO off, or a switch off, as CraftBeerPi does.
+- **The pin guard:** under a switch's GPIO pin, an amber line when another switch has the pin chosen.
+- **Targets and text:** every control is at least 44 px tall at every size. A text button in a line of text (MORE, a row's UNDO, LEAVE IT EMPTY) is a 44 px box whose margins give back what it adds, so its line keeps its height. Text is at least 4.5:1 everywhere, including SAVE's second line, which is white on Selection Blue, and under the pointer: there Dim Steel text in the line or button turns Soft Steel, since Dim Steel on Hover Slate is 4.46:1. A long CraftBeerPi name in a narrow column breaks after an underscore, never inside a word.
+
+### Named Rules
+**The Held Heat Rule.** Switching heat on by hand (an element, a vessel's AUTO, the recipe's START, START ANYWAY after the pre-brew check, and START THE BOIL when the boil waits for the brewer) needs a press held for one second, by pointer or with Space or Enter. Letting go early starts nothing and says "Keep holding for one second." Starting a pump, and anything that switches off or stops, is one tap. Once started, a recipe changes targets and modes as its steps require, and skipping ahead to the next step asks first. While the boil waits for the brewer, and on a recipe not begun, NEXT STEP is greyed, because CraftBeerPi would take it as starting the boil, or the first step. Changing a level is not switching heat on: a new target, boil power or element power is set with a tap on SET after adjusting it, and the boil kettle's −5 %, −1 %, +1 % and +5 % are one tap each, whether or not the element is heating, because turning a boil down to stop a boil-over has to be quick. KEEP BOILING is a setting of the AUTO that is already running, so it is one tap too, even though ticking it can bring back full power. For the same reason a tap on the boil element in AUTO pauses its heat at once; carrying on is heat, so it takes a held press. The Hardware page is the one exception: there every switch, an element included, is one tap, as on CraftBeerPi's own hardware page, because the brewer chose it on 16 Nov 2026 ("Keep one tap for everything, as today"). He uses that page now and then, at the desk.
+
+**The Empty Setting Rule (Hardware, 16 Nov 2026).** An empty kettle setting is shown as empty, never as a number it doesn't hold: its box says "empty" in Dim Steel (7.2:1 on the box, where the browser's own grey is 4.4:1), and the line under it says what its control uses instead: "Empty: PIDBoil uses 100 %". Four settings mean something when empty and are never filled in; their line says what: "Empty: uses HLT lead". Before SAVE, if a kettle being saved has empty settings its control fills with built-in values, a note names each with its value and asks: FILL IN AND SAVE, SAVE WITH THEM EMPTY or BACK, with none of them drawn as the answer. A settings file's preview does the same before LOAD: FILL IN THESE VALUES shows them in the table as changes, marked as the control's built-in values, before anything is loaded. The values are CraftBeerPi's, in the brewery's unit, shown to seven significant figures.
+
+**The Answer At The Button Rule.** Every command shows what happened on the button that sent it: waiting (marching stripes, "SWITCHING ON…", "SENDING…"), done (the new state, and "confirmed" on the last-event line), or failed (a red outline and "DID NOT STOP · tap to try again", plus an alarm banner).
+
+**The Say Why Rule.** A control that can't be used right now stays on screen. When tapped, it explains why in its faceplate's note line (cleared after six seconds), in the recipe column's note line, or in a toast.
+
+**The One Pulse Rule (with the timers, built 11 Nov 2026).** Only an alarm nobody has answered pulses, as on a process-control display: a timer that has run out. Its row, its prompt in the title bar and a frame round the whole screen (a 4px Prompt Amber edge with a soft glow inside) fade together from 0.15 to full and back, 1 s each way, until OK or +5 MIN on any screen; with reduced motion they stay lit and still. One slow pulse is far under WCAG's three flashes a second, and OK is the way to stop it. With SOUND on, the same alarm beeps three times every 3 s; other alerts beep twice, once, as they arrive and take the title bar (the brewer kept those two beeps on 12 Nov). Nothing else makes a sound: not a press on SOUND, nor any other button, nor the next question coming up after an answer.
+
+**The Most Urgent First Rule (12 Nov 2026, evening).** When several things wait, the title bar shows the most urgent, then "· N more waiting"; their lines are amber in LOG. In order: no connection, a command that failed and CraftBeerPi's errors; a timer that has run out; what the brew needs from the brewer (a question CraftBeerPi sends as a warning or an error, such as a hop to add, Heating is not working or the hold before the boil, or the current step's own question, which the recipe column calls WAITING FOR YOU); CraftBeerPi's warnings without buttons; then everything else, which holds nothing up (BrewScribe's reminders, Check mash pH, Brewing Complete, other plugins' questions). Oldest first within each. The screen goes by what CraftBeerPi says each one is, never by guessing from its words. So the title bar always agrees with the recipe column, and a reminder never has to be OK'd, done or not, to reach the question the brew waits on. A reminder asked alongside a long step question waits behind it: that's the cost. Something that has just arrived beeps twice when it takes the title bar; one that comes up because the one in front was answered makes no sound.
+
+**The Mode Tells The Truth Rule.** The line under the window never contradicts MODE. AUTO with no target (unset, 0 or below, which SV shows as "– –") runs but holds nothing, so nothing heats for it. The line says so at once, in Prompt Amber, and names what won't heat: "No target, so the HLT won't heat" on the mash tun, "No mash tun target, so it won't heat" on the hot liquor tank under the HERMS, and "No target, so it won't heat" on a kettle with its own AUTO. It never says MANUAL while MODE says AUTO. CraftBeerPi's own warning follows in the title bar after 5 s, and both go once the kettle has a target or leaves AUTO. The warning was asked for on 10 Nov: "I think a "SV" was not set - but it should pop up a warning in that case".
+
+**The By Hand Rule (13 Nov 2026).** An element switched on by hand runs until someone turns it off: in MANUAL nothing compares the temperature with the target, though SV still shows it. "By hand" means its vessel is in MANUAL and no AUTO runs it, neither its own nor the mash tun's HERMS. So while one heats by hand, the line under its window says nothing will stop it, in Prompt Amber: "Heating by hand · won't stop at target", or "· until you turn it off" with no target. Once the vessel has been 2 °F past its target for 30 s, or at the boil whatever its target, CraftBeerPi raises an error with the kettle's name: "Above its 150 °F target and still heating: its element is on by hand, and in MANUAL nothing stops it at the target. Turn the element off, or put the HLT in AUTO to hold 150 °F." It is an error, not a warning, so it goes first in the title bar and beeps as it arrives, even with a step's question waiting. Meanwhile the line turns light red ("3.3 °F above target · heating by hand", "Near the boil · heating by hand") and stays so for as long as it's true, after OK too. The alarm comes at most twice in one stretch of heating by hand, once past the target and once near the boil, so an OK'd one left unheeded comes back before the water boils. MANUAL never stops the element itself: that would be a second AUTO nobody can see. The boil kettle with its target at BOIL, or none, boils by hand without a caution, as a boil kettle should. A line and an alarm only help someone who sees or hears them: a real limit belongs in the rig. The rule began on 13 Nov with "Oh! I turned the HLT element on without using 'Auto'... that is dangerous", then "same issue with HLT, I see. Maybe a warning?"
+
+**The Usual Mode Rule (22 Nov 2026).** Where a vessel is in MANUAL while AUTO would usually run it, its MODE says so, in the window where the brewer already looks: MAN boxed in Prompt Amber (amber letters in a 2px amber frame with rounded corners), moving nothing. On the boil kettle that is MANUAL with a probe reading AUTO could work from, while its element heats by hand or a step that boils or holds a temperature in it runs (the Boil, a whirlpool held at 170 °F). Not otherwise: MAN is the kettle's resting state for most of a brew day, and a box shown all the time would be ignored. Not while the boil waits for the brewer to start it, as nothing heats then in either mode; not with no reading, as MANUAL is then the only way to heat; not with no connection. It is no caution and makes no sound, since heating by hand is allowed: it says only that BoilPower isn't running the kettle, which its tooltip and the screen reader put in words ("In MANUAL, BoilPower isn't running the boil kettle, as it does in AUTO."). Amber because it waits on the brewer, as AUTO with no target does (The Mode Tells The Truth Rule), and the frame says it without colour, as a control room marks a controller out of its usual mode. On 22 Nov a simulator's boil kettle heated by hand at 70 % while the brewer thought BoilPower was running it, and he asked: "make the 'MAN' under MODE yellow or some other indication that I'm not using auto when I probably should be".
+
+**The Start Over Rule (13 Nov 2026).** Once nothing runs and some step has begun, STOP's place holds RESET, "back to step 1". A reset can't be undone: CraftBeerPi forgets which steps are done, the minutes the stopped step had run (a 40 min rest stopped at 16 runs all 40 again) and what the steps kept about this brew, and takes down the brew's questions. So RESET asks first, in the recipe column, saying what CraftBeerPi forgets and what stays: "Kettles, pumps and timers stay as they are." Its answers say what each does, RESET TO STEP 1 and STAY AT STEP 3, with no default. RESET TO STEP 1 switches nothing: the same recipe stays loaded, every step not started, waiting for a held START, and NEXT STEP greyed until then. To switch everything off there is ALL OFF; for another recipe, the RECIPE BOOK tab, or UNLOAD to brew by hand (The Way Out Rule). LOG says "Recipe reset to step 1", "confirmed" here or "from another screen"; the questions taken down say "no longer needed". The graphs lose their step marks, which CraftBeerPi forgets too. On 13 Nov the brewer wrote "Seems to me that there needs to be a way to reset the brewday progress after hitting Stop", and chose "The same recipe, back at step 1, waiting for START".
+
+**The Way Out Rule (UNLOAD, 22 Nov 2026).** A loaded recipe can always be taken off Brew Day, from the same place: UNLOAD at the end of its status line. CraftBeerPi empties the brew steps (POST /step2/clear), the column brews by hand, and LOAD in its recipe book is the way back. The rules are the recipe pages' own, for LOAD and UNLOAD alike, so every screen behaves the same. A recipe not begun (loaded, or reset to step 1) goes with one tap, because the Recipe Book still has it as it was saved. What was changed on the loaded copy since loading goes with it (BrewStart's ready-by time, water and grain temperature, a strike temperature set by USE), and the strike water helper starts a new day for the next recipe: a question every time would become a habit, and START protects them, as BrewStart waiting counts as running. A recipe the Recipe Book doesn't have (steps built on Brew Steps and never saved there) couldn't be loaded again, so UNLOAD asks even before it begins: "Unload the recipe and brew by hand? It isn't in the Recipe Book, so it can't be loaded again. Kettles, pumps and timers stay as they are.", UNLOAD and DON'T UNLOAD, as the pre-brew check's DON'T START. The screen finds it in the book by name, or by the book file CraftBeerPi records with it once it does; while it can't tell (the book not read yet, or not readable) it asks, with "The Recipe Book can't be checked right now, so it may not be there to load again." in that sentence's place. Once a brew has begun and nothing runs (stopped, a step that failed, the boil waiting for you), it asks as RESET does, since CraftBeerPi then forgets how far the brew got: "Unload the recipe and brew by hand? CraftBeerPi forgets it stopped at step 3, Saccharification, after 16 of its 40 min. The Recipe Book keeps the recipe. Kettles, pumps and timers stay as they are.", UNLOAD and STAY AT STEP 3, with no default. While a step runs it's greyed and says what runs, ending "Stop it first." Nothing switches: kettles, pumps and timers stay as they are, and to switch everything off there is ALL OFF. The brew's questions are taken down, and their lines say "no longer needed". While UNLOADING… waits, START, RESET, NEXT STEP, USE and BACK TO wait with it, greyed; and UNLOAD is greyed while any of them, or the pre-brew check, waits. LOG says "Craftbeerpi Test Recipe v5 unloaded: Brew Day is brewing by hand", "confirmed" here; an unload on another screen (the recipe pages, the old Brew Steps page's Clear, another Brew Day) gets one line, "Craftbeerpi Test Recipe v5 unloaded", "from another screen". CraftBeerPi refuses it while a step runs (409 step_running), which only a screen that hadn't caught up meets: nothing changes, CraftBeerPi's sentence shows under the buttons for 6 s ("Saccharification is running. Stop it before unloading the recipe.", from core 4.7.7.post58), and its notice, "Recipe not unloaded", goes in LOG as its others do. No answer is a failed command: LOG says "failed: no answer in 5 s", and the title bar's alarm says what is in force, "Craftbeerpi Test Recipe v5 did not unload. It is still loaded.", with TRY AGAIN. LOAD on Brew Day follows the same book rule: over a recipe the Recipe Book doesn't have (a finished one, under the by-hand list), it asks in the list's place: "Load Craftbeerpi Test Recipe v5 in place of Rye Pale Ale? Rye Pale Ale isn't in the Recipe Book, so it can't be loaded again. SAVE TO BOOK on Brew Steps keeps it. Kettles, pumps and timers stay as they are.", LOAD INSTEAD and DON'T LOAD; for steps with no name, "… in place of the steps on Brew Day? They aren't in the Recipe Book, so they can't be loaded again. SAVE TO BOOK on Brew Steps keeps them. …". Over a recipe the book has, or none, LOAD is one tap. On 22 Nov the brewer found no way to abort a recipe once it was loaded (Test Recipe v5, not begun, on 8012).
+
+**The One Clock Rule (22 Nov 2026).** Brew Day has one clock, CraftBeerPi's (cbpi.api.clock), and every time it shows is on it: the title bar's clock, LOG's times, the graphs' times, STARTS, ready by and estimated completion, and every count CraftBeerPi keeps (the step and rest timers, the timers, the boil's pause, how long CraftBeerPi has been working USE out). Nothing reads the PC's or the phone's clock. On the rig CraftBeerPi's clock is the Pi's, so nothing changes there. A simulator's runs SIM_TIME_SCALE times as fast from the moment it starts, so its time and date soon leave the screen's. The title bar then adds CraftBeerPi's date where it isn't the screen's, and its speed where it isn't 1×: "THU 26 NOV · 60× SPEED". While it does, a LOG line from another of CraftBeerPi's days says its date: "26 Nov 23:58:40". Until CraftBeerPi has said where its clock is, the title bar shows "– –:– –" rather than another clock's time. The screen asks when the page opens, once a minute and when the connection comes back, and counts on between. Only the screen's own waits are in real seconds, at any speed: a held START, the 10 s UNDO, the 5 s wait for an answer, a note's 6 s, the beep every 3 s while an alarm waits, CHECKING…'s 6 s and "Last reading N s ago". On 22 Nov the brewer set a BrewStart to start at 12:04 on 8012 and pressed START. CraftBeerPi's clock, at 60×, read 26 Nov 07:22, and BrewStart began 4.7 real minutes later, while the title bar said about 10:05. His rule for the simulators is that "60x should give same results 60x faster".
+
+**The Measured Value Rule (22 Nov 2026).** A reading the brewer measures is never filled in for him. A pH box that opened at 5.40 could be saved without measuring, and BrewScribe's report would keep the guess as a reading. So a reading starts empty; the keys start near the likely figure (the recipe's target, else 5.40), so stepping to it is short; and SAVE names the figure it saves, "SAVE pH 5.42", before it is pressed. A target, by contrast, starts from what is set, as TARGET's box does, because changing a set figure is the job there.
+
+**The Warn, Never Block Rule (pre-brew check, 17 Nov 2026).** A check before a start warns and never blocks. It names what didn't pass in the brewer's words, says what to do, and offers START ANYWAY, held as START is. It says no more than it checked: a probe gives a reading, never that it works, since one stuck on an old reading still gives one, and it switches nothing to test it; the switches are the brewer's to check. It is a notice, not an alarm: no sound and nothing in the title bar, because an unmet start condition needs nothing until someone tries to start (ISA-18.2). Where a difference has an ordinary cause, it says so in the plain colour: probes a few degrees apart are likely where the vessels sit, so amber is kept for what no room explains (The Amber Means Waiting Rule).
+
+**The Offer, Don't Apply Rule (strike water, 20 Nov 2026).** A figure the screen works out is offered, never applied by itself: the strike water helper was asked for on that condition ("never set the HLT's target by itself"), and it changes nothing until USE is pressed. The offer says what it is and what it aims at ("USE 132.4 °F · aims under the rest"). Pressed, the change shows where it lands (the step list, SV and LOG), and the same place then offers BACK TO, so one tap undoes it and nothing asks first. The figure errs to the side that can be put right: the HERMS can heat a mash but can't cool one, so USE allows for every case nobody has ruled out, anywhere in the ranges the rig hasn't been measured to, and takes the mash no higher than water heated only to the rest would; it says it "aims under the rest" rather than promising it never goes over. While parts of the rig are unmeasured the forecast is a range, and it says which numbers are measured, which are guesses with their ranges, and where each came from, so trust in it can match how good it is (Lee and See). A missing number is named, never guessed. A figure worked out from numbers that have changed since is never offered as if current: until the new one comes it's greyed, and CraftBeerPi refuses it if it's sent.
+
+**The Trend In The Window Rule.** A vessel's temperature history belongs in its own PID window, under the PV and SV it explains, on its own scale, with real gridline values and clock times. Never a separate chart panel, never one plot shared by the three vessels, never a bare sparkline. The three graphs always show the same span.
+
+**The Pumped-Only Flow Rule.** A pipe shows its liquid's colour and moves only while CraftBeerPi reports its pump running, and only along the branches its hand valves are drawn open for (The Hand Valve Rule). Before a start is confirmed, and whenever the connection is lost, the pipe stays still and slate. CraftBeerPi can't see a pump's own override switch, so a pump that has one says so under its label instead of the drawing guessing.
+
+**The Hand Valve Rule.** CraftBeerPi can't see the hand valves, so the drawing never claims to know them: it draws them as the recipe needs them and says so under the boil kettle. From the start of the runoff step until the boil starts, including the hold at "Ready to boil?", the wort goes to the boil kettle and the HLT pump's water goes through the HERMS coil and on into the top of the mash tun: the brewer fly sparges (9 Nov), through the coil (13 Nov). The runoff step is a SpargeStep, whatever its name, or a step named for the runoff (a name starting Sparge, Fly Sparge, Batch Sparge, Continuous Sparge, Lauter or Runoff), the same test as the core's first-wort reminder. That holds even while the mash tun's AUTO still runs the wort pump for the HERMS. A SpargeStep is the exception at its start: while it heats the sparge water and waits for "Sparge started", the brewer hasn't switched anything yet, so the drawing stays on recirculating and, once it waits for the brewer, marks the valves to change in Prompt Amber; it shows the runoff from the press on. One set of valves serves a fly and a batch sparge, because only the running pump's line lights. At any other time, and with no recipe, the drawing shows recirculating.
+
+**The Hoses Rule (core 251edbf, 11 Nov 2026).** When a hose has to move, CraftBeerPi switches its pump off, not the screen: the wort pump as a SpargeStep starts, the HLT pump as the sparge water is ready and the step asks "Sparge started", the HLT pump as the runoff ends (the wort pump runs on, draining the mash tun), and whichever still runs as the boil starts. The screen shows the lamp go to OFF and says why in CraftBeerPi's own words: the sparge question names the pumps that are off ("…ready at 168 °F, and both pumps are off."), and the event line carries CraftBeerPi's notification word for word. The brewer starts the pumps again by hand. The request, on 11 Nov, was "Any time I need to change hoses or "valves" that respective pump should be off".
+
+## Do's and Don'ts
+
+### Do:
+- **Do** give every vessel a PID faceplate: PV in Process Red (#ff4b3e) at about twice the size of the SV in Setpoint Green (#3ddc6f), in a black window, with OUT and MODE beside them.
+- **Do** put each vessel's temperature graph in its PID window under its PV and SV: PV red, SV green, OUT as an orange band, its own scale, and 10 MIN, 30 MIN and DAY beside it; tapping any graph steps all three to the next span.
+- **Do** top every equipment control with an 8px lamp strip and write the state on the same button: HEATING, RUNNING, OFF, DID NOT STOP. Leave a number the window already shows off the button (the element's power is OUT).
+- **Do** require a one-second held press (pointer, Space or Enter) to switch on an element, a vessel's AUTO or the recipe, or to start the boil from its question, and make switching off and stopping a single tap.
+- **Do** give a long question the banner's whole width for its words on a phone, with its buttons under them, and the title bar's second row to itself up to 1023px wide.
+- **Do** show the boil power, the setting, as the boil kettle's green readout while its target is BOIL (BOIL 45 %), with OUT beside it for what the element is doing; settable at any time, also while a recipe runs: −5 %, −1 %, +1 % and +5 % beside the element in AUTO (in a row of their own under the mode row where they don't fit beside it), and the framed readout itself (or BOIL POWER in TARGET's editor) for an exact number.
+- **Do** give the boil kettle the HLT's TARGET, with BOIL as one more value, and let a temperature below BOIL read exactly like the HLT's: SV, OUT and the HLT's lines.
+- **Do** show KEEP BOILING only while the target is BOIL; a hold never uses it.
+- **Do** let a tap on the boil element in AUTO pause the heat for a boil-over, show PAUSED in Prompt Amber and count the pause on the line under the window.
+- **Do** show each command's outcome on its own button: marching stripes while waiting, the new state once confirmed, a 2px red outline and "tap to try again" when it fails.
+- **Do** keep unavailable controls visible and explain why when they are tapped, in the note line (#ffd9a0) or a toast.
+- **Do** say on the line under the window, in Prompt Amber, when a vessel's AUTO runs with no target, and what won't heat because of it.
+- **Do** say on the line under the window, in Prompt Amber, while an element heats by hand, that nothing will stop it; in light red once it's past its target or near the boil, with CraftBeerPi's error in the title bar.
+- **Do** box the boil kettle's MAN in Prompt Amber while it heats by hand, or while a step that boils or holds in it runs, and only then.
+- **Do** put REMOVE on every timer's row, one tap, and keep the row's place for 10 real seconds with UNDO.
+- **Do** keep the recipe on the brew-day screen: down the left on a monitor, below the faceplates on narrower screens.
+- **Do** colour and animate a pipe only while its pump is confirmed running: cyan (#46b8ea) for hot liquor, gold (#e9b33b) for wort.
+- **Do** draw the hand valves as the recipe needs them and say so under the boil kettle ("VALVES ARE SET BY HAND"); CraftBeerPi can't see them.
+- **Do** grey out readings and show their age when the connection is lost, stop the pipes and pause the controls.
+- **Do** keep tap targets at least 44px tall: lamp buttons 72px and command buttons 62px on a monitor (66px and 56px when the screen is 1000px tall or less), 56px and 50px on a phone.
+- **Do** set vessel names, tags, tabs and button labels in Barlow Condensed capitals, and give every changing number tabular figures.
+- **Do** show the brewery's name from Settings in the title bar at every width, phone included: it is what tells the rig from a simulator.
+- **Do** show every time on CraftBeerPi's clock, and on a simulator say its date and speed beside the title bar's time.
+- **Do** say before the press when a tab opens another program in a browser tab of its own: an icon after its name, and words for screen readers.
+- **Do** change a question's line in the event log from "waiting for you" to "answered" or "no longer needed" once it goes, in the plain colour, so Prompt Amber in the log always means something still waits.
+- **Do** log lines that arrive together in the order things happened: a step's change, then what CraftBeerPi says because of it.
+- **Do** put RESET in STOP's place once nothing runs and some step has begun, and make it ask first, saying what CraftBeerPi forgets and that kettles, pumps and timers stay as they are.
+- **Do** show the web UI's and CraftBeerPi's versions in the recipe column's last line, in Fine Print, as text that can be copied; on a monitor let it step aside while the column needs its room.
+- **Do** check, when START is held on a recipe not begun, what CraftBeerPi can sense: a reading from every probe, the clock, a reminder for every boil addition. Name what didn't pass, with what to do, and offer START ANYWAY, held.
+- **Do** compare the probes on their own readings, without their offsets, and say that a few degrees apart is likely where a vessel sits, in the plain colour; amber only past 10 °F, or at a reading no room has.
+- **Do** offer a worked-out figure on a button that says what it is and what it aims at (USE 132.4 °F, "aims under the rest"), apply it only when pressed, show the change where it lands, and put BACK TO in the same place.
+- **Do** say, while a figure is being worked out, that it is and for how long so far; keep the last figure in grey, say what it was for, and grey the button that would send it.
+- **Do** keep a box's action in reach while its details scroll: with FORECAST open, the window, USE or BACK TO and CLOSE stay put, and only the details move.
+- **Do** give a box opened in the recipe column the step list's room and, on a monitor, the timers' too, so it is never squeezed to a sliver and the page never grows; a timer that runs out meanwhile still shows in the title bar.
+
+### Don't:
+- **Don't** show vessel temperatures as dial gauges or needles; the brewer turned them down.
+- **Don't** plot the three vessels' temperatures on one shared scale; the brewer turned that down too.
+- **Don't** draw a graph without its scale and times, or move the graphs out of the faceplates into a panel of their own.
+- **Don't** draw the vessels as shaded or realistic steel kettles; the rig is a clean line drawing.
+- **Don't** make the SV as big as the PV, or swap their colours.
+- **Don't** fall back to a grid of cards with numbers and toggle switches, or anything else that looks like a generic web app.
+- **Don't** use red for off or stop. Red is the PV and faults; off is a dark grey lamp strip (#3a4856).
+- **Don't** let colour be the only sign of a state.
+- **Don't** call a vessel MANUAL anywhere while its MODE says AUTO; AUTO with no target is still AUTO.
+- **Don't** make MANUAL switch an element off at the target: that is a second AUTO nobody can see. Say instead that nothing will stop it, and alarm when it's past.
+- **Don't** let a single tap or click switch on an element, a vessel's AUTO or the recipe, or start the boil; and don't offer NEXT STEP while the boil waits or on a recipe not begun, since CraftBeerPi would start the boil, or the first step, with it.
+- **Don't** make RESET switch anything off, or put the recipe away: it puts the steps back to not started, nothing more. ALL OFF switches things off.
+- **Don't** put the boil power behind the element's button or lock it while a recipe step runs; the brewer turns the boil down mid-recipe.
+- **Don't** take OUT off a vessel's window: it is the element's power now, and on the boil kettle it differs from the green boil power while it heats up, pauses or runs in MANUAL. OUT was put back on 11 Nov 2026 when the brewer wrote: "BoilPower's display has lost its current 'out' element power number? Please put it back". Don't put the % back on the element's button either: "I'd like the "HEATING xx %" button to only show HEATING".
+- **Don't** show the boil point as the boil kettle's SV while its target is BOIL: BoilPower doesn't hold that temperature, it only stops full power there. Show the boil power.
+- **Don't** make the HLT's or the mash tun's readings into buttons; only the boil power, which has no room beside AUTO/MANUAL, is one.
+- **Don't** switch to a light theme; the dark panel is the brewer's stated preference.
+- **Don't** remove controls on a phone; the phone drops only the drawing.
+- **Don't** use blue for equipment state; blue is for where you are and what you are choosing.
+- **Don't** play a sound as feedback for a press, SOUND included. A sound means something needs the brewer: a timer that has run out, or a new alert, question or error. Answering one question doesn't make the next one beep as it comes up. To hear the sound on purpose, Settings has Try.
+- **Don't** let anything that holds nothing up (a reminder, a plugin's question) stand in the title bar in front of what the brew waits on, a hop to add or a timer that has run out.
+- **Don't** draw the wort pump going through the HERMS coil, or anywhere on the mash tun's side, once the boil has started; and don't run new pipes across the drawing to reach the boil kettle. As the brewer put it: "I don't want the symbols to become too chaotic."
+- **Don't** let a pre-brew check block a start, make a sound or take the title bar; and don't say a probe works, because one stuck on an old reading still gives a reading.
+- **Don't** call a probe off for a difference a room can explain, or compare probes with their offsets in: an offset set for brewing would read as a fault on every brew day.
+- **Don't** let a helper change a target or a recipe's plan by itself, or ask "Are you sure?" before a change that one tap undoes.
+- **Don't** promise more than a forecast with unmeasured parts can keep, or guess a number that's missing: "aims under the rest", not "never over", and say what's missing.
+- **Don't** call PID_HERMS's own overshoot the strike's doing: amber is for a strike that takes the mash over the rest beyond what water heated only to the rest would.
+- **Don't** give two different jobs one word: COMPARE PROBES' DONE adds the readings to LOG, so a button that only closes says CLOSE.
+- **Don't** read the PC's or the phone's clock for a time shown on Brew Day: on a simulator it isn't CraftBeerPi's, and the brewer would plan by the wrong one.
+- **Don't** save a day as Today or Tomorrow from Brew Day: BrewStart counts those from START, so save the date the box shows.

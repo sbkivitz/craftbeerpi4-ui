@@ -1,0 +1,70 @@
+{
+  "title": "Choose the look for the brew-day screen",
+  "question": "This is the direction I'd build: kettle dials. Keep it, take one of the alternates, or ask for a fresh set.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Kettle dials",
+      "kicker": "THE DIRECTION",
+      "lineage": "The dial thermometer on a brew kettle, with an instrument's setpoint marker",
+      "thesis": "Each vessel is the dial you already read on the kettle: a needle for actual, a marker on the rim for target.",
+      "palette": ["#D3D7DA", "#F7F6F1", "#141618", "#D8461B", "#1C7A43"],
+      "materials": ["white enamel dial faces", "brushed stainless panel", "engraved nameplates", "pilot lamps"],
+      "viewport": "Three big dials in rig order (HLT, mash tun, boil kettle), big actual and target digits under each, labelled switches with lamps, and the current step along the bottom.",
+      "risk": "Dials need room: three must fit a desktop screen with their controls, and on a phone they drop to one per row."
+    },
+    {
+      "id": "challenger-safety-yellow",
+      "label": "Safety-yellow signage",
+      "kicker": "ALTERNATE",
+      "lineage": "Airport overhead sign bands, fused with brewery safety marking",
+      "thesis": "Each vessel hangs under a yellow sign band with its temperature at gate-number size and one message: what it's doing and what's next.",
+      "palette": ["#FFCC00", "#0B0B0B", "#FFFFFF", "#E6E6E6"],
+      "materials": ["matte yellow sign panels", "black pictogram insets", "powder-coated frames"],
+      "viewport": "Three yellow bands across the top with huge black temperatures; arrows show the flow from HLT to mash to boil; the next step is the biggest message.",
+      "risk": "Yellow fills the screen, so warnings need a different signal, and it reads as plant signage more than kettle hardware.",
+      "case": "Fuses cleanly: huge numbers read from anywhere in the garage, but it speaks an airport's language, not a brewery's.",
+      "hero": "https://impeccable.style/worlds/cards/wayfinding-cartography-signage-terminal-yellow-wayfinding-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/wayfinding-cartography-signage-terminal-yellow-wayfinding.webp"
+    },
+    {
+      "id": "challenger-temperature-rail",
+      "label": "One temperature rail",
+      "kicker": "ALTERNATE",
+      "lineage": "A spectrograph's calibrated rail, fused with the HERMS",
+      "thesis": "All three vessels sit on one shared temperature scale, so you see the HLT running ahead of the mash at a glance.",
+      "palette": ["#1E1F21", "#2B2C2E", "#E6E1D6", "#F4C430", "#6EC1E4"],
+      "materials": ["charcoal ground", "hairline marks", "bone-white legends"],
+      "viewport": "One long rail across the screen from 60 to 215 °F; each vessel's actual and target are lines on it, with big digits above.",
+      "risk": "State lives in hairlines (solid, dashed, doubled) that fade from across the garage, and it looks like lab gear, not brewing kit.",
+      "case": "Fuses poorly because hairline state vanishes at a distance; the shared scale is the idea worth keeping.",
+      "hero": "https://impeccable.style/worlds/cards/operate-c-emission-line-rail-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/operate-c-emission-line-rail.webp"
+    },
+    {
+      "id": "challenger-dot-matrix",
+      "label": "Dot-matrix readouts",
+      "kicker": "ALTERNATE",
+      "lineage": "Emigre's bitmap type specimens, fused with controller LED displays",
+      "thesis": "Temperatures set in coarse pixel numerals at poster size, like a controller's dot-matrix display blown up.",
+      "palette": ["#F2F0EB", "#0A0A0A", "#E5011A"],
+      "materials": ["newsprint", "dot-matrix texture", "halftone"],
+      "viewport": "Huge pixel-numeral temperatures for each vessel in a ruled grid, with red kept for anything switched on.",
+      "risk": "It reads as 1990s graphic design rather than equipment, and its type-specimen grammar has nothing to switch or sequence.",
+      "case": "Fuses awkwardly: the pixel numerals echo controller displays, but the rest of its grammar is editorial.",
+      "hero": "https://impeccable.style/worlds/cards/emigre-bitmap-specimen-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/emigre-bitmap-specimen.webp"
+    }
+  ],
+  "reroll": true,
+  "canon": true,
+  "canonCard": {
+    "label": "The category standard",
+    "thesis": "What brewing-controller apps ship: vessel cards, a step list and a chart, done well.",
+    "palette": ["#1F2328", "#2D333B", "#E6EDF3", "#3FB950"],
+    "materials": ["flat cards", "toggle switches", "line chart"],
+    "viewport": "Three vessel cards across the top with toggles, the step list at the side, a temperature chart below.",
+    "risk": "Familiar and the quickest to build; it is also the closest to the generic web-app look you said would feel wrong."
+  },
+  "steer": true
+}

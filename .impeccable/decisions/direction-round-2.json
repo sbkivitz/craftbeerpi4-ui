@@ -1,0 +1,70 @@
+{
+  "title": "Pick a model from professional brewhouse software",
+  "question": "Four options modeled on professional brewhouse control software, all showing the same moment mid-mash with both pumps running. Pick one, or use the box to combine them. My suggestion: the process mimic (1) for the plumbing, with option 2's huge numbers and range bars, keeping colour for heat, pumps and alarms only.",
+  "options": [
+    {
+      "id": "option-1-process-mimic",
+      "label": "1: Brewhouse process mimic",
+      "kicker": "LIKE SIEMENS BRAUMAT",
+      "lineage": "The process pictures in brewhouse SCADA (Siemens BRAUMAT, WinCC)",
+      "thesis": "Your rig drawn as it is plumbed: both pump loops, the coil in the HLT, a tag box of live values beside each vessel.",
+      "palette": ["#C9CDD0", "#B7BCC0", "#1A1D20", "#E07A1F", "#2E9E4F"],
+      "materials": ["process graphic", "instrument tag boxes", "device faceplates", "event line"],
+      "viewport": "HLT, mash tun and boil kettle across the screen with the HLT-pump and wort-pump loops drawn; screen tabs on top; the current step and an event list at the bottom; clicking a device opens its faceplate.",
+      "risk": "The temperatures in the tag boxes are too small to read across the garage, and tag numbers like P-201 are jargon until learned.",
+      "case": "The most 'real brewhouse' of the four; the numbers need to grow before it meets your big-numbers rule.",
+      "hero": ".impeccable/mocks/option-1-process-mimic.png"
+    },
+    {
+      "id": "option-2-high-performance",
+      "label": "2: High-performance overview",
+      "kicker": "LIKE ISA-101 HMI",
+      "lineage": "ISA-101 high-performance HMI (as in Rockwell PlantPAx, Ignition templates)",
+      "thesis": "Grey when things are normal, colour only when something needs you, and every temperature shown against its target band.",
+      "palette": ["#D9DADB", "#C6C8CA", "#111315", "#F2B705", "#C62828"],
+      "materials": ["greyscale panels", "range bars", "per-vessel trends"],
+      "viewport": "Three columns, one per vessel, each with a huge actual temperature, its setpoint, its own range bar, equipment rows and a 30-minute trend; alarms and the current step across the top.",
+      "risk": "With no colour for normal running, an element that is on looks the same as a running pump, and the plumbing isn't shown.",
+      "case": "The easiest to read from across the garage; the calm grey can under-sell the one thing that matters most, a live element.",
+      "hero": ".impeccable/mocks/option-2-high-performance.png"
+    },
+    {
+      "id": "option-3-batch-board",
+      "label": "3: Batch board",
+      "kicker": "LIKE BATCH CONTROL",
+      "lineage": "Brewery batch control (BRAUMAT unit overview and graphical recipe, ISA-88)",
+      "thesis": "One row per vessel with its step, time left, values and commands, beside the recipe as a numbered step chain.",
+      "palette": ["#F3F4F5", "#3E5C76", "#111315", "#2E7D32", "#F2B705"],
+      "materials": ["unit table", "step chain", "operator prompts", "event list"],
+      "viewport": "Unit rows (HLT, mash tun, boil kettle) with state, step, time left, big actual and setpoint, equipment and Hold, Next step and Stop; the recipe's steps down the right with the active one highlighted.",
+      "risk": "On hand-run days the step chain and step columns are empty, and it reads like a spreadsheet from a distance apart from the big numbers.",
+      "case": "Best for recipe days and closest to mockup 03 you liked; the event list must stay a command log, not a brew record (BrewScribe's job).",
+      "hero": ".impeccable/mocks/option-3-batch-board.png"
+    },
+    {
+      "id": "option-4-touch-panel",
+      "label": "4: Brewhouse touch panel",
+      "kicker": "LIKE A CABINET HMI",
+      "lineage": "The touchscreen in a craft brewhouse control cabinet (PanelView-style)",
+      "thesis": "Chunky labelled buttons with lamp strips, big white-on-black readouts and screen tabs, like the panel on a 10-barrel brewhouse.",
+      "palette": ["#1E2A36", "#2C3A48", "#0B0F14", "#F28C28", "#3DDC5A"],
+      "materials": ["dark slate panel", "lamp-strip buttons", "black readout boxes", "screen tabs"],
+      "viewport": "The three vessels drawn across the middle with big readouts under each, buttons stating HEATING 62 %, RUNNING or OFF, the step bar on top and tabs along the bottom.",
+      "risk": "The rendered steel tanks are the hardest part to build well, and a dark screen fights your lit garage.",
+      "case": "The most 'equipment' feel and the clearest buttons; the HERMS loop drawing in it is muddled and would need redrawing.",
+      "hero": ".impeccable/mocks/option-4-touch-panel.png"
+    }
+  ],
+  "reroll": true,
+  "canon": true,
+  "canonCard": {
+    "label": "The standard option (for comparison)",
+    "thesis": "What brewing-controller apps ship: vessel cards with toggles, a step list and a temperature chart, done well.",
+    "palette": ["#1F2328", "#2D333B", "#E6EDF3", "#3FB950"],
+    "materials": ["flat cards", "toggle switches", "line chart"],
+    "viewport": "Three vessel cards across the top, the recipe's steps on the right with Start, Next and Stop, and a two-hour temperature chart below.",
+    "risk": "Familiar and quick to build, but its toggles act on the first click (defect U2) and it is the generic-app look you said would feel wrong.",
+    "sketch": ".impeccable/mocks/standard-category.png"
+  },
+  "steer": true
+}

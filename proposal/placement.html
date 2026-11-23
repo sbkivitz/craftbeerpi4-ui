@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Where should the timers live? · CraftBeerPi brew-day screen (proposal)</title>
+<!--
+One page for the brewer to choose where the timers live, so the current recipe step is always in view (22 Nov 2026,
+TIMER-PLACE.md). Three live copies of the mockup side by side, each a whole screen: A, the timers in the recipe column,
+shrinking to small tiles when the step needs the room (?col=new); B, beside the last event under the title bar
+(?col=new&tplace=event); C, in a bar along the bottom (?col=new&tplace=bottom). One set of moment and screen buttons
+for all three, a line on each, my pick marked, and one question. The answer is kept in this browser, to send to Brett.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;display:grid;grid-template-rows:auto minmax(0,1fr);background:#080c10;color:#e8eef3;font:500 16px/1.4 "Barlow","Segoe UI",system-ui,sans-serif}
+:focus-visible{outline:3px solid #2a6fc0;outline-offset:2px}
+.bar{display:grid;gap:8px;padding:12px 16px;background:#f2efe6;color:#1d232a;border-bottom:2px dashed #1d232a}
+.bar h1{margin:0;font:700 20px/1.15 "Barlow",sans-serif}
+.bar p{margin:0;font-size:15px;max-width:980px}
+main{min-height:0;overflow:auto;padding:16px 18px 40px}
+.ctl{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin:0 0 10px}
+.grp{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.grp>span{font-weight:600;color:#c9d6e2;margin-right:2px}
+.grp button{min-height:40px;padding:0 12px;border:1px solid #3b4d5e;border-radius:6px;background:#162029;color:#e8eef3;font:600 15px/1 "Barlow",sans-serif;cursor:pointer}
+.grp button:hover{background:#203040}
+.grp button[aria-pressed=true]{background:#e8eef3;color:#10161c;border-color:#e8eef3}
+.hint{max-width:980px;margin:0 0 16px;color:#c9d6e2}
+.hint b{color:#fff}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,520px),1fr));gap:26px 22px;align-items:start;margin:0 0 22px}
+.opt{margin:0;display:grid;gap:8px;align-content:start;min-width:0}
+.opt h2{margin:0;font:700 21px/1.1 "Barlow Condensed",sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#fff}
+.opt h2 .rec{vertical-align:3px}
+.opt p{margin:0;color:#c9d6e2;font-size:15px;line-height:1.4}
+.opt p b{color:#fff}
+.opt p.cost{color:#a9b8c6}
+.opt p.cost b{color:#ffd9a0;font-weight:600}
+.opt a{color:#9fd0ff;font-size:15px}
+.opt[data-pick] .cut{box-shadow:0 0 0 2px #2b6a42,0 18px 44px rgb(0 0 0/.5)}
+.cut{position:relative;overflow:hidden;border-radius:8px;background:#0f161d;box-shadow:0 0 0 1px #2a3b4b,0 18px 44px rgb(0 0 0/.5)}
+.cut iframe{position:absolute;left:0;top:0;border:0;transform-origin:0 0;background:#0f161d}
+.qs{display:grid;gap:14px;max-width:980px;margin:0 0 8px;padding:16px;border:1px solid #2a3b4b;border-radius:8px;background:#0f161d}
+.qs h3{margin:0 0 4px;font:700 19px/1.3 "Barlow",sans-serif;color:#fff}
+.qs p{margin:0;color:#c9d6e2}
+.choices{display:grid;gap:8px}
+.choices button{display:grid;gap:3px;justify-items:start;min-height:52px;padding:10px 14px;border:1px solid #3b4d5e;border-radius:6px;background:#162029;color:#e8eef3;text-align:left;font:600 17px/1.3 "Barlow",sans-serif;cursor:pointer}
+.choices button:hover{background:#203040}
+.choices button small{font:500 15px/1.35 "Barlow",sans-serif;color:#a9b8c6}
+.choices button[aria-pressed=true]{background:#e8eef3;color:#10161c;border-color:#e8eef3}
+.choices button[aria-pressed=true] small{color:#33404d}
+.rec{display:inline-block;margin-left:8px;padding:2px 7px;border-radius:4px;background:#12301f;border:1px solid #2b6a42;color:#bff0cf;font:700 12px/1.2 "Barlow",sans-serif;letter-spacing:.06em;text-transform:uppercase;vertical-align:2px}
+.choices button[aria-pressed=true] .rec{background:#1f7a3f;border-color:#1f7a3f;color:#fff}
+.acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.acts button{min-height:44px;padding:0 16px;border:1px solid #e8eef3;border-radius:6px;background:#e8eef3;color:#10161c;font:700 16px/1 "Barlow",sans-serif;cursor:pointer}
+.said{color:#7ee2a0}
+</style>
+</head>
+<body>
+<header class="bar">
+  <h1>Where should the timers live?</h1>
+  <p>Three places for the timers, so the current recipe step is always in view. All three are live: tap them to try. My pick is marked. Then answer the one question at the bottom.</p>
+</header>
+<main id="main"></main>
+<script>
+"use strict";
+const SIZES = {window: ["Monitor", 1920, 950], laptop: ["Laptop", 1440, 900], small: ["Small window", 1180, 860], phone: ["Phone", 390, 844]};
+const OPTS = [
+  {id: "col", flag: "col=new", h: "A · In the recipe column, smaller",
+    p: "<b>The timers stay under the steps and shrink to small tiles when the current step needs the room.</b> One in its last 3 minutes grows back where the step still fits.",
+    cost: "The timers change size as the room changes, and a tile's buttons are a tap away."},
+  {id: "event", flag: "col=new&tplace=event", h: "B · Up top, beside the last event", pick: true,
+    p: "<b>The timers move to the line under the title bar, beside what happened last.</b> The recipe column is all recipe, so the current step always fits, and the steps after it get more room.",
+    cost: "That line has less room for its words: with four timers on a small window, only a few. REMOVE is a tap away."},
+  {id: "bottom", flag: "col=new&tplace=bottom", h: "C · A bar along the bottom",
+    p: "<b>The timers get a bar of their own along the bottom of the screen, each with its buttons.</b> The current step always fits.",
+    cost: "The drawing of the brewery shrinks to make room. On a small window it's too small to read."}
+];
+const SCENES = [
+  ["timers-fold", "Brew morning", "<b>Heating the strike water, with two timers.</b> This is when the recipe column is shortest: the strike water box is up. Look at the current step, Strike water, in each."],
+  ["timers", "The mash", "<b>The mash, with Stir counting down and Yeast set up for later.</b> Try PAUSE, REMOVE and UNDO."],
+  ["timer-done", "A timer runs out", "<b>Stir has run out.</b> Its alarm is in the title bar in all three. Look at where the timer itself is."],
+  ["timers-hand", "Brewing by hand", "<b>No recipe loaded, with three timers.</b> In B and C the recipe column shows the recipe book."]
+];
+const KEY = "bd-timers-place-22nov";
+let A = "";
+try { A = localStorage.getItem(KEY) || ""; } catch (_) { A = ""; }
+const S = {scene: SCENES[0][0], size: "window"};
+function readHash() {
+  const q = new URLSearchParams(location.hash.slice(1));
+  if (SCENES.some(s => s[0] === q.get("scene"))) S.scene = q.get("scene");
+  if (SIZES[q.get("size")]) S.size = q.get("size");
+}
+readHash();
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"})[c]);
+const src = (o, full) => `brew-day.html?${full ? "" : "bare&"}${o.flag}#${S.scene}`;
+function choiceHTML() {
+  return `<div class="choices" role="group" aria-labelledby="q-h">${[OPTS[1], OPTS[0], OPTS[2]].map(o => `<button type="button" data-a="${o.id}" aria-pressed="${A === o.id}"><span>${esc(o.h.replace(/^. · /, ""))}${o.pick ? '<span class="rec">My pick</span>' : ""}</span><small>${esc(o.p.replace(/<[^>]+>/g, ""))}</small></button>`).join("")}</div>`;
+}
+function render() {
+  const m = document.getElementById("main"), sc = SCENES.find(s => s[0] === S.scene);
+  m.innerHTML = `<div class="ctl"><div class="grp" role="group" aria-label="Moment"><span>Moment:</span>${SCENES.map(s => `<button type="button" data-scene="${s[0]}" aria-pressed="${s[0] === S.scene}">${s[1]}</button>`).join("")}</div>
+    <div class="grp" role="group" aria-label="Screen"><span>Screen:</span>${Object.keys(SIZES).map(z => `<button type="button" data-size="${z}" aria-pressed="${z === S.size}">${SIZES[z][0]}</button>`).join("")}</div></div>
+    <p class="hint">${sc[2]}${S.size === "phone" ? " <b>On a phone all three are the same as today:</b> the page scrolls, with the timers above the steps." : ""}</p>
+    <div class="opts" id="opts">${OPTS.map(o => `<figure class="opt" data-o="${o.id}"${o.pick ? " data-pick" : ""}><h2>${esc(o.h)}${o.pick ? '<span class="rec">My pick</span>' : ""}</h2><p>${o.p}</p><p class="cost"><b>The cost:</b> ${esc(o.cost)}</p>
+      <div class="cut"><iframe title="${esc(o.h)}" src="${src(o)}"></iframe></div><a target="_blank" rel="noopener" href="${src(o, true)}">Open the whole screen</a></figure>`).join("")}</div>
+    <section class="qs" aria-label="The question"><h3 id="q-h">Where should the timers live?</h3><p>Why I'd pick B: it's the only one where the current step never has to share its room with the timers, and nothing else on the screen gets smaller.</p>${choiceHTML()}
+      <div class="acts"><button type="button" id="copy">Copy my answer</button><span class="said" id="said" aria-live="polite"></span></div></section>`;
+  history.replaceState(null, "", `#scene=${S.scene}&size=${S.size}`);
+  fit();
+}
+/* each copy is a whole screen at the chosen size, scaled down to its card's width */
+function fit() {
+  const z = SIZES[S.size], w = z[1], h = z[2];
+  document.querySelectorAll(".opt").forEach(f => {
+    const cut = f.querySelector(".cut"), fr = f.querySelector("iframe"), s = Math.min(1, f.clientWidth / w);
+    fr.style.width = w + "px"; fr.style.height = h + "px"; fr.style.transform = `scale(${s})`;
+    cut.style.height = (h * s) + "px";
+  });
+}
+const answer = () => { const o = OPTS.find(x => x.id === A); return o ? `Where the timers live: ${o.h.replace(/^. · /, "")}${o.pick ? " (Amber's pick)" : ""}` : "Where the timers live: not answered yet"; };
+document.addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  if (b.dataset.scene) { S.scene = b.dataset.scene; render(); return; }
+  if (b.dataset.size) { S.size = b.dataset.size; render(); return; }
+  if (b.dataset.a) {
+    A = b.dataset.a; try { localStorage.setItem(KEY, A); } catch (_) {}
+    document.querySelectorAll("[data-a]").forEach(x => x.setAttribute("aria-pressed", x === b));
+    return;
+  }
+  if (b.id === "copy") {
+    const t = answer(), said = document.getElementById("said");
+    const ok = () => { said.textContent = "Copied. Paste it in your chat with Brett."; };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(ok, () => { said.textContent = t; });
+    else said.textContent = t;
+  }
+});
+addEventListener("resize", fit);
+addEventListener("hashchange", () => { readHash(); render(); });
+render();
+</script>
+</body>
+</html>

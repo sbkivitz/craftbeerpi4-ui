@@ -1,0 +1,1106 @@
+:root{
+  --bg:#0f161d;--bar:#0a1016;--panel:#17212b;--panel-2:#1e2b37;--line:#2a3b4b;--edge:#33475a;--face:#030609;
+  --text:#e8eef3;--text-2:#b6c3cf;--text-3:#8b9cad;
+  --pv:#ff4b3e;--sv:#3ddc6f;--heat:#ff7b1c;--run:#3ddc6f;--off:#566676;
+  --prompt:#ffb21e;--prompt-bg:#3a2a06;--alarm:#ff4a4a;--alarm-bg:#6e1414;
+  --select:#2a6fc0;--active:#1c5796;--liquor:#46b8ea;--wort:#e9b33b;
+  --steel:#7f91a3;--steel-hi:#9aabbc;--steel-lo:#5f7186;--pipe-idle:#3b4b5b;
+  --sans:"Barlow","Segoe UI",system-ui,sans-serif;
+  --cond:"Barlow Condensed","Roboto Condensed","Arial Narrow","Segoe UI",sans-serif;
+  --r:6px;--gap:12px;--pad:20px;--tabs-h:64px;--mock-h:38px;
+}
+html.bare{--mock-h:0px}
+*{box-sizing:border-box}
+html{color-scheme:dark;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:400 16px/1.35 var(--sans);-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid #8cc2ff;outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;margin:0;top:0;left:0}
+.num{font-variant-numeric:tabular-nums}
+
+/* mockup strip: deliberately not part of the design */
+.mock{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;min-height:var(--mock-h);padding:4px var(--pad);background:#f2efe6;color:#1d232a;border-bottom:2px dashed #1d232a;font:500 14px/1.2 var(--sans)}
+.mock a{color:#1d232a;padding:4px 8px;border-radius:4px}
+.mock a[aria-current=true]{background:#1d232a;color:#f2efe6;text-decoration:none}
+html.bare .mock{display:none}
+
+.app{display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;min-height:calc(100dvh - var(--mock-h))}
+
+/* top bar */
+.topbar{display:flex;align-items:center;gap:16px;padding:10px var(--pad);background:var(--bar);border-bottom:1px solid var(--line)}
+.topbar p{margin:0}
+.brand{display:flex;align-items:center;gap:12px;margin-right:auto!important;max-width:12em;font:700 clamp(22px,2.1vw,34px)/1 var(--cond);letter-spacing:.04em;text-transform:uppercase}
+.brand svg{width:clamp(24px,2vw,32px);height:auto;flex:none}
+/* the BREWERY_NAME setting: two lines at most, then an ellipsis; a long name is drawn smaller (data-long) */
+.brand .bname{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:break-word}
+.brand[data-long] .bname{font-size:.7em}
+.link{display:flex;align-items:center;gap:8px;font:600 16px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase;color:var(--text-2)}
+.link i{width:12px;height:12px;border-radius:50%;background:var(--run)}
+.link[data-link=lost]{color:#ffc9c4}
+.link[data-link=lost] i{background:transparent;border:3px solid var(--alarm);animation:blink 1s steps(2,start) infinite}
+.alloff{min-height:48px;padding:0 16px;border:2px solid #7d8fa2;border-radius:var(--r);background:var(--panel-2);color:var(--text);font:700 17px/1 var(--cond);letter-spacing:.06em}
+.alloff:not([aria-disabled=true]):hover{border-color:#ff8a80;background:#2b1315}
+.alloff[aria-disabled=true]{opacity:.5;cursor:not-allowed}
+.clock{font:600 clamp(26px,2.4vw,40px)/1 var(--cond);font-variant-numeric:tabular-nums;min-width:3.2ch;text-align:right}
+/* the title bar's clock: CraftBeerPi's (The One Clock Rule). On a simulator a tag beside the time gives its date, where
+   it isn't the screen's own, and its speed, Progress Blue on Progress Track Navy: the brew's time, not the room's. It
+   sits in the time's row, so the bar keeps its height; on a phone, under the time */
+.clock[data-sim]{display:flex;align-items:center;justify-content:flex-end;gap:10px}
+.clock .cd{order:-1;display:inline-block;padding:4px 7px 3px;border:1px solid #3c7fcc;border-radius:4px;background:#0d2b48;font:600 15px/1 var(--cond);letter-spacing:.08em;color:#9bcbff;white-space:nowrap}
+.clock .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* on a monitor or laptop only the alarm or prompt gives way to a long message in the title bar (it wraps): ALL OFF keeps
+   its shape and the clock its digits. Narrower, both still give way, so the prompt doesn't grow taller still */
+@media (min-width:1180px){.alloff,.clock{flex:none}}
+
+/* alarms and the last event */
+.status{display:grid;grid-template-columns:minmax(280px,34%) minmax(0,1fr);gap:var(--gap);padding:10px var(--pad) 0}
+.banner,.event{display:flex;align-items:center;gap:12px;min-height:58px;padding:8px 10px 8px 14px;border-radius:var(--r);background:var(--panel);border:1px solid var(--line)}
+.banner{font:600 18px/1.2 var(--cond);letter-spacing:.03em}
+.banner svg{flex:none;width:26px;height:26px}
+.banner[data-tone=ok]{color:var(--text-2)}
+.banner[data-tone=ok] svg{color:var(--run)}
+.banner[data-tone=prompt]{background:var(--prompt-bg);border:2px solid var(--prompt);color:#fff1d2}
+.banner[data-tone=prompt] svg{color:var(--prompt)}
+.banner[data-tone=alarm]{background:var(--alarm-bg);border:2px solid var(--alarm);color:#fff}
+.banner .msg{flex:1;min-width:0}
+.banner .msg b{display:block;font-size:20px;letter-spacing:.06em;text-transform:uppercase}
+.banner .act{position:relative;overflow:hidden;flex:none;min-height:48px;padding:0 20px;border:0;border-radius:var(--r);background:#f4f6f8;color:#10161c;font:700 18px/1 var(--cond);letter-spacing:.06em}
+/* an answer that puts heat on (START THE BOIL) is held, as START is, and says so under its name */
+.banner .act small{position:relative;display:block;margin-top:3px;font:500 13px/1.1 var(--cond);letter-spacing:.04em;color:#3a4652}
+.event{position:relative;font:500 18px/1.2 var(--cond);letter-spacing:.02em;min-width:0}
+.event .line{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.event time,.log time{color:var(--text-3);margin-right:10px;font-variant-numeric:tabular-nums}
+.res{color:var(--text-2)}.res.ok{color:var(--run)}.res.bad{color:#ff9b93}.res.wait{color:var(--prompt)}
+.logbtn{flex:none;min-height:44px;padding:0 14px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);font:600 16px/1 var(--cond);letter-spacing:.08em}
+.logbtn:hover{background:#253545}
+.log{position:absolute;right:0;top:calc(100% + 6px);z-index:40;width:min(640px,100%);margin:0;padding:6px 0;list-style:none;background:#101a23;border:1px solid var(--edge);border-radius:var(--r);box-shadow:0 18px 40px rgb(0 0 0/.5)}
+.log li{padding:8px 14px;font:500 17px/1.25 var(--cond)}
+.log li+li{border-top:1px solid var(--line)}
+
+/* main area: brewhouse left, recipe right */
+.main{display:grid;grid-template-columns:minmax(0,1fr) clamp(360px,27vw,500px);gap:var(--gap);padding:var(--gap) var(--pad);min-height:0}
+.brewhouse{display:grid;grid-template-rows:minmax(0,1fr) auto;gap:var(--gap);min-height:0;min-width:0}
+.rig{position:relative;min-height:220px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.rig svg{position:absolute;inset:6px;width:calc(100% - 12px);height:calc(100% - 12px)}
+.app[data-link=lost] .rig svg{opacity:.5}
+.app[data-link=lost] .lamp::before{opacity:.35}
+.app[data-link=lost] .lamp .st{color:var(--text-3)}
+.now{display:none}
+.plates{container-type:inline-size;--pu:calc((100cqi - 2 * var(--gap)) / 300 - .26px);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--gap)}
+
+/* PID faceplates */
+.plate{display:grid;grid-template-columns:minmax(0,1fr);align-content:start;gap:10px;min-width:0;padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.plate h2{margin:0;font:700 clamp(18px,calc(7 * var(--pu)),27px)/1 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+.face{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:clamp(10px,calc(3.5 * var(--pu)),16px);padding:clamp(6px,calc(2.5 * var(--pu)),12px) clamp(10px,calc(4 * var(--pu)),18px);background:var(--face);border:1px solid #000;border-radius:4px;box-shadow:inset 0 3px 10px rgb(0 0 0/.9),inset 0 0 0 1px #1a2530,0 1px 0 rgb(255 255 255/.06)}
+.pvsv{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;column-gap:clamp(10px,calc(4 * var(--pu)),18px);margin:0;min-width:0}
+.pvsv dt{font:600 clamp(15px,calc(5 * var(--pu)),22px)/1 var(--cond);letter-spacing:.08em;color:var(--text-3)}
+.pvsv dd{margin:0;font-family:var(--cond);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.face .pv{color:var(--pv);text-shadow:0 0 18px rgb(255 75 62/.38);font-size:clamp(56px,calc(22 * var(--pu)),110px);line-height:1}
+.face .sv{color:var(--sv);text-shadow:0 0 14px rgb(61 220 111/.32);font-size:clamp(30px,calc(10 * var(--pu)),50px);line-height:1.05}
+.face .u{font-size:.4em;margin-left:.12em;vertical-align:1em}
+.aux{display:grid;align-self:stretch;align-content:center;margin:0;padding-left:clamp(10px,calc(3.5 * var(--pu)),16px);border-left:1px solid #2a3846}
+.aux dt{font:600 clamp(12px,calc(3.6 * var(--pu)),15px)/1 var(--cond);letter-spacing:.1em;color:var(--text-3)}
+/* OUT and MODE always keep the room "100 %" takes (2.55em, the widest they hold; HERMS is 2.49em), so the line beside
+   the numbers stays put as the power goes from 45 % to 100 %, lines up across the three windows, and the graph under
+   it keeps its width */
+.aux dd{min-width:2.55em;margin:3px 0 10px;font:600 clamp(20px,calc(6.6 * var(--pu)),32px)/1 var(--cond);letter-spacing:.03em;color:var(--text);font-variant-numeric:tabular-nums;white-space:nowrap}
+.aux dd:last-child{margin-bottom:0}
+/* MANUAL where AUTO is usual (bkManCue): MAN boxed in Prompt Amber; the margins give back the box's room, so nothing
+   moves as it comes and goes */
+.aux dd .mc{display:inline-block;margin:-2px -6px;padding:0 4px;border:2px solid var(--prompt);border-radius:4px;color:var(--prompt)}
+.face.stale .pv,.face.stale .sv{color:#6b7785;text-shadow:none}
+/* the smaller OUT and MODE values, and the units, from before a lost connection are Dim Steel: Stale Grey is under 4.5:1
+   at their size */
+.face.stale .aux dd,.face.stale .u{color:var(--text-3);text-shadow:none}
+.face.stale .outbar i{background:#6b7785}
+.outbar{display:block;height:5px;margin-top:6px;border-radius:3px;background:#1d2833;overflow:hidden}
+.outbar i{display:block;height:100%;background:var(--heat)}
+.dev{margin:0;font:500 clamp(15px,calc(4.8 * var(--pu)),19px)/1.2 var(--cond);letter-spacing:.03em;color:var(--text-2)}
+.dev .age{color:#ffc9c4}
+/* AUTO with no target: it runs but holds nothing, so the line says so in Prompt Amber, and TARGET's hint matches */
+.dev .warn{color:var(--prompt);font-weight:600}
+.dev .alarm{color:#ff9b93;font-weight:600}
+.tgtbtn.notgt small{color:var(--prompt)}
+/* buttons topped by lamp strips: the strip and the words both carry the state */
+.ctrls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.ctrls>:only-child{grid-column:1/-1}
+.lamp{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:72px;padding:17px 8px 8px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);text-align:center;overflow:hidden;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.lamp::before{content:"";position:absolute;inset:0 0 auto;height:8px;background:#3a4856}
+/* under the pointer a lamp lightens, except a greyed one, and a failed or locked one, which keep their own background */
+.lamp:not([aria-disabled=true]):not([data-state=failed]):not(.locked):hover{background:#253545}
+.lamp .st{position:relative;font:700 clamp(18px,calc(6.4 * var(--pu)),24px)/1 var(--cond);letter-spacing:.05em}
+.lamp .nm{position:relative;font:500 clamp(13px,calc(4.3 * var(--pu)),16px)/1.15 var(--cond);letter-spacing:.05em;color:var(--text-2)}
+.lamp[data-state=heating]::before{background:var(--heat);box-shadow:0 2px 14px rgb(255 123 28/.6)}
+.lamp[data-state=running]::before{background:var(--run);box-shadow:0 2px 14px rgb(61 220 111/.5)}
+.lamp[data-state=pending]::before{background:repeating-linear-gradient(-45deg,#a9bccd 0 6px,#33475a 6px 12px);background-size:17px 8px;animation:march .6s linear infinite}
+.lamp[data-state=failed]{border:2px solid var(--alarm);background:#2b1315}
+.lamp[data-state=failed]::before{background:var(--alarm)}
+.lamp[data-state=failed] .nm{color:#ffd0cc}
+.lamp.locked{border-style:dashed;background:transparent}
+.lamp[aria-disabled=true],.seg button[aria-disabled=true],.tgtbtn[aria-disabled=true],.cmdbtn[aria-disabled=true]{cursor:not-allowed}
+.fill{position:absolute;inset:0;background:rgb(255 123 28/.32);transform:scaleX(0);transform-origin:left center;pointer-events:none}
+.lb{position:relative}
+[data-hold]{-webkit-touch-callout:none}
+.holding .fill{transform:scaleX(1);transition:transform 1s linear}
+.moderow{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:8px}
+/* while one faceplate's editor is open (the rows are shared), the other faceplates' buttons keep their size */
+.app[data-editing] .moderow{align-self:start}
+.seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--edge);border-radius:var(--r);overflow:hidden}
+.seg button,.tgtbtn,.cmdbtn{position:relative;overflow:hidden;min-height:62px;padding:6px 4px;border:0;background:var(--panel-2);font:700 clamp(16px,calc(5.6 * var(--pu)),21px)/1 var(--cond);letter-spacing:.06em;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.seg button+button{border-left:1px solid var(--edge)}
+.seg button[aria-pressed=true]{background:#070c11;color:#fff;box-shadow:inset 0 0 0 2px #a9bfd4}
+.seg small,.tgtbtn small,.cmdbtn small{position:relative;display:block;margin-top:5px;font:500 clamp(12px,calc(3.9 * var(--pu)),14px)/1.1 var(--cond);letter-spacing:.04em;color:var(--text-3)}
+.seg button[aria-pressed=true] small{color:#c9d6e2}
+.seg button:not([aria-pressed=true]):not([aria-disabled=true]):hover,.tgtbtn:not([aria-disabled=true]):hover,.cmdbtn:not([aria-disabled=true]):hover{background:#253545}
+/* under the pointer, a button's second line, and a timer's state, turn Soft Steel: Dim Steel on the hover slate is 4.46:1.
+   A pressed choice, the target's amber "no target", the blue main actions of the timer editor and BrewStart's box, the
+   strike water's USE (blue, or amber while it waits for the grain), OK on a timer that has run out, that timer's amber
+   state and a greyed button keep their own colours */
+.seg button:not([aria-pressed=true]):not([aria-disabled=true]):hover small,.tgtbtn:not(.notgt):not([aria-disabled=true]):hover small,.cmdbtn:not([aria-pressed=true]):not([aria-disabled=true]):not(.tgo):not(.tok):not(.swuse):not(.bsgo):hover small,.trow:not([data-state=done]) .tsel:not([aria-disabled=true]):hover .ts{color:var(--text-2)}
+.tgtbtn,.cmdbtn{border:1px solid var(--edge);border-radius:var(--r)}
+.seg button[aria-disabled=true],.tgtbtn[aria-disabled=true],.cmdbtn[aria-disabled=true]{color:var(--text-3)}
+.note{margin:0;font:500 15px/1.35 var(--sans);color:#ffd9a0}
+.note:empty{display:none}
+.editor{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) minmax(0,1.7fr) repeat(2,minmax(0,1fr));gap:6px}
+.editor button{min-height:54px;padding:0 2px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);font:700 18px/1 var(--cond)}
+.editor input{min-width:0;min-height:54px;border:2px solid #3d7fd0;border-radius:var(--r);background:var(--face);color:var(--sv);font:600 28px/1 var(--cond);text-align:center;font-variant-numeric:tabular-nums}
+.editor .ok{grid-column:1/4;background:var(--select);border-color:var(--select);color:#fff}
+.editor .no{grid-column:4/6}
+/* boil power: a level, not a temperature, so its digits are plain white (green is for targets, orange for heating now) */
+.editor.pwr input{color:var(--text)}
+/* in the "power first" redesign the boil power is the boil kettle's set value, so it is typed in Setpoint Green */
+[data-bk=power] .editor.pwr input{color:var(--sv)}
+/* the new boil kettle (?bk=power): while AUTO boils, the one-tap steps either side of the element button, −5 −1 on
+   its left and +1 +5 on its right. The element button is the boil-over button, so it is the biggest: twice a step where
+   the row has room, and never narrower than HEATING needs (3.45 times its word's size, plus padding and border). A step
+   is never under 44 px: on tight faceplates (#plates[data-tight], brew-day.js), where four steps and HEATING don't
+   fit in one row, the steps have a row of their own under AUTO/MANUAL and TARGET (.bksteps, below). Beside the element
+   they take the lamp's height. The element button pauses the heat, and PAUSED is Prompt Amber, like anything waiting
+   for the brewer. Its box adds BOIL AT and the usual boil power under SET */
+.ctrls.bkpow{grid-template-columns:repeat(2,minmax(44px,1fr)) minmax(calc(3.45 * clamp(18px,calc(6.4 * var(--pu)),24px) + 14px),2fr) repeat(2,minmax(44px,1fr));column-gap:6px}
+.ctrls.bkpow .lamp{padding-left:6px;padding-right:6px}
+.ctrls .nudge{min-height:0;padding:6px 2px}
+.nudge{white-space:nowrap}
+/* a step on its way to CraftBeerPi: the lamps' marching stripes along its top */
+.nudge.sending::before{content:"";position:absolute;inset:0 0 auto;height:6px;background:repeating-linear-gradient(-45deg,#a9bccd 0 6px,#33475a 6px 12px);background-size:17px 6px;animation:march .6s linear infinite}
+/* tight faceplates: the steps in a row of their own, under the boil kettle's AUTO/MANUAL and TARGET, so that as they
+   come and go (AUTO, a hold, the power box) nothing above them moves; the other faceplates' mode rows keep their height */
+.mstack{--steps-h:50px;display:grid;gap:8px;align-self:start}
+.bksteps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+.bksteps .nudge{min-height:var(--steps-h);padding:6px 2px}
+/* where the page scrolls, the steps' row keeps its place while they are away (brew-day.js), empty */
+.bkspace{height:var(--steps-h)}
+.plates[data-tight] .plate>.moderow{align-self:start}
+/* and a box's keys in a row of their own, under its number, which takes the box's width; SET and CANCEL, and the
+   boil kettle's third row, share the width in halves */
+.plates[data-tight] .editor{grid-template-columns:repeat(4,minmax(0,1fr))}
+.plates[data-tight] .editor input{grid-column:1/-1;grid-row:1}
+.plates[data-tight] .editor .ok,.plates[data-tight] .editor .bkat,.plates[data-tight] .editor .tboil{grid-column:1/3}
+.plates[data-tight] .editor .no,.plates[data-tight] .editor .usual,.plates[data-tight] .editor .tpwr{grid-column:3/5}
+.lamp[data-state=paused]{border-color:var(--prompt)}
+.lamp[data-state=paused]::before{background:var(--prompt);box-shadow:0 2px 14px rgb(255 178 30/.5)}
+.lamp[data-state=paused] .st{color:var(--prompt)}
+.editor small{display:block;margin-top:4px;font:500 13px/1.1 var(--cond);letter-spacing:.04em;color:var(--text-3)}
+.editor .bkat{grid-column:1/4}
+.editor .usual{grid-column:4/6;align-self:center;margin:0;font:600 19px/1 var(--cond);letter-spacing:.05em;color:var(--sv);text-align:center}
+/* the usual boil power and its %, kept on one line: where the box is narrow, USUAL goes over "45 %" */
+.editor .usual .nw{white-space:nowrap}
+.tgtbtn[aria-expanded=true]{border-color:var(--select);box-shadow:inset 0 0 0 1px var(--select)}
+/* the new boil kettle's Keep boiling checkbox (?bk=power), at the end of its nameplate row. The box is the LED: dark with a steel
+   edge while unticked, lit Setpoint Green with a dark tick and a glow while ticked. It is no taller than the name, so the
+   row doesn't grow; ::before stretches its tap area to 44 px into the padding above and the gap below */
+.phead{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
+.phead h2{min-width:0}
+.keep{--th:clamp(18px,calc(7 * var(--pu)),27px);position:relative;display:inline-flex;align-items:center;gap:8px;flex:none;height:var(--th);padding:0 2px;border:0;border-radius:4px;background:none;color:var(--text-2);font:600 clamp(13px,calc(4.6 * var(--pu)),16px)/1 var(--cond);letter-spacing:.08em;white-space:nowrap;cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.keep::before{content:"";position:absolute;inset:calc((var(--th) - 44px) / 2) 0}
+.keep .box{display:grid;place-items:center;width:clamp(16px,calc(5.8 * var(--pu)),20px);aspect-ratio:1;border:2px solid #7f91a3;border-radius:3px;background:var(--face)}
+.keep .box svg{width:100%;height:100%;fill:none;stroke:var(--face);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;visibility:hidden}
+.keep[aria-checked=true] .box{border-color:var(--sv);background:var(--sv);box-shadow:0 0 10px rgb(61 220 111/.55)}
+.keep[aria-checked=true] .box svg{visibility:visible}
+.keep:not([aria-disabled=true]):hover .kl{color:var(--text)}
+.keep[data-state=pending] .box{border-color:#7f91a3;background:repeating-linear-gradient(-45deg,#a9bccd 0 6px,#33475a 6px 12px);background-size:17px 17px;box-shadow:none;animation:march .6s linear infinite}
+.keep[data-state=pending] .box svg{visibility:hidden}
+.keep.stale .box{border-color:#6b7785;box-shadow:none}
+.keep.stale[aria-checked=true] .box{background:#6b7785}
+/* the new boil kettle's boil power in its window (?bk=power), while the target is BOIL: the one reading that is also a
+   button, because TARGET has its place beside AUTO/MANUAL. Framed in steel like the graph's current span, with a small "change"
+   like every other button's, so it reads as a control. The frame takes no room, so the digits sit where a plain
+   reading's would; ::before makes its tap area at least 44 px tall */
+.svbtn{position:relative;display:inline-flex;align-items:baseline;gap:.3em;margin:0 -.28em;padding:0 .28em;border:0;border-radius:3px;background:none;color:inherit;font:inherit;letter-spacing:inherit;text-shadow:inherit;box-shadow:inset 0 0 0 1px #3b4d5e;cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.svbtn::before{content:"";position:absolute;inset:min(0px,calc(50% - 22px)) 0}
+.svbtn small{font:600 clamp(12px,calc(3.9 * var(--pu)),14px)/1 var(--cond);letter-spacing:.06em;color:var(--text-3);text-shadow:none}
+.svbtn:not([aria-disabled=true]):hover{box-shadow:inset 0 0 0 1px #7f91a3}
+.svbtn:not([aria-disabled=true]):hover small{color:var(--text)}
+.svbtn[aria-expanded=true]{box-shadow:inset 0 0 0 2px var(--select)}
+.face.stale .svbtn{box-shadow:inset 0 0 0 1px #2a3846}
+/* its TARGET box: the HLT's, with a third row. BOIL is pressed while the box says BOIL, like AUTO or MANUAL; BOIL POWER
+   is the second way to the power box */
+.editor .tboil{grid-column:1/4}
+.editor .tpwr{grid-column:4/6}
+.editor .tboil[aria-pressed=true]{background:#070c11;color:#fff;box-shadow:inset 0 0 0 2px #a9bfd4}
+.editor .tboil[aria-pressed=true] small{color:#c9d6e2}
+
+/* recipe column */
+.recipe{container-type:inline-size;--pu:1cqi;display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0;padding:14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.recipe h2{margin:0;font:700 clamp(22px,calc(7 * var(--pu)),31px)/1.05 var(--cond);letter-spacing:.03em;text-transform:uppercase}
+.rmeta{margin:-4px 0 0;font:500 17px/1.3 var(--cond);letter-spacing:.03em;color:var(--text-3)}
+/* the status line, with UNLOAD at its end: the recipe off Brew Day (Recipe confirmations). A quiet button, as LOG is,
+   44px tall, its word in Soft Steel as the timers' REMOVE's; as wide as UNLOADING…, so it keeps its size as it waits */
+.rstat{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:center;margin:-4px 0 0}
+.rstat .rmeta{margin:0}
+.unl{min-height:44px;min-width:112px;padding:0 12px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);font:600 15px/1 var(--cond);letter-spacing:.08em;touch-action:manipulation}
+.unl .lb{color:var(--text-2)}
+.unl:not([aria-disabled=true]):hover{background:#253545}
+.unl:not([aria-disabled=true]):hover .lb{color:var(--text)}
+.unl[aria-disabled=true]{cursor:not-allowed}
+.unl[aria-disabled=true] .lb{color:var(--text-3)}
+.rctl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.rctl .lamp{min-height:66px}
+.rctl .cmdbtn{min-height:66px}
+.confirm{display:grid;gap:10px;padding:12px;border:2px solid var(--prompt);border-radius:var(--r);background:var(--prompt-bg)}
+.confirm p{margin:0;font:500 17px/1.35 var(--sans);color:#fff1d2}
+.confirm div{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.confirm button{min-height:54px;border-radius:var(--r);border:1px solid var(--edge);background:var(--panel-2);font:700 18px/1 var(--cond);letter-spacing:.05em}
+.confirm .yes{background:#f4f6f8;color:#10161c;border-color:#f4f6f8}
+/* the pre-brew check: the question box, with a line for each check in the brewer's order (probes, clock, reminders),
+   marked in its place: a filled Prompt Amber disc with "!" where it didn't pass, a green ring with a tick where it did.
+   START ANYWAY is held, as START is, so it says so under its name and fills orange as it is held */
+.pbc{grid-template-rows:auto 1fr auto;align-content:stretch}
+.pbc .pbl{display:grid;align-content:start;gap:8px;margin:0;padding:0;list-style:none}
+.pbc .pbl li{display:grid;grid-template-columns:24px minmax(0,1fr);column-gap:9px;align-items:start}
+.pbc .mk,.cpv .mk{display:block;width:24px;height:24px;margin-top:-1px}
+.mk svg{display:block;width:100%;height:100%}
+.pbc .no .mk,.cpv.no .mk{color:var(--prompt)}
+.pbc .ok .mk,.cpv.ok .mk{color:var(--run)}
+.cpv.near .mk{color:var(--text-2)}
+.pbc .pbl p{font-size:16px;line-height:1.4}
+.pbc .pbl .ok p{color:#e2d6bd}
+.pbc .yes{position:relative;overflow:hidden}
+.pbc .yes small{position:relative;display:block;margin-top:4px;font:500 13px/1.1 var(--cond);letter-spacing:.04em;color:#3a4652}
+.pbc button[aria-disabled=true]{cursor:not-allowed;color:var(--text-3)}
+.pbc .yes[aria-disabled=true]{background:var(--panel-2);border-color:var(--edge)}
+/* COMPARE PROBES, and the probes side by side: a row for each probe like a small PID window, its reading in Process Red;
+   DONE beside the title. Brewing by hand, the button has its own row under RECIPE BOOK and BREW STEPS */
+.cpbtn{min-height:54px}
+.handlinks .cpbtn{grid-column:1/-1}
+.cmp{display:grid;grid-template-rows:auto auto auto auto 1fr;align-content:stretch;gap:10px;padding:12px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2)}
+.cph{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:center}
+.cmp h3{margin:0;font:700 20px/1.05 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+.cmp .cpdone{min-height:48px;min-width:96px;padding:4px 12px}
+.cmp p{margin:0}
+.cpi{font:500 15px/1.35 var(--sans);color:var(--text-2)}
+.cpl{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.cpl li{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;row-gap:1px;align-items:center;padding:6px 12px;border:1px solid #1d2a36;border-radius:var(--r);background:var(--face)}
+.cpl li.odd{border:2px solid var(--prompt);padding:5px 11px}
+.cpl .cn{font:600 17px/1.1 var(--cond);letter-spacing:.04em;text-transform:uppercase}
+.cpl .cp{grid-column:1;font:500 14px/1.2 var(--cond);letter-spacing:.03em;color:var(--text-3)}
+.cpl .ct{font-weight:600;color:var(--prompt);text-transform:uppercase;letter-spacing:.05em}
+.cpl .ct.near{color:var(--text-2)}
+.cpl .cr{grid-column:2;grid-row:1/3;font:600 30px/1 var(--cond);color:var(--pv);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.cpl .cr .u{margin-left:2px;font-size:15px;vertical-align:top}
+.cpv{display:grid;grid-template-columns:24px minmax(0,1fr);column-gap:9px;align-items:start;font:500 16px/1.4 var(--sans)}
+.cpn{font:500 14px/1.35 var(--sans);color:var(--text-2)}
+/* the strike water box (STRIKE-WATER.md): raised like the probes' panel, under START, STOP and NEXT STEP, and small, as
+   it stays for hours beside the step list. A small PID window: the strike water as planned, its temperature in
+   Setpoint Green as a target's is, and where the mash lands, white, or Prompt Amber when it would go over the rest; one
+   line each, sized to the column. Under it USE, in Selection Blue as the editors' SET, keeping its blue under the
+   pointer, and FORECAST. Together they are the box's head. Opened out, FORECAST turns into CLOSE in its place and the
+   details come under the head, across a line: the forecast drawn and in words, kept as tall as the other state's words
+   would be (the ghost under them) so USE and BACK TO swap without moving anything, and the numbers it used */
+.sw{display:grid;gap:10px;padding:0 10px 10px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2)}
+.swhead{display:grid;gap:8px;padding-top:10px;background:var(--panel-2)}
+.sw.open .swhead{padding-bottom:10px;border-bottom:1px solid var(--line)}
+.swdet{display:grid;gap:10px}
+.sw p{margin:0}
+.swv{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;column-gap:12px;row-gap:2px;margin:0;padding:6px 12px;border:1px solid #1d2a36;border-radius:var(--r);background:var(--face)}
+.swv dt{font:600 15px/1 var(--cond);letter-spacing:.08em;color:var(--text-3)}
+.swv dd{margin:0;overflow:hidden;font:600 clamp(20px,calc(7 * var(--pu)),27px)/1.2 var(--cond);font-variant-numeric:tabular-nums;white-space:nowrap;text-overflow:ellipsis}
+.swv b{font-weight:600}
+.swv .u{margin-left:1px;font-size:.56em;vertical-align:top}
+.swv .ug{margin-left:4px;font-size:.6em;color:var(--text-2)}
+.swk{margin:0 .4em;font:600 .56em/1 var(--cond);letter-spacing:.08em;text-transform:uppercase;color:var(--text-3)}
+.swk:first-child{margin-left:0}
+.swt{color:var(--sv)}
+.swm.hot,.swm.hot .swk{color:var(--prompt)}
+.swa{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:8px}
+.swa.one{grid-template-columns:minmax(0,1fr)}
+.sw .cmdbtn{min-height:54px}
+.sw .swuse{background:var(--select);border-color:var(--select);color:#fff}
+.sw .swuse small{color:#fff}
+.sw .swuse:not([aria-disabled=true]):hover{background:#3477c8}
+.sw .swuse[aria-disabled=true]{background:var(--panel-2);border-color:var(--edge);color:var(--text-3)}
+.sw .swuse[aria-disabled=true] small{color:var(--text-3)}
+/* USE while it waits for where the grain spent the night: the look CraftBeerPi's questions have in the title bar, as it
+   waits on the brewer: a 2 px Prompt Amber edge on its dark amber, the words in its pale cream (12.4:1) and the hint in
+   Prompt Amber 600 (7.7:1). The edge is .cmdbtn's own 1 px border with a second pixel drawn inside it, so the button
+   keeps USE's size. Under the pointer the amber lightens as on the title bar's outlined answer (9.1:1 and 5.6:1 there).
+   Greyed, it is greyed as USE is */
+.sw .swuse.swask small{font-weight:600}
+.sw .swuse.swask:not([aria-disabled=true]){background:var(--prompt-bg);border-color:var(--prompt);box-shadow:inset 0 0 0 1px var(--prompt);color:#fff1d2}
+.sw .swuse.swask:not([aria-disabled=true]) small{color:var(--prompt)}
+.sw .swuse.swask:not([aria-disabled=true]):hover{background:linear-gradient(rgb(255 178 30/.14),rgb(255 178 30/.14)) var(--prompt-bg)}
+.swl{display:grid;font:500 16px/1.4 var(--sans)}
+/* with a number missing, why, in the buttons' place: a size smaller, so the step list keeps its room on one screen */
+.sw-miss .swl{font-size:15px;line-height:1.35}
+.swl>span{grid-area:1/1}
+.swl .ghost{visibility:hidden}
+.swl b{font-weight:700;color:#fff}
+.swd{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:12px;row-gap:5px;margin:0;font:500 15px/1.35 var(--sans)}
+.swd dt{font:600 14px/1.45 var(--cond);letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)}
+.swd dd{margin:0}
+.swn{font:500 14px/1.35 var(--sans);color:var(--text-2)}
+/* the strike water's forecast (FORECAST): the chart on the PID windows' black face, as the graphs are; the band for the
+   strike water as planned in the readings' red (Prompt Amber when it goes over the rest), the other choice's as a grey
+   dashed outline; a key under it in words; then the numbers in groups by where they come from */
+.swf{display:grid;gap:6px;margin:0}
+.swc{height:clamp(132px,calc(40 * var(--pu)),176px);border:1px solid #1d2a36;border-radius:var(--r);background:var(--face);overflow:hidden}
+.swc svg{display:block}
+.swc text{font:600 12px var(--cond);letter-spacing:.04em;fill:var(--text-3);paint-order:stroke;stroke:var(--face);stroke-width:3px;stroke-linejoin:round}
+.swc .swrl{fill:var(--sv)}
+.swb{fill:rgb(255 75 62/.22);stroke:none}
+.swb.hot{fill:rgb(255 178 30/.22)}
+.swb.alt{fill:rgb(182 195 207/.07)}
+.swe{fill:none;stroke:var(--pv);stroke-width:1.6;stroke-linejoin:round}
+.swe.hot{stroke:var(--prompt)}
+.swe.alt{stroke:var(--text-2);stroke-width:1.4;stroke-dasharray:6 4}
+.swkey{display:flex;flex-wrap:wrap;gap:4px 16px;margin:0;padding:0;list-style:none;font:600 14px/1.25 var(--cond);letter-spacing:.04em;color:var(--text-2)}
+.swkey i{display:inline-block;width:20px;height:10px;margin-right:6px;vertical-align:-1px;border-radius:2px}
+.swkey .k-plan{background:rgb(255 75 62/.22);border:2px solid var(--pv)}
+.swkey .k-plan.hot{background:rgb(255 178 30/.22);border-color:var(--prompt)}
+.swkey .k-alt{border:2px dashed var(--text-2)}
+.swkey .k-rest{height:0;border-top:2px solid var(--sv);border-radius:0;vertical-align:4px}
+.swg{margin:6px 0 0;font:700 15px/1.2 var(--cond);letter-spacing:.08em;text-transform:uppercase;color:var(--text-2)}
+.swd dt{min-width:5.4em}
+.swyou{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;font:500 15px/1.35 var(--sans)}
+.swyou p{margin:0}
+.swyou .cmdbtn{min-width:112px;padding:4px 12px}
+.swmt{font-size:15px;line-height:1.35;color:var(--text-2)}
+/* while CraftBeerPi works USE out: the line saying so, a size smaller, and the last answer's figures, shown until the
+   new ones come, in the stale grey the readings take, a shade lighter for the window's smaller text (4.9:1 on its face):
+   the window's MASH, the chart's bands and its words */
+.swwk{font-size:15px;line-height:1.35;color:var(--text-2)}
+#sw-el{font-variant-numeric:tabular-nums}
+.swm.stale,.swm.stale b,.swm.stale .swk{color:#737f8d}
+.swc svg.stale .swb{fill:rgb(115 127 141/.16)}
+.swc svg.stale .swe{stroke:#737f8d}
+.swf.stale figcaption,.swf.stale .swl b,.swf.stale .swkey{color:var(--text-3)}
+.swf.stale .swkey .k-plan{background:rgb(115 127 141/.16);border-color:#737f8d}
+/* the HLT's water, in TARGET's box: its label and what the figure is, across the box's width */
+.swvol .swvl{grid-column:1/-1;font:700 15px/1.2 var(--cond);letter-spacing:.06em;text-transform:uppercase;color:var(--text-2)}
+.swvol .swvh{grid-column:1/-1;margin:0 0 2px;font:500 14px/1.35 var(--sans);color:var(--text-2)}
+.swvol input{color:var(--text)}
+/* a volume needs fewer digits than a target, so its box gives the steps the room: at least 49 px each on a 360 px phone.
+   The grain's temperature uses the same box; THE PROBE, going back to the boil kettle's probe, takes a row of its own */
+.swvol{grid-template-columns:repeat(2,minmax(0,1fr)) minmax(0,1.2fr) repeat(2,minmax(0,1fr))}
+.swvol .swprobe{grid-column:1/-1}
+.steps{flex:1;min-height:0;overflow:auto;margin:0;padding:0 2px 0 0;list-style:none;display:flex;flex-direction:column;gap:6px;overscroll-behavior:contain}
+/* the versions (verHTML): the quietest words on the screen, last in the recipe column whatever comes before it. Each part
+   keeps whole; where the column is narrow the CraftBeerPi part goes on a line of its own */
+.ver{order:9;display:flex;flex-wrap:wrap;column-gap:14px;margin:auto 0 0;font:500 12px/1.3 var(--cond);letter-spacing:.02em;color:var(--text-3)}
+.ver span{white-space:nowrap}
+.step{display:grid;grid-template-columns:36px minmax(0,1fr) auto;column-gap:12px;row-gap:3px;align-items:center;padding:8px 12px 8px 6px;border:1px solid var(--line);border-radius:var(--r);background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),var(--panel-2)}
+.todo{display:inline-block;width:16px;height:16px;border:2px solid #6b7c8d;border-radius:50%;vertical-align:middle}
+.step .n{grid-row:1/3;font:700 26px/1 var(--cond);text-align:center;color:var(--text-2)}
+.step .t{grid-column:2;font:600 20px/1.1 var(--cond);letter-spacing:.02em}
+.step .p{grid-column:2;font:500 16px/1.25 var(--cond);letter-spacing:.02em;color:var(--text-2)}
+/* on one screen the title bar is always in view. While it shows a step's own question, the step's note, the same
+   thing in other words, steps aside, so the current step stays whole where a box above it has made the list short */
+@media (min-width:1180px){.step .pn.asked{display:none}}
+.step .s{grid-column:3;grid-row:1/3;font:600 15px/1 var(--cond);letter-spacing:.06em;color:var(--text-3);text-align:right;white-space:nowrap}
+/* WAITING FOR YOU on a step held for the brewer, in the brighter amber the built screen uses (brewday-extra.css) */
+.wfy{color:#ffd27a}
+.step.done .t,.step.done .p,.step.done .n{color:var(--text-3)}
+.step.done .s{color:var(--run)}
+.step[aria-current=step]{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),var(--active);border-color:#3c7fcc}
+.step[aria-current=step] .n,.step[aria-current=step] .p{color:#dce9f7}
+.step[aria-current=step] .s{font:700 clamp(20px,calc(6.6 * var(--pu)),27px)/1 var(--cond);color:#fff;font-variant-numeric:tabular-nums}
+.bar{display:block;height:8px;border-radius:4px;background:#0d2b48;overflow:hidden}
+.bar i{display:block;height:100%;background:#9bcbff}
+.step .bar{grid-column:2/-1}
+.adds{grid-column:2/-1;display:grid;grid-template-columns:auto minmax(0,1fr) auto;column-gap:12px;row-gap:2px;margin-top:2px;font:500 16px/1.3 var(--cond);letter-spacing:.02em;color:var(--text-2)}
+.adds span:nth-child(3n+1){text-align:right;font-variant-numeric:tabular-nums}
+.adds .due{color:var(--prompt);font-weight:700}
+.adds .gone{color:var(--text-3)}
+.step[aria-current=step] .adds{color:#dce9f7}
+.step[aria-current=step] .adds .gone{color:#c9d6e2}
+.step[aria-current=step] .adds .due{color:#ffd27a}
+/* BrewStart's row as the way to its box (brew-day.js, bsRowHTML): the row as it is, now a button, a shade lighter under
+   the pointer. In the step list, which scrolls, its focus ring sits just inside its edge, where the list's edge can't
+   cut it off. Under its state a small hint, lower case; Prompt Amber 600 where it waits on the brewer ("set a time",
+   "where's the grain?", and "no time set" in the details), which on the current step's blue is the brighter amber
+   WAITING FOR YOU and a due addition take there (Prompt Amber is 4.1:1 on it, this 5.2:1) */
+.stepb,.bsnew{display:block}
+button.step{width:100%;margin:0;color:inherit;text-align:left;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.step.bs:not([aria-disabled=true]):hover{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),#253545}
+.step.bs[aria-current=step]:not([aria-disabled=true]):hover{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),#23629f}
+.step.bs[aria-disabled=true],.bsadd[aria-disabled=true]{cursor:not-allowed}
+.steps :is(.step.bs,.bsadd):focus-visible{outline-offset:-3px}
+.step .bsh{display:block;margin-top:3px;font:500 clamp(12px,calc(3.9 * var(--pu)),14px)/1 var(--cond);letter-spacing:.04em;color:var(--text-3)}
+/* the right-hand part is at least 64 px wide. Its hint stays on one line under the state where that leaves the name and
+   the details their lines, the part then as wide as the hint; where it would take a line from them, the row is marked
+   (data-wrap, bsFit in brew-day.js) and the hint takes none of the width, wrapping inside the state word's ("where's
+   the / grain?"). The part reaches into the row's padding, so two lines of hint don't make the row taller */
+.step.bs .s{min-width:64px;margin:-8px 0}
+.step.bs[data-wrap] .bsh{width:0;min-width:100%;white-space:normal}
+.step[aria-current=step] .bsh{color:#dce9f7}
+.step.bs:not([aria-current=step]):not([aria-disabled=true]):hover .bsh:not(.amb){color:var(--text-2)}
+.step .amb{font-weight:600;color:var(--prompt)}
+.step[aria-current=step] .amb{color:#ffd27a}
+/* + BrewStart (bsAddHTML): above the first step of a recipe without BrewStart, dashed in Hairline Slate on the column's
+   own Panel, as it isn't a step yet; 58 px tall, its name lined up with the steps' names */
+.bsadd{display:grid;grid-template-columns:36px minmax(0,1fr);column-gap:12px;row-gap:2px;align-content:center;align-items:center;width:100%;height:58px;margin:0;padding:6px 4px 6px 6px;border:1px dashed var(--line);border-radius:var(--r);background:var(--panel);color:inherit;text-align:left;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.bsadd .pl{grid-row:1/3;font:600 30px/1 var(--cond);text-align:center;color:var(--text-2)}
+.bsadd .t{grid-column:2;font:600 20px/1.1 var(--cond);letter-spacing:.02em}
+.bsadd .p{grid-column:2;font:500 16px/1.25 var(--cond);letter-spacing:.02em;color:var(--text-2)}
+.bsadd:not([aria-disabled=true]):hover{background:#253545}
+/* BrewStart's box (bsHTML), in the column where the step list is: the timer editor's look, a 2 px Selection Blue edge
+   on Panel with its title set into the top edge as a legend. On one screen its middle scrolls where it has to; above
+   it, while BrewStart waits, the sentence that says so stays in view, and its foot, the note line with SET and CANCEL,
+   stays in reach (below). The keys are the strike water box's */
+.bsbox{display:flex;flex-direction:column;gap:10px;margin-top:8px;padding:14px 12px 12px;border:2px solid var(--select);border-radius:var(--r);background:var(--panel)}
+.bsbox .bst{align-self:flex-start;margin:-26px 0 -2px -4px;padding:0 6px;background:var(--panel);font:700 17px/1.2 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+.bsbox p{margin:0}
+/* the middle's 5 px inside its edge keep a focus ring whole where it scrolls */
+.bsmid{display:grid;gap:10px;margin:-5px;padding:5px}
+.bsw{flex:none;font:500 15px/1.35 var(--sans);color:var(--text-2)}
+.bskind{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px}
+.bsl{font:600 17px/1.2 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+/* START AT INSTEAD: a quiet button, as LOG and UNLOAD are, its word Soft Steel */
+.bsq{min-height:44px;padding:0 12px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);font:600 15px/1 var(--cond);letter-spacing:.08em;touch-action:manipulation}
+.bsq .lb{color:var(--text-2)}
+.bsq:not([aria-disabled=true]):hover{background:#253545}
+.bsq:not([aria-disabled=true]):hover .lb{color:var(--text)}
+.bsq[aria-disabled=true]{cursor:not-allowed}
+.bsq[aria-disabled=true] .lb{color:var(--text-3)}
+.bstime input{color:var(--text)}
+.bstime input::placeholder{color:#8a9bad;opacity:1}
+.bsday,.bswhere{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bsday .cmdbtn,.bsin .cmdbtn{min-height:52px;font-size:17px}
+.bswhere .cmdbtn{min-height:56px;padding:6px;font-size:17px}
+/* the grain's two answers, scrolled into view as the box opens at them (bsFocus), keep 5 px to spare at the edge, room
+   for the focus ring round IN THE GARAGE */
+.bswhere{scroll-margin:5px}
+.bsbox .cmdbtn[aria-pressed=true]{background:#070c11;color:#fff;box-shadow:inset 0 0 0 2px #a9bfd4}
+.bsbox .cmdbtn[aria-pressed=true] small{color:#c9d6e2}
+/* the time in words; nothing while what's typed isn't a time yet, so a new BrewStart's empty box has no hole in it */
+.bssay{font:500 16px/1.4 var(--sans)}
+.bssay:empty{display:none}
+.bssay.past{color:#ffd9a0}
+.bswat{font:500 15px/1.35 var(--sans);color:var(--text-2)}
+.bswat b{font-weight:600;color:var(--prompt)}
+.bsgrain{display:grid;gap:8px}
+.bsgrain .bsgh{margin-top:-4px;font:500 14px/1.35 var(--sans);color:var(--text-3)}
+.bsin{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.bsin .bschip{flex:1 1 48px;min-height:48px;padding:0 2px;font-size:16px}
+.bsor{display:flex;align-items:center;gap:6px;font:600 15px/1 var(--cond);letter-spacing:.04em;color:var(--text-2)}
+.bsor input{width:76px;min-height:48px;padding:0 6px;border:2px solid #3d7fd0;border-radius:var(--r);background:var(--face);color:var(--text);font:600 22px/1 var(--cond);text-align:center;font-variant-numeric:tabular-nums}
+.bsfoot{display:grid;gap:8px;flex:none}
+.bsact{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bsact .cmdbtn{min-height:54px;font-size:17px}
+.bsgo{background:var(--select);border-color:var(--select);color:#fff}
+.bsgo small{color:#fff}
+.bsgo:not([aria-disabled=true]):hover{background:#3477c8}
+.bsgo[aria-disabled=true]{background:var(--panel-2);border-color:var(--edge);color:var(--text-3)}
+.bsgo[aria-disabled=true] small{color:var(--text-3)}
+.timer{display:grid;gap:10px;padding:12px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel-2)}
+.timer h3{margin:0;font:700 20px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+.timer output{font:600 clamp(52px,calc(22 * var(--pu)),88px)/1 var(--cond);font-variant-numeric:tabular-nums}
+.timer div,.handlinks{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.timer .go{grid-column:1/-1}
+/* the timers (?timers=new): up to four rows, each a name, a big time and its one
+   button; the row's left part opens its editor in place. A finished one is Prompt Amber, counts up, and offers +5 MIN
+   and OK */
+.tmrs{flex:none;display:grid;gap:8px}
+.tmrs .thead{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px}
+.tmrs h3{margin:0;font:700 20px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+.trow{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;padding:6px 6px 6px 4px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel-2);overflow:hidden}
+.tsel{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:center;min-height:56px;padding:4px 8px;border:0;border-radius:4px;background:none;color:inherit;text-align:left;cursor:pointer;touch-action:manipulation}
+.tsel:not([aria-disabled=true]):hover{background:#253545}
+.tsel[aria-expanded=true]{box-shadow:inset 0 0 0 2px var(--select)}
+.tsel .tn{grid-column:1;font:600 20px/1.15 var(--cond);letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tsel .ts{grid-column:1;font:600 14px/1.2 var(--cond);letter-spacing:.05em;color:var(--text-3)}
+.tsel .ts .nw{white-space:nowrap}
+.tsel .tt{grid-column:2;grid-row:1/3;font:600 clamp(32px,calc(10.5 * var(--pu)),44px)/1 var(--cond);font-variant-numeric:tabular-nums}
+.trow .tbtn{display:flex;gap:8px}
+.trow .cmdbtn{min-height:56px;min-width:100px;padding:6px 10px}
+.trow .bar{position:absolute;left:0;right:0;bottom:0;height:4px;border-radius:0}
+.trow[data-state=paused] .tt{color:var(--text-3)}
+.trow[data-state=paused] .bar i{background:#6b7c8d}
+/* while an editor is open, the other timers keep their name and time on one short line */
+.tmrs[data-editing] .trow:not(.editing){padding:2px 6px 2px 4px}
+.tmrs[data-editing] .trow:not(.editing) .tsel{min-height:44px;padding:2px 8px}
+.tmrs[data-editing] .trow:not(.editing) .ts,.tmrs[data-editing] .trow:not(.editing) .tbtn{display:none}
+.tmrs[data-editing] .trow:not(.editing) .tsel .tt{grid-row:1;font-size:24px}
+.tmrs[data-editing] .trow:not(.editing) .tsel .tn{font-size:18px}
+.trow[data-state=done]{border-color:var(--prompt);background:var(--prompt-bg)}
+.trow[data-state=done] .ts,.trow[data-state=done] .tt{color:var(--prompt)}
+.trow[data-state=done] .tbtn{grid-column:1/-1;display:grid;grid-template-columns:1fr 1.4fr}
+.trow .tok{background:#f4f6f8;color:#10161c;border-color:#f4f6f8}
+.trow .tok small{color:#3a4652}
+.trow .tok:not([aria-disabled=true]):hover{background:#dfe5ea}
+/* a timer brought back after a restart: a line across its row, under its name and state, says how long CraftBeerPi was
+   off. A sentence, so regular Barlow; Prompt Amber while the timer waits, paused, for the brewer, and Prompt Cream on a
+   timer that has run out, as on its banner. Its buttons keep their place beside the name */
+.trow .toff{grid-column:1/-1;margin:-4px 0 4px;padding:0 8px;font:500 15px/1.3 var(--sans);color:var(--prompt);text-wrap:pretty}
+.trow:not([data-state=done]) .tbtn{grid-column:2;grid-row:1}
+.trow[data-state=done] .toff{margin-bottom:0;color:var(--prompt-ink)}
+.tmrs[data-editing] .trow:not(.editing) .toff{display:none}
+.tplus{min-height:56px}
+/* the timer's row (TIMER-REMOVE.md; ?trow=today keeps the row as built before) on two lines: the left part, the button
+   that opens its editor, lies behind the whole row, with the name and its state on the first line and the time on the
+   second, beside REMOVE and START or PAUSE. So two buttons fit the narrowest column (310 px inside, 1180 to 1480 px
+   wide) without cutting a name. The second line is as tall as the buttons, in the row and in the button behind it, so
+   the time and the buttons line up */
+.trow.tr2{grid-template-rows:auto 56px;row-gap:2px}
+.tr2 .tsel{grid-column:1/-1;grid-row:1/3;grid-template-rows:auto 56px;row-gap:2px;min-height:0;padding:0 8px}
+.tr2 .tsel .tn{grid-column:1;grid-row:1}
+.tr2 .tsel .ts{grid-column:2;grid-row:1;text-align:right}
+.tr2 .tsel .tt{grid-column:1;grid-row:2}
+.trow.tr2:not([data-state=done]) .tbtn{grid-column:2;grid-row:2;position:relative;z-index:1}
+.trow.tr2 .cmdbtn{min-width:84px}
+/* REMOVE is quieter than START or PAUSE beside it, so the button pressed most stands out and the two don't read as a
+   pair of equals: Soft Steel lettering at 600 on a Hairline Slate edge, Panel White under the pointer. Its UNDO makes a
+   slip cheap, so it needs no colour of alarm */
+.trow .trm{border-color:var(--line)}
+.trow .trm .lb{font-weight:600;color:var(--text-2)}
+.trow .trm:not([aria-disabled=true]):hover .lb{color:var(--text)}
+.trow .trm[aria-disabled=true] .lb{color:var(--text-3)}
+.tr2 .toff{grid-row:3;margin:0 0 4px}
+.tmrs[data-editing] .tr2:not(.editing){grid-template-rows:auto}
+.tmrs[data-editing] .tr2:not(.editing) .tsel{grid-row:1;grid-template-rows:auto;min-height:44px}
+.tmrs[data-editing] .tr2:not(.editing) .tsel .tt{grid-column:2;grid-row:1}
+/* a timer just removed, for 10 s: its place and height kept, on Panel Slate, its name and "removed" in Dim Steel, and
+   UNDO where its two buttons were */
+.trow.tgone{grid-template-rows:auto 56px;row-gap:2px;min-height:95px;background:var(--panel)}
+.tgone .tgn{grid-column:1;grid-row:1/3;display:grid;align-content:center;gap:4px;margin:0;padding:0 8px;color:var(--text-3)}
+.tgone .tn{font:600 20px/1.15 var(--cond);letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tgone .ts{font:600 14px/1.2 var(--cond);letter-spacing:.05em}
+.trow.tgone .tbtn{grid-column:2;grid-row:2}
+.trow.tgone .tundo{min-width:var(--tw,176px)}
+/* + TIMER in the heading, beside SOUND */
+.tmrs .thr{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px}
+.tmrs .tplus2{min-height:44px;min-width:0;padding:4px 14px}
+/* the proposal's recipe column (?col=new, RECIPE-COLUMN.md). A recipe not begun, and brewing by hand: OTHER RECIPE (or
+   CHOOSE A RECIPE) beside COMPARE PROBES, in the row COMPARE PROBES had to itself */
+.nbrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.nbrow .cmdbtn{min-height:54px;padding-inline:6px}
+/* the recipe book in the column: the book's rows, the loaded one saying what it is doing where LOAD would be, then ALL
+   RECIPES and CLOSE. On one screen it takes the step list's room, its list scrolling where it must */
+.rbox{display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:8px;min-height:0}
+.rbox h3{margin:4px 0 0;font:700 20px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+.rbox ul{display:grid;align-content:start;gap:6px;min-height:0;margin:0;padding:0;list-style:none;overflow:auto;overscroll-behavior:contain}
+.rbox li{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:center;padding:8px 8px 8px 12px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel-2)}
+.rbox .bn{font:600 19px/1.15 var(--cond);letter-spacing:.02em}
+.rbox .bd{grid-column:1;font:500 15px/1.3 var(--cond);color:var(--text-2)}
+.rbox li .cmdbtn{grid-column:2;grid-row:1/3;min-height:48px;min-width:84px}
+.rbox .rbst{grid-column:2;grid-row:1/3;display:grid;justify-items:end;gap:2px;font:600 13px/1.2 var(--cond);letter-spacing:.06em;color:var(--text-2);text-align:right}
+.rbox .rbf{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (min-width:1180px){.recipe[data-pb] .rbox{flex:0 1 auto}}
+/* the timers folded into one line, where the current step wouldn't be whole beside them on one screen: a tap opens them */
+.tstrip{position:relative;display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;width:100%;min-height:56px;padding:8px 12px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);color:var(--text);font:600 18px/1.25 var(--cond);letter-spacing:.02em;text-align:left;cursor:pointer;touch-action:manipulation}
+.tstrip:hover{background:#253545}
+.tstrip .tl,.tstrip .tso{font:700 15px/1 var(--cond);letter-spacing:.08em;color:var(--text-2)}
+.tstrip .tsi{display:flex;flex-wrap:wrap;gap:2px 14px;flex:1 1 auto;min-width:0}
+.tstrip .tsi b{font-weight:600;font-variant-numeric:tabular-nums}
+.tstrip .d{color:var(--prompt)}
+.tstrip .r{color:var(--text-3)}
+.tstrip:hover .r{color:var(--text-2)}
+.tstrip .tso{margin-left:auto}
+.tmrs.tfold[data-state=done] .tstrip{border-color:var(--prompt);background:var(--prompt-bg)}
+.tmrs.tfold[data-state=done] .tstrip::after{content:"";pointer-events:none;position:absolute;inset:-2px;border:2px solid var(--prompt);border-radius:calc(var(--r) + 1px);box-shadow:0 0 18px rgb(255 178 30/.55);animation:ring 1s ease-in-out infinite alternate}
+@media (prefers-reduced-motion:reduce){.tmrs.tfold[data-state=done] .tstrip::after{animation:none!important}}
+/* opened from their line, the timers take the step list's room and the strike water box's, and CLOSE takes the line's
+   place at the column's foot, so the button pressed to open them is the one that closes them */
+.tmrs .tclose{min-height:56px}
+@media (min-width:1180px){.recipe[data-tbox] :is(.steps,.sw,.nbrow){display:none}.recipe[data-tbox] .tmrs{display:flex;flex-direction:column;flex:1 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}.recipe[data-tbox] .tmrs>*{flex:none}.recipe[data-tbox] .tmrs .tclose{margin-top:auto}}
+/* a timer as a chip, where the timers have less room than their rows need (the small timers of ?col=new, and ?tplace):
+   a Raised Slate tile 48 px tall, the name with its state word (paused, ready) over the time, and the row's bar along
+   its foot, Soft Steel while paused. The name and time are the button that opens its editor; START or PAUSE, and
+   REMOVE, sit at its right where there is room. One that has run out is Prompt Amber on Dark Amber Wash and pulses as
+   its row would; one with 3:00 or less to go has a bigger time, in the same colour */
+.tchip{position:relative;display:flex;align-items:center;gap:4px;height:48px;min-width:0;border:1px solid var(--line);border-radius:var(--r);background:var(--panel-2);overflow:hidden}
+.tcsel{flex:1 1 auto;align-self:stretch;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;column-gap:8px;align-content:center;min-width:0;padding:0 10px 3px;border:0;border-radius:4px;background:none;color:inherit;text-align:left;cursor:pointer;touch-action:manipulation}
+.tcsel:not([aria-disabled=true]):hover{background:#253545}
+.tcsel[aria-expanded=true]{box-shadow:inset 0 0 0 2px var(--select)}
+.tchip .tn{grid-column:1;grid-row:1;font:600 17px/1.05 var(--cond);letter-spacing:.02em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tchip .ts{grid-column:2;grid-row:1;font:600 14px/1 var(--cond);letter-spacing:.05em;color:var(--text-3);white-space:nowrap}
+.tchip:not([data-state=done]) .tcsel:not([aria-disabled=true]):hover .ts{color:var(--text-2)}
+.tchip .tt{grid-column:1/-1;grid-row:2;font:600 22px/1 var(--cond);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tchip[data-soon] .tt{font-size:26px;font-weight:700}
+.tchip[data-state=paused] .tt{color:var(--text-3)}
+.tchip .bar{position:absolute;left:0;right:0;bottom:0;height:3px;border-radius:0}
+.tchip[data-state=paused] .bar i{background:var(--text-2)}
+.tchip .tcx{flex:none;display:flex;gap:4px;margin-right:1px}
+.tchip .cmdbtn{min-height:44px;min-width:64px;padding:0 8px;font:700 17px/1 var(--cond);letter-spacing:.06em}
+.tchip .cmdbtn small{margin-top:3px;font:500 12px/1 var(--cond);letter-spacing:.04em}
+/* REMOVE, on a chip and in the editor's second row, is as quiet as on the row */
+.tchip .trm,.tact2 .trm{border-color:var(--line)}
+.tchip .trm .lb,.tact2 .trm .lb{font-weight:600;color:var(--text-2)}
+.tchip .trm:not([aria-disabled=true]):hover .lb,.tact2 .trm:not([aria-disabled=true]):hover .lb{color:var(--text)}
+.tchip .trm[aria-disabled=true] .lb,.tact2 .trm[aria-disabled=true] .lb{color:var(--text-3)}
+.tchip[data-state=done]{border:2px solid var(--prompt);background:var(--prompt-bg)}
+.tchip[data-state=done] .ts,.tchip[data-state=done] .tt{color:var(--prompt)}
+.tchip .tok{background:#f4f6f8;color:#10161c;border-color:#f4f6f8}
+.tchip .tok:not([aria-disabled=true]):hover{background:#dfe5ea}
+.tchip[data-state=done]::after{content:"";pointer-events:none;position:absolute;inset:0;border-radius:4px;box-shadow:inset 0 0 14px rgb(255 178 30/.55);animation:ring 1s ease-in-out infinite alternate}
+@media (prefers-reduced-motion:reduce){.tchip[data-state=done]::after{animation:none!important}}
+/* a timer just removed: Panel Slate, its name over "removed" in Dim Steel, and UNDO, in the chip's place and size */
+.tchip.tcgone{background:var(--panel)}
+.tcg{flex:1 1 auto;display:grid;align-content:center;gap:3px;min-width:0;margin:0;padding:0 10px}
+.tcg .tn,.tcg .ts{grid-column:1;color:var(--text-3)}
+.tcg .ts{grid-row:2}
+/* the small timers (?col=new): the chips two to a line, under the rows of a timer that has run out or is near its end */
+.tchips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.tchips>.trow,.tchips>.tedit{grid-column:1/-1}
+/* ?tplace, on one screen: each kind of chip has its own width, so a chip doesn't change size as its time or its buttons'
+   words do (brew-day.js reads them to see what fits) */
+.tev,.tbarb{--pu:3.5px;--tcw-plain:150px;--tcw-go:220px;--tcw-full:300px}
+.tev .tcs,.tbarb .tcs{display:flex;align-items:center;gap:6px}
+:is(.tev,.tbarb) .tchip{flex:none;width:var(--tcw-plain)}
+:is(.tev,.tbarb) .tchip[data-mode=go]{width:var(--tcw-go)}
+:is(.tev,.tbarb) .tchip[data-mode=full]{width:var(--tcw-full)}
+.tplus3{min-height:44px;min-width:0;padding:4px 14px;font:700 17px/1 var(--cond);letter-spacing:.06em}
+/* ?tplace=event: the timers between the last event and LOG. The line keeps its height, the chips 6 px from its edges
+   where LOG had 8, and the event's words keep one line, with their ellipsis */
+.event[data-tev]{padding-top:6px;padding-bottom:6px}
+/* the event's words beside the timers: a caveat gives way first, then what was done (down to its first letters), and
+   only then the end of what came of it, each with its ellipsis, so the time and "confirmed" or "failed" stay in view */
+.event[data-tev] .line{display:flex;align-items:baseline}
+.event[data-tev] .line>*{flex:none;white-space:pre}
+.event[data-tev] .line .wh{flex:0 100 auto;min-width:3em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.event[data-tev] .line .rs{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.event[data-tev] .line .cv{flex:0 10000 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.tev{flex:none;display:flex;align-items:center;gap:8px}
+/* ?tplace=bottom: a bar along the bottom of the screen, inside the page's padding, 56 px tall with the usual gap under
+   it: TIMERS, the chips, then + TIMER and SOUND at the right end. It is a row of the page's grid of its own, there only
+   while it is drawn, and the drawing gives up its height */
+.tbarb{position:relative;display:flex;align-items:center;gap:12px;height:56px;margin:0 var(--pad) var(--gap);padding:3px 12px 3px 14px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel)}
+.tbarb .tbl{flex:none;font:600 18px/1 var(--cond);letter-spacing:.08em;text-transform:uppercase;color:var(--text-3)}
+.tbarb .tcs{flex:1 1 0;min-width:0}
+.tbarb .tbr{flex:none;display:flex;align-items:center;gap:8px}
+@media (min-width:1180px){.app[data-tbarb]{grid-template-rows:auto auto minmax(0,1fr) auto auto}[data-layout=b] .app[data-tbarb]{grid-template-rows:auto auto auto minmax(0,1fr) auto}}
+@media (min-width:1180px){html[data-tplace=bottom] .app[data-tbarb] .rig{min-height:72px}html[data-tplace=bottom][data-graphs=face][data-bk=power] .app[data-tbarb]:is([data-editing],[data-steps]) .rig{min-height:40px}}
+/* a timer's editor beside the last event or in the bottom bar: a box of its own, 380 px wide, under the event line (above
+   the bar), right-aligned under the chip pressed (brew-day.js), in the editor's own look, with the timers' notes in it.
+   With no editor open, a timers' note shows small under the line's right end (above the bar's) */
+.tpop{position:absolute;z-index:35;top:calc(100% + 6px);right:0;width:380px;padding:14px 12px 12px;border:2px solid var(--select);border-radius:var(--r);background:var(--panel);box-shadow:0 18px 40px rgb(0 0 0/.5);font:400 16px/1.35 var(--sans);letter-spacing:normal;white-space:normal;text-align:left}
+.tpop .tedit{margin:0;padding:0;border:0;background:none}
+.tpop .note{margin-top:8px}
+.tpnote{position:absolute;z-index:35;top:calc(100% + 6px);right:0;max-width:420px;margin:0;padding:8px 12px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel);font:500 15px/1.35 var(--sans);letter-spacing:normal;color:#ffd9a0}
+.tbarb :is(.tpop,.tpnote){top:auto;bottom:calc(100% + 6px)}
+/* ?tplace=side, on one screen: while there is a timer, the drawing's row is split, the drawing on the left and the
+   timers' column, 300 px wide, on the right, at the drawing's height. The drawing gets narrower, not shorter: it stays
+   wider than 2.6 to 1 at every size, where it keeps its vessels' size (drawRig). The column is a panel as the drawing
+   is: TIMERS with how many there are, + TIMER and SOUND, then the timers one to a row, which scroll inside it where
+   they don't all fit. A timer's editor and the timers' note open to its left (brew-day.js puts them level with the
+   timer, on screen) */
+@media (min-width:1180px){[data-layout=b] .brewhouse[data-tside]{grid-template-columns:minmax(0,1fr) 300px}[data-layout=b] .brewhouse[data-tside]>.plates{grid-column:1/-1}[data-layout=b] .brewhouse:is([data-tside],[data-tcorner])>.rig{grid-column:1;grid-row:2}}
+.tside{--pu:3.5px;--tcw-plain:150px;--tcw-go:200px;--tcw-full:250px;position:relative;grid-column:2;grid-row:2;display:flex;flex-direction:column;gap:3px;min-width:0;min-height:0;padding:3px 8px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel)}
+.tside .tsh{flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding-left:4px}
+.tside .tsh h3{margin:0;font:600 18px/1 var(--cond);letter-spacing:.08em;text-transform:uppercase;color:var(--text-3)}
+.tside .tshr{display:flex;align-items:center;gap:8px}
+.tside .tsl{flex:0 1 auto;min-height:0;display:flex;flex-direction:column;gap:4px;overflow-y:auto;overscroll-behavior:contain}
+.tside .tsl>.tchip{flex:none}
+/* the column is narrow, not short, so each timer is one row 38 px tall: its name, its state word and its time on one
+   line at the left, the name giving way first, with its ellipsis; REMOVE and START or PAUSE at the right, as tall as
+   the row, its outline drawn inside so they reach its edges; the bar a thin line along its foot */
+.tside .tchip{height:38px;border:0;box-shadow:inset 0 0 0 1px var(--line)}
+.tside .tchip[data-state=done]{border:0;box-shadow:inset 0 0 0 2px var(--prompt)}
+.tside .tcsel{grid-template-columns:minmax(0,max-content) auto auto;grid-template-rows:auto;column-gap:0;align-items:baseline;justify-content:start;padding:0 6px}
+.tside .tchip .tn{grid-column:1;grid-row:1}
+.tside .tchip .ts{grid-column:2;grid-row:1;margin-left:4px}
+.tside .tchip .ts:empty{display:none}
+.tside .tchip .tt{grid-column:3;grid-row:1;margin-left:6px;font-size:20px}
+.tside .tchip[data-soon] .tt{font-size:26px}
+.tside .tchip .tcx{margin-right:0}
+.tside .tchip .cmdbtn{min-height:0;height:38px;padding:0 6px;font-size:16px}
+.tside .tchip .bar{height:2px}
+.tside .tcg{display:flex;align-items:baseline;gap:5px}
+.tside :is(.tpop,.tpnote){top:0;right:calc(100% + 8px);bottom:auto}
+/* with no timers the drawing is full width, as without the timers, and + TIMER and SOUND are two small buttons over its
+   top-right corner, where the column's heading would be: side by side, one over the other, or with smaller words,
+   whichever clears the drawing (tsideCorner) */
+.tside.empty{grid-column:1/-1;z-index:1;justify-self:end;align-self:start;margin:6px;padding:0;border:0;background:none}
+.tcorner{display:flex;gap:6px}
+.tcorner[data-fit~=stack]{flex-direction:column;align-items:flex-end}
+.tcorner .snd{--th:44px;height:44px;padding:0 12px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2)}
+.tcorner .snd:not([aria-disabled=true]):hover{background:#253545}
+.tcorner[data-fit~=small] .tplus3{padding:4px 10px;font-size:15px}
+.tcorner[data-fit~=small] .snd{padding:0 9px;font-size:14px}
+.tedit{display:grid;gap:8px;margin-top:8px;padding:14px 12px 12px;border:2px solid var(--select);border-radius:var(--r);background:var(--panel)}
+/* the editor's title sits in its top border, as a legend does */
+.tedit .tet{justify-self:start;margin:-26px 0 -2px -4px;padding:0 6px;background:var(--panel);font:700 17px/1.2 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+.tfield{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:8px}
+.tfield label{min-width:62px;font:600 15px/1 var(--cond);letter-spacing:.05em;color:var(--text-2);text-transform:uppercase}
+.tedit input{min-width:0;min-height:52px;padding:0 12px;border:2px solid #3d7fd0;border-radius:var(--r);background:var(--face);color:var(--text);font:600 22px/1 var(--cond)}
+.tedit input::placeholder{color:#8a9bad;opacity:1}
+.tfield.tmin{grid-template-columns:auto 64px minmax(0,1fr) 64px}
+.tmin input{text-align:center;font-size:28px;font-variant-numeric:tabular-nums}
+.tsug,.tkeys{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+/* six presets share the editor's width, 282 px on a monitor's recipe column and 278 px on a 360 px phone: a 2 px gap
+   leaves each at least 44 px */
+.tpre{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:2px}
+.tedit .cmdbtn{min-height:46px;font-size:17px}
+.tedit .tmin .cmdbtn{min-height:52px}
+.tsug .cmdbtn[aria-pressed=true],.tpre .cmdbtn[aria-pressed=true]{background:#070c11;color:#fff;box-shadow:inset 0 0 0 2px #a9bfd4}
+/* the names to pick (BREWDAY_TIMER_NAMES): a long one wraps, up to three lines, rather than being cut short. 2 px of
+   padding a side leaves a 9-letter word like WHIRLPOOL (80 px) room in a monitor's three-to-a-row (84 px) */
+.tsug .cmdbtn{padding-left:2px;padding-right:2px}
+.tsug .cmdbtn .lb{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;overflow-wrap:anywhere;line-height:1.1}
+.tleft{display:flex;justify-content:space-between;align-items:baseline;margin:0;font:600 15px/1 var(--cond);letter-spacing:.05em;color:var(--text-2);text-transform:uppercase}
+.tleft b{font:600 34px/1 var(--cond);color:var(--text);font-variant-numeric:tabular-nums}
+.tnote{margin:-2px 0 0;font:500 14px/1.3 var(--sans);color:var(--text-3)}
+.tact{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:8px}
+.tedit .tact .cmdbtn{min-height:52px}
+.tact .tgo{background:var(--select);border-color:var(--select);color:#fff}
+.tact .tgo small{color:#fff}
+.tact .tgo:not([aria-disabled=true]):hover{background:#3477c8}
+.keep.snd.blocked .box{border-color:var(--prompt);background:var(--prompt-bg);box-shadow:none}
+.keep.snd.blocked .box svg{visibility:hidden}
+.keep.snd.blocked .kl{color:var(--prompt)}
+.banner .act.sec{background:none;color:#fff1d2;box-shadow:inset 0 0 0 2px #c99a3c}
+.banner .act.sec:not([aria-disabled=true]):hover{background:rgb(255 178 30/.14)}
+/* the alarm: one slow pulse (1 s up, 1 s down, far under the 3 flashes a second WCAG 2.3.1 allows), shared by the row,
+   the title bar and a frame round the whole screen; steady with reduced motion. Nothing else on the screen pulses */
+.trow[data-state=done]::after,.banner[data-ring]::after,.app[data-ring]::after{content:"";pointer-events:none;animation:ring 1s ease-in-out infinite alternate}
+.trow[data-state=done]::after,.banner[data-ring]::after{position:absolute;inset:-2px;border:2px solid var(--prompt);border-radius:calc(var(--r) + 1px);box-shadow:0 0 18px rgb(255 178 30/.55)}
+.banner[data-ring]{position:relative}
+.app[data-ring]::after{position:fixed;inset:0;z-index:60;box-shadow:inset 0 0 0 4px var(--prompt),inset 0 0 64px rgb(255 178 30/.4)}
+@keyframes ring{from{opacity:.15}to{opacity:1}}
+/* the phone's step strip: the timers that count, are paused or have run out; a tap goes to their section */
+.tml{display:none}
+
+/* screen tabs */
+.tabs{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);min-height:var(--tabs-h);background:var(--bar);border-top:1px solid var(--line)}
+.tabs a{display:flex;align-items:center;justify-content:center;padding:0 6px;font:600 clamp(15px,1.15vw,19px)/1.05 var(--cond);letter-spacing:.08em;text-transform:uppercase;color:var(--text-2);text-decoration:none;text-align:center}
+.tabs a+a{border-left:1px solid var(--line)}
+.tabs a:hover{background:var(--panel)}
+.tabs a[aria-current=page]{background:var(--select);color:#fff}
+.tabs .short{display:none}
+/* BREWSCRIBE opens another program in a browser tab of its own: the icon says so before the press (its words are for
+   screen readers). Where the tab is narrow the name breaks between Brew and Scribe, and the icon stays with Scribe */
+.tabs .ext .nw{white-space:nowrap}
+.tabs .ext svg{width:.8em;height:.8em;margin-left:.3em;vertical-align:-.05em;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.toast{position:fixed;left:50%;bottom:calc(var(--tabs-h) + 18px);z-index:60;transform:translateX(-50%);width:max-content;max-width:min(560px,calc(100% - 24px));padding:12px 16px;border-radius:var(--r);background:#e8eef3;color:#10161c;font:500 16px/1.35 var(--sans);box-shadow:0 12px 30px rgb(0 0 0/.45)}
+.toast[hidden]{display:none}
+
+/* the brewhouse drawing (rig.js) */
+.k-name{font:700 28px var(--cond);letter-spacing:.06em;fill:#c3cfda;text-anchor:middle}
+.k-body{fill:url(#g-body)}.k-lid{fill:url(#g-lid)}.k-base{fill:#56677a}
+.k-rim{fill:#a6b5c3}.k-lip{fill:#b8c5d1}
+.k-stem{fill:#2a333d}.k-knob{fill:#12171c}.k-shine{fill:#3b4653}
+.k-handle{fill:none;stroke:#8292a4;stroke-width:7;stroke-linecap:round}
+.k-plate{fill:#6c7d90}
+.k-box{fill:#6a7b8e;stroke:#4d5d6e;stroke-width:1.5}.k-gland{fill:#1a2027}
+.k-fb{fill:none;stroke:#2e3b48;stroke-width:3;stroke-dasharray:10 6}
+.coil-o>*{fill:none;stroke:#2e3b48;stroke-width:8}
+.coil>*{fill:none;stroke:#a7b6c5;stroke-width:4.5;transition:stroke .3s}
+.coil.on>*{stroke:var(--wort)}
+/* hot liquor in the coil: the sparge water, which runs through it on its way to the mash tun */
+.coil.on.liq>*{stroke:var(--liquor)}
+.el-cap{fill:#2b3743}
+.element{fill:none;stroke:#3b4957;stroke-width:5;stroke-linejoin:round;stroke-linecap:round}
+.element.on{stroke:var(--heat);filter:url(#glow)}
+.t-bezel{fill:#4f5f70}.t-face{fill:#dfe6ec}.t-tick{stroke:#6b7682;stroke-width:1.2}
+.t-needle{stroke:#cf3a2f;stroke-width:2;stroke-linecap:round}.t-hub{fill:#2b2f33}
+.v-body{fill:#c3cfda;stroke:#6b7c8e;stroke-width:1.5}.v-lever{fill:#3d7cc0}.v-neck{fill:#8e9eaf}
+.stand rect{fill:#0b1015}.stand-hi rect{fill:#2a3644}.bolts circle{fill:#3a4756}
+.fit{fill:#a6b5c3;stroke:#56677a;stroke-width:1.5}
+.ln-o .po{fill:none;stroke:#04070a;stroke-width:15;stroke-linejoin:round;stroke-linecap:round}
+.ln .pf{fill:none;stroke:#3e4c5a;stroke-width:9;stroke-linejoin:round;stroke-linecap:round}
+.ln .pd{fill:none;stroke:none;stroke-width:4;stroke-linecap:round;stroke-dasharray:.01 23.99}
+.ln.on.liq .pf{stroke:var(--liquor)}.ln.on.wrt .pf{stroke:var(--wort)}
+.ln.on .pd{stroke:rgb(255 255 255/.75);animation:flow .9s linear infinite}
+.ln .ch{display:none;fill:none;stroke:#0a1016;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.ln.on .ch{display:inline}
+/* hand valves: hollow when open, solid when closed, and the word under or beside each */
+.valve path{fill:#3b4b5b;stroke:#8193a5;stroke-width:2}
+.valve.shut path{fill:#a6b5c3}
+.tag{font:600 18px var(--cond);letter-spacing:.06em;fill:var(--text-3)}
+.p-base{fill:#2a3642}
+.p-ring{fill:#24303c;stroke:#93a3b4;stroke-width:3}
+.p-tri{fill:#93a3b4}
+.pump.on.liq .p-ring{fill:var(--liquor);stroke:#c2ebfb}.pump.on.wrt .p-ring{fill:var(--wort);stroke:#ffe6a6}
+.pump.on .p-tri{fill:#0a1016}
+.p-name{font:700 21px var(--cond);letter-spacing:.06em;fill:#c3cfda}
+.p-st{font:600 18px var(--cond);letter-spacing:.06em;fill:var(--text-3)}
+.pump.on .p-st{fill:var(--run)}
+/* layout B's line drawing */
+.rig-line .v-shell{fill:#1b2833;stroke:#b9c6d2;stroke-width:3;stroke-linejoin:round}
+.rig-line .v-line{fill:none;stroke:#b9c6d2;stroke-width:3;stroke-linecap:round}
+.rig-line .v-name{font:700 24px var(--cond);letter-spacing:.06em;fill:#c3cfda;text-anchor:middle}
+.rig-line .v-dots circle{fill:#7f90a2}
+.rig-line .coil>*{stroke:#6f8194;stroke-width:3.5}
+.rig-line .coil.on>*{stroke:var(--wort)}
+.rig-line .coil.on.liq>*{stroke:var(--liquor)}
+.rig-line .element{stroke:#6f8194;stroke-width:3.5}
+.rig-line .element.on{stroke:var(--heat)}
+.rig-line .ln-o{display:none}
+.rig-line .ln .pf{stroke:#4a5a6b;stroke-width:5}
+.rig-line .ln .pd{stroke-width:2.2;stroke-dasharray:5 19}
+.rig-line .ln.on .ch{stroke-width:3;stroke-linecap:butt}
+.rig-line .ln.on.liq .ch{fill:var(--liquor);stroke:var(--liquor)}.rig-line .ln.on.wrt .ch{fill:var(--wort);stroke:var(--wort)}
+.rig-line .ln .ch{transform-box:fill-box}
+.rig-line .valve path{fill:#1b2833;stroke:#b9c6d2;stroke-width:2.5;stroke-linejoin:round}
+.rig-line .valve.shut path{fill:#b9c6d2}
+.rig-line .valve.live.liq path{stroke:var(--liquor)}.rig-line .valve.live.wrt path{stroke:var(--wort)}
+/* a SpargeStep's "Sparge started" question: each valve to change keeps its drawn position and is marked in Prompt Amber,
+   outline and words ("SET OPEN", "SET CLOSED"), like anything else waiting for the brewer */
+.rig-line .valve.set.liq path,.rig-line .valve.set.wrt path{stroke:var(--prompt);stroke-width:3}
+.tag.set,.vnote .set{fill:var(--prompt)}
+.rig-line .p-ring{fill:#1b2833;stroke:#b9c6d2}
+.rig-line .p-tri{fill:#b9c6d2}
+.rig-line .p-base{fill:none;stroke:#b9c6d2;stroke-width:2.5}
+.rig-line .pump.on.liq .p-ring{fill:#173544;stroke:var(--liquor)}.rig-line .pump.on.wrt .p-ring{fill:#3a2e12;stroke:var(--wort)}
+.rig-line .pump.on.liq .p-tri{fill:var(--liquor)}.rig-line .pump.on.wrt .p-tri{fill:var(--wort)}
+/* after the boil (?wp=): the wort pump's loop at the boil kettle, its chiller, or the wort turning in the kettle (a flow
+   mark, so only while the pump runs) */
+.rig-line .gone{display:none}
+.rig-line .chiller rect{fill:#1b2833;stroke:#b9c6d2;stroke-width:2.5}
+.rig-line .chiller text{font:600 18px var(--cond);letter-spacing:.06em;fill:#c3cfda;text-anchor:middle}
+.rig-line #ln-swirl:not(.on){display:none}
+.rig-line #ln-swirl .pf{stroke-width:3.5}
+.rig-line #ln-swirl .ch{transform-box:view-box}
+
+/* HLT while the mash tun's HERMS runs it */
+.moderow .herms{grid-column:1/-1;border-style:dashed;background:transparent;color:var(--text-2)!important}
+.moderow .herms small{color:var(--text-3)}
+/* brewing by hand: the Recipe Book, ready to load. On a short screen its list scrolls inside the column, as the
+   step list does, so the page itself never scrolls (The One Screen Rule) */
+.book{display:grid;grid-template-rows:auto minmax(0,1fr);gap:8px;min-height:0}
+.book h3{margin:4px 0 0;font:700 20px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+.book ul{display:grid;align-content:start;gap:6px;min-height:0;margin:0;padding:0;list-style:none;overflow:auto;overscroll-behavior:contain}
+.book li{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:center;padding:8px 8px 8px 12px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel-2)}
+.book .bn{font:600 19px/1.15 var(--cond);letter-spacing:.02em}
+.book .bd{grid-column:1;font:500 15px/1.3 var(--cond);color:var(--text-2)}
+.book .cmdbtn{grid-column:2;grid-row:1/3;min-height:48px;min-width:84px}
+
+/* layout B: recipe on the left, faceplates across the top, line drawing below, tabs at the top */
+[data-layout=b] .app{grid-template-rows:auto auto auto minmax(0,1fr)}
+[data-layout=b] .brand{margin-right:0!important}
+[data-layout=b] .topbar .banner{flex:0 1 auto;min-width:0;margin:0 auto;min-height:50px;padding:5px 6px 5px 14px}
+[data-layout=b] .topbar .banner[data-tone=ok]{padding-right:18px;background:#11331f;border-color:#2b6a42;color:#c9f2d6;text-transform:uppercase;letter-spacing:.08em}
+[data-layout=b] .status{grid-template-columns:minmax(0,1fr);padding-top:8px}
+[data-layout=b] .event{min-height:48px}
+[data-layout=b] .tabs{margin-top:10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);min-height:56px}
+[data-layout=b] .main{grid-template-columns:clamp(340px,23vw,440px) minmax(0,1fr)}
+[data-layout=b] .brewhouse{grid-template-rows:auto minmax(0,1fr)}
+/* the PV is never so big that it runs into the line beside it. A window is 100 --pu wide; from it come its padding, the
+   gap after the label, the widest label (BOIL, 1.89em), the OUT/MODE column ("100 %", 2.55em, and its padding), the
+   borders and 6 px clear of the line, and the PV ("212.0°F") is 2.47em. The small words stop shrinking at their
+   smallest sizes, so only narrow windows need this (1180, 1280 and 900 px wide), and all three PVs stay one size */
+[data-layout=b] .face .pv{font-size:min(clamp(48px,calc(21 * var(--pu)),110px),calc((100 * var(--pu) - 3 * clamp(10px,calc(4 * var(--pu)),18px) - clamp(10px,calc(3.5 * var(--pu)),16px) - 2.55 * clamp(20px,calc(6.6 * var(--pu)),32px) - 1.89 * clamp(15px,calc(5 * var(--pu)),22px) - 9px) / 2.47))}
+[data-layout=b] .face .sv{font-size:clamp(26px,calc(9.5 * var(--pu)),50px)}
+.mock .lay{margin-left:auto}
+
+@keyframes march{to{background-position:17px 0}}
+@keyframes flow{to{stroke-dashoffset:-24}}
+@keyframes blink{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.pd,.lamp::before,.link i,.keep .box,.nudge.sending::before,.trow[data-state=done]::after,.banner[data-ring]::after,.app[data-ring]::after{animation:none!important}}
+
+/* desktop: one fixed screen */
+@media (min-width:1180px){.app{height:max(calc(100dvh - var(--mock-h)),860px)}}
+/* while a timer's editor is open, the step list (by hand, the recipe book and its two links) makes way for it, rather
+   than shrinking to a sliced row, and so does the strike water box, unless it is the box open (data-pb). The header
+   still says which step runs, and alerts still come in the title bar. All back when it closes */
+@media (min-width:1180px){.recipe[data-tedit] :is(.steps,.book,.handlinks){display:none}.recipe[data-tedit]:not([data-pb]) .sw{display:none}}
+/* the pre-brew check's box, the probes side by side and the strike water box opened out do the same, and the timers
+   make way for them too, so the box isn't squeezed to a sliver and the page doesn't grow: a timer that runs out
+   meanwhile still says so in the title bar, with OK, and in the frame round the screen. A timer's editor open at the
+   time makes way with them, with what was typed in it, and is back as it was when the box closes */
+@media (min-width:1180px){.recipe[data-pb] :is(.steps,.book,.handlinks,.tmrs,.timer){display:none}}
+/* where the column is short, the probes' panel scrolls in it, as the step list whose room it takes does, rather than
+   making the page longer (The One Screen Rule). The strike water box opened out keeps its head, with USE or BACK TO and
+   CLOSE, and only the details under it scroll */
+@media (min-width:1180px){.recipe[data-pb] .cmp{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}}
+@media (min-width:1180px){.recipe[data-pb] .sw.open{display:flex;flex-direction:column;flex:0 1 auto;min-height:0}.recipe[data-pb] .sw.open .swhead{flex:none}.recipe[data-pb] .swdet{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}}
+/* BrewStart's box does the same: its middle scrolls inside it where the column is short, and its foot, with SET and
+   CANCEL, stays at the bottom of the box. COMPARE PROBES (in the column's proposal, its row with OTHER RECIPE) makes
+   way for it as the step list does, and is back when the box closes */
+@media (min-width:1180px){.recipe[data-pb] .bsbox{flex:0 1 auto;min-height:0}.recipe[data-pb] .bsmid{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}.recipe[data-bs]>:is(.cpbtn,.nbrow){display:none}}
+/* only the scrolling box gives up height: everything else in the column keeps its size, so nothing above the box
+   moves when it opens (COMPARE PROBES' button would otherwise lose a pixel or two where its words are big) */
+@media (min-width:1180px){.recipe[data-pb]>:not(.cmp):not(.sw):not(.rbox):not(.bsbox){flex-shrink:0}}
+/* where the page scrolls, the strike water box's head stays at the top of the screen while its details pass under it,
+   so USE or BACK TO and CLOSE are always in reach */
+@media (max-width:1179.98px){.sw.open .swhead{position:sticky;top:0;z-index:2}}
+/* the versions' line steps aside too while a timer's editor is open, while something in the column waits for you
+   (NEXT STEP's or RESET's question, a timer's alarm), and where the current step wouldn't be whole without its room
+   (data-short, keepStepInView): on a monitor the column has no room to spare then, and the line is the least needed
+   thing in it */
+@media (min-width:1180px){.recipe:is([data-tedit],[data-asking],[data-short]) .ver{display:none}}
+/* while a value editor is open the drawing may shrink further, so a note under the editor can't push the page past the screen */
+@media (min-width:1180px){.app[data-editing] .rig{min-height:160px}}
+/* tablet: stack, page scrolls */
+@media (max-width:1179px){
+  .main{grid-template-columns:minmax(0,1fr)}
+  .brewhouse{grid-template-rows:auto auto}
+  .rig{min-height:0;aspect-ratio:1200/470}
+  .steps{overflow:visible}
+  .book ul{overflow:visible}
+  /* stacked, the timers come before the steps (or the recipe book), so they are not seven steps down */
+  [data-timers=new] .recipe .steps,[data-timers=new] .recipe .book,[data-timers=new] .recipe .handlinks,[data-timers=new] .recipe .cmp.byh{order:2}
+  /* BrewStart's box sits where the step list is, just above it */
+  [data-timers=new] .recipe .bsbox{order:2}
+  [data-timers=new] .recipe .tmrs{order:1}
+  [data-layout=b] .recipe{order:2}
+  [data-layout=b] .main{grid-template-columns:minmax(0,1fr)}
+  [data-layout=b] .brewhouse{grid-template-rows:auto auto}
+}
+@media (max-width:899px){.plates{grid-template-columns:minmax(0,1fr);--pu:calc(1cqi - .26px)}}
+/* side by side, the three faceplates share row heights so windows, lines and buttons line up */
+@media (min-width:900px){
+  .plates{grid-template-rows:repeat(6,auto);row-gap:10px}
+  .plate{grid-row:span 6;grid-template-rows:subgrid}
+}
+/* a tablet, or half a monitor (701–1023 px): the title bar's question gets a row of its own, as on a phone. Squeezed in
+   beside the name, the connection, ALL OFF and the clock, it had 36–175 px for its words, and at 701 px the bar ran 49 px
+   past the screen */
+@media (min-width:701px) and (max-width:1023px){
+  [data-layout=b] .topbar{flex-wrap:wrap;row-gap:8px}
+  [data-layout=b] .brand{margin-right:auto!important}
+  [data-layout=b] .topbar .banner{order:1;flex:1 1 100%;margin:0;max-width:none}
+  /* with the question on its own row, the name has the room left beside the connection, ALL OFF and the clock: a long
+     name keeps the full size there, and takes that room without pushing them onto another row */
+  [data-layout=b] .brand{flex:1 1 0;min-width:0;max-width:none}
+  [data-layout=b] .brand[data-long] .bname{font-size:1em}
+}
+/* phone: list view, bottom tab bar */
+@media (max-width:700px){
+  :root{--pad:12px;--gap:10px;--tabs-h:97px}
+  .app{padding-bottom:calc(var(--tabs-h) + env(safe-area-inset-bottom))}
+  .topbar{gap:10px;padding:8px var(--pad)}
+  .clock{font-size:24px;min-width:0}
+  .clock[data-sim]{flex-direction:column;align-items:flex-end;gap:2px}
+  .clock .cd{order:0;padding:2px 5px 1px;font-size:12px;letter-spacing:.05em}
+  .clock .cd .lg{display:none}
+  #link-t{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .link{font-size:15px}
+  .alloff{flex:0 1 auto;max-width:108px;min-height:46px;padding:4px 10px;font-size:16px;line-height:1.05}
+  .status{grid-template-columns:minmax(0,1fr);padding-top:8px}
+  .event{font-size:16px;min-height:50px;padding:3px 3px 3px 12px}
+  .logbtn{min-height:44px}
+  .banner{min-height:44px;padding:5px 6px 5px 12px}
+  .now{padding:8px 12px}
+  .rig{display:none}
+  .now{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:3px 12px;padding:10px 12px;border:1px solid #3c7fcc;border-radius:var(--r);background:var(--active)}
+  .now .n{grid-row:1/3;font:700 30px/1 var(--cond)}
+  .now b{font:700 21px/1.1 var(--cond);letter-spacing:.03em}
+  .now .p{grid-column:2;font:500 15px/1.2 var(--cond);color:#dce9f7}
+  .now .left{grid-column:3;grid-row:1/3;font:700 24px/1 var(--cond);font-variant-numeric:tabular-nums}
+  .now .bar{grid-column:1/-1;margin-top:6px}
+  .now .nx{grid-column:1/-1;margin-top:2px;font:600 16px/1.2 var(--cond);letter-spacing:.03em;color:#dce9f7}
+  .now .tml{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:2px 10px;align-items:baseline;min-height:44px;margin-top:6px;padding:8px 10px;border:1px solid #3c7fcc;border-radius:var(--r);background:#0b2440;color:#fff;font:600 16px/1.3 var(--cond);letter-spacing:.03em;text-align:left}
+  .now .tml .tl{font-size:13px;letter-spacing:.08em;color:#9fc3ea}
+  .now .tml .d{color:var(--prompt)}
+  .plate{padding:10px;gap:8px}
+  .dev{font-size:15px}
+  .face .pv{font-size:clamp(48px,calc(18 * var(--pu)),76px)}
+  .face .sv{font-size:clamp(26px,calc(9.5 * var(--pu)),40px)}
+  .lamp{min-height:56px;padding:14px 6px 6px}
+  .lamp .st{font-size:19px}
+  .lamp .nm{font-size:13px}
+  .seg button,.tgtbtn{min-height:50px;padding:4px}
+  .seg small,.tgtbtn small{margin-top:3px}
+  .tabs{position:fixed;inset:auto 0 0;z-index:30;padding-bottom:env(safe-area-inset-bottom)}
+  .tabs{grid-auto-flow:row;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:48px}
+  .tabs .long{display:none}
+  .tabs .short{display:inline}
+  .tabs a{font-size:14px;letter-spacing:.05em}
+  .tabs a:nth-child(n+5){border-top:1px solid var(--line)}
+  .tabs a:nth-child(5){border-left:0}
+  /* MORE takes the last two cells only where BrewScribe isn't installed; with it, the eight tabs are four and four */
+  .tabs a:nth-child(7):last-child{grid-column:span 2}
+  [data-layout=b] .topbar{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;row-gap:8px}
+  /* layout A's title bar is a row: the name takes only the room left, as in B's grid, so ALL OFF keeps its width */
+  [data-layout=a] .brand{flex:1 1 0;min-width:0}
+  [data-layout=b] .topbar .banner{grid-column:1/-1;grid-row:2;margin:0;max-width:none}
+  /* a long question (data-long): its words take the width, its buttons go under them at the right, and the bell stays
+     beside the title */
+  .banner[data-long]{flex-wrap:wrap;row-gap:8px}
+  .banner[data-long] .msg{flex-basis:calc(100% - 38px)}
+  .banner[data-long] .msg+.act{margin-left:auto}
+  .banner[data-long] svg{align-self:flex-start;margin-top:2px}
+  [data-layout=b] .tabs{margin-top:0;border-bottom:0}
+  [data-layout=b] .face .pv{font-size:clamp(44px,calc(16 * var(--pu)),68px)}
+  [data-layout=b] .face .sv{font-size:clamp(24px,calc(8.5 * var(--pu)),36px)}
+  /* the names to pick, two to a row: three to a row left a 360 px phone 79 px a name, and WHIRLPOOL needs 80. The page
+     scrolls here, so the third row costs no room another part needs */
+  .tsug{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+/* ---------- temperature graphs, only with ?graphs=face or ?graphs=panel (graphs.js) ---------- */
+:root{--graph-h:clamp(58px,calc(28dvh - 200px),110px)}
+/* with graphs in the faceplates the drawing is shorter, so its labels are set larger (drawRig's --rs, up to 1.3) */
+/* the One Screen Rule wins: on a short screen the drawing gives up height, never the PV digits */
+@media (min-width:1180px){[data-graphs=face] .rig{min-height:140px}[data-graphs=face] .app[data-editing] .rig{min-height:110px}}
+/* the new boil kettle's power box (?bk=power) has a third row (BOIL AT, USUAL), so while an editor is open the drawing may give
+   up a little more, and a two-line note under the box still doesn't make the page scroll */
+@media (min-width:1180px){[data-bk=power] .app[data-editing] .rig{min-height:136px}[data-graphs=face][data-bk=power] .app[data-editing] .rig{min-height:64px}}
+/* and the same while the boil power's steps have a row of their own (data-steps, brew-day.js): the drawing gives up
+   their height, so the page's height doesn't change as they come and go and nothing on it moves */
+@media (min-width:1180px){[data-bk=power] .app[data-steps] .rig{min-height:136px}[data-graphs=face][data-bk=power] .app[data-steps] .rig{min-height:64px}}
+/* a browser window on a 1080-line monitor is about 950 px tall: there the faceplates tighten their gaps,
+   buttons (still at least 56 px) and span labels, so the drawing keeps readable labels */
+@media (min-width:1180px) and (max-height:1000px){
+  [data-graphs=face] .plates,[data-graphs=face] .plate{row-gap:8px}
+  [data-graphs=face] .lamp{min-height:58px;padding:12px 8px 5px}
+  [data-graphs=face] .seg button,[data-graphs=face] .tgtbtn{min-height:54px}
+  [data-graphs=face] .graph{margin-top:7px;padding-top:7px}
+  [data-graphs=face] .gspans{gap:2px}
+  [data-graphs=face] .gspans span{padding:4px}
+}
+[data-graphs=face] .rig-line .tag,[data-graphs=face] .rig-line .p-st{font-size:calc(18px * var(--rs,1))}
+/* the chiller's word sits in its box: it grows no more than the vessels' names do */
+[data-graphs=face] .rig-line .chiller text{font-size:calc(18px * min(var(--rs,1),1.15))}
+[data-graphs=face] .rig-line .p-name{font-size:calc(21px * var(--rs,1))}
+[data-graphs=face] .rig-line .v-name{font-size:calc(24px * min(var(--rs,1),1.15))}
+.graph{grid-column:1/-1;display:grid;grid-template-columns:subgrid;align-items:stretch;margin-top:clamp(6px,calc(2.5 * var(--pu)),10px);padding-top:clamp(6px,calc(2.5 * var(--pu)),10px);border-top:1px solid #1a2530}
+.gplot{display:block;min-width:0;padding:0;border:0;border-radius:2px;background:none;text-align:left;cursor:pointer;touch-action:manipulation}
+.gsvg{display:block;height:var(--graph-h)}
+.gsvg svg{display:block}
+.gspans{display:grid;align-content:center;gap:5px;padding-left:clamp(10px,calc(3.5 * var(--pu)),16px);border-left:1px solid #2a3846}
+.gspans span{padding:6px 4px;border:1px solid transparent;border-radius:3px;font:600 13px/1 var(--cond);letter-spacing:.08em;color:var(--text-3);text-align:center;white-space:nowrap;cursor:pointer;user-select:none;-webkit-user-select:none}
+.gspans span.on{border-color:#7f91a3;background:#0e171f;color:#fff}
+.gspans span:not(.on):hover{color:var(--text)}
+.g-grid{fill:none;stroke:#16202a;stroke-width:1}
+.g-mark{fill:none;stroke:#3a4a5a;stroke-width:1;stroke-dasharray:3 3}
+.g-mn rect{fill:#1e2b37;stroke:#3a4a5a;stroke-width:1}
+.g-mn text{font:600 11px var(--cond);fill:var(--text-2);text-anchor:middle}
+.g-gl text,.g-tl text,.g-bl{font:600 12px var(--cond);letter-spacing:.04em;fill:var(--text-3);paint-order:stroke;stroke:var(--face);stroke-width:3px;stroke-linejoin:round}
+.g-tl text{text-anchor:middle}
+.g-bl{font-size:10px;letter-spacing:.08em}
+.g-base{fill:none;stroke:#1d2833;stroke-width:1}
+.g-out{fill:rgb(255 123 28/.6);stroke:none}
+.g-sv{fill:none;stroke:var(--sv);stroke-width:1.6;stroke-linejoin:round}
+/* the boil kettle's redesigns (?bk=): where the boil counts from is a threshold, not a held target, so it is dashed */
+.g-sv.g-dash{stroke-dasharray:7 5}
+.g-ref{fill:none;stroke:var(--text-3);stroke-width:1.4;stroke-dasharray:7 5}
+.g-pv{fill:none;stroke:var(--pv);stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round;filter:drop-shadow(0 0 3px rgb(255 75 62/.5))}
+.g-dot{fill:var(--pv)}
+.g-gap{fill:#0b1117}
+svg.stale .g-pv,svg.stale .g-sv{stroke:#6b7785;filter:none}
+svg.stale .g-dot{fill:#6b7785}
+svg.stale .g-out{fill:rgb(107 119 133/.45)}
+/* the panel option: the graphs share the drawing's place, with a DRAWING / GRAPHS switch in its corner */
+[data-graphs=panel] .brewhouse>.plates{grid-row:1}
+[data-graphs=panel] .brewhouse>.rig,[data-graphs=panel] .brewhouse>.gpanel,[data-graphs=panel] .brewhouse>.gview{grid-row:2;grid-column:1}
+.gpanel{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:auto minmax(0,1fr);gap:0 var(--gap);min-height:0}
+.gpanel[hidden],.rig[hidden]{display:none}
+.ghead{grid-column:1/-1;display:flex;align-items:center;min-height:58px;margin:0;padding:0 270px 0 4px;font:500 15px/1.3 var(--sans);color:var(--text-3)}
+.gcol{display:grid;min-height:0;padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.gwin{display:grid;min-height:0;padding:10px 12px;background:var(--face);border:1px solid #000;border-radius:4px;box-shadow:inset 0 3px 10px rgb(0 0 0/.9),inset 0 0 0 1px #1a2530,0 1px 0 rgb(255 255 255/.06)}
+.gwin .graph{grid-template-columns:minmax(0,1fr) auto;column-gap:12px;margin:0;padding:0;border:0}
+.gwin .gsvg{height:100%;min-height:200px}
+.gview{display:grid;grid-template-columns:1fr 1fr;justify-self:end;align-self:start;z-index:3;margin:8px;border:1px solid var(--edge);border-radius:var(--r);overflow:hidden}
+.gview button{min-height:42px;padding:0 16px;border:0;background:var(--panel-2);font:700 16px/1 var(--cond);letter-spacing:.08em;color:var(--text-2)}
+.gview button+button{border-left:1px solid var(--edge)}
+.gview button[aria-pressed=true]{background:#070c11;color:#fff;box-shadow:inset 0 0 0 2px #a9bfd4}
+.gview button:not([aria-pressed=true]):hover{background:#253545}
+@media (min-width:701px){[data-graphs=panel] .face .graph{display:none}}
+@media (max-width:700px){
+  :root{--graph-h:108px}
+  .gpanel,.gview{display:none!important}
+  .gspans span{padding:7px 3px}
+}

@@ -1,0 +1,39 @@
+{
+  "title": "Where should the recipe live?",
+  "question": "Three layouts of the dark brewhouse panel, each with the full recipe on the main page, PV big and red, SV smaller and green, and both pumps. Pick one, or use the box to say what to keep or combine. The images get some plumbing and labels wrong; the real mockup will draw them exactly. My suggestion: D3, because its PID faceplates carry the biggest numbers and its flat pipe drawing is the easiest to make exact.",
+  "options": [
+    {
+      "id": "layout-d1",
+      "label": "D1: Recipe down the right",
+      "kicker": "LAYOUT D1",
+      "thesis": "The brewhouse fills the left two thirds; the whole recipe runs down the right, with hop additions nested under the boil.",
+      "viewport": "Rendered tanks with both pump loops, a PV/SV box and lamp-strip buttons under each tank; the recipe column with Start, Pause and Next step; alarms and the last event on top; tabs along the bottom.",
+      "risk": "Rendered steel tanks take the most space and are the hardest part to build well.",
+      "case": "Off in the image: the boil kettle's element glows although it is off, and the pipes are only roughly right.",
+      "hero": ".impeccable/mocks/layout-d1-recipe-right.png"
+    },
+    {
+      "id": "layout-d2",
+      "label": "D2: Recipe as a timeline",
+      "kicker": "LAYOUT D2",
+      "thesis": "The recipe becomes a timeline along the bottom, each step as wide as it is long, with the hop additions marked on the boil.",
+      "viewport": "Tanks with PV/SV boxes beside them across the middle; the step timeline with a NOW marker along the bottom; alarms and events on top.",
+      "risk": "The 90-minute boil squeezes the short steps, and the timeline competes with the vessels for height.",
+      "case": "Off in the image: it also drew a recipe column, a second set of tabs and buttons, and a wort loop that skips the HLT coil; only the bottom timeline is the idea.",
+      "hero": ".impeccable/mocks/layout-d2-recipe-timeline.png"
+    },
+    {
+      "id": "layout-d3",
+      "label": "D3: PID faceplates, recipe on the left",
+      "kicker": "LAYOUT D3",
+      "thesis": "Three PID-style faceplates lead (huge red PV, green SV, output and mode), the recipe runs down the left, and a flat pipe drawing shows the plumbing.",
+      "viewport": "Recipe column on the left; three faceplates with their buttons top right; a simple pipe-and-pump drawing bottom right; alarms and events on top; tabs at the bottom.",
+      "risk": "The vessels are line drawings rather than shiny tanks, so it looks more like plant software than the touch panel.",
+      "case": "Off in the image: the tabs and the event line appear twice and the pump loops are muddled.",
+      "hero": ".impeccable/mocks/layout-d3-faceplates-recipe-left.png"
+    }
+  ],
+  "reroll": false,
+  "canon": false,
+  "steer": true
+}

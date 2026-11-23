@@ -1,0 +1,578 @@
+/* Hardware, in the brew-day screen's world (DESIGN.md). The frame (title bar, last event, tabs) is layout B's, rule for
+   rule, as the Settings page has it; the drawing's rules are brew-day.css's own for layout B's line drawing; everything
+   after "hardware" is this page's own, and takes its colours from the tokens below only, apart from white for ink on a
+   coloured fill and black for shadows. */
+:root{
+  --bg:#0f161d;--bar:#0a1016;--panel:#17212b;--panel-2:#1e2b37;--hover:#253545;--line:#2a3b4b;--edge:#33475a;--face:#030609;
+  --text:#e8eef3;--text-2:#b6c3cf;--text-3:#8b9cad;
+  --pv:#ff4b3e;--heat:#ff7b1c;--run:#3ddc6f;--off:#566676;--liquor:#46b8ea;--wort:#e9b33b;
+  --prompt:#ffb21e;--prompt-bg:#3a2a06;--prompt-ink:#fff1d2;--note:#ffd9a0;
+  --alarm:#ff4a4a;--alarm-bg:#6e1414;--fault-bg:#2b1315;--alarm-ink:#ffc9c4;
+  --select:#2a6fc0;--active:#1c5796;--active-edge:#3c7fcc;--active-ink:#dce9f7;--focus:#8cc2ff;
+  --answer:#f4f6f8;--answer-ink:#10161c;--answer-ink-2:#3a4652;--mark:#5a4300;--mark-ink:#fff3d6;--stale:#6b7785;
+  --select-hover:#3477c8;--stripe:#a9bccd;--seg-on:#070c11;--seg-ring:#a9bfd4;--option-bg:#101a23;--draw:#b9c6d2;--draw-fill:#1b2833;
+  --sunk:inset 0 3px 10px rgb(0 0 0/.9),inset 0 0 0 1px #1a2530,0 1px 0 rgb(255 255 255/.06);
+  --sans:"Barlow","Segoe UI",system-ui,sans-serif;
+  --cond:"Barlow Condensed","Roboto Condensed","Arial Narrow","Segoe UI",sans-serif;
+  --r:6px;--gap:12px;--pad:20px;--tabs-h:64px;--mock-h:38px;--row-l:560px;--row-c:420px
+}
+html.bare{--mock-h:0px}
+*{box-sizing:border-box}
+html{color-scheme:dark;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:400 16px/1.35 var(--sans);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;margin:0;top:0;left:0}
+.num{font-variant-numeric:tabular-nums}
+
+/* mockup strip: deliberately not part of the design */
+.mock{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;min-height:var(--mock-h);padding:4px var(--pad);background:#f2efe6;color:#1d232a;border-bottom:2px dashed #1d232a;font:500 14px/1.2 var(--sans)}
+.mock a{color:#1d232a;padding:4px 8px;border-radius:4px}
+.mock a[aria-current=true]{background:#1d232a;color:#f2efe6;text-decoration:none}
+html.bare .mock{display:none}
+.mock .lay{margin-left:auto}
+
+/* ---------- the frame: the brew-day screen's title bar, last event and tabs, layout B (html[data-layout=b]), as the
+   Settings page has them; copy them again whenever brew-day.css's frame changes. Only .app is this page's own ---------- */
+.app{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto minmax(0,1fr);height:max(calc(100dvh - var(--mock-h)),620px)}
+
+/* top bar */
+.topbar{display:flex;align-items:center;gap:16px;padding:10px var(--pad);background:var(--bar);border-bottom:1px solid var(--line)}
+.topbar p{margin:0}
+.brand{display:flex;align-items:center;gap:12px;margin-right:auto!important;max-width:12em;font:700 clamp(22px,2.1vw,34px)/1 var(--cond);letter-spacing:.04em;text-transform:uppercase}
+/* the BREWERY_NAME setting: two lines at most, then an ellipsis; a long name is drawn smaller (data-long) */
+.brand .bname{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:break-word}
+.brand[data-long] .bname{font-size:.7em}
+.link{display:flex;align-items:center;gap:8px;font:600 16px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase;color:var(--text-2)}
+.link i{width:12px;height:12px;border-radius:50%;background:var(--run)}
+.link[data-link=lost]{color:#ffc9c4}
+.link[data-link=lost] i{background:transparent;border:3px solid var(--alarm);animation:blink 1s steps(2,start) infinite}
+.alloff{min-height:48px;padding:0 16px;border:2px solid #7d8fa2;border-radius:var(--r);background:var(--panel-2);color:var(--text);font:700 17px/1 var(--cond);letter-spacing:.06em}
+.alloff:not([aria-disabled=true]):hover{border-color:#ff8a80;background:#2b1315}
+.alloff[aria-disabled=true]{opacity:.5;cursor:not-allowed}
+.clock{font:600 clamp(26px,2.4vw,40px)/1 var(--cond);font-variant-numeric:tabular-nums;min-width:3.2ch;text-align:right}
+/* on a monitor or laptop only the alarm or prompt gives way to a long message in the title bar (it wraps): ALL OFF keeps
+   its shape and the clock its digits. Narrower, both still give way, so the prompt doesn't grow taller still */
+@media (min-width:1180px){.alloff,.clock{flex:none}}
+
+/* alarms and the last event (layout B moves the alarm into the top bar) */
+.status{display:grid;grid-template-columns:minmax(280px,34%) minmax(0,1fr);gap:var(--gap);padding:10px var(--pad) 0}
+.banner,.event{display:flex;align-items:center;gap:12px;min-height:58px;padding:8px 10px 8px 14px;border-radius:var(--r);background:var(--panel);border:1px solid var(--line)}
+.banner{font:600 18px/1.2 var(--cond);letter-spacing:.03em}
+.banner svg{flex:none;width:26px;height:26px}
+.banner[data-tone=ok]{color:var(--text-2)}
+.banner[data-tone=ok] svg{color:var(--run)}
+.banner .msg{flex:1;min-width:0}
+.event{position:relative;font:500 18px/1.2 var(--cond);letter-spacing:.02em;min-width:0}
+.event .line{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.event time{color:var(--text-3);margin-right:10px;font-variant-numeric:tabular-nums}
+.res{color:var(--text-2)}.res.ok{color:var(--run)}.res.bad{color:#ff9b93}.res.wait{color:var(--prompt)}
+.logbtn{flex:none;min-height:44px;padding:0 14px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);font:600 16px/1 var(--cond);letter-spacing:.08em}
+.logbtn:hover{background:#253545}
+
+/* screen tabs */
+.tabs{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);min-height:var(--tabs-h);background:var(--bar);border-top:1px solid var(--line)}
+.tabs a{display:flex;align-items:center;justify-content:center;padding:0 6px;font:600 clamp(15px,1.15vw,19px)/1.05 var(--cond);letter-spacing:.08em;text-transform:uppercase;color:var(--text-2);text-decoration:none;text-align:center}
+.tabs a+a{border-left:1px solid var(--line)}
+.tabs a:hover{background:var(--panel)}
+.tabs a[aria-current=page]{background:var(--select);color:#fff}
+.tabs .short{display:none}
+/* BREWSCRIBE opens another program in a browser tab of its own: the icon says so before the press (its words are for
+   screen readers). Where the tab is narrow the name breaks between Brew and Scribe, and the icon stays with Scribe */
+.tabs .ext .nw{white-space:nowrap}
+.tabs .ext svg{width:.8em;height:.8em;margin-left:.3em;vertical-align:-.05em;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+
+/* layout B */
+[data-layout=b] .brand{margin-right:0!important}
+[data-layout=b] .topbar .banner{flex:0 1 auto;min-width:0;margin:0 auto;min-height:50px;padding:5px 6px 5px 14px}
+[data-layout=b] .topbar .banner[data-tone=ok]{padding-right:18px;background:#11331f;border-color:#2b6a42;color:#c9f2d6;text-transform:uppercase;letter-spacing:.08em}
+[data-layout=b] .status{grid-template-columns:minmax(0,1fr);padding-top:8px}
+[data-layout=b] .event{min-height:48px}
+[data-layout=b] .tabs{margin-top:10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);min-height:56px}
+/* a tablet, or half a monitor (701–1023 px): the title bar's question gets a row of its own, as on a phone */
+@media (min-width:701px) and (max-width:1023px){
+  [data-layout=b] .topbar{flex-wrap:wrap;row-gap:8px}
+  [data-layout=b] .brand{margin-right:auto!important}
+  [data-layout=b] .topbar .banner{order:1;flex:1 1 100%;margin:0;max-width:none}
+  /* with the question on its own row, the name has the room left beside the connection, ALL OFF and the clock: a long
+     name keeps the full size there, and takes that room without pushing them onto another row */
+  [data-layout=b] .brand{flex:1 1 0;min-width:0;max-width:none}
+  [data-layout=b] .brand[data-long] .bname{font-size:1em}
+}
+.toast{position:fixed;left:50%;bottom:28px;z-index:60;transform:translateX(-50%);width:max-content;max-width:min(560px,calc(100% - 24px));padding:12px 16px;border-radius:var(--r);background:#e8eef3;color:var(--answer-ink);font:500 16px/1.35 var(--sans);box-shadow:0 12px 30px rgb(0 0 0/.45)}
+.toast[hidden]{display:none}
+
+/* ---------- the drawing: brew-day.css's rules for layout B's line drawing, as they are there ---------- */
+.coil>*{fill:none;stroke:#a7b6c5;stroke-width:4.5;transition:stroke .3s}
+.coil.on>*{stroke:var(--wort)}
+.element{fill:none;stroke:#3b4957;stroke-width:5;stroke-linejoin:round;stroke-linecap:round}
+.element.on{stroke:var(--heat);filter:url(#glow)}
+.ln .pf{fill:none;stroke:#3e4c5a;stroke-width:9;stroke-linejoin:round;stroke-linecap:round}
+.ln .pd{fill:none;stroke:none;stroke-width:4;stroke-linecap:round;stroke-dasharray:.01 23.99}
+.ln .ch{display:none;fill:none;stroke:#0a1016;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.valve path{fill:#3b4b5b;stroke:#8193a5;stroke-width:2}
+.tag{font:600 18px var(--cond);letter-spacing:.06em;fill:var(--text-3)}
+.p-base{fill:#2a3642}
+.p-ring{fill:#24303c;stroke:#93a3b4;stroke-width:3}
+.p-tri{fill:#93a3b4}
+.pump.on .p-tri{fill:#0a1016}
+.p-name{font:700 21px var(--cond);letter-spacing:.06em;fill:#c3cfda}
+.p-st{font:600 18px var(--cond);letter-spacing:.06em;fill:var(--text-3)}
+.pump.on .p-st{fill:var(--run)}
+.rig-line .v-shell{fill:#1b2833;stroke:#b9c6d2;stroke-width:3;stroke-linejoin:round}
+.rig-line .v-line{fill:none;stroke:#b9c6d2;stroke-width:3;stroke-linecap:round}
+.rig-line .v-name{font:700 24px var(--cond);letter-spacing:.06em;fill:#c3cfda;text-anchor:middle}
+.rig-line .v-dots circle{fill:#7f90a2}
+.rig-line .coil>*{stroke:#6f8194;stroke-width:3.5}
+.rig-line .element{stroke:#6f8194;stroke-width:3.5}
+.rig-line .element.on{stroke:var(--heat)}
+.rig-line .ln-o{display:none}
+.rig-line .ln .pf{stroke:#4a5a6b;stroke-width:5}
+.rig-line .ln .pd{stroke-width:2.2;stroke-dasharray:5 19}
+.rig-line .valve path{fill:#1b2833;stroke:#b9c6d2;stroke-width:2.5;stroke-linejoin:round}
+.rig-line .p-ring{fill:#1b2833;stroke:#b9c6d2}
+.rig-line .p-tri{fill:#b9c6d2}
+.rig-line .p-base{fill:none;stroke:#b9c6d2;stroke-width:2.5}
+.rig-line .pump.on.liq .p-ring{fill:#173544;stroke:var(--liquor)}.rig-line .pump.on.wrt .p-ring{fill:#3a2e12;stroke:var(--wort)}
+.rig-line .pump.on.liq .p-tri{fill:var(--liquor)}.rig-line .pump.on.wrt .p-tri{fill:var(--wort)}
+
+/* ---------- hardware ---------- */
+.main{display:grid;grid-template-columns:clamp(340px,23vw,440px) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);grid-template-areas:"idx tool" "idx pane";gap:var(--gap);padding:var(--gap) var(--pad);min-height:0}
+
+/* the list: the recipe column's place and shape. A kettle heads its vessel's group, numbered in brewhouse order, with its
+   probe, element and pump under it; then what no kettle uses, then the fermenters' own page */
+.idx{grid-area:idx;display:flex;flex-direction:column;gap:10px;min-height:0;min-width:0;padding:14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.idx h1{margin:0;font:700 clamp(22px,2vw,31px)/1.05 var(--cond);letter-spacing:.03em;text-transform:uppercase}
+.idx .meta{margin:-4px 0 0;font:500 17px/1.3 var(--cond);letter-spacing:.03em;color:var(--text-3)}
+.idx .meta b{font-weight:600;color:var(--active-ink)}
+.idx .meta .bad{color:var(--alarm-ink)}
+.hl{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;margin:0;padding:0 2px 0 0;list-style:none;display:flex;flex-direction:column;gap:8px;container:hlist/inline-size}
+.hg{display:flex;flex-direction:column;gap:4px;margin:0;padding:0;list-style:none}
+.hg ul{display:flex;flex-direction:column;gap:4px;margin:0;padding:0 0 0 22px;list-style:none}
+/* a kettle: Settings' group row, a vessel's number and name, what AUTO runs, and its state */
+.hk{display:grid;grid-template-columns:36px minmax(0,1fr) auto;column-gap:12px;row-gap:2px;align-items:center;width:100%;min-height:54px;padding:6px 12px 6px 6px;border:1px solid var(--line);border-radius:var(--r);background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),var(--panel-2);color:var(--text);text-align:left;text-decoration:none}
+.hk:hover{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),var(--hover)}
+.hk .n{grid-row:1/3;font:700 24px/1 var(--cond);text-align:center;color:var(--text-2)}
+.hk .t{grid-column:2;font:600 20px/1.1 var(--cond);letter-spacing:.02em}
+.hk .d{grid-column:2;font:500 15px/1.25 var(--cond);letter-spacing:.02em;color:var(--text-2);overflow-wrap:anywhere}
+.hk .s{grid-column:3;grid-row:1/3;font:600 15px/1 var(--cond);letter-spacing:.06em;color:var(--text-3);text-align:right;white-space:nowrap}
+.hk .s .on{color:var(--heat)}
+/* a kettle's line, with its FILE button beside it */
+.hkw{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:stretch;gap:6px}
+.kfb{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 12px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);color:var(--text-2);font:600 15px/1 var(--cond);letter-spacing:.08em;text-transform:uppercase}
+.kfb svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.kfb:not([aria-disabled=true]):hover{background:var(--hover);color:var(--text)}
+.kfb[aria-disabled=true]{color:var(--text-3);cursor:not-allowed}
+.hg>.say{margin:0 0 0 22px;font:600 15px/1.3 var(--cond);letter-spacing:.04em;color:var(--run)}
+/* a group with no kettle at its head: a plain heading, not a button */
+.hh{display:grid;grid-template-columns:36px minmax(0,1fr) auto;column-gap:12px;align-items:center;min-height:36px;padding:0 12px 0 6px;margin:2px 0 0;font:600 18px/1.1 var(--cond);letter-spacing:.04em;color:var(--text-2)}
+.hh .n{font:700 22px/1 var(--cond);text-align:center;color:var(--text-3)}
+.hh .s{font:600 15px/1 var(--cond);letter-spacing:.06em;color:var(--text-3)}
+/* a probe, element, pump or switch: what it is, its name, its state, and a switch's ON/OFF at the end */
+.hp{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:8px;min-height:44px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel-2)}
+.hp:hover{background:var(--hover)}
+.hp>a{display:grid;grid-template-columns:62px minmax(0,1fr) auto;align-items:center;column-gap:10px;min-height:44px;padding:3px 10px;color:var(--text);text-decoration:none;min-width:0}
+.hp .k{font:600 13px/1 var(--cond);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+.hp .t{min-width:0;font:600 18px/1.15 var(--cond);letter-spacing:.02em;overflow-wrap:anywhere}
+.hp .t small,.hp .sub small{display:block;font:500 13px/1.2 var(--cond);letter-spacing:.06em;color:var(--text-3);overflow-wrap:anywhere}
+.hp .t .chip{margin-left:6px;vertical-align:2px}
+/* its kind, address and Sensor ID run under the name and the reading or pin, so a whole ID has the line's width */
+.hp .sub{grid-column:2/-1;min-width:0}
+/* a kettle's probe, element or pump not chosen, or no longer there */
+.hp.gap{border-style:dashed;background:transparent}
+.hp.gap .t{font-weight:500;color:var(--text-3)}
+/* a switch's GPIO pin, as a column of its own beside its button */
+.hp .v .pin{display:inline-block;min-width:66px;padding:6px 8px;border-radius:4px;background:var(--face);box-shadow:var(--sunk);font:600 16px/1 var(--cond);letter-spacing:.04em;font-variant-numeric:tabular-nums;color:var(--text);text-align:center}
+.hp .v .pin.none{color:var(--text-3)}
+.hp .v .pin.dup{color:var(--prompt)}
+.hp .pin2{display:none;white-space:nowrap}
+/* a list too narrow to keep a switch's pin beside its name, as the recipe column is on a laptop: the pin moves onto the
+   line under the name, as on a phone */
+@container hlist (max-width:395px){.hp .v .pin{display:none}.hp .pin2{display:inline}}
+.hp .v{font:600 18px/1 var(--cond);font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--text-2)}
+.hp .v.pv{color:var(--pv)}
+.hp .v.heat{color:var(--heat)}
+.hp .v.on{color:var(--run)}
+/* a probe's reading sits in a sunken window, as the PID window and the pin hold theirs: Process Red reaches 4.5:1 at
+   this size only on the window's black. From before a lost connection, it is Dim Steel: Stale Grey is under 4.5:1 here */
+.hp .v.pv,.hp .v.stale{display:inline-block;min-width:66px;padding:6px 8px;border-radius:4px;background:var(--face);box-shadow:var(--sunk);text-align:center}
+.hp .v.stale{color:var(--text-3)}
+.hp>.hsw{margin-right:4px}
+/* a part that lives with another kettle: shown where this kettle uses it, as a pointer to it */
+.hp.ref{background:transparent;border-style:dashed}
+.hp.ref .t{font-weight:500;color:var(--text-2)}
+.hp.ref .sub small{color:var(--text-3)}
+/* under the pointer, Dim Steel text in a line or button turns Soft Steel: Dim Steel on Hover Slate is 4.46:1. SAVE's
+   white, the answer buttons' own colours and a greyed button stay as they are */
+.hk:hover .s,.hp:hover .k,.hp:hover .t small,.hp:hover .sub small,.hp.gap:hover .t,.fer:hover small,.cmd:not(.go):not(.ans):not([aria-disabled=true]):hover small,.cmd.go.idle:not([aria-disabled=true]):hover small{color:var(--text-2)}
+.hk[aria-current=true],.hp:has(>a[aria-current=true]){background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),var(--active);border-color:var(--active-edge)}
+.hp:has(>a[aria-current=true]){background:var(--active)}
+.hk[aria-current=true] .n,.hk[aria-current=true] .d,.hk[aria-current=true] .s,.hp>a[aria-current=true] .k,.hp>a[aria-current=true] .t small,.hp>a[aria-current=true] .sub small,.hp>a[aria-current=true] .v,.hp.ref>a[aria-current=true] .t{color:var(--active-ink)}
+.hp>a[aria-current=true] .v.pv{color:var(--pv)}
+.hp>a[aria-current=true] .v.stale{color:var(--text-3)}
+.chip{display:inline-block;padding:4px 7px;border-radius:4px;font:700 13px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.chip.chg{background:var(--select);color:#fff}
+.chip.nwc{background:var(--panel);border:1px solid var(--active-edge);color:var(--active-ink)}
+.chip.fl{background:var(--fault-bg);border:1px solid var(--alarm);color:var(--alarm-ink)}
+.dup{color:var(--prompt)}
+.hidx-none .hk .t,.hidx-none .hk .n,.hp.miss{display:none}
+.hg.none .hk .t,.hg.none .hk .n,.hg.none .hh{color:var(--text-3)}
+.hg.none .hk .d{color:var(--text-3)}
+.hits{display:grid;gap:2px;margin:2px 0 0;padding:0 0 0 72px;list-style:none}
+.hits button{width:100%;min-height:44px;padding:2px 8px;border:0;border-radius:4px;background:transparent;color:var(--text-2);font:500 15px/1.25 var(--cond);letter-spacing:.02em;text-align:left}
+.hits button:hover{background:var(--hover);color:var(--text)}
+.hits b{font-weight:600;color:var(--text)}
+mark{padding:0 1px;border-radius:2px;background:var(--mark);color:var(--mark-ink)}
+.fer{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;margin-top:2px;padding:0 12px;border:1px solid var(--line);border-radius:var(--r);color:var(--text-2);font:600 17px/1.2 var(--cond);letter-spacing:.04em;text-decoration:none}
+.fer:hover{background:var(--hover);color:var(--text)}
+.fer small{font:500 14px/1.2 var(--cond);color:var(--text-3)}
+
+/* a switch, one tap each way: a lamp strip on top says its state as the brew-day buttons do, orange for an element that
+   is on and green for anything else, and the word says it too. Its label is the switch's name and never changes */
+.hsw{position:relative;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;min-width:72px;min-height:44px;padding:6px 10px 2px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);color:var(--text-2);font:700 16px/1 var(--cond);letter-spacing:.08em;touch-action:manipulation}
+.hsw::before{content:"";position:absolute;inset:0 0 auto;height:5px;background:var(--off)}
+.hsw:hover{background:var(--hover);color:var(--text)}
+.hsw[aria-checked=true]{color:#fff}
+.hsw[aria-checked=true]::before{background:var(--run)}
+.hsw.heat[aria-checked=true]::before{background:var(--heat)}
+.hsw.busy::before{background:repeating-linear-gradient(-45deg,var(--stripe) 0 6px,var(--edge) 6px 12px);background-size:17px 5px;animation:march .6s linear infinite}
+/* greyed: it keeps its own background under the pointer, because this rule comes after .hsw:hover */
+.hsw[aria-disabled=true]{background:var(--panel-2);color:var(--text-3);cursor:not-allowed}
+.hsw[aria-disabled=true]::before{background:var(--line)}
+
+/* FIND HARDWARE, + ADD, UNDO and SAVE sit above the pane */
+.pane{grid-area:pane;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain;scroll-padding-top:8px}
+#view{flex:1 0 auto;display:flex;flex-direction:column}
+#view>*{flex:1 0 auto}
+#view>.sheet,#view>.wait-sheet{flex:0 0 auto}
+/* the tool row, and under it the note waiting for an answer: seen from the list and from an item alike */
+.top{grid-area:tool;display:grid;gap:10px;min-width:0}
+.tool{position:relative;display:flex;align-items:center;gap:10px;min-width:0}
+.find{position:relative;flex:1 1 420px;max-width:520px;min-width:0}
+.find label{position:absolute;left:14px;top:50%;transform:translateY(-50%);font:600 15px/1 var(--cond);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3);pointer-events:none}
+.find input{width:100%;min-height:56px;padding:0 56px 0 160px;border:1px solid var(--edge);border-radius:var(--r);background:var(--face);color:var(--text);font:500 18px/1 var(--sans);box-shadow:var(--sunk)}
+.find input::-webkit-search-cancel-button{display:none}
+.find .clr{position:absolute;right:6px;top:6px;width:44px;height:44px;border:0;border-radius:4px;background:transparent;color:var(--text-2);font:600 22px/1 var(--sans)}
+.find .clr:hover{background:var(--hover);color:var(--text)}
+.tool .sp{flex:1}
+.btns{display:flex;gap:10px;flex:none}
+.cmd{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:56px;min-width:112px;padding:6px 16px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);color:var(--text);font:700 19px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase;text-decoration:none;touch-action:manipulation}
+.cmd small{font:500 13px/1 var(--cond);letter-spacing:.04em;text-transform:none;color:var(--text-3)}
+.cmd:hover{background:var(--hover)}
+.cmd.go{background:var(--select);border-color:var(--select);color:#fff;min-width:150px}
+.cmd.go small{color:#fff}
+.cmd.go:not([aria-disabled=true]):hover{background:var(--select-hover)}
+.cmd.go.idle{background:var(--panel-2);border-color:var(--edge);color:var(--text-2)}
+.cmd.go.idle small{color:var(--text-3)}
+.cmd.go.idle:not([aria-disabled=true]):hover{background:var(--hover)}
+/* greyed: one look for every command, DELETE's red included, and the pointer changes nothing on it */
+.cmd[aria-disabled=true],.cmd.ans[aria-disabled=true],.cmd.del[aria-disabled=true]{background:var(--panel-2);border-color:var(--edge);color:var(--text-3);cursor:not-allowed}
+.cmd[aria-disabled=true] small,.cmd.ans[aria-disabled=true] small{color:var(--text-3)}
+.cmd.busy{position:relative;overflow:hidden;cursor:progress}
+.cmd.busy::before{content:"";position:absolute;inset:0 0 auto;height:6px;background:repeating-linear-gradient(-45deg,var(--stripe) 0 6px,var(--edge) 6px 12px);background-size:17px 6px;animation:march .6s linear infinite}
+.cmd.ans{background:var(--answer);border-color:var(--answer);color:var(--answer-ink)}
+.cmd.ans small{color:var(--answer-ink-2)}
+.cmd.del{border-color:var(--alarm);color:var(--alarm-ink)}
+.cmd.del:not([aria-disabled=true]):hover{background:var(--fault-bg)}
+/* + ADD's three kinds, under it */
+.addm{position:absolute;top:calc(100% + 6px);z-index:20;display:grid;gap:6px;width:min(340px,90vw);padding:8px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel);box-shadow:0 18px 40px rgb(0 0 0/.5)}
+.addm[hidden]{display:none}
+.addm button{display:grid;gap:3px;min-height:56px;padding:8px 12px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel-2);text-align:left}
+.addm button:hover{background:var(--hover)}
+.addm b{font:700 18px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+.addm span{font:500 15px/1.3 var(--sans);color:var(--text-2)}
+
+/* a prompt in the pane (what saving will switch off, leaving with changes): Prompt Amber, in place, never a pop-up */
+.note{position:relative;margin:0;padding:12px 14px;border:2px solid var(--prompt);border-radius:var(--r);background:var(--prompt-bg);color:var(--prompt-ink);box-shadow:0 8px 18px rgb(0 0 0/.45)}
+.note[hidden]{display:none}
+.note p{margin:0;font:500 17px/1.4 var(--sans)}
+.note p+p{margin-top:6px}
+.note b{font-weight:600}
+.note .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.note .emp{margin:8px 0 0;padding-left:20px;font:500 17px/1.4 var(--sans)}
+.note .emp li+li{margin-top:2px}
+.note.alarm{border-color:var(--alarm);background:var(--alarm-bg);color:#fff}
+
+/* the brewhouse, x-rayed: Brew Day's drawing, and under each vessel a nameplate of what CraftBeerPi has there, as Brew
+   Day puts a faceplate under each vessel */
+.xr{display:grid;grid-template-rows:auto minmax(200px,1fr);gap:var(--gap);padding:14px 18px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);container:xr/inline-size}
+.xhd{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 14px}
+.xhd h2{margin:0;font:700 27px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+.xhd p{margin:0;font:500 17px/1.3 var(--cond);letter-spacing:.02em;color:var(--text-2)}
+.xrig{position:relative;min-height:200px}
+.xrig svg{position:absolute;inset:0;width:100%;height:100%}
+.nps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--gap)}
+.np{display:grid;align-content:start;gap:4px;min-width:0;padding:10px;background:var(--panel-2);border:1px solid var(--line);border-radius:var(--r)}
+.np h3{margin:0 0 4px;padding:0 4px;font:700 22px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+.np button{display:grid;grid-template-columns:62px minmax(0,1fr) auto;align-items:center;column-gap:10px;width:100%;min-height:48px;padding:4px 8px;border:1px solid transparent;border-radius:4px;background:var(--face);box-shadow:var(--sunk);text-align:left}
+.np button:hover,.np button.hot{border-color:var(--active-edge)}
+.np .k{font:600 13px/1 var(--cond);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+.np .t{min-width:0;font:600 18px/1.15 var(--cond);letter-spacing:.02em;overflow-wrap:anywhere}
+.np .t small{display:block;font:500 13px/1.2 var(--cond);letter-spacing:.06em;color:var(--text-3);overflow-wrap:anywhere}
+.np .v{font:600 18px/1 var(--cond);font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--text-2)}
+.np .v.pv{color:var(--pv)}
+.np .v.on{color:var(--run)}
+.np .v.heat{color:var(--heat)}
+.np .v.stale{color:var(--text-3)}
+.np .ref .t{font-weight:500;color:var(--text-2)}
+.np .none{margin:0;padding:6px 8px;font:500 15px/1.3 var(--cond);letter-spacing:.02em;color:var(--text-3)}
+/* nameplates too narrow to hold a name beside its reading give way, as on a tablet: the list beside the drawing carries
+   the same names, and the line over the drawing points to it instead */
+.xhd .np-off{display:none}
+@container xr (max-width:809px){.nps,.xhd .np-on{display:none}.xhd .np-off{display:inline}}
+.xalso{margin:0;font:500 17px/1.35 var(--cond);letter-spacing:.02em;color:var(--text-2)}
+/* the drawing docked under the list, on a tablet only */
+.dock{display:none}
+.dock .xhd h2{font-size:20px}
+.dock .xhd p{font-size:15px}
+.dock .xrig{min-height:0}
+.xalso b{font-weight:600;color:var(--text)}
+.xalso a{display:inline-flex;align-items:center;min-height:44px;margin-block:-10px;color:var(--text);text-underline-offset:3px}
+/* a part of the drawing: a probe drawn where CraftBeerPi reads the vessel, and every part lit while its line is pointed
+   at, or while it is open */
+.probe path{fill:none;stroke:var(--draw);stroke-width:3;stroke-linecap:round}
+.probe circle{fill:var(--draw-fill);stroke:var(--draw);stroke-width:3}
+.xrig [data-part]{cursor:pointer}
+.hit{fill:transparent;stroke:none;pointer-events:all}
+.rig-line .hot .v-shell,.rig-line .sel .v-shell{stroke:var(--active-edge);stroke-width:5}
+.rig-line .element.hot,.rig-line .element.sel{stroke:var(--active-edge);stroke-width:6}
+.rig-line .pump.hot .p-ring,.rig-line .pump.sel .p-ring{stroke:var(--active-edge);stroke-width:5}
+.probe.hot path,.probe.sel path,.probe.hot circle,.probe.sel circle{stroke:var(--active-edge)}
+.probe.hot circle,.probe.sel circle{fill:var(--active)}
+
+/* an item open: its plate, headed by where it is in the brewhouse, what it is and its state now */
+.sheet{padding:14px 18px 8px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.shd{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:6px 18px;padding-bottom:12px}
+.mini{position:relative;width:200px;height:84px;padding:0;border:1px solid var(--line);border-radius:var(--r);background:var(--bg)}
+.mini:hover{border-color:var(--active-edge)}
+.mini svg{position:absolute;inset:4px;width:calc(100% - 8px);height:calc(100% - 8px)}
+.mini text,.mini .tag{display:none}
+.mini span{position:absolute;left:6px;bottom:4px;font:600 13px/1 var(--cond);letter-spacing:.08em;text-transform:uppercase;color:var(--text-2)}
+.who{min-width:0}
+.who .k{margin:0;font:600 15px/1 var(--cond);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+.who h2{margin:4px 0 0;font:700 30px/1.05 var(--cond);letter-spacing:.04em;overflow-wrap:anywhere}
+.who .role{margin:6px 0 0;max-width:72ch;font:500 16px/1.4 var(--sans);color:var(--text-2)}
+.who .role b{font-weight:600;color:var(--text)}
+.who .role a{color:var(--text);text-underline-offset:3px}
+.live{display:grid;justify-items:end;gap:6px}
+.live .pv{font:600 46px/1 var(--cond);font-variant-numeric:tabular-nums;color:var(--pv);text-shadow:0 0 14px rgb(255 75 62/.32)}
+.live .pv .u{font-size:.45em;margin-left:.1em;vertical-align:.9em}
+.live .pv.stale{color:var(--stale);text-shadow:none}
+.live p{margin:0;font:600 16px/1.2 var(--cond);letter-spacing:.06em;text-transform:uppercase;color:var(--text-2);text-align:right}
+.live p .on{color:var(--heat)}
+.live p.dup{color:var(--prompt);text-transform:none;letter-spacing:.02em}
+.live .hsw{min-width:96px;min-height:52px;font-size:18px}
+.back{display:none}
+
+/* the kettle's settings file: saved and loaded in a group of its own under the kettle's heading */
+.kf{margin:0 0 6px;padding:10px 12px 12px;border:1px solid var(--line);border-radius:var(--r);min-width:0}
+.kf legend{padding:0 6px;font:600 15px/1 var(--cond);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+.kf>p{margin:0 0 10px;max-width:72ch;font:500 15px/1.4 var(--sans);color:var(--text-2)}
+.kf .acts{display:flex;flex-wrap:wrap;gap:8px}
+.kf .cmd{min-height:48px;font-size:17px}
+.kf .say{margin:10px 0 0;font:600 15px/1.3 var(--cond);letter-spacing:.04em;color:var(--run)}
+.kf .say.no{color:var(--alarm-ink)}
+/* what loading a file would change, on the page, before anything is loaded */
+.kfp{margin:10px 0 0;padding:12px 14px;border:2px solid var(--prompt);border-radius:var(--r);background:var(--prompt-bg);color:var(--prompt-ink)}
+.kfp h3{margin:0;font:700 22px/1.1 var(--cond);letter-spacing:.04em}
+.kfp .from{margin:6px 0 10px;font:500 15px/1.4 var(--sans);color:var(--note)}
+.kfp h4{margin:10px 0 6px;font:600 17px/1.2 var(--cond);letter-spacing:.04em}
+.kfp table{width:100%;border-collapse:collapse;table-layout:fixed;font:500 16px/1.3 var(--cond);letter-spacing:.02em}
+.kfp th,.kfp td{padding:6px 8px;border-top:1px solid rgb(255 178 30/.25);text-align:left;vertical-align:top;overflow-wrap:anywhere}
+.kfp thead th{border-top:0;font:600 13px/1 var(--cond);letter-spacing:.1em;text-transform:uppercase;color:var(--note)}
+.kfp tbody th{font-weight:600}
+.kfp tbody th small{display:block;font:500 13px/1.2 var(--cond);letter-spacing:.06em;color:var(--note)}
+.kfp td.after{font-weight:700}
+.kfp td.after small{display:block;margin-top:2px;font:500 13px/1.2 var(--cond);letter-spacing:.06em;color:var(--note)}
+.kfp .q{font-style:italic;color:var(--note)}
+.kfp .same{color:var(--note)}
+.kfp ul{margin:4px 0 0;padding-left:20px;font:500 15px/1.4 var(--sans)}
+.kfp .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.kfp .lnk{color:var(--prompt-ink)}
+.kfz{margin:12px 0 0;padding:10px 0 0;border-top:1px solid rgb(255 178 30/.25)}
+.kfz h4{margin:0 0 4px}
+.kfz p{margin:0;max-width:80ch;font:500 15px/1.4 var(--sans)}
+.kfz p+p{margin-top:6px}
+.kfz .also{color:var(--note)}
+.kfe{margin:12px 0 0;padding:12px 14px;border:2px solid var(--alarm);border-radius:var(--r);background:var(--alarm-bg);color:#fff}
+.kfe p{margin:0 0 10px;max-width:72ch;font:500 16px/1.4 var(--sans)}
+.kfe b{font-weight:600}
+
+/* parts and rows, as on the Settings page: what it is on the left (name, what it does, key), the control on the right */
+.part+.part{margin-top:6px}
+.part h3{margin:0;padding:12px 10px 8px;border-top:1px solid var(--line);font:600 15px/1 var(--cond);letter-spacing:.1em;text-transform:uppercase;color:var(--text-3)}
+.part h3 .pl{margin-left:10px;letter-spacing:.04em;text-transform:none;color:var(--text-2)}
+.row{display:grid;grid-template-columns:minmax(0,var(--row-l)) minmax(280px,var(--row-c));column-gap:32px;align-items:start;padding:14px 10px;border-top:1px solid var(--line);border-radius:4px}
+.part h3+.row{border-top-color:transparent}
+.row .nm{display:block;margin:0;font:600 20px/1.15 var(--cond);letter-spacing:.02em;color:var(--text)}
+.row .wh{margin:5px 0 0;max-width:62ch;font:500 15px/1.4 var(--sans);color:var(--text-2)}
+.row .ky{margin:7px 0 0;font:500 14px/1.2 var(--cond);letter-spacing:.06em;color:var(--text-3);overflow-wrap:anywhere}
+.row .ky .tg{display:inline-block;margin-left:10px;padding:2px 6px;border:1px solid var(--edge);border-radius:3px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-2)}
+/* 10 px between a control and the lines under it: a text button's 44 px box reaches 10 px above its line, and stops at
+   the control's edge rather than over it */
+.row .ct{display:grid;gap:10px;align-content:start;min-width:0}
+.row .why{margin:0;font:500 15px/1.35 var(--sans);color:var(--note)}
+.row .full{margin:8px 0 0;max-width:72ch;padding:8px 12px;border-left:1px solid var(--edge);font:500 15px/1.45 var(--sans);color:var(--text-2)}
+.row .full[hidden]{display:none}
+.row .ky .lnk{margin-left:12px}
+.row.chg{background:rgb(42 111 192/.12);box-shadow:inset 0 0 0 2px var(--select)}
+.row.wait{position:relative;overflow:hidden}
+.row.wait::before{content:"";position:absolute;inset:0 0 auto;height:6px;background:repeating-linear-gradient(-45deg,var(--stripe) 0 6px,var(--edge) 6px 12px);background-size:17px 6px;animation:march .6s linear infinite}
+.row.bad{background:var(--fault-bg);box-shadow:inset 0 0 0 2px var(--alarm)}
+.row.flash{animation:flash 1.6s cubic-bezier(.16,1,.3,1)}
+.st{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin:0;min-height:24px;font:600 15px/1.25 var(--cond);letter-spacing:.06em;text-transform:uppercase;color:var(--text-2)}
+.st .was{text-transform:none;letter-spacing:.02em;font-weight:500;color:var(--active-ink)}
+.st.ok{color:var(--run)}
+.st.no{color:var(--alarm-ink)}
+.st .why2{text-transform:none;letter-spacing:.02em;font-weight:500}
+/* a text button in a line of text: a 44 px box whose margins give back the 20 px it adds, so the line keeps its height */
+.lnk{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;margin-block:-10px;padding:0 6px;border:0;background:none;color:var(--text);font:700 15px/1 var(--cond);letter-spacing:.08em;text-transform:uppercase;text-decoration:underline;text-underline-offset:3px}
+.lnk:hover{color:#fff}
+.lnk[aria-disabled=true]{color:var(--text-3);cursor:not-allowed}
+.seg{display:inline-grid;grid-auto-flow:column;grid-auto-columns:minmax(96px,auto);justify-self:start;max-width:100%;border:1px solid var(--edge);border-radius:var(--r);overflow:hidden}
+.seg button{min-height:48px;padding:0 16px;border:0;background:var(--panel-2);color:var(--text-2);font:700 18px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase;touch-action:manipulation}
+.seg button+button{border-left:1px solid var(--edge)}
+.seg button:hover{background:var(--hover);color:var(--text)}
+.seg button[aria-checked=true]{background:var(--seg-on);color:#fff;box-shadow:inset 0 0 0 2px var(--seg-ring)}
+.fld{width:100%;min-height:48px;padding:10px 14px;border:1px solid var(--edge);border-radius:var(--r);background:var(--face);color:var(--text);font:500 17px/1.35 var(--sans);box-shadow:var(--sunk)}
+select.fld{appearance:none;-webkit-appearance:none;padding:0 48px 0 14px;font:600 19px/1 var(--cond);letter-spacing:.02em;background:var(--face) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' fill='none' stroke='%23b6c3cf' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 14px center/22px;cursor:pointer}
+select.fld option{background:var(--option-bg);color:var(--text)}
+.numf{display:inline-flex;align-items:stretch;justify-self:start;border:1px solid var(--edge);border-radius:var(--r);background:var(--face);box-shadow:var(--sunk)}
+.numf:focus-within{outline:3px solid var(--focus);outline-offset:2px}
+.numf input{width:9ch;min-height:48px;padding:0 4px 0 14px;border:0;background:transparent;color:var(--text);font:600 22px/1 var(--cond);font-variant-numeric:tabular-nums;outline:0}
+/* "empty" in an empty box: Dim Steel, 7.2:1 on the box (the browser's own grey is 4.4:1), and solid, as Firefox fades it */
+.numf input::placeholder{color:var(--text-3);opacity:1}
+.numf span{display:flex;align-items:center;padding:0 14px 0 6px;font:600 18px/1 var(--cond);letter-spacing:.04em;color:var(--text-3)}
+.fx{margin:0;font:500 15px/1.35 var(--sans);color:var(--text-2)}
+.fx.warn{color:var(--prompt)}
+.row .ct > .seg{justify-self:start}
+/* deleting: the last part, apart from the rest; it asks first, on the page */
+.part.gone h3{color:var(--alarm-ink)}
+.ask{display:grid;gap:10px;margin:4px 0 10px;padding:12px 14px;border:2px solid var(--alarm);border-radius:var(--r);background:var(--fault-bg)}
+.ask p{margin:0;font:500 17px/1.4 var(--sans)}
+.ask b{font-weight:600}
+.ask .acts{display:flex;flex-wrap:wrap;gap:8px}
+/* waiting for the item, or no such item */
+.wait-sheet{display:grid;gap:10px;padding:22px 18px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.wait-sheet b{font:700 24px/1.1 var(--cond);letter-spacing:.04em}
+.wait-sheet p{margin:0;max-width:62ch;font:500 16px/1.45 var(--sans);color:var(--text-2)}
+.wait-sheet .acts{display:flex;gap:8px}
+.ghost{height:64px;border-radius:4px;background:linear-gradient(90deg,var(--panel-2),var(--hover),var(--panel-2));background-size:300% 100%;animation:shimmer 1.6s linear infinite}
+
+/* the phone's save bar sits on the tab bar; on a monitor SAVE is in the top bar over the pane */
+.savebar{display:none}
+
+@keyframes march{to{background-position:17px 0}}
+@keyframes blink{50%{opacity:.25}}
+@keyframes shimmer{to{background-position:-300% 0}}
+@keyframes flash{0%{background:rgb(28 87 150/.85);box-shadow:inset 0 0 0 2px var(--active-edge)}100%{background:transparent;box-shadow:inset 0 0 0 2px transparent}}
+@media (prefers-reduced-motion:reduce){.link i,.row.wait::before,.cmd.busy::before,.hsw.busy::before,.row.flash,.ghost{animation:none!important}}
+
+/* a window 1000 px tall or less (a browser window on a 1080-line monitor is about 950 px tall): the list tightens */
+@media (min-width:1180px) and (max-height:1000px){
+  .hk{min-height:52px;padding-top:4px;padding-bottom:4px}
+  .hp,.hp>a{min-height:44px}
+  .idx{gap:8px;padding:12px 14px}
+  .hl,.hg,.hg ul{gap:6px}
+  .np button{min-height:44px}
+}
+/* a laptop's window (about 820 px tall or less): the drawing gives way first, then the list's second lines. A switch's
+   pin stays in view: its line goes only while the pin keeps its own column */
+@media (min-width:1180px) and (max-height:820px){
+  .hk .d,.hp .t small,.hp .sub .sid,.np .t small{display:none}
+  @container hlist (min-width:396px){.hp .sub{display:none}}
+  .hk{min-height:44px}
+  .hk .n{grid-row:auto;font-size:22px}
+  .hk .s{grid-row:auto}
+  .xr{grid-template-rows:auto minmax(150px,1fr);padding:10px 14px}
+}
+
+/* tablet: one column, and the page scrolls. The tool row stays at the top and the brewhouse drawing at the bottom, in
+   view while the list, or the item open, scrolls between them; the drawing lights the part a line points at and the
+   part open. The nameplates give way: the list carries the same names */
+@media (max-width:1179px){
+  .app{height:auto;min-height:calc(100dvh - var(--mock-h))}
+  .main{grid-template-columns:minmax(0,1fr);grid-template-rows:auto;grid-template-areas:"tool" "body" "dock"}
+  .top{position:sticky;top:0;z-index:5;margin:-8px 0 0;padding:8px 0;background:var(--bg)}
+  .idx,.pane{grid-area:body}
+  .hl,.pane{overflow:visible}
+  .main[data-view=index] .pane,.main[data-view=item] .idx{display:none}
+  .dock{grid-area:dock;position:sticky;bottom:0;z-index:4;display:grid;grid-template-rows:auto minmax(0,1fr);gap:6px;height:clamp(250px,32vh,340px);padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 -10px 24px rgb(0 0 0/.5)}
+  .mini{display:none}
+  .shd{grid-template-columns:minmax(0,1fr) auto}
+  .back{display:inline-flex;align-items:center;grid-column:1/-1;width:max-content;min-height:44px;padding:0 14px 0 10px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);color:var(--text);font:600 16px/1 var(--cond);letter-spacing:.08em;text-transform:uppercase}
+}
+@media (max-width:1179px) and (min-width:701px){
+  .row{grid-template-columns:minmax(0,1fr) minmax(260px,360px);column-gap:24px}
+}
+
+/* phone: the list first; a tap opens the item on its own, with the way back at its top. No drawing, as on Brew Day.
+   Every row stacks, and SAVE sits on the bottom tab bar */
+@media (max-width:700px){
+  :root{--pad:12px;--gap:10px;--tabs-h:97px}
+  .app{height:auto;min-height:calc(100dvh - var(--mock-h));padding-bottom:calc(var(--tabs-h) + env(safe-area-inset-bottom))}
+  .app[data-dirty]{padding-bottom:calc(var(--tabs-h) + 66px + env(safe-area-inset-bottom))}
+  /* the frame on a phone: brew-day.css's own rules, in its order */
+  .topbar{gap:10px;padding:8px var(--pad)}
+  .clock{font-size:24px;min-width:0}
+  #link-t{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .link{font-size:15px}
+  .alloff{flex:0 1 auto;max-width:108px;min-height:46px;padding:4px 10px;font-size:16px;line-height:1.05}
+  .status{grid-template-columns:minmax(0,1fr);padding-top:8px}
+  .event{font-size:16px;min-height:50px;padding:3px 3px 3px 12px}
+  .logbtn{min-height:44px}
+  .banner{min-height:44px;padding:5px 6px 5px 12px}
+  .tabs{position:fixed;inset:auto 0 0;z-index:30;padding-bottom:env(safe-area-inset-bottom)}
+  .tabs{grid-auto-flow:row;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:48px}
+  .tabs .long{display:none}
+  .tabs .short{display:inline}
+  .tabs a{font-size:14px;letter-spacing:.05em}
+  .tabs a:nth-child(n+5){border-top:1px solid var(--line)}
+  .tabs a:nth-child(5){border-left:0}
+  /* MORE takes the last two cells only where BrewScribe isn't installed; with it, the eight tabs are four and four */
+  .tabs a:nth-child(7):last-child{grid-column:span 2}
+  [data-layout=b] .topbar{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;row-gap:8px}
+  [data-layout=b] .topbar .banner{grid-column:1/-1;grid-row:2;margin:0;max-width:none}
+  [data-layout=b] .tabs{margin-top:0;border-bottom:0}
+  /* this page */
+  .top{position:static;margin:0;padding:0;background:none}
+  .tool{flex-wrap:wrap}
+  .tool .btns .cmd:not(.add){display:none}
+  .find{flex-basis:100%;max-width:none;order:1}
+  .find input{padding-left:140px}
+  .tool .sp{display:none}
+  .btns{order:2}
+  .tool .add{min-height:48px}
+  .addm{right:0;left:auto;top:auto;bottom:calc(100% + 6px)}
+  .idx{padding:12px}
+  .hl{display:flex;align-items:stretch;overflow:visible}
+  .hp>a{grid-template-columns:58px minmax(0,1fr) auto;min-height:52px}
+  .hk{min-height:60px}
+  /* a switch's pin moves onto its second line, so its name keeps the width */
+  .hp .v .pin{display:none}
+  .hp .pin2{display:inline}
+  /* the page scrolls as one, and has no drawing */
+  .main{grid-template-rows:auto auto;grid-template-areas:"tool" "body"}
+  .pane{overflow:visible}
+  .dock{display:none}
+  .main[data-view=item] .tool,.main[data-view=item] .idx{display:none}
+  .main[data-view=index] .pane{display:none}
+  .main[data-view=index][data-adding] .pane{display:block}
+  .sheet{padding:12px 12px 6px}
+  .shd{grid-template-columns:minmax(0,1fr);gap:8px}
+  .live{display:flex;flex-wrap:wrap;align-items:baseline;justify-items:start;gap:4px 12px}
+  .live p{text-align:left}
+  .who h2{font-size:26px}
+  .live .pv{font-size:38px}
+  .row{grid-template-columns:minmax(0,1fr);row-gap:12px;padding:14px 6px}
+  .seg{grid-auto-columns:minmax(88px,1fr);justify-self:stretch}
+  .kfp table{font-size:15px}
+  .savebar{position:fixed;left:0;right:0;bottom:calc(var(--tabs-h) + env(safe-area-inset-bottom));z-index:31;display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:6px 12px;background:var(--bar);border-top:2px solid var(--select)}
+  .savebar[hidden]{display:none}
+  .savebar p{margin:0;font:600 16px/1.2 var(--cond);letter-spacing:.04em;color:var(--active-ink)}
+  .savebar p small{display:block;font:500 14px/1.2 var(--cond);color:var(--prompt)}
+  .savebar .cmd{min-height:52px;min-width:88px;padding:4px 12px;font-size:17px}
+  .note{box-shadow:none}
+  .toast{bottom:calc(var(--tabs-h) + 18px)}
+}

@@ -1,0 +1,48 @@
+{
+  "title": "Pick the layout for the kettle dials",
+  "question": "Three ways to lay out the dials on one shared temperature scale, plus the standard option you asked to see. Pick one, or use the box to combine or change them. My suggestion: A's row of dials and scale strip, with C's coil-and-pump link drawn between the HLT and mash tun and C's step timeline down the side.",
+  "options": [
+    {
+      "id": "comp-a",
+      "label": "A: Row of dials over one scale",
+      "kicker": "LAYOUT A",
+      "thesis": "Three complete kettle instruments in rig order, with one shared scale strip beneath them comparing all three.",
+      "viewport": "Nameplate, dial, big actual and target digits and buttons per vessel across the top; the shared scale strip; now, next and later along the bottom.",
+      "risk": "The clearest from across the garage, but the plainest: no pipes or coil, and the strip repeats numbers the dials already show.",
+      "case": "Off in the image: the orange arc on the HLT dial reads like a red-zone warning, and the MODE lamp means nothing.",
+      "hero": ".impeccable/mocks/comp-a-row-of-dials.png"
+    },
+    {
+      "id": "comp-b",
+      "label": "B: One shared dial at the centre",
+      "kicker": "LAYOUT B",
+      "thesis": "The shared scale becomes the biggest dial on screen, with an HLT, mash and boil needle on the one face.",
+      "viewport": "A large three-needle dial in the middle with the HERMS gap shaded between the HLT and mash needles; vessel panels around it; the step strip along the bottom.",
+      "risk": "Three needles on one face are the hardest to tell apart from a distance, because the HLT and mash sit only about 5 °F apart.",
+      "case": "Off in the image: it also kept a small dial per vessel, so each temperature appears twice, and the boil needle is drawn at 225 °F instead of 68 °F.",
+      "hero": ".impeccable/mocks/comp-b-shared-dial.png"
+    },
+    {
+      "id": "comp-c",
+      "label": "C: The rig as a schematic",
+      "kicker": "LAYOUT C",
+      "thesis": "The rig drawn as it is plumbed, with the recirculation loop lit blue while the pump runs, under one shared scale.",
+      "viewport": "Shared scale across the top; HLT with its coil, mash tun (active, drawn bigger) and boil kettle joined by pipes; controls under each; the brew steps as a timeline down the right.",
+      "risk": "The most to build and the most crowded; the shaded 3D vessels drift toward looking like a toy.",
+      "case": "Off in the image: every dial appears twice (on the drawn vessel and in the panel), and the active step borrowed the pump's blue.",
+      "hero": ".impeccable/mocks/comp-c-rig-schematic.png"
+    }
+  ],
+  "reroll": false,
+  "canon": true,
+  "canonCard": {
+    "label": "The standard option (for comparison)",
+    "thesis": "What brewing-controller apps ship: vessel cards with toggles, a step list and a temperature chart, done well.",
+    "palette": ["#1F2328", "#2D333B", "#E6EDF3", "#3FB950"],
+    "materials": ["flat cards", "toggle switches", "line chart"],
+    "viewport": "Three vessel cards across the top, the recipe's steps on the right with Start, Next and Stop, and a two-hour temperature chart below.",
+    "risk": "Familiar and quick to build, but its toggles act on the first click (defect U2) and it is the generic-app look you said would feel wrong.",
+    "sketch": ".impeccable/mocks/standard-category.png"
+  },
+  "steer": true
+}
