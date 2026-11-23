@@ -352,12 +352,19 @@ function graphSVG(v, w, h, id, tw = w) {
     grid += `M0 ${f(y)}H${w}`;
     gl += `<text x="3" y="${f(y - 3)}">${gs < 1 ? g.toFixed(1) : Math.round(g)}</text>`;
   }
+  /* the time labels by the clock's setting (todParts): in 12-hour AM or PM on the first label and wherever the half
+     changes from the label before, the others the time alone ("2:35"); one with its half is wider, so it keeps
+     further from the ends */
   const tick = [120, 300, 600, 900, 1800, 3600, 7200].find(s => tw * s / (t1 - t0) >= 64) || 7200;
+  let half = null;
   for (let t = Math.ceil(t0 / tick) * tick; t <= t1; t += tick) {
     const x = X(t);
     if (x < 18 || x > w - 18) continue;
     grid += `M${f(x)} ${yT}V${yB}`;
-    if (lab) tl += `<text x="${f(x)}" y="${h - 3}">${hhmm(t)}</text>`;
+    const p = todParts(t), ap = p.ap && p.ap !== half ? p.ap : "";
+    if (!lab || (ap && (x < 26 || x > w - 26))) continue;
+    tl += `<text x="${f(x)}" y="${h - 3}">${p.hm}${ap ? `\u00a0${ap}` : ""}</text>`;
+    half = p.ap;
   }
   for (const [t, n] of H.steps) {
     const x = X(t);

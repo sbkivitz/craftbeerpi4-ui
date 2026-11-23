@@ -39,6 +39,18 @@ const fmtT = v => (blankish(v) || isNaN(+v) ? "–" : (+v).toFixed(1)) + "\u00a0
 /* CraftBeerPi keeps 0 for a kettle whose target was never set */
 const targetText = v => (blankish(v) || +v === 0 ? "no target" : `target ${fmtT(v)}`);
 const now = () => new Date().toTimeString().slice(0, 8);
+/* every time of day on the page by CraftBeerPi's CLOCK_FORMAT setting (The Twelve-Hour Rule): "12-hour", the default,
+   "2:33:02 PM", or with ?clock=24 "24-hour", "14:33:02". Times are kept 24-hour, as CraftBeerPi keeps them, and
+   shown by it; AM or PM is kept with the digits by a no-break space */
+const CLOCK24 = new URLSearchParams(location.search).get("clock") === "24";
+function todParts(x) {
+  const [h, m, s] = String(x).split(":").map(Number), tail = `:${String(m).padStart(2, "0")}${s != null ? `:${String(s).padStart(2, "0")}` : ""}`;
+  return CLOCK24 ? {hm: String(h).padStart(2, "0") + tail, ap: ""} : {hm: (h % 12 || 12) + tail, ap: h < 12 ? "AM" : "PM"};
+}
+const todS = x => { const p = todParts(x); return p.ap ? `${p.hm}\u00a0${p.ap}` : p.hm; };
+/* the title bar's clock, CraftBeerPi's, fixed in the demo: the digits, then AM or PM at half their size */
+const CLOCK_AT = "14:32";
+const clockHTML = () => { const p = todParts(CLOCK_AT); return p.ap ? `${p.hm}\u2009<span class="ap">${p.ap}</span>` : p.hm; };
 
 /* a field's value: as saved, or as changed on this page. Fields are "name", "type", a kettle's links, or "props.<key>" */
 function saved(kind, id, f) {
@@ -357,7 +369,7 @@ function noteHTML() {
     }
   }
   if (st.leave) return ["note", `<p><b>Leave Hardware with ${nDirty()} ${nDirty() === 1 ? "change" : "changes"} to ${esc(andList(d.map(k => nameOf(...split(k)))))} not saved?</b></p><div class="acts"><button type="button" class="cmd ans" data-leave="save">Save and go<small>then ${esc(st.leave)}</small></button><button type="button" class="cmd" data-leave="drop">Go without saving<small>drops ${d.length === 1 && nDirty() === 1 ? "it" : "them"}</small></button><button type="button" class="cmd" data-leave="stay">Stay<small>keep changing</small></button></div>`];
-  if (lost()) return ["note alarm", `<p><b>No connection to CraftBeerPi.</b> Readings are as they were at 14:31, in grey. Your changes stay on this page until it's back; then SAVE sends them. Switches wait too.</p>`];
+  if (lost()) return ["note alarm", `<p><b>No connection to CraftBeerPi.</b> Readings are as they were at ${todS("14:31")}, in grey. Your changes stay on this page until it's back; then SAVE sends them. Switches wait too.</p>`];
   const bad = [...new Set(failed().map(x => x.split("|")[0]))];
   if (bad.length) return ["note alarm", `<p><b>${esc(andList(bad.map(k => nameOf(...split(k)))))} didn't save.</b> CraftBeerPi didn't answer, so it may not have ${bad.length === 1 ? "it" : "them"}. ${bad.length === 1 ? "It's" : "They're"} still on this page; nothing else is affected.</p><div class="acts"><button type="button" class="cmd ans" data-retry="${esc(bad[0])}">Try again<small>send it again</small></button>${st.open === bad[0] ? "" : `<button type="button" class="cmd" data-open="${esc(bad[0])}">Show it<small>${esc(nameOf(...split(bad[0])))}</small></button>`}</div>`];
   const fx = effects();
@@ -447,7 +459,7 @@ function roleLine(kind, id) {
 function liveHTML(kind, id) {
   const x = find(kind, id);
   if (!x || x.fresh) return "";
-  if (kind === "sensor") return `<p class="pv${lost() ? " stale" : ""} num">${esc(numR(id))}${isTemp(id) ? `<span class="u">${unit()}</span>` : ""}</p><p>${lost() ? "as at 14:31" : "reading now"}</p>`;
+  if (kind === "sensor") return `<p class="pv${lost() ? " stale" : ""} num">${esc(numR(id))}${isTemp(id) ? `<span class="u">${unit()}</span>` : ""}</p><p>${lost() ? `as at ${todS("14:31")}` : "reading now"}</p>`;
   if (kind === "actor") { const m = pinMates(id); return `${swHTML(id, true)}<p>${x.on ? `<span class="on">on</span> at ${x.power} %` : "off"} · one tap</p>${m.length ? `<p class="dup">${esc(m.map(a => a.name).join(", "))} uses GPIO ${esc(pinOf(x))} too</p>` : ""}`; }
   const s = x.sensor && find("sensor", x.sensor);
   return `${s ? `<p class="pv${lost() ? " stale" : ""} num">${esc(numR(x.sensor))}${isTemp(x.sensor) ? `<span class="u">${unit()}</span>` : ""}</p>` : ""}<p>${x.auto ? `<span class="on">AUTO on</span>` : "AUTO off"} · ${esc(targetText(x.target_temp))}</p>`;
@@ -487,7 +499,7 @@ function stHTML(kind, id, f) {
   if (r.s === "wait") return ["st", "Saving…"];
   if (r.s === "bad") return ["st no", `Didn't save <span class="why2">· ${esc(r.msg)}</span>`];
   if (isChanged(kind, id, f) && !isNew(k)) return ["st", `Changed <span class="was">· was ${esc(shown(kind, id, f, saved(kind, id, f)))}</span><button type="button" class="lnk" data-undo="${esc(f)}">Undo</button>`];
-  if (r.s === "ok") return ["st ok", `✓ Saved ${r.at}`];
+  if (r.s === "ok") return ["st ok", `✓ Saved ${todS(r.at)}`];
   return ["st", ""];
 }
 /* the line under a row's control: two switches on one pin, which CraftBeerPi allows, or what an empty setting uses */
@@ -565,7 +577,7 @@ function paintFrame() {
   /* "true" exactly: an empty aria-disabled counts as available, to the greyed look, a tap and a screen reader */
   if (lost()) $("#alloff").setAttribute("aria-disabled", "true"); else $("#alloff").removeAttribute("aria-disabled");
   const e = st.events[0];
-  $("#event").innerHTML = `<p class="line"><time>${esc(e[0])}</time>${esc(e[1])}${e[2] ? ` <span class="res ${e[3]}">${esc(e[2])}</span>` : ""}</p><button type="button" class="logbtn" aria-label="Show the event log">LOG</button>`;
+  $("#event").innerHTML = `<p class="line"><time>${esc(todS(e[0]))}</time>${esc(e[1])}${e[2] ? ` <span class="res ${e[3]}">${esc(e[2])}</span>` : ""}</p><button type="button" class="logbtn" aria-label="Show the event log">LOG</button>`;
 }
 function paintChrome() {
   $("#idx").innerHTML = idxHTML();
@@ -792,7 +804,7 @@ function filePlan(x, fillIn) {
     }
     rows.push(row);
   });
-  return {id: x.id, fill, fillIn: !!fillIn, src: src.id, type: src.type, fileName: `${src.name} settings.json`, from: src.name, version: "4.7.7.post36", at: "15 Nov 2026, 21:40", rows, blank, all: false, left: []};
+  return {id: x.id, fill, fillIn: !!fillIn, src: src.id, type: src.type, fileName: `${src.name} settings.json`, from: src.name, version: "4.7.7.post36", at: `15 Nov 2026, ${todS("21:40")}`, rows, blank, all: false, left: []};
 }
 function loadFile() {
   const k = st.open, [, id] = split(k), x = find("kettle", id), plan = st.file, filled = plan.rows.filter(r => r.filled), nf = filled.length;
@@ -950,6 +962,7 @@ function scene() {
   else SCENES[name]();
   st.view = st.open || st.wait ? "item" : "index";
   $$("#mock a[href^='#']").forEach(a => a.setAttribute("aria-current", a.getAttribute("href") === "#" + name && !route && !adding));
+  $("#clock").innerHTML = clockHTML();
   render();
   $("#pane").scrollTop = 0;
   if (st.open) { const f = name === "saved" ? "props.DeltaTemp" : name === "changes" || name === "leave" ? "props.P" : name === "pin" ? "props.GPIO" : ""; if (f) { const el = $("#r-" + f.replace(/\W/g, "-")); if (el) el.scrollIntoView({block: "center"}); } }

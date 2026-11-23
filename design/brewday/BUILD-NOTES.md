@@ -6163,9 +6163,10 @@ Column (BrewStart heating) and Strike Water (What USE changes).
    temperature, as for the strike water step.
 7. **HEAT NOW** (`bsSet`): BrewStart's notice, then BrewStart heats (point 2); it stays the current step. Focus to
    LOG, as before.
-8. **A recipe with a strike water step on the HLT after BrewStart** (`?sws=step` in the mockup): BrewStart heats as
-   above; once the water is ready it hands over to that step without a question (LOG "BrewStart finished · by
-   recipe", the HLT's AUTO left on), and that step asks to move the water as today.
+8. **A recipe with a strike water step on the HLT after BrewStart** (`?sws=step` in the mockup): BrewStart doesn't
+   heat. It hands over as soon as heating is due (LOG "BrewStart finished · by recipe", then "Strike water started,
+   HLT target 132.4 °F"), and that step heats and asks to move the water, as before (BrewStart 1.3.0 as built; you
+   decided it, 23 Nov). HEAT NOW hands over at once there.
 9. **The grain question** while BrewStart heats or holds: USE waiting for the grain opens the strike water box's GRAIN
    box, as on brew morning before, since the row isn't a button.
 10. **Smaller:** START after STOP on a BrewStart that had begun heating carries on heating; UNLOAD's greyed reason
@@ -6196,8 +6197,8 @@ Column (BrewStart heating) and Strike Water (What USE changes).
   149 and 262, the pH box 128 and 134.
 - Pictures against the copy in `design/brewday` (UI de55dfe), at 1440 × 900 and 390 × 844: 44 moments differ, all on
   the strike water flow (every `sw-*` but `#sw-hand`, the 11 `bs-*`, `#sim-clock` and `#sim-clock-1x`, and
-  `#unload-wait`, `#timers-fold` and `#timers-open`, which are built on them). With `?sws=step`, 8, where BrewStart now
-  heats before handing over.
+  `#unload-wait`, `#timers-fold` and `#timers-open`, which are built on them). With `?sws=step`, BrewStart hands over at
+  its heating start as before (corrected with the 12-hour time: see there).
 - BrewStart's holding row at 1180 × 860 and 1440 × 900 is 103 px, its details on three lines beside WAITING FOR YOU
   (83 px at 1920 × 950), with the current step whole.
 - Known, not new: on a phone `#bs-soon` opens with HEAT NOW below the bottom tabs until the page is scrolled.
@@ -6210,6 +6211,116 @@ Column (BrewStart heating) and Strike Water (What USE changes).
 - `proposal\BREWSTART-EDIT.md`, `proposal\STRIKE-WATER.md` (a note at its top); this section.
 - `DESIGN.md`: Recipe Column (BrewStart heating; BrewStart's box's HEAT NOW sentence), Strike Water (where and when,
   What USE changes, USE waiting for the grain); `.impeccable\decisions\direction-log.md`; `.impeccable\design.json`.
+
+## Every time of day in 12-hour form, and CraftBeerPi's clock in BrewStart's box: ready to build (23 Nov)
+
+The brewer: "I don't like the 24h time. Change the BrewStart to use 12-hr time." Asked where, he chose "Everywhere
+CraftBeerPi shows a time of day". You settled the format and the setting (CLOCK_FORMAT, core post60). Then, on the
+simulators: "When sim_time_scale is not 1, setting brewStart ready by time needs to show current sim date/time and the
+current timescale", and "Whenever I change the timescale, the simtime date and time need to reset to actual" (the
+core's). The design is DESIGN.md's The Twelve-Hour Rule, The One Clock Rule (the reset), and the title bar's clock and
+BrewStart's box in Components. The recipe pages follow the same rule (Robin); use the shared `timefmt.js`
+(`cbpi4gui/src/components/util/timefmt.js`) for formatting and for reading typed times, rather than a copy here.
+
+### What to build (screen.js, brewday.css, and the hardware page)
+
+1. **CLOCK_FORMAT**, read from /config: "12-hour", the default, or "24-hour", exactly as the screen is today. Every
+   time of day the screen shows goes through `timefmt.js` by it: "7:00 AM", "11:15:40 PM", "12:00 AM" at midnight and
+   "12:00 PM" at noon, with a no-break space before AM or PM. Saved times (BrewStart's StartTime, the steps' times)
+   stay 24-hour; only what is shown and typed changes. Lengths of time don't change, and keep to one line with
+   no-break spaces ("in 9 h 48 min", "was off for 1 h 5 min").
+2. **The title bar's clock** (`clockSet`): the digits, a thin space, then `<span class="ap">PM</span>` at .5em with
+   .04em letter-spacing, the same weight and colour, on the digits' baseline; `.clock{white-space:nowrap}`. The
+   simulator's tag beside it is as built. At 820 px with the tag and a long brewery name, the name takes two lines
+   instead of one; the bar keeps its height.
+3. **LOG**: "2:24:43 PM", and "26 Nov 11:58:40 PM" for a line from another of CraftBeerPi's days. The list's time
+   column holds "12:59:59 PM" on one line.
+4. **The graphs' time axis** (`graphs.js`): AM or PM only on the axis's first label and where the half changes from
+   the label before; the others the time alone ("2:35"). A label with AM or PM needs 26 px clear of either end; where
+   it hasn't, it is left out (its grid line stays) and the next label carries the half.
+5. **The step list**: BrewStart's details "126 °F · ready by 7:00 AM Sat · 15 gal": the time, AM or PM and the day
+   kept together, "ready by" free to end a line; while BrewStart holds the water, "132.4 °F · 15 gal", its ready
+   time having come. STARTS "STARTS 5:53 AM"; in 12-hour the time may go under STARTS where one line would cost the row
+   a line. The screen reads STARTS from BrewStart's status line: accept " AM"/" PM" there (screen.js line 3821,
+   `(\d{1,2}:\d{2}(?:\s?[AP]M)?)`), and ship that before or with BrewStart post11.
+6. **BrewStart's box**:
+   - The time box shows "7:00", placeholder "7:00". Under the time row, AM and PM: two equal command buttons 44 px
+     tall, the half the time is in pressed (`aria-pressed`), greyed with the box's keys while SET waits; not there in
+     24-hour. A tap moves the same time to that half. The keys −1 H, −15, +15, +1 H cross noon and midnight with the
+     half, wrapping within the day as now.
+   - Typed times by `timefmt.js`'s reader, as The Twelve-Hour Rule says: a bare "7", "700", "7:00", "7.30" or "7 30" in
+     the half pressed when typing began (an empty box starts at AM); leading zeros keep the half; "7a", "7 am"; "7p",
+     "7 pm", "19", "19:00"; "12" noon, "12a" midnight; with AM or PM the hour 1 to 12, the minutes 00 to 59. The half
+     pressed follows what is typed as soon as it says. Leaving a box that can't be read (blur), and SET on it, puts
+     in the note line: "That isn't a time: type it as 7, 7:30 or 730, and tap AM or PM." Never while typing. In 24-hour,
+     as now ("Type the time as 07:00.").
+   - Its words in 12-hour: SET's hint "ready by 7:00 AM Sat"; "The HLT's water is hot by 7:00 AM tomorrow, Sat 21 Nov:
+     in 9 h 48 min."; "7:00 AM today has passed, so …"; "MashIn starts at 5:30 AM tomorrow, …"; "BrewStart is
+     waiting: heating starts about 6:16 AM. …"; LOG "BrewStart: ready by 6:30 AM Sat 21 Nov, was 7:00 AM Sat".
+   - While the time in words says something to read before SET (HEAT NOW's sentence, or "has passed"), the middle
+     scrolls it wholly into view as the box opens and as the time changes, keeping the time box in view where both
+     fit.
+7. **CraftBeerPi's clock in BrewStart's box** (`bsClockHTML`, `#bs-clk`, `.bsclk`): on a simulator whose clock isn't
+   the screen's (its speed isn't 1×, or its date isn't the screen's: `clockTag()`), a tag at the box's top, above the
+   waiting sentence, pinned above the part that scrolls, in the title bar tag's look (Progress Blue on Progress Track
+   Navy, a 1 px #3c7fcc edge, 4 px radius, condensed capitals): "CRAFTBEERPI'S CLOCK · MON 23 NOV, 1:16 PM · 30×
+   SPEED", the speed only where it isn't 1×. Its time counts on by the minute. Screen readers: "CraftBeerPi's clock:
+   Monday 23 November, 1:16 PM, running 30 times as fast." On the rig, nothing. The box's ", about 10 real minutes at
+   60×" stays.
+8. **The clock put back when SIM_TIME_SCALE changes** (the core's, designed here, not in the mockup): CraftBeerPi
+   tells open screens at once. The screen asks for the clock again there and then, rather than at its next minute, so
+   at 1× with the date back the title bar's tag goes; an open BrewStart box draws its tag, TODAY and TOMORROW and its
+   time in words again, and a time that has now passed says so.
+9. **CraftBeerPi's, BrewStart's and BrewScribe's sentences** arrive formatted by the setting (BrewStart post11's
+   `format_start`: "Sat Nov 21, 7:00 AM"); the screen shows them as they come.
+10. **The hardware page** formats its times the same way (the mockup has its own copy of the formatter, as it
+    doesn't load `brew-day.js`; in the build, `timefmt.js`).
+11. **Moments:** every moment in 12-hour; `?clock=24` for 24-hour; `#bs-sim` (60×) with the box's tag, and
+    `#bs-sim-day`, a simulator at 1× on another date.
+
+### A correction to "BrewStart heats the HLT itself" (you decided it, 23 Nov)
+
+Item 8 there: in a recipe with a strike water step on the HLT after BrewStart (`?sws=step`), BrewStart doesn't heat.
+It hands over as soon as heating is due ("BrewStart finished · by recipe", then "Strike water started, HLT target
+132.4 °F · by recipe"), and that step heats and asks, as before; HEAT NOW hands over at once. With `?sws=step&clock=24`
+the strike water moments match the pictures from before the heating change (de55dfe).
+
+### In CraftBeerPi
+
+- CLOCK_FORMAT (core post60); BrewStart post11's sentences; BrewScribe's own times in its messages, by the same
+  setting (Porter).
+
+### Checked
+
+- All suites pass, with no page errors: `files\twelve_presses.py` 175 (new: the formatter at midnight, 12:30 AM, noon,
+  12:59 PM, 1:00 PM and 11:59:59 PM in both settings; every typed case, the half at typing start, an empty box,
+  leading zeros, "13 pm" and "7:60" refused, the sentence on leaving the box and not while typing; AM and PM and the
+  keys across noon and midnight; SET's hint and LOG line; the box's tag at 60× and on another day, none on the rig;
+  the title bar's clock at seven widths with a long name; the holding row; HEAT NOW's sentence in view), BrewStart
+  285, the strike water 28 and 30, UNLOAD 61, the timers 72 and 40, the clock 17 (and 17 with `?clock=24`), the boil
+  kettle 23, the review page 36, the timers' places 149 and 262, the pH box 128 and 134.
+- HEAT NOW's sentence and the time box both in view as the box opens: `#bs-soon` at 1180 × 860 (the middle scrolled
+  54 px), 1440 × 900 (14 px) and 1920 × 950 (0); `#bs-past` at all three (0). The grain's two answers still in view
+  in `#bs-edit`, `#bs-indoors` and `#bs-wait` at every size.
+- BrewStart's holding row: 83 px at 1180 × 860 and 1440 × 900 in `#sw-move` (63 in `#sw-late` and `#sw-where-am`),
+  63 at 1920 × 950, 146 on a phone; it was 103 and 186 before.
+- BrewStart's box with AM and PM: 54 px more in its middle, which scrolls; on one screen the box keeps its height at
+  1180 × 860 and 1440 × 900, and is up to 62 px taller at 1920 × 950 (`#bs-new-open`); on a phone 54 px taller, and
+  with the tag on a simulator about 110 px.
+- Pictures against the copy in `design/brewday` (UI f063f27), at 1440 × 900 and 390 × 844: with `?clock=24`, all the
+  same but six on purpose (the holding row in `#sw-move`, `#sw-late` and `#sw-where-am`; the box's tag in `#bs-sim`;
+  the new `#bs-sim-day`; `#bs-soon`'s lengths of time kept whole). In 12-hour all 130 change, as the clock is on
+  every screen. The old shape (`?sws=step&clock=24`) against de55dfe: all the same.
+- Phones and in-between widths: nothing wider than the screen, nothing new wrapped; the last-event line ends in its
+  ellipsis on 9 moments at 390 px, where "2:24:43 PM" takes its room.
+
+### Changed
+
+- `proposal\brew-day.js`, `proposal\brew-day.css`, `proposal\brew-day.html`, `proposal\graphs.js`;
+  `proposal\hardware.js`, `proposal\hardware.css` (to `design/hardware/`); this section and item 8 of the one above.
+- `DESIGN.md`: The Twelve-Hour Rule (new), The One Clock Rule (the reset; "26 Nov 11:58:40 PM"), the title bar, the
+  step row's and BrewStart's box's words, the box's AM and PM and its tag; `proposal\BREWSTART-EDIT.md`;
+  `.impeccable\decisions\direction-log.md`; `.impeccable\design.json`.
 
 ## Open questions about the drawing
 

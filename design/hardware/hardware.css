@@ -51,7 +51,9 @@ html.bare .mock{display:none}
 .alloff{min-height:48px;padding:0 16px;border:2px solid #7d8fa2;border-radius:var(--r);background:var(--panel-2);color:var(--text);font:700 17px/1 var(--cond);letter-spacing:.06em}
 .alloff:not([aria-disabled=true]):hover{border-color:#ff8a80;background:#2b1315}
 .alloff[aria-disabled=true]{opacity:.5;cursor:not-allowed}
-.clock{font:600 clamp(26px,2.4vw,40px)/1 var(--cond);font-variant-numeric:tabular-nums;min-width:3.2ch;text-align:right}
+.clock{font:600 clamp(26px,2.4vw,40px)/1 var(--cond);font-variant-numeric:tabular-nums;min-width:3.2ch;text-align:right;white-space:nowrap}
+/* AM or PM after the digits (The Twelve-Hour Rule): half their size, in their weight and colour, on their baseline */
+.clock .ap{font-size:.5em;letter-spacing:.04em}
 /* on a monitor or laptop only the alarm or prompt gives way to a long message in the title bar (it wraps): ALL OFF keeps
    its shape and the clock its digits. Narrower, both still give way, so the prompt doesn't grow taller still */
 @media (min-width:1180px){.alloff,.clock{flex:none}}
@@ -66,7 +68,7 @@ html.bare .mock{display:none}
 .banner .msg{flex:1;min-width:0}
 .event{position:relative;font:500 18px/1.2 var(--cond);letter-spacing:.02em;min-width:0}
 .event .line{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.event time{color:var(--text-3);margin-right:10px;font-variant-numeric:tabular-nums}
+.event time{color:var(--text-3);margin-right:10px;font-variant-numeric:tabular-nums;white-space:nowrap}
 .res{color:var(--text-2)}.res.ok{color:var(--run)}.res.bad{color:#ff9b93}.res.wait{color:var(--prompt)}
 .logbtn{flex:none;min-height:44px;padding:0 14px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);font:600 16px/1 var(--cond);letter-spacing:.08em}
 .logbtn:hover{background:#253545}

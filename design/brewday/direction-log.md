@@ -1,5 +1,13 @@
 # Direction decision log
 
+## Every time of day in 12-hour form (23 Nov 2026)
+- The brewer: "I don't like the 24h time." He chose it everywhere CraftBeerPi shows a time of day; the format and the
+  CLOCK_FORMAT setting are Brett's. Saved times stay 24-hour.
+- Chosen for Brew Day: AM and PM smaller beside the clock's digits, so the clock keeps its size; AM and PM as two
+  buttons under BrewStart's time, as a phone's number keys have no letters, and typed times read by the half shown when
+  typing began (agreed with the recipe pages, so both read a typed "7" alike).
+- Also: CraftBeerPi's clock as a tag in BrewStart's box on a simulator, as the box's days and words are by it.
+
 ## BrewStart heats the HLT itself: Brew Day's part (22 Nov 2026, night)
 - The brewer: "BrewStart should have the entire volume of HLT water heated to my chosen temperature by my chosen time."
   His v5 has no strike water step on the HLT, so BrewStart handed over at its heating start and the Mash Tun's pump
@@ -7,7 +15,8 @@
 - Chosen for Brew Day: a Ready-by BrewStart is the strike water step. Its row says HEATING, then WAITING FOR YOU with
   the strike water step's own question ("Move the strike water to the Mash Tun, then press Next"), so the morning reads
   as it did; the strike water box sits on it; NEXT switches the HLT's AUTO off. The mockup's v5 now has the brewer's
-  shape; `?sws=step` keeps the old one, where BrewStart hands over to the strike water step without asking.
+  shape; `?sws=step` keeps the old one, where BrewStart hands over as soon as heating is due and the strike water step
+  heats and asks, as BrewStart 1.3.0 does there.
 - Also: NEXT STEP's question while BrewStart waits or heats says the tun is still empty, as skipping it is the other
   road to the pump running dry.
 

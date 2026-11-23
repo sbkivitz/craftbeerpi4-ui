@@ -90,8 +90,9 @@ on the HLT, so at the heating start BrewStart handed over, and the Mash Tun's pu
   the tun. Skipping BrewStart with NEXT STEP before then asks first, and says the tun is still empty.
 - It is the recipe's strike water step: the strike water box's USE and BACK TO set its temperature, while it waits
   (STARTS planned again) and while it heats (the HLT's target too).
-- In a recipe that does have a strike water step on the HLT after it, BrewStart heats, then hands over to that step
-  without a question, as that step asks.
+- In a recipe that does have a strike water step on the HLT after it, BrewStart doesn't heat: it hands over as soon as
+  heating is due, and that step heats and asks, as before (BrewStart 1.3.0 as built), so two steps never heat the
+  same water.
 
 HEAT NOW's sentence stays right: it is BrewStart that heats now. In the mockup the strike water moments run this shape:
 #sw-wait waiting, #sw-heat heating, #sw-move and #sw-late holding with the question, #sw-doughin MashIn after NEXT;
@@ -147,7 +148,7 @@ a date picker (a brew further off than tomorrow isn't set the night before); the
 | **New: where the grain is, for this brew** ("garage" or "indoors"), kept with the loaded steps and left out of the book, so a blank Grain_Temp (the garage) can be told from "not asked yet" on every screen. `POST /step2/strike/grain` takes it | Server (core post59, being built: `grain_place` in the brew steps' basic data; `{"grain": null, "place": "garage"}` for the garage, a figure for indoors) |
 | Add BrewStart as step 1: `POST /step2/` with `index` 0 (Robin's change 6, core post58) | Being built |
 | A new BrewStart's water: `recipeWater()` from `mash_numbers` (Robin's change 7) | Planned; until then the last brew's |
-| **BrewStart heats the HLT itself** with Ready by: the HLT's target and AUTO at its heating start, holding and asking for the water to be moved, the HLT's AUTO off on NEXT; with a strike water step on the HLT after it, handing over without a question | BrewStart 1.3.0 (core helper, being built) |
+| **BrewStart heats the HLT itself** with Ready by: the HLT's target and AUTO at its heating start, holding and asking for the water to be moved, the HLT's AUTO off on NEXT; with a strike water step on the HLT after it, handing over as soon as heating is due | BrewStart 1.3.0 (core helper, being built) |
 | A waiting BrewStart takes a new time: `POST /step2/action/{id}` with `change_time`, as `PUT /step2/{id}` is refused (409) while it waits. It plans again from the water as it is and says so in its words; with too little time left for the heating, it hands over at once. The grain and the water already change while it waits, through the strike water box | BrewStart 1.2.0.post10, on 8000 and 8012 |
 | SAVE TO BOOK: BrewStart's date back to Tomorrow, the strike temperature back to before the first USE, no grain figure (Robin's change 8, asked of Brett) | Server (the book's copy, `book_data()`) |
 | Nothing | Dashboard layout files |
