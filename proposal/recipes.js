@@ -474,7 +474,7 @@ function cbClockHTML() {
   // a narrow screen breaks the tag only after a "·", never inside a part
   const seen = ["CraftBeerPi's clock", `${WEEK[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}, ${t}`, g.fast ? `${sc}× speed` : ""].filter(Boolean).map(x => x.replace(/ /g, NB)).join(`${NB}· `);
   const said = `CraftBeerPi's clock: ${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}, ${t}${g.fast ? `, running ${sc} times as fast` : ""}.`;
-  return `<p class="cbclk"><span class="seen" aria-hidden="true">${esc(seen)}</span><span class="sr">${esc(said)}</span></p>`;
+  return `<div class="cbbar"><p class="cbclk"><span class="seen" aria-hidden="true">${esc(seen)}</span><span class="sr">${esc(said)}</span></p></div>`;
 }
 // when the steps on Brew Day were loaded, on CraftBeerPi's clock, with the weekday when it isn't CraftBeerPi's today
 const loadedAt = (L = st.loaded) => `${timeOfDay(L.at)}${L.day && L.day !== cbDate() ? NB + WEEK[dateAt(L.day).getDay()] : ""}`;
@@ -904,7 +904,12 @@ function render() {
   $("#app").toggleAttribute("data-dirty", !bar.hidden);
   applyView();
   grow();
+  fitTool();
 }
+// the tool row's height where it sticks to the top of the window (701 to 1179 px), else 0
+const stickTop = () => { const t = $("#tool"); return t && getComputedStyle(t).position === "sticky" ? t.offsetHeight : 0; };
+// the clock band and the time in words stay clear of it
+const fitTool = () => document.documentElement.style.setProperty("--tool-h", stickTop() + "px");
 function applyView() {
   const m = $("#main");
   m.dataset.view = narrow() ? st.view : "split";
@@ -937,6 +942,7 @@ function paintEdit(k, label) {
   bar.hidden = !n;
   if (n) bar.innerHTML = `<p>${n} ${n === 1 ? "change" : "changes"} not saved</p>${saveBtns(n, st.page === "steps" ? "for this brew" : "in the book")}`;
   $("#app").toggleAttribute("data-dirty", !bar.hidden);
+  fitTool();
 }
 
 /* ---------- moving about ---------- */
@@ -959,6 +965,18 @@ function spy() {
   if (cur) setCur(cur);
 }
 function land(el) { el.classList.remove("land"); void el.offsetWidth; el.classList.add("land"); setTimeout(() => el.classList.remove("land"), 1300); }
+/* the time in words is what shows a slip of twelve hours, so while BrewStart's time is being set it stays in view: the
+   page scrolls as little as it can, clear of the sticky tool row and of a phone's save bar and tabs (the sentence's
+   scroll margins). Called after a key or a tap, never as a box is left: a scroll between a finger going down and coming
+   up can put the tap on another control. A phone's on-screen keyboard covers the page without making it shorter, so the
+   visual viewport is checked too */
+function keepWhenInView(k) {
+  const w = $(`#when-${k}`);
+  if (!w || !w.textContent.trim()) return;
+  w.scrollIntoView({block: "nearest"});
+  const vv = window.visualViewport;
+  if (vv && !wide()) { const over = w.getBoundingClientRect().bottom + 12 - (vv.offsetTop + vv.height); if (over > 0) window.scrollBy(0, over); }
+}
 /* a new BrewStart opens at its When settings with its time box ready: the time is the one thing only the brewer knows.
    The column (or, one thing at a time, the way back) still says where it went */
 function showWhen(k) {
@@ -967,10 +985,11 @@ function showWhen(k) {
   if (!part) return;
   const put = () => {
     if (wide()) { const pane = $("#pane"); pane.scrollTop += part.getBoundingClientRect().top - pane.getBoundingClientRect().top - 8; }
-    else window.scrollTo(0, part.getBoundingClientRect().top + scrollY - (narrow() ? 8 : $("#tool").offsetHeight + 16));
+    else window.scrollTo(0, part.getBoundingClientRect().top + scrollY - (stickTop() ? stickTop() + 16 : 8));
   };
   put();
   if (f) { f.focus({preventScroll: true}); put(); }
+  keepWhenInView(k);
 }
 function jump(k) {
   const ed = E();
@@ -1236,9 +1255,14 @@ document.addEventListener("click", e => {
     else if (norm(s._tt)) { const r = readTime(s._tt, ds.half); if (r) setProp(ds.s, ds.p, r); }
     render();
     const nb = $(`#i-${ds.s}-${ds.p}-half [data-half="${ds.half}"]`); if (nb) nb.focus({preventScroll: true});
+    return keepWhenInView(ds.s);
+  }
+  if (ds.set !== undefined && b.closest(".seg")) {
+    setProp(ds.s, ds.p, ds.set); const id = b.closest(".seg").id; render(); const nb = $(`#${id} [data-set="${CSS.escape(ds.set)}"]`); if (nb) nb.focus({preventScroll: true});
+    const sk = ds.s && ds.s !== "r" ? stepByKey(ds.s) : null;
+    if (sk && sk.type === "BrewStart" && (ds.p === "Timing" || ds.p === "Mode")) keepWhenInView(ds.s);
     return;
   }
-  if (ds.set !== undefined && b.closest(".seg")) { setProp(ds.s, ds.p, ds.set); const id = b.closest(".seg").id; render(); const nb = $(`#${id} [data-set="${CSS.escape(ds.set)}"]`); if (nb) nb.focus({preventScroll: true}); return; }
   if (ds.undo) {
     const ed = E(), k = ds.undo, label = ds.p;
     if (k === "r") ed.doc[label] = ed.orig[label];
@@ -1293,7 +1317,8 @@ document.addEventListener("input", e => {
     s._tt = f.value; s._typing = true;
     setProp(k, label, r || "");
     if (r) { s._half = halfOf(r); $$(`#${CSS.escape(f.id)}-half [data-half]`).forEach(x => x.setAttribute("aria-checked", String(x.dataset.half === s._half))); }
-    return paintEdit(k, label);
+    paintEdit(k, label);
+    return keepWhenInView(k);
   }
   if (f.tagName === "TEXTAREA") {
     const v = f.value.replace(/(\r\n|\r|\n)+/g, " ");
@@ -1302,6 +1327,7 @@ document.addEventListener("input", e => {
   }
   setProp(k, label, f.value);
   paintEdit(k, label);
+  if (label === "StartDate") keepWhenInView(k);
 });
 document.addEventListener("focusin", e => {
   const f = e.target;
@@ -1343,7 +1369,7 @@ document.addEventListener("dragleave", e => { const d = e.target.closest && e.ta
 document.addEventListener("drop", e => { const d = e.target.closest && e.target.closest("#drop"); if (!d) return; e.preventDefault(); d.classList.remove("over"); $("[data-choose]").click(); });
 $("#pane").addEventListener("scroll", () => requestAnimationFrame(spy), {passive: true});
 addEventListener("scroll", () => requestAnimationFrame(spy), {passive: true});
-addEventListener("resize", () => { applyView(); grow(); });
+addEventListener("resize", () => { applyView(); grow(); fitTool(); });
 
 /* ---------- moments (the strip at the top) ---------- */
 const V4 = "FtHtz5YsgsSFEikqEieXJb", V5 = "YhweWUoDCyYKB887DJ9EXd", V3 = "JimaSx8vJFQoZ2wjioiVRT", BS = "Sm2ziW9v2nxAMid7ft6PTr";
@@ -1423,7 +1449,7 @@ function startTick() {
     st.clock = `${String(Math.floor(n / 60) % 24).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}`;
     paintClock();
     const tag = cbClockHTML(), ed = E();
-    $$(".cbclk").forEach(x => { x.outerHTML = tag; });
+    $$(".cbbar").forEach(x => { x.outerHTML = tag; });
     $$(".whenl").forEach(w => { const s = ed && ed.doc.steps.find(x => `when-${x._k}` === w.id); if (s) w.innerHTML = whenHTML(ed, s); });
   }, 60000 / st.sim.scale);
 }
