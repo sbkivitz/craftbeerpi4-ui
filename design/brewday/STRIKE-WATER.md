@@ -1,5 +1,10 @@
 # Strike water helper: approved by the brewer (20 Nov 2026), with the model's figures
 
+From BrewStart 1.3.0 (22 Nov, night) the strike water step is usually BrewStart itself: with Ready by it heats the HLT,
+holds the water and asks for it to be moved, as the strike water step on the HLT did, and the box sits on it. Where
+this note says "the strike water step", read that BrewStart, or a MashInStep on the HLT after it where a recipe has
+one. See `BREWSTART-EDIT.md`, "BrewStart heats the HLT".
+
 The brewer approved the reworked proposal on 20 Nov, through Brett: "Yes, approve it with those two fixes". Both fixes
 answer questions he asked about it:
 

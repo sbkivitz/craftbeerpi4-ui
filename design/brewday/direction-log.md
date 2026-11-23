@@ -1,5 +1,16 @@
 # Direction decision log
 
+## BrewStart heats the HLT itself: Brew Day's part (22 Nov 2026, night)
+- The brewer: "BrewStart should have the entire volume of HLT water heated to my chosen temperature by my chosen time."
+  His v5 has no strike water step on the HLT, so BrewStart handed over at its heating start and the Mash Tun's pump
+  started into an empty tun. He chose "BrewStart heats the HLT itself" (BrewStart 1.3.0).
+- Chosen for Brew Day: a Ready-by BrewStart is the strike water step. Its row says HEATING, then WAITING FOR YOU with
+  the strike water step's own question ("Move the strike water to the Mash Tun, then press Next"), so the morning reads
+  as it did; the strike water box sits on it; NEXT switches the HLT's AUTO off. The mockup's v5 now has the brewer's
+  shape; `?sws=step` keeps the old one, where BrewStart hands over to the strike water step without asking.
+- Also: NEXT STEP's question while BrewStart waits or heats says the tun is still empty, as skipping it is the other
+  road to the pump running dry.
+
 ## The timers beside the drawing (D) approved, with OTHER RECIPE; built as the default (22 Nov 2026, night)
 - The brewer: "Timers beside the drawing: Yes, build D", on `timers-side.html`, beside today and C.
 - Built as the mockup's default: on one screen, while a timer is set, a 300 px column of one-line timer rows at the

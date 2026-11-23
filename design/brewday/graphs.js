@@ -184,12 +184,13 @@ function gDemo(scene) {
     d.mt.pv.push([hms(16, 31, 10), 146.9, "s"]);
     return d;
   }
-  /* the strike water moments (st.sw.g, brew-day.js swMorning): the night in the garage, then from BrewStart's start
-     (g.heat) the HLT heating the strike water at the rig's rate to g.plan, the step asking half a degree short (g.hot),
-     and the HLT holding it; from g.moved the water in the mash tun and PID_HERMS on it, MashIn asking for the malt at
-     once (g.ask). #sw-hand: the HLT on its own AUTO from g.heat, and no recipe begun. Times run on past midnight, so the
-     end is a day and a bit on. The mash tun's probe sits at the coil's outlet: it reads the strike water as it comes
-     through the coil, and with the pump stopped for the dough-in, the HLT's water */
+  /* the strike water moments (st.sw.g, brew-day.js swMorning): the night in the garage, then from BrewStart's heating
+     start (g.heat) the HLT heating the strike water at the rig's rate to g.plan, ready half a degree short (g.hot), and
+     the HLT holding it; from g.moved the water in the mash tun and PID_HERMS on it, MashIn asking for the malt at
+     once (g.ask). The steps' starts are swMorning's (g.marks). #sw-hand: the HLT on its own AUTO from g.heat, and no
+     recipe begun. Times run on past midnight, so the end is a day and a bit on. The mash tun's probe sits at the
+     coil's outlet: it reads the strike water as it comes through the coil, and with the pump stopped for the dough-in,
+     the HLT's water */
   const g = st.sw && st.sw.g;
   if (g) {
     const Z = st.t + 3600, start = st.t - 8 * 3600, hot = g.hot ?? Infinity, mv = g.moved ?? Infinity, kal = g.plan <= 126;
@@ -209,7 +210,7 @@ function gDemo(scene) {
     /* PID_HERMS holds the HLT at no more than the rest while the pump is stopped: off above it, a trickle at it */
     if (st.t >= mv) out.push([mv, Z, kal ? [0, 6] : 0]);
     return {
-      start, steps: g.hand ? [] : [[g.heat, 2], ...(st.t >= mv ? [[mv, 3]] : [])],
+      start, steps: g.marks || [],
       hlt: {pv: hlt, sv: [[g.heat, Math.min(mv, Z), g.plan], ...(st.t >= mv ? [[mv, Z, st.v.hlt.sv]] : [])], out},
       mt: {pv: mt, sv: st.t >= mv ? [[mv, Z, 126]] : []},
       bk: {pv: [[start, st.v.bk.pv - 1.2], [st.t, st.v.bk.pv, "s"]], out: [[start, Z, 0]]}

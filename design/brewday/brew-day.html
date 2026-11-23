@@ -27,12 +27,22 @@ Strike water (STRIKE-WATER.md): #sw-plan, #sw-forecast, #sw-volume, #sw-grain-ed
 #sw-backhot, #sw-working, #sw-working-open, #sw-reworking, #sw-levers, #sw-refused, #sw-refused-moved, #sw-failed,
 #sw-tunprobe, #sw-wait, #sw-heat, #sw-move, #sw-late, #sw-doughin, #sw-hand, #sw-novol, #sw-missing, #sw-noprobe,
 #sw-grain-bad and #sw-interval, second in the strip. Its figures are the strike water model's (strike-model.js).
+Brew morning runs the brewer's own recipe: BrewStart (step 1 of 8, Ready by 07:00 on the HLT), then MashIn on the Mash
+Tun and the rest. BrewStart heats the HLT itself at its heating start and stays the current step until the water is
+moved: #sw-wait, BrewStart waiting to start heating; #sw-heat, BrewStart heating the HLT on its AUTO; #sw-move,
+BrewStart holding the strike water, asking for it to be moved; #sw-late, the same at the rest; #sw-doughin, BrewStart
+finished, its HLT AUTO off, and MashIn on the Mash Tun asking for the malt. ?sws=step is the older shape, kept for
+comparison: a strike water step on the HLT after BrewStart (step 2 of 9), which BrewStart hands the water to once it
+is ready, and which asks for it to be moved.
 #sw-where: the grain not answered yet the night before, so USE asks where it spent the night, through BrewStart's box.
-#sw-where-am: the same on brew morning with BrewStart finished, through the strike water box's own grain box.
-BrewStart, third in the strip: its row in the step list opens its box while BrewStart hasn't finished (the time, Ready
-by or Start at, the day, and where the grain spent the night), and + BrewStart above the first step adds one to a
+#sw-where-am: the same on brew morning with BrewStart holding the strike water, not finished; its row isn't a button
+once it heats, so USE goes through the strike water box's own grain box.
+BrewStart, third in the strip: its row in the step list opens its box while BrewStart hasn't started heating (the time,
+Ready by or Start at, the day, and where the grain spent the night), and + BrewStart above the first step adds one to a
 recipe without it: #bs-edit, #bs-indoors, #bs-past, #bs-startat, #bs-set, #bs-wait, #bs-new, #bs-new-open, #bs-sim,
-#bs-novol and #bs-soon (a ready time too soon for BrewStart to wait: HEAT NOW).
+#bs-novol and #bs-soon (a ready time too soon for BrewStart to wait: HEAT NOW, which has BrewStart heat the HLT at
+once). #bs-new's recipe has no strike water step either, so the strike water box works from the HLT's water by hand
+until + BrewStart adds one, which becomes the strike water step.
 Mash pH for BrewScribe (PH-ENTRY.md), fourth in the strip, on the #mash day; ?brewscribe=none#ph has no RECORD pH:
 #ph: "Check mash pH" up since 13:42:05, at 13:42:20, a BrewScribe log open and nothing saved.
 #ph-open: RECORD pH pressed: the pH box open, empty.

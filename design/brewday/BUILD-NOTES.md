@@ -6122,6 +6122,95 @@ drawing), Recipe Column (OTHER RECIPE), Layout and The Under Its Plate Rule. The
 - `DESIGN.md`: Layout, The Under Its Plate Rule, Recipe Column (OTHER RECIPE), Timers (Beside the drawing), Strike
   Water's known limits and the boxes' room; `.impeccable\decisions\direction-log.md`; `.impeccable\design.json`.
 
+## BrewStart heats the HLT itself: Brew Day's part (BrewStart 1.3.0), ready to build (22 Nov, night)
+
+The brewer: "BrewStart should have the entire volume of HLT water heated to my chosen temperature by my chosen time.
+As it is, it seems to ignore my "152" setting I chose and went right for the MashIn temp of 126". He chose "BrewStart
+heats the HLT itself". The core helper builds it as BrewStart 1.3.0 (your words to it: the question, the status lines,
+the handover; my message of 22 Nov, night). This section is the screen's part, over post36 (the BrewStart edit), whose
+calls don't change. The design is `proposal\BREWSTART-EDIT.md` ("BrewStart heats the HLT") and DESIGN.md's Recipe
+Column (BrewStart heating) and Strike Water (What USE changes).
+
+### What to build (screen.js)
+
+1. **A Ready-by BrewStart is the strike water step** where the recipe has no MashInStep on the HLT (the sims' v5:
+   BrewStart, then MashIn on the Mash Tun). The strike water box's steps (`swSteps`): the HLT's MashInStep as now,
+   else a Ready-by BrewStart (`bsStrike`). So USE and BACK TO set BrewStart's Ready_Temp, and the box's phases are
+   "plan" before START and while BrewStart waits, "heat" while it heats or holds, "moved" while MashIn on the Mash Tun
+   runs (`swPhase`). A Start-at BrewStart is never the strike water step.
+2. **Heating** (`bsHeat`): BrewStart running, its status line no longer the waiting one (no STARTS), its kettle in
+   AUTO heating: the row says HEATING, as a heating step does; its details "132.4 °F · ready by 07:00 · 15 gal" (each
+   phrase kept whole: `ready&nbsp;by&nbsp;07:00`). LOG, after BrewStart's own "Time to heat - the water should be
+   ready by …" (from CraftBeerPi): "BrewStart heating, HLT target 132.4 °F · by recipe", written by the screen when it
+   sees the step's kettle go to AUTO at that target, as it writes "… started, HLT target …" for a step that starts.
+   The row isn't a button any more (`bsLive`): the time can't change once heating has begun.
+3. **Holding** (`bsHeating`): BrewStart's question, a notification titled "BrewStart" with one action, Next Step: the
+   title bar shows "BREWSTART · Move the strike water to the Mash Tun, then press Next" with NEXT STEP (`SW_ASK`, the
+   strike water step's own sentence), LOG "BrewStart: Move the strike water to the Mash Tun, then press Next · waiting
+   for you". The row says WAITING FOR YOU, with the sentence as its note line (`.pn`), which steps aside on one screen
+   while the title bar shows it (`.asked`), as the strike water step's did.
+4. **NEXT** (the question's answer, or NEXT STEP in the column while it holds): BrewStart switches the HLT's AUTO off
+   and the next step starts. LOG: "BrewStart answered: Next Step · confirmed", "BrewStart finished, HLT AUTO off · by
+   recipe", "MashIn started, mash tun target 126.0 °F · by recipe". MashIn on the Mash Tun then finds the strike
+   water in the tun (`swMovedIn`, now also after a BrewStart that held the water), so the Mash Tun's pump only runs
+   once the tun has water.
+5. **NEXT STEP's question while BrewStart waits or heats** (`confirmHTML`), not yet holding: a second sentence after
+   "Skip the rest of BrewStart … and start MashIn at 126 °F?": "The strike water isn't in the Mash Tun yet, so its pump
+   would start with the tun empty." SKIP TO MASHIN and KEEP GOING as now. Skipped this way, MashIn starts with an
+   empty tun, as the sentence says. With a strike water step on the HLT next, no extra sentence.
+6. **USE while BrewStart waits** plans it again (STARTS moves), as now; **while it heats or holds** it changes the
+   HLT's target too, and a move question already asked goes ("no longer needed") and comes back at the new
+   temperature, as for the strike water step.
+7. **HEAT NOW** (`bsSet`): BrewStart's notice, then BrewStart heats (point 2); it stays the current step. Focus to
+   LOG, as before.
+8. **A recipe with a strike water step on the HLT after BrewStart** (`?sws=step` in the mockup): BrewStart heats as
+   above; once the water is ready it hands over to that step without a question (LOG "BrewStart finished · by
+   recipe", the HLT's AUTO left on), and that step asks to move the water as today.
+9. **The grain question** while BrewStart heats or holds: USE waiting for the grain opens the strike water box's GRAIN
+   box, as on brew morning before, since the row isn't a button.
+10. **Smaller:** START after STOP on a BrewStart that had begun heating carries on heating; UNLOAD's greyed reason
+    while it heats: "… BrewStart, heating the water to 132.4 °F. …", while it holds: "… BrewStart, waiting for you. …".
+
+### In CraftBeerPi
+
+- BrewStart 1.3.0 (core helper): heating, holding, the question and the handover, as you passed on. Its status line
+  while it heats or holds must not start with "Start" or contain "heating from" (screen.js reads STARTS from those
+  words, line 3821), e.g. "Heating to 132.4 °F · ready by Sat Nov 21, 7:00 AM", then "Holding 132.4 °F · move the
+  strike water".
+- The strike water helper treating a Ready-by BrewStart as the strike water step (your note).
+
+### The mockup
+
+- The strike water moments now run the sims' v5 shape: BrewStart, then MashIn on the Mash Tun (step 1 of 8). `#sw-heat`
+  BrewStart heating; `#sw-move` and `#sw-late` holding, with its question; `#sw-doughin` MashIn after NEXT;
+  `#sw-where-am` brew morning with the grain not answered, BrewStart holding. `?sws=step` keeps the old shape, with the
+  strike water step on the HLT after BrewStart.
+
+### Checked
+
+- All suites pass: BrewStart 285 (51 new: `#sw-heat`'s row and LOG; NEXT STEP's question heating, waiting, holding
+  and in the old shape; skipping a heating BrewStart; `#sw-move`'s question, note and `.asked` at each size; NEXT in
+  the title bar, the HLT to MANUAL, the LOG lines in order, MashIn with water in the tun; `#sw-doughin`; USE and BACK
+  TO while it heats, holds and waits; HEAT NOW in both shapes; the water ready in both shapes), the strike water 28
+  and 30, UNLOAD 61, the timers 72 and 40, the clock 17, the boil kettle 23, the review page 36, the timers' places
+  149 and 262, the pH box 128 and 134.
+- Pictures against the copy in `design/brewday` (UI de55dfe), at 1440 × 900 and 390 × 844: 44 moments differ, all on
+  the strike water flow (every `sw-*` but `#sw-hand`, the 11 `bs-*`, `#sim-clock` and `#sim-clock-1x`, and
+  `#unload-wait`, `#timers-fold` and `#timers-open`, which are built on them). With `?sws=step`, 8, where BrewStart now
+  heats before handing over.
+- BrewStart's holding row at 1180 × 860 and 1440 × 900 is 103 px, its details on three lines beside WAITING FOR YOU
+  (83 px at 1920 × 950), with the current step whole.
+- Known, not new: on a phone `#bs-soon` opens with HEAT NOW below the bottom tabs until the page is scrolled.
+
+### Changed
+
+- `proposal\brew-day.js` (`SW_STEPS`, `SWS`, `SW_ASK`, `swSteps`, `bsStrike`, `swPhase`, `swSet`, `bsHeat`,
+  `bsHeating`, `stepStart`, `swMovedIn`, `bsSet`, `stepHTML`, `confirmHTML`, `swMorning`, the moments);
+  `proposal\brew-day.html` (notes); `proposal\graphs.js` (the step marks, from `swMorning`).
+- `proposal\BREWSTART-EDIT.md`, `proposal\STRIKE-WATER.md` (a note at its top); this section.
+- `DESIGN.md`: Recipe Column (BrewStart heating; BrewStart's box's HEAT NOW sentence), Strike Water (where and when,
+  What USE changes, USE waiting for the grain); `.impeccable\decisions\direction-log.md`; `.impeccable\design.json`.
+
 ## Open questions about the drawing
 
 Both were answered on 10 Nov. The valves have been in the drawing since then; the path after the boil was
