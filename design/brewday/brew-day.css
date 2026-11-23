@@ -85,7 +85,7 @@ html.bare .mock{display:none}
 .main{display:grid;grid-template-columns:minmax(0,1fr) clamp(360px,27vw,500px);gap:var(--gap);padding:var(--gap) var(--pad);min-height:0}
 .brewhouse{display:grid;grid-template-rows:minmax(0,1fr) auto;gap:var(--gap);min-height:0;min-width:0}
 .rig{position:relative;min-height:220px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
-.rig svg{position:absolute;inset:6px;width:calc(100% - 12px);height:calc(100% - 12px)}
+.rig svg{position:absolute;inset:6px;width:calc(100% - 12px - var(--rig-r,0px));height:calc(100% - 12px)}
 .app[data-link=lost] .rig svg{opacity:.5}
 .app[data-link=lost] .lamp::before{opacity:.35}
 .app[data-link=lost] .lamp .st{color:var(--text-3)}
@@ -727,6 +727,13 @@ button.step{width:100%;margin:0;color:inherit;text-align:left;touch-action:manip
 .tside .tchip .cmdbtn{min-height:0;height:38px;padding:0 6px;font-size:16px}
 .tside .tchip .bar{height:2px}
 .tside .tcg{display:flex;align-items:baseline;gap:5px}
+/* a timer brought back after a restart: under its line, the row's line across it, saying how long CraftBeerPi was off,
+   in the same words, type and colours as on the row (Prompt Amber while paused, Prompt Cream on one that has run out),
+   so its tile is about 58 px tall until it is started or answered */
+.tside .tchip[data-back]{height:auto;flex-wrap:wrap;align-items:stretch;row-gap:0}
+.tside .tchip[data-back]>.tcsel{min-height:38px}
+.tside .tchip[data-back] .toff{flex:1 0 100%;margin:-2px 0 0;padding:0 6px 5px;font:500 15px/1.3 var(--sans);color:var(--prompt);text-wrap:pretty}
+.tside .tchip[data-back][data-state=done] .toff{color:var(--prompt-ink)}
 .tside :is(.tpop,.tpnote){top:0;right:calc(100% + 8px);bottom:auto}
 /* with no timers the drawing is full width, as without the timers, and + TIMER and SOUND are two small buttons over its
    top-right corner, where the column's heading would be: side by side, one over the other, or with smaller words,

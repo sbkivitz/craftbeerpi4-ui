@@ -6372,7 +6372,9 @@ Nothing.
 - Contrast on the new grounds: Panel White, Soft Steel and Dim Steel on Plan Slate 13.4, 8.7 and 5.6:1; on Event Slate
   15.0, 9.8 and 6.2:1; on Cabinet Black 16.3, 10.7 and 6.8:1. Prompt Amber, Running Green and Alarm Red on Plan Slate
   8.7, 8.7 and 4.7:1. In the drawing, Drawing Label Steel on Picture Black 12.0:1, Idle Element Steel 4.7:1, a still
-  pipe 2.7:1 (2.3:1 on the old ground). Plan Edge is 3.2:1 against Plan Slate.
+  pipe 2.7:1 (2.3:1 on the old ground). Plan Edge is 3.2:1 against Plan Slate. Alarm Red on Event Slate is 5.3:1 (4.9:1 on
+  Panel Slate before), over the 4.5:1 text needs, should a moment ever put it there; the last event's failures are in
+  light red, #ff9b93, 8.7:1 on Event Slate. The lowest of the three steels, Dim Steel at 5.6:1, is no floor for the reds.
 - All suites pass, unchanged, with no page errors: BrewStart 285, the strike water 28 and 30, UNLOAD 61, the timers 72
   and 40, the clock 17 and its widths, the boil kettle 23, the review page 36, the timers' places 149 and 262, the pH
   box 128 and 134, the 12-hour time 175.
@@ -6452,6 +6454,62 @@ choice, as it replaces each one's book copy.
   moments), `proposal\brew-day.html` (the notes and the strip); this section.
 - `DESIGN.md` (Strike Water's "A number missing"), `proposal\STRIKE-WATER.md` (the missing numbers' words and "The
   numbers"), `.impeccable\decisions\direction-log.md`, `.impeccable\design.json`.
+
+## Two fixes from D's build: a timer back after a restart, and the corner's buttons (23 Nov)
+
+The UI helper building D and the cues found both; the mockup did the same.
+
+### 1. The column beside the drawing: "CraftBeerPi was off for …" as a line you can see
+
+A timer brought back after a restart had the line only for screen readers in the column's one-line tiles, while
+DESIGN.md (Timers, After a restart) gives it a line across its row. Now the tile has it, as the row does:
+
+- Under the tile's line (name, state word, time, REMOVE and START or PAUSE, or OK), the row's `toff` line across it:
+  "CraftBeerPi was off for 12 min", "CraftBeerPi was off; how long isn't known yet". The same words, Barlow 500 15px,
+  Prompt Amber on a paused timer, Prompt Cream on a run-out one on its wash; `aria-hidden`, as the button's label
+  already says it (`tSaid`). It goes when the timer is started or answered, as on the row (`tBack`).
+- The tile is then about 58 px tall (78 px where the line takes two, at 300 px wide only the "isn't known yet" one);
+  its first line keeps its 38 px. Mockup: `tchipHTML`'s `back` (beside the drawing only, `tHere() === "side"`),
+  `data-back`, and `.tside .tchip[data-back]` in `brew-day.css`.
+- The column's cut-off reads each tile's own top and height (`tsideFit`), so a taller tile is still cut at half
+  where the next one would show all but its last 12 px.
+
+### 2. + TIMER and SOUND over the drawing's corner, where nothing clears
+
+With no timers the two try the four layouts as before (side by side, one over the other, then with smaller words). At
+1180 × 860 from the boil on (8 moments: the wort pump's words sit beside the boil kettle near the box's right edge),
+and wherever the drawing's box is under about 100 px tall (a long question in the title bar or an editor open: 21
+moments at 1180 × 860, 13 at 1280 × 800, 2 at 1440 × 900), none cleared: the last one was left over the WORT PUMP
+words, or hanging below the box, once past the window's foot. Now:
+
+- Where none clears, the two stand one over the other, or side by side where the box is shorter than that with its
+  6 px margins, and the drawing leaves room for them at its right: `--rig-r` on `#rig`, the buttons' width plus 6 px,
+  taken off the drawing's width (`.rig svg`, and `drawRig`'s `w`). The drawing gets narrower, not smaller: at these
+  sizes it is wider than 2.6 to 1, so its vessels keep their height (The Under Its Plate Rule).
+- The choice holds while the drawing's box size and its words (the text of its labels, and which are shown) stay as
+  they were (`tcornerKeep`); when either changes, the drawing goes back to full width and the four layouts are tried
+  again. A timer set takes the column, and the room goes.
+
+### Checked
+
+- `files\cues-a\corner_check.py`, every moment at 1180 × 860, 1280 × 800, 1366 × 768, 1440 × 900, 1536 × 864,
+  1600 × 900, 1920 × 950 and 1920 × 1080: the two buttons inside the drawing's box and clear of every part of it in
+  all of them; room left in 21, 13 and 2 moments at the first three sizes that needed it, none at the others. No page
+  errors.
+- All 15 suites pass, unchanged, with no page errors (the timers' places 149 and 262, the timers 72 and 40, BrewStart 285,
+  the strike water 28 and 37, the pH box 128 and 134, the 12-hour time 175, and the rest).
+- Pictures against UI c643b32 at 1440 × 900, 1180 × 860 and 390 × 844: changed on purpose only. At 1440, `#timer-back`,
+  `#timer-back-done` and `#timer-back-unknown` (the column's line) and `#boilpower` and `#bktarget` (room left); at 1180,
+  the same three and the 8 from the boil on and `#fail`, and `#byhand-past` and the 11 pH moments, now 860 px tall
+  where the buttons hanging below the drawing made them 864; on a phone, nothing. Also `#sw-missing` and the new
+  `#sw-missing-steps`, from the section above.
+
+### Changed
+
+- `proposal\brew-day.js` (`tchipHTML`, `tsideFit`, `tsideCorner`, `drawRig`), `proposal\brew-day.css` (`.tside
+  .tchip[data-back]`, `.rig svg`); this section, and the contrast line in the cues' section.
+- `DESIGN.md` (Timers: beside the drawing, the tile's line and the corner's room), `proposal\TIMER-PLACE.md`,
+  `.impeccable\decisions\direction-log.md`, `.impeccable\design.json`.
 
 ## Open questions about the drawing
 

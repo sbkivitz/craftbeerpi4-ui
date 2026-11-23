@@ -3446,7 +3446,8 @@ function renderRig() {
 }
 let rigW = 0, rigRs = 1;
 function drawRig() {
-  const box = $("#rig"), w = box.clientWidth - 12, h = box.clientHeight - 12;
+  /* --rig-r: room left at the drawing's right for + TIMER and SOUND where they can't clear it (tsideCorner) */
+  const box = $("#rig"), w = box.clientWidth - 12 - (parseFloat(box.style.getPropertyValue("--rig-r")) || 0), h = box.clientHeight - 12;
   /* too small to be worth drawing; with the timers' bar along the bottom (?tplace=bottom) the drawing can be as short
      as 40 px on one screen, and is drawn that small rather than left empty */
   if (w < 60 || h < ($("#app").hasAttribute("data-tbarb") ? 24 : 60)) return;
@@ -4634,14 +4635,15 @@ const TSOON = 180, tSoon = t => t.state === "running" && t.left <= TSOON;
    a Raised Slate tile 48 px tall, the name and its state over the time, and the row's bar along its foot. The name and
    time open its editor, as on the row. mode is what else it holds: "plain" nothing, "go" START or PAUSE, "full" REMOVE
    and START or PAUSE. One that has run out is Prompt Amber, counts up and has OK, while its alarm stays in the title
-   bar; one with 3:00 or less to go has a bigger time (data-soon) */
+   bar; one with 3:00 or less to go has a bigger time (data-soon). In the column beside the drawing, a timer brought
+   back after a restart has the row's line under its name and time, saying how long CraftBeerPi was off (data-back) */
 function tchipHTML(t, off, mode) {
   const p = st.pend["t:" + t.id], why = off || (p ? WAIT : ""), done = t.state === "done", live = t.state === "running" || t.state === "paused";
   const word = done ? "TIME'S UP" : t.state === "paused" ? "paused" : t.state === "stopped" ? "ready" : "";
-  const editing = !!(st.tedit && st.tedit.id === t.id);
+  const editing = !!(st.tedit && st.tedit.id === t.id), back = tBack(t) && tHere() === "side";
   const btns = mode === "plain" ? "" : done ? b("cmdbtn tok", p === "ok" ? "SENDING…" : "OK", "", {cmd: `tm2:ok:${t.id}`, label: p === "ok" ? "" : "OK, stops the alarm", why})
     : (mode === "full" ? b("cmdbtn trm", p === "rm" ? "REMOVING…" : "REMOVE", "", {cmd: `tm2:rm:${t.id}`, label: p === "rm" ? "" : `Remove ${t.name}`, why}) : "") + tGo(t, p, why, "");
-  return `<div class="tchip" data-mode="${mode}" data-state="${t.state}" id="tc-${t.id}"${tSoon(t) ? " data-soon" : ""}><button type="button" class="tcsel" data-cmd="te:open:${t.id}" aria-expanded="${editing}" aria-label="${esc(tSaid(t))}. Change it"${off ? ` aria-disabled="true" data-why="${off}"` : ""}><span class="tn">${esc(t.name)}</span><span class="ts">${word}</span><span class="tt" id="tct-${t.id}">${done ? tUpText(t) : tfmt(t.left)}</span></button>${btns ? `<span class="tcx">${btns}</span>` : ""}${live ? `<span class="bar"><i id="tcbar-${t.id}" style="width:${tPct(t)}%"></i></span>` : ""}</div>`;
+  return `<div class="tchip" data-mode="${mode}" data-state="${t.state}" id="tc-${t.id}"${tSoon(t) ? " data-soon" : ""}${back ? " data-back" : ""}><button type="button" class="tcsel" data-cmd="te:open:${t.id}" aria-expanded="${editing}" aria-label="${esc(tSaid(t))}. Change it"${off ? ` aria-disabled="true" data-why="${off}"` : ""}><span class="tn">${esc(t.name)}</span><span class="ts">${word}</span><span class="tt" id="tct-${t.id}">${done ? tUpText(t) : tfmt(t.left)}</span></button>${btns ? `<span class="tcx">${btns}</span>` : ""}${back ? `<p class="toff" aria-hidden="true">${tOff(t)}</p>` : ""}${live ? `<span class="bar"><i id="tcbar-${t.id}" style="width:${tPct(t)}%"></i></span>` : ""}</div>`;
 }
 /* a timer just removed, as a chip of the same size in its place: its name over "removed", in Dim Steel, and UNDO, for its
    10 real seconds, whatever the chips around it hold, as it is the only way back */
@@ -4777,10 +4779,14 @@ function tsideFit() {
   }
   if (l) {
     l.style.maxHeight = "";
+    /* the tiles' own tops and heights, as one brought back after a restart is taller */
     const t = [...l.children].filter(x => x.classList.contains("tchip")), H = l.clientHeight;
     if (t.length > 1 && l.scrollHeight > H + 1) {
-      const P = t[1].offsetTop - t[0].offsetTop, th = t[0].offsetHeight, k = Math.floor((H + P - th) / P), peek = H - k * P;
-      if (peek > th - TSIDE_CUT) l.style.maxHeight = `${k * P + th / 2}px`;
+      const y0 = t[0].offsetTop, nx = t.find(x => x.offsetTop - y0 + x.offsetHeight > H);
+      if (nx) {
+        const y = nx.offsetTop - y0, th = nx.offsetHeight;
+        if (H - y > th - TSIDE_CUT) l.style.maxHeight = `${y + th / 2}px`;
+      }
     }
     l.scrollTop = tsideTop;
   }
@@ -4801,17 +4807,36 @@ function tsidePop() {
 }
 /* with no timers: + TIMER and SOUND in the drawing's top-right corner, in the first of these that stays inside the
    drawing's box and clears every part of the drawing as it is drawn (outlines, lines, pumps, labels, the valves' note):
-   side by side, one over the other, then the same with smaller words, still 44 px tall */
+   side by side, one over the other, then the same with smaller words, still 44 px tall. Where none clears (a drawing
+   about 130 px tall, from the boil on, when the wort pump's words sit beside the boil kettle near the box's right
+   edge; or one under about 100 px, with a long question in the title bar or an editor open), the two stand one over
+   the other, or side by side where the box is too short for that, and the drawing leaves room for them at its right
+   (--rig-r): it gets narrower, not smaller, as beside the timers' column. That holds while the drawing's box and words
+   stay as they were (tcornerKeep); when either changes, the drawing goes back to full width and the corner is tried
+   again */
 const TCORNER = ["row", "stack", "row small", "stack small"];
+let tcornerKeep = null;
 function tsideCorner() {
-  const c = $("#tside .tcorner"), svg = $("#rigsvg");
-  if (!c) return;
-  const box = $("#rig").getBoundingClientRect(), parts = svg ? [...svg.querySelectorAll("path, rect, circle, ellipse, line, polyline, polygon, text")].map(x => x.getBoundingClientRect()).filter(p => p.width > 0 && p.height > 0) : [];
+  const c = $("#tside .tcorner"), svg = $("#rigsvg"), rig = $("#rig");
+  const room = () => { if (!rig.style.getPropertyValue("--rig-r")) return false; rig.style.removeProperty("--rig-r"); tcornerKeep = null; drawRig(); return true; };
+  if (!c) { room(); return; }
+  const key = svg ? `${rig.clientWidth}x${rig.clientHeight}|${[...svg.querySelectorAll("text")].map(x => (x.getClientRects().length ? "" : "-") + x.textContent).join("|")}` : "";
+  if (tcornerKeep) {
+    if (tcornerKeep.key === key) { c.dataset.fit = tcornerKeep.fit; return; }
+    if (room()) return;
+  }
+  const box = rig.getBoundingClientRect(), parts = svg ? [...svg.querySelectorAll("path, rect, circle, ellipse, line, polyline, polygon, text")].map(x => x.getBoundingClientRect()).filter(p => p.width > 0 && p.height > 0) : [];
   const clear = () => [...c.children].every(b => {
     const r = b.getBoundingClientRect();
     return r.top >= box.top && r.bottom <= box.bottom && r.left >= box.left && r.right <= box.right && !parts.some(p => r.left < p.right && r.right > p.left && r.top < p.bottom && r.bottom > p.top);
   });
   for (const f of TCORNER) { c.dataset.fit = f; if (clear()) return; }
+  if (!svg) return;
+  c.dataset.fit = "stack";
+  if (c.offsetHeight + 12 > rig.clientHeight) c.dataset.fit = "row";
+  tcornerKeep = {key, fit: c.dataset.fit};
+  rig.style.setProperty("--rig-r", `${Math.ceil(c.offsetWidth) + 6}px`);
+  drawRig();
 }
 /* one editor at a time, in place: under its timer, or where + TIMER was for a new one. A running or paused timer's time
    changes by a minute or five at once, as the boil power's nudges do; a stopped one is set and then saved */

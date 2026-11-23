@@ -1,5 +1,13 @@
 # Direction decision log
 
+## A timer back after a restart, and the corner's buttons, in D (23 Nov 2026)
+- From D's build: the column's one-line tiles hid "CraftBeerPi was off for …" from sight. Chosen: the row's line under
+  the tile, as DESIGN.md had it, rather than changing DESIGN.md, since that line is what tells the brewer why a timer
+  he left counting is paused.
+- At 1180 × 860 from the boil on, and with a drawing under about 100 px tall, + TIMER and SOUND cleared nowhere in the
+  corner. Chosen: the drawing leaves room at its right for them, narrower but no smaller. Not chosen: the top-left
+  corner, which cleared by 3 px at 1180 and not at all at 1240.
+
 ## The strike water box names what the recipe lacks (23 Nov 2026)
 - Found on 8000: a recipe imported before CraftBeerPi kept BeerSmith's mash figures (all of the rig's book) got "No
   grain weight or mash water… A recipe imported from BeerSmith has both", though its MashIn has a grain weight and it

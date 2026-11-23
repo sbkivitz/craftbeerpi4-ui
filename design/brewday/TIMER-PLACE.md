@@ -28,7 +28,8 @@ vessels' size in mm. The build notes are BUILD-NOTES, "The timers beside the dra
   name, state, time, REMOVE and START or PAUSE, and its bar along the foot. Rows that don't fit scroll inside the
   column. A run-out timer's row is amber and pulses, with its alarm in the title bar.
 - With no timers the drawing is full width, as today, and + TIMER and SOUND sit in its top-right corner, right of the
-  boil kettle, clear of every part of the drawing.
+  boil kettle, clear of every part of the drawing. Where they can't clear it (from the boil on at 1180 × 860, or a
+  drawing under about 100 px tall), the drawing leaves room for them at its right, narrower but no smaller.
 - The cost: the vessels leave their faceplates while timers are up; on a small window the column shows fewer timers at
   once; and on 1280 × 800 and 1366 × 768 windows, where the screen is already taller than the window today, the
   column's foot is below the window until the page is scrolled.
