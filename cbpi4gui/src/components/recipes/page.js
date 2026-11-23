@@ -45,6 +45,7 @@ import { GROUPS, KINDS, TYPES, START } from "./catalog";
 import { call, why as callWhy } from "../brewday/api";
 import { stepModel, bookLine as dayBookLine, cfg as cfgOf, parseLeft, recipeWater, inWords, kettleRoles, hermsLogics, ROLES } from "../brewday/live";
 import { clockFormat, formatTimeOfDay, formatDayTime, parseTypedTime, halfOfDay, NBSP, TWELVE_HOUR } from "../util/timefmt";
+import { clearKeyboard } from "../util/keyboard";
 // As text, exactly as written (config-overrides.js): recipes.css for the shadow root; recipes-frame.css, the mockup's
 // .app rules (one screen tall from 620 px, scrolling below 1180 px, room for the phone's save bar), for the document,
 // where they apply only while <html> has data-page=recipes or brewsteps
@@ -561,7 +562,9 @@ function whenHTML(ed, s) {
 /* CraftBeerPi's clock at the top of BrewStart's When settings, where it isn't the screen's (a simulator: another date,
    or a speed other than 1×), as the title bar's tag decides it, in the words of Brew Day's BrewStart box: TODAY,
    TOMORROW and the time in words are all by that clock, and the brewer is looking here, not at the title bar, while he
-   sets the time. The screen's own date only decides whether it shows. A screen reader hears it as a sentence */
+   sets the time. The screen's own date only decides whether it shows. A screen reader hears it as a sentence. Its band
+   (.cbbar) is pinned at the top of When, under the tool row where that sticks (--tool-h, fitTool) or at the top of the
+   pane, so it stays in view while When's rows scroll under it, as Brew Day's box pins its tag */
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 function cbClockHTML() {
@@ -573,7 +576,7 @@ function cbClockHTML() {
   // a narrow screen breaks it only after a "·", never inside a part
   const seen = ["CraftBeerPi's clock", `${WEEK[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}, ${t}`, fast ? `${sc}× speed` : ""].filter(Boolean).map(x => x.replace(/ /g, NBSP)).join(`${NBSP}· `);
   const said = `CraftBeerPi's clock: ${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}, ${t}${fast ? `, running ${sc} times as fast` : ""}.`;
-  return `<p class="cbclk"><span class="seen" aria-hidden="true">${esc(seen)}</span><span class="sr">${esc(said)}</span></p>`;
+  return `<div class="cbbar"><p class="cbclk"><span class="seen" aria-hidden="true">${esc(seen)}</span><span class="sr">${esc(said)}</span></p></div>`;
 }
 /* what a BrewStart still needs before it can be saved, for a setting (said under it) or for the whole step (said by
    SAVE): the time always; the vessel and the element's watts for Ready by, which works out from them when to heat. A
@@ -1171,9 +1174,16 @@ function render() {
   if (app) app.toggleAttribute("data-dirty", !bar.hidden);
   const m = $("#main");
   m.dataset.link = st.link;
+  /* with the save bar up, a phone keeps the time in words clear of it too (recipes.css .main[data-dirty] .whenl) */
+  m.toggleAttribute("data-dirty", !bar.hidden);
   applyView();
   grow();
+  fitTool();
 }
+/* the tool row's height where it sticks to the top of the window (701 to 1179 px), else 0: When's clock band sticks
+   under it and the time in words keeps clear of it (--tool-h) */
+const stickTop = () => { const t = $("#tool"); return t && getComputedStyle(t).position === "sticky" ? t.offsetHeight : 0; };
+const fitTool = () => { if (host) host.style.setProperty("--tool-h", stickTop() + "px"); };
 function applyView() { const m = $("#main"); if (m) m.dataset.view = narrow() ? st.view : "split"; }
 function grow() { $$("textarea.fld").forEach(t => { if (!t.getClientRects().length) return; t.style.height = "auto"; t.style.height = t.scrollHeight + 2 + "px"; }); }
 /* CraftBeerPi's word on things arrives many times a second: drawn once a frame */
@@ -1204,18 +1214,33 @@ function land(k) {
   later(() => { if (st.land && st.land.k === k) { st.land = null; const p = $(`#p-${CSS.escape(k)}`); if (p) p.classList.remove("land"); } }, 1300);
 }
 /* a new BrewStart opens at its When settings with its time box ready: the time is the one thing only the brewer knows.
-   The column (or, one thing at a time, the way back) still says where it went */
+   Where the tool row sticks (701 to 1179 px), When opens below it. The column (or, one thing at a time, the way back)
+   still says where it went */
 function showWhen(k) {
   jump(k);
   const t = $(`#r-${CSS.escape(k)}-Timing`), part = t && t.closest(".part"), f = $(`#i-${CSS.escape(k)}-StartTime`);
   if (!part) return;
   const put = () => {
     if (wide()) { const pane = $("#pane"); pane.scrollTop += part.getBoundingClientRect().top - pane.getBoundingClientRect().top - 8; }
-    else window.scrollTo(0, part.getBoundingClientRect().top + window.scrollY - (narrow() ? 8 : $("#tool").offsetHeight + 16));
+    else window.scrollTo(0, part.getBoundingClientRect().top + window.scrollY - (stickTop() ? stickTop() + 16 : 8));
   };
   put();
   if (f) { f.focus({preventScroll: true}); put(); }
+  keepWhenInView(k);
 }
+/* the time in words is what shows a slip of twelve hours, so while BrewStart's time is being set it stays in view: the
+   page scrolls as little as it can, clear of the sticky tool row and of a phone's save bar and tabs (the sentence's
+   scroll margins, recipes.css). Called after a key or a tap, never as a box is left: a scroll between a finger going
+   down and coming up can put the tap on another control. A phone's on-screen keyboard covers the page without making it
+   shorter, so while it is up the page scrolls on by what it covers, the time box kept in view above it
+   (util/keyboard.js, as Brew Day's BrewStart box does), and again as it comes up while the time box has focus */
+function keepWhenInView(k) {
+  const w = $(`#when-${CSS.escape(k)}`);
+  if (!w || !w.textContent.trim()) return;
+  w.scrollIntoView({block: "nearest"});
+  clearKeyboard(w, {keep: $(`#i-${CSS.escape(k)}-StartTime`), gap: 12});
+}
+const onKeyboard = () => { const f = sr && sr.activeElement; if (st && f && f.classList && f.classList.contains("tmbox") && f.dataset.s) keepWhenInView(f.dataset.s); };
 function jump(k) {
   const ed = E();
   if (!ed) return;
@@ -1911,9 +1936,15 @@ function onClick(e) {
     render();
     const nb = $(`#${CSS.escape(`i-${ds.s}-${ds.p}-half`)} [data-half="${ds.half}"]`);
     if (nb) nb.focus({preventScroll: true});
+    return keepWhenInView(ds.s);
+  }
+  if (ds.set !== undefined && b.closest(".seg")) {
+    setProp(ds.s, ds.p, ds.set); const id = b.closest(".seg").id; render(); const nb = $(`#${CSS.escape(id)} [data-set="${CSS.escape(ds.set)}"]`); if (nb) nb.focus({preventScroll: true});
+    /* READY BY or START AT, TODAY, TOMORROW or DATE change the time in words: it stays in view */
+    const sk = ds.s && ds.s !== "r" ? stepByKey(ds.s) : null;
+    if (sk && sk.type === "BrewStart" && (ds.p === "Timing" || ds.p === "Mode")) keepWhenInView(ds.s);
     return;
   }
-  if (ds.set !== undefined && b.closest(".seg")) { setProp(ds.s, ds.p, ds.set); const id = b.closest(".seg").id; render(); const nb = $(`#${CSS.escape(id)} [data-set="${CSS.escape(ds.set)}"]`); if (nb) nb.focus({preventScroll: true}); return; }
   if (ds.undo) {
     const ed = E(), k = ds.undo, label = ds.p;
     if (k === "r") ed.doc[label] = ed.orig[label];
@@ -1973,7 +2004,8 @@ function onInput(e) {
     s._tt = f.value; s._typing = true;
     setProp(k, label, r || "");
     if (r) s._half = halfOfDay(r);
-    return render();
+    render();
+    return keepWhenInView(k);
   }
   if (f.tagName === "TEXTAREA") {
     const v = f.value.replace(/(\r\n|\r|\n)+/g, " ");
@@ -1982,6 +2014,7 @@ function onInput(e) {
   }
   setProp(k, label, f.value);
   render();
+  if (label === "StartDate") keepWhenInView(k);
 }
 function onChange(e) {
   const f = e.target;
@@ -2037,7 +2070,7 @@ function onDragOver(e) { const d = dropOf(e); if (!d) return; e.preventDefault()
 function onDragLeave(e) { const d = dropOf(e); if (d) d.classList.remove("over"); }
 function onDrop(e) { const d = dropOf(e); if (!d) return; e.preventDefault(); d.classList.remove("over"); const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) sendFile(f); }
 let lastNarrow = null;
-function onResize() { if (!st) return; const n = narrow(); if (n !== lastNarrow) { lastNarrow = n; render(); } else { applyView(); grow(); } }
+function onResize() { if (!st) return; const n = narrow(); if (n !== lastNarrow) { lastNarrow = n; render(); } else { applyView(); grow(); fitTool(); } }
 const onScroll = () => requestAnimationFrame(spy);
 
 /* ---------- the page ---------- */
@@ -2076,6 +2109,7 @@ export function createRecipes(el, o = {}) {
   on($("#pane"), "scroll", onScroll, {passive: true});
   on(window, "scroll", onScroll, {passive: true});
   on(window, "resize", onResize);
+  if (window.visualViewport) on(window.visualViewport, "resize", onKeyboard);
   on(document, "click", onFrameClick, true);
   on(window, "beforeunload", onUnload);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (gen === myGen && st) grow(); });
