@@ -1171,3 +1171,23 @@ svg.stale .g-out{fill:rgb(107 119 133/.45)}
   .gpanel,.gview{display:none!important}
   .gspans span{padding:7px 3px}
 }
+/* The section cues (CUES.md, A): each kind of section on a ground of its own, so the screen's parts read as different
+   things at a glance, with no new colour. ?cues=today is the grounds as before. From the top:
+   - the frame: the title bar, the last event and the tabs along the top, and the timers beside the drawing or along
+     the bottom, on the title bar's ground: what calls for the brewer, what just happened, and his own countdowns;
+   - the recipe, the plan: a faintly cool ground with a 4 px Selection Blue edge, the colour of the current step;
+   - the vessels: the faceplates as they are, now the brightest panels;
+   - the drawing: the plumbing as a picture, on a darker ground with no edge, set back by a soft inner shadow, as the
+     readings' windows are set into their faceplates.
+   Amber, red and green keep their meanings; nothing here uses them */
+:root{--cue-band:#0a1016;--cue-evt:#111a23;--cue-evt-line:#1e2b38;--cue-plan:#13243b;--cue-plan-line:#25425f;--cue-plan-edge:#3373b8;--cue-pic:#0a1117}
+:root:not([data-cues=today]) .status{background:var(--cue-band);padding-bottom:10px}
+:root:not([data-cues=today]) .event{background:var(--cue-evt);border-color:var(--cue-evt-line)}
+:root:not([data-cues=today])[data-layout=b] .tabs,:root:not([data-cues=today]) [data-layout=b] .tabs{margin-top:0}
+:root:not([data-cues=today]) .tabs{background:var(--cue-band)}
+:root:not([data-cues=today]) .recipe{background:var(--cue-plan);border-color:var(--cue-plan-line);box-shadow:inset 4px 0 0 var(--cue-plan-edge)}
+:root:not([data-cues=today]) .rig{background:var(--cue-pic);border-color:transparent;box-shadow:inset 0 2px 10px rgb(0 0 0/.55)}
+:root:not([data-cues=today]) .rig-line .v-shell{fill:#141f29}
+:root:not([data-cues=today]) .tbarb,:root:not([data-cues=today]) .tside:not(.empty){background:var(--cue-band);border-color:#223140}
+:root:not([data-cues=today]) .tbarb .tchip:not([data-state=done]){background:var(--cue-evt);border-color:var(--cue-evt-line)}
+:root:not([data-cues=today]) .tside .tchip:not([data-state=done]){background:var(--cue-evt)}

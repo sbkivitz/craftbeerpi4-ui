@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-23T12:57:38.605Z",
+  "generatedAt": "2026-11-23T14:40:54.403Z",
   "title": "Design System: CraftBeerPi Brew Day",
   "extensions": {
     "colorMeta": {
@@ -708,6 +708,126 @@
           "#c2cad3",
           "#e7f0f9"
         ]
+      },
+      "event-slate": {
+        "role": "neutral",
+        "displayName": "Event Slate",
+        "canonical": "#111a23",
+        "tonalRamp": [
+          "#040c15",
+          "#1c2630",
+          "#38434e",
+          "#57636f",
+          "#788490",
+          "#9aa7b4",
+          "#becbd8",
+          "#e3f0fe"
+        ]
+      },
+      "event-line": {
+        "role": "neutral",
+        "displayName": "Event Line",
+        "canonical": "#1e2b38",
+        "tonalRamp": [
+          "#010c19",
+          "#162736",
+          "#334454",
+          "#516375",
+          "#728597",
+          "#94a8bb",
+          "#b7cce0",
+          "#e2f1ff"
+        ]
+      },
+      "band-line": {
+        "role": "neutral",
+        "displayName": "Band Line",
+        "canonical": "#223140",
+        "tonalRamp": [
+          "#010c19",
+          "#162736",
+          "#334454",
+          "#516375",
+          "#728597",
+          "#94a8bb",
+          "#b7cce0",
+          "#e2f1ff"
+        ]
+      },
+      "plan": {
+        "role": "neutral",
+        "displayName": "Plan Slate",
+        "canonical": "#13243b",
+        "tonalRamp": [
+          "#040c15",
+          "#1c2630",
+          "#38434e",
+          "#57636f",
+          "#788490",
+          "#9aa7b4",
+          "#becbd8",
+          "#e3f0fe"
+        ]
+      },
+      "plan-line": {
+        "role": "neutral",
+        "displayName": "Plan Line",
+        "canonical": "#25425f",
+        "tonalRamp": [
+          "#010c19",
+          "#162736",
+          "#334454",
+          "#516375",
+          "#728597",
+          "#94a8bb",
+          "#b7cce0",
+          "#e2f1ff"
+        ]
+      },
+      "plan-edge": {
+        "role": "tertiary",
+        "displayName": "Plan Edge",
+        "canonical": "#3373b8",
+        "tonalRamp": [
+          "#000b1f",
+          "#00244d",
+          "#004081",
+          "#1961b0",
+          "#3f83d6",
+          "#62a7fd",
+          "#a5ccff",
+          "#e4f0ff"
+        ]
+      },
+      "picture": {
+        "role": "neutral",
+        "displayName": "Picture Black",
+        "canonical": "#0a1117",
+        "tonalRamp": [
+          "#060c12",
+          "#1f262d",
+          "#3c434a",
+          "#5b626a",
+          "#7b838c",
+          "#9ea6af",
+          "#c2cad3",
+          "#e7f0f9"
+        ]
+      },
+      "vessel-recessed": {
+        "role": "secondary",
+        "displayName": "Recessed Vessel Slate",
+        "canonical": "#141f29",
+        "tonalRamp": [
+          "#030c16",
+          "#1a2732",
+          "#364450",
+          "#556370",
+          "#758492",
+          "#97a7b5",
+          "#bbccda",
+          "#e1f1ff"
+        ]
       }
     },
     "typographyMeta": {
@@ -809,6 +929,16 @@
         "name": "toast",
         "value": "0 12px 30px rgb(0 0 0 / .45)",
         "purpose": "The toast. With the log list, the only lifted surfaces."
+      },
+      {
+        "name": "recessed-drawing",
+        "value": "inset 0 2px 10px rgb(0 0 0 / .55)",
+        "purpose": "The drawing's box on Picture Black, with a transparent border, set back as the readings' windows are set into their faceplates (The Kind Of Section Rule)."
+      },
+      {
+        "name": "plan-edge",
+        "value": "inset 4px 0 0 #3373b8",
+        "purpose": "The recipe column's 4px blue edge, drawn inside its left side, so it takes no room."
       }
     ],
     "motion": [
@@ -1015,7 +1145,12 @@
       },
       {
         "name": "The One Blue Rule",
-        "body": "Blue marks where you are and what you are choosing: the current tab, the current recipe step, the target and power editors and the focus ring. Blue never shows the state of equipment.",
+        "body": "Blue marks where you are and what you are choosing: the current tab, the current recipe step, the target and power editors and the focus ring; and the recipe column's edge, the plan the current step belongs to. Blue never shows the state of equipment.",
+        "section": "colors"
+      },
+      {
+        "name": "The Kind Of Section Rule",
+        "body": "Each kind of section is on a ground of its own, so the screen's parts read as different things at a glance, and nothing moves (on a phone, all below the last event is 10px lower, the band's foot): what calls for the brewer, along the top (the title bar, the last event, the tabs) and beside the drawing (his timers), on Cabinet Black's band; the recipe, the plan, on Plan Slate with Plan Edge; the vessels, the faceplates, on Panel Slate, the brightest; and the drawing, a picture of the plumbing, on Picture Black, set back. It adds no colour: amber, red and green keep their meanings, and the only hue is the current step's own blue, quieter. The brewer asked for \"a subtle shift because I actually quite love the brewDay screen now\". Grouping by a shared ground is the strongest cue there is (NN/g, common region). A colour for each vessel was not chosen: its copper and grain sat near the heating orange and the waiting amber.",
         "section": "colors"
       },
       {

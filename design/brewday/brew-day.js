@@ -3086,18 +3086,28 @@ const bsFocus = (at, on) => setTimeout(() => {
 }, 0);
 /* the time in words wholly in view in the box's middle, by the least scrolling ("nearest"), while it says something the
    brewer must read before SET: HEAT NOW's sentence, or that the time has passed. The time box above it stays in view
-   wherever both fit; where they don't, the sentence wins, as the main button acts on it. Only the middle scrolls, not
-   the page */
+   wherever both fit; where they don't, the sentence wins, as the main button acts on it. The middle scrolls, not the
+   page, except on a phone while its on-screen keyboard is up: it covers the page's foot without making the page
+   shorter, so where the sentence is under it (below the visual viewport's foot), the page scrolls by the difference,
+   the time box kept in view above it where both fit */
 function bsSayInView() {
   const B = st.bs, ws = B && bsSays(B), m = $("#bs-box .bsmid"), w = $("#bs-say"), tb = $("#bs-box .bstime");
-  if (!ws || !(ws.soon || ws.past) || !m || !w || !tb || m.scrollHeight <= m.clientHeight) return;
-  const M = m.getBoundingClientRect(), W = w.getBoundingClientRect(), T = tb.getBoundingClientRect();
-  let d = W.bottom > M.bottom ? W.bottom - M.bottom : W.top < M.top ? W.top - M.top : 0;
-  /* the time box too where both fit, with room for its focus ring (the middle's 5 px) */
-  const ring = W.bottom - T.top + 5 <= M.height ? 5 : 0;
-  if (W.bottom - T.top <= M.height && T.top - d < M.top + ring) d = T.top - M.top - ring;
-  if (d) m.scrollTop += d > 0 ? Math.ceil(d) : Math.floor(d);
+  if (!ws || !(ws.soon || ws.past) || !m || !w || !tb) return;
+  if (m.scrollHeight > m.clientHeight) {
+    const M = m.getBoundingClientRect(), W = w.getBoundingClientRect(), T = tb.getBoundingClientRect();
+    let d = W.bottom > M.bottom ? W.bottom - M.bottom : W.top < M.top ? W.top - M.top : 0;
+    /* the time box too where both fit, with room for its focus ring (the middle's 5 px) */
+    const ring = W.bottom - T.top + 5 <= M.height ? 5 : 0;
+    if (W.bottom - T.top <= M.height && T.top - d < M.top + ring) d = T.top - M.top - ring;
+    if (d) m.scrollTop += d > 0 ? Math.ceil(d) : Math.floor(d);
+  }
+  const vv = window.visualViewport;
+  /* the keyboard is up where the visual viewport is shorter than the window by more than a zoom explains */
+  if (!vv || window.innerHeight - vv.height * vv.scale < 120) return;
+  const W = w.getBoundingClientRect(), T = tb.getBoundingClientRect(), top = vv.offsetTop, foot = vv.offsetTop + vv.height - 8;
+  if (W.bottom > foot) window.scrollBy(0, Math.ceil(Math.min(W.bottom - foot, Math.max(0, T.top - top - 8))));
 }
+window.visualViewport?.addEventListener("resize", () => { if (st.bsOpen && document.activeElement === $("#bstin")) bsSayInView(); });
 /* focus goes back to where the box was opened from: BrewStart's row, + BrewStart, or the strike water box's USE */
 const bsBack = from => setTimeout(() => document.querySelector(from === "use" ? "#recipe .sw .swuse" : `[data-cmd="bs:${from === "new" ? "new" : "open"}"]`)?.focus({preventScroll: true}), 0);
 /* CANCEL and Escape close it, changing nothing; not while its command waits, which can't be called back */
@@ -5469,6 +5479,12 @@ function load(name) {
     a.href = `?${q}#${key}`;
     a.setAttribute("aria-current", (a.dataset.clk === "24") === CLOCK24 ? "true" : "false");
   });
+  document.querySelectorAll(".mock a[data-cue]").forEach(a => {
+    const q = new URLSearchParams(location.search);
+    if (a.dataset.cue === "today") q.set("cues", "today"); else q.delete("cues");
+    a.href = `?${q}#${key}`;
+    a.setAttribute("aria-current", (a.dataset.cue === "today") === (QS.get("cues") === "today") ? "true" : "false");
+  });
   document.querySelectorAll(".mock a[data-tm]").forEach(a => {
     const q = new URLSearchParams(location.search);
     if (a.dataset.tm === "today") q.set("timers", "today"); else q.delete("timers");
@@ -5545,6 +5561,9 @@ const BKMAN = BK === "power" && QS.get("bkman") !== "today" ? "new" : "today";
    ?timers=today, the one rest timer, which the screen keeps for an older CraftBeerPi without the timers */
 const TIMERS = QS.get("timers") === "today" ? "today" : "new";
 document.documentElement.dataset.timers = TIMERS;
+/* the section cues: by default (CUES.md, A, approved on 22 Nov) each kind of section on a ground of its own, in
+   brew-day.css; ?cues=today is every section on the same panel ground, as built before */
+if (QS.get("cues") === "today") document.documentElement.dataset.cues = "today";
 /* the recipe column: by default a recipe not begun has OTHER RECIPE beside COMPARE PROBES, in the row COMPARE PROBES
    had to itself, which opens the recipe book in that place (RECIPE-COLUMN.md; the brewer kept it on 22 Nov, and it comes
    with the timers' column beside the drawing). ?col=today is the column as built before. ?col=new is the rest of

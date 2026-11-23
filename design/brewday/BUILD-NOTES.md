@@ -6322,6 +6322,81 @@ the strike water moments match the pictures from before the heating change (de55
   step row's and BrewStart's box's words, the box's AM and PM and its tag; `proposal\BREWSTART-EDIT.md`;
   `.impeccable\decisions\direction-log.md`; `.impeccable\design.json`.
 
+## Section cues A: each kind of section on its own ground, ready to build (23 Nov)
+
+The brewer, on `cues.html`: "Section cues: A · Each kind of section on its own ground". It is built on D (the timers
+beside the drawing) and the 12-hour time. The design is DESIGN.md's The Kind Of Section Rule, the new colours (Event
+Slate, Band Line, Plan Slate, Plan Line, Plan Edge, Picture Black, Recessed Vessel Slate) and the Recessed drawing and
+Plan edge in Elevation & Depth; `proposal\CUES.md` has the why.
+
+### What to build (brewday.css only)
+
+The rules are at the end of `proposal\brew-day.css`, after the comment "The section cues (CUES.md, A)". In the build
+they are the plain rules, without the mockup's `:root:not([data-cues=today])` in front, which only keeps `?cues=today`
+for comparison. Nothing moves: grounds, edges and two inner shadows only.
+
+1. **The band along the top:** `.status` (the last event's row) on Cabinet Black, `#0a1016`, as the title bar and the
+   tabs already are, with `padding-bottom:10px`; in layout B the tabs' `margin-top:10px` goes to 0, so the title bar,
+   the last event and the tabs are one band and nothing moves. `.event` on Event Slate `#111a23` with an Event Line
+   `#1e2b38` edge.
+2. **The recipe column:** `.recipe` on Plan Slate `#13243b`, a Plan Line `#25425f` edge, and
+   `box-shadow:inset 4px 0 0 #3373b8` (Plan Edge) inside its left side. Its rows, buttons and boxes keep their own
+   grounds.
+3. **The drawing:** `.rig` on Picture Black `#0a1117`, its border transparent, and
+   `box-shadow:inset 0 2px 10px rgb(0 0 0/.55)`; a vessel's inside `.rig-line .v-shell{fill:#141f29}`. Pumps, valves
+   and the chiller keep `#1b2833`.
+4. **The timers' column beside the drawing:** `.tside` on Cabinet Black with a Band Line `#223140` edge, and its rows
+   `.tside .tchip` on Event Slate. Not `.tside.empty` (+ TIMER and SOUND over the drawing's corner with no timers),
+   which stays as it is, with no ground. Not a run-out timer's row (`[data-state=done]`), which keeps its Dark Amber
+   Wash. The same for the bar along the bottom (`.tbarb`, kept for comparison): Cabinet Black, its tiles on Event
+   Slate with an Event Line edge, a run-out one in its wash.
+5. Nothing for B (a colour for each vessel), which was not chosen.
+
+### One addition to the 12-hour time's item 6 (BrewStart's box on a phone)
+
+Found by Robin on the recipe pages: in phone browsers today the on-screen keyboard covers the page's foot without
+making the page shorter, so bringing HEAT NOW's or "has passed" sentence into view in the box's middle can leave it
+behind the keyboard. While the keyboard is up (`window.visualViewport`'s height times its scale is more than 120 px
+less than `innerHeight`), where the sentence's foot is below the visual viewport's foot less 8 px, the page scrolls by
+the difference, no further than keeps the time box 8 px below the visual viewport's top; again on the visual
+viewport's `resize` while the time box has focus. Mockup: `bsSayInView` and the listener after it. It can't be tried
+headless: `files\cues-a\kb_check.py` checks it with a stand-in visual viewport 330 px short at 360, 390 and 430 px wide,
+and that with no keyboard the page doesn't move. It needs a try on a real phone.
+
+### In CraftBeerPi
+
+Nothing.
+
+### Checked
+
+- Contrast on the new grounds: Panel White, Soft Steel and Dim Steel on Plan Slate 13.4, 8.7 and 5.6:1; on Event Slate
+  15.0, 9.8 and 6.2:1; on Cabinet Black 16.3, 10.7 and 6.8:1. Prompt Amber, Running Green and Alarm Red on Plan Slate
+  8.7, 8.7 and 4.7:1. In the drawing, Drawing Label Steel on Picture Black 12.0:1, Idle Element Steel 4.7:1, a still
+  pipe 2.7:1 (2.3:1 on the old ground). Plan Edge is 3.2:1 against Plan Slate.
+- All suites pass, unchanged, with no page errors: BrewStart 285, the strike water 28 and 30, UNLOAD 61, the timers 72
+  and 40, the clock 17 and its widths, the boil kettle 23, the review page 36, the timers' places 149 and 262, the pH
+  box 128 and 134, the 12-hour time 175.
+- Pictures against the copy in `design/brewday` (UI a072d1b), at 1440 × 900 and 390 × 844: with `?cues=today`, all 260
+  the same.
+- Where every section sits, A against `?cues=today` in the same mockup, at all 130 moments and five sizes
+  (`files\cues-a\cues_same_place.py`): at 1920 × 950, 1440 × 900, 1180 × 860 and 820 × 1180 the page's height and
+  every section's place and size are the same, the band under the title bar 10 px taller where the tabs' gap was. On
+  a phone (390 × 844) everything below the last event is 10 px lower, the band's foot, which has no tab gap to take
+  there, as on `cues.html`. The grounds are A's at every size; a run-out timer keeps its wash, beside the drawing and
+  in the bar; the empty corner (+ TIMER and SOUND) has no ground. No page errors.
+- By eye at 1920 × 950, 1440 × 900 and on a phone: `#mash`, `#hop`, `#timers`, `#timer-done`, `#sw-move`,
+  `#prebrew`, `#bs-soon` and brewing by hand. The hop alert's and a run-out timer's amber still come first; the
+  readings' red and green are unchanged.
+
+### Changed
+
+- `proposal\brew-day.css` (the rules at its end), `proposal\brew-day.js` (`?cues=today`, its link, and
+  `bsSayInView`'s keyboard part), `proposal\brew-day.html` (notes and links); this section.
+- `DESIGN.md`: The Kind Of Section Rule (new), The One Blue Rule (the recipe's edge), the new colours, Elevation &
+  Depth, Cards / Containers, the title bar's tabs, the last event, the recipe column, the timers beside the drawing,
+  the drawing; `proposal\CUES.md` (new here: approved, and the two changes from `cues.css`);
+  `.impeccable\decisions\direction-log.md`; `.impeccable\design.json`.
+
 ## Open questions about the drawing
 
 Both were answered on 10 Nov. The valves have been in the drawing since then; the path after the boil was

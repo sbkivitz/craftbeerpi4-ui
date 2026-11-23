@@ -1,5 +1,12 @@
 # Direction decision log
 
+## Section cues A approved: each kind of section on its own ground; built as the default (23 Nov 2026)
+- The brewer chose A on cues.html ("Section cues: A · Each kind of section on its own ground") and D for the timers, so
+  A is built on D: the timers' column beside the drawing takes the band's ground, as what calls for him.
+- Chosen: CSS only, as proposed. Kept from today: a run-out timer's amber wash, which cues.css had covered with the
+  band's ground, and + TIMER and SOUND over the drawing's corner with no timers, which stay on the drawing.
+- Not chosen: a colour for each vessel (B). `?cues=today` keeps every section on the same panel for comparison.
+
 ## Every time of day in 12-hour form (23 Nov 2026)
 - The brewer: "I don't like the 24h time." He chose it everywhere CraftBeerPi shows a time of day; the format and the
   CLOCK_FORMAT setting are Brett's. Saved times stay 24-hour.
