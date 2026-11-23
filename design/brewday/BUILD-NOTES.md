@@ -5828,6 +5828,98 @@ the time, his fill rules for a new BrewStart, and his change 8 for what SAVE TO 
   box's USE waiting for the grain; one Don't.
 - `.impeccable\decisions\direction-log.md`; `.impeccable\design.json`, regenerated.
 
+## LOAD's question names SAVE TO BOOK (22 Nov)
+
+Brew Steps has SAVE TO BOOK now (web UI post35), so Brew Day's LOAD question, over a recipe the Recipe Book doesn't
+have, names it in the recipe pages' words. In LOAD's question (the mockup's `loadAskHTML`):
+
+- "Save it there on Brew Steps to keep it." becomes "SAVE TO BOOK on Brew Steps keeps it."
+- For steps with no name, "Save them there on Brew Steps to keep them." becomes "SAVE TO BOOK on Brew Steps keeps
+  them."
+
+Nothing else changes. `DESIGN.md`'s Way Out Rule has the new words.
+
+## Mash pH on Brew Day: recorded in BrewScribe from the reminder, ready to build (22 Nov)
+
+The brewer would like to enter the mash pH from Brew Day's reminder, without going to BrewScribe's tab, and without
+losing anything on BrewScribe's page. The design is `proposal\PH-ENTRY.md` and DESIGN.md's Alarm Banner (RECORD pH, the
+pH box) and The Measured Value Rule. The calls are Porter's, BrewScribe dev51 (on 8000 and 8012): his contract,
+draft 3, in his session folder (`files\brewday-entry\contract.md`).
+
+### What to build (screen.js, brewday.css)
+
+1. **Ask BrewScribe which reminders take a reading:** `GET /brewscribe/api/brew-day/readings` when such a reminder
+   comes up, when its box opens, and every 15 real seconds while it is up. Brew Day keeps no list of titles: a
+   reminder whose title is in the answer's `reminders` gets RECORD pH.
+   - A 404 (BrewScribe not installed, or older than dev51), no answer, or any other failure: no RECORD pH, the
+     reminder as today. A refresh with no answer keeps the last answer, so the button doesn't flicker.
+   - Until the first answer, no RECORD pH: it comes within a second.
+2. **RECORD pH** (the mockup's `bannerHTML` acts): at the right end, "for BrewScribe" under it, or "pH 5.42 recorded"
+   once the stage has a `saved` reading. OK moves to its left as the lesser answer (`sec`), and on these reminders it
+   is sent to CraftBeerPi as their OK is, so it closes them on every screen: SENDING…, then LOG "Check mash pH
+   answered: OK · confirmed".
+   - Greyed, with the sentence on a tap: `log` null, "no BrewScribe log" under it and `why_not` as the sentence;
+     `vessel_problem`, "on BrewScribe's page" under it and `vessel_problem` + " Record it on BrewScribe's page.".
+   - The title keeps "pH" as written in its capitals: "CHECK MASH pH" (`.banner .msg b .nc`).
+3. **The pH box** (the mockup's `phHTML` and `.phbox`): as DESIGN.md says. From 701 px wide an overlay 460 px wide
+   under the reminder, right-aligned to it and kept on screen, z-index 45, above LOG's list (opening one closes the
+   other); on a phone, in the page under the reminder. The p of "MASH pH" stays lower case. Opening it puts focus in
+   the pH field with its text selected; Enter is SAVE; Escape and CANCEL close it, keeping nothing, with focus back on
+   RECORD pH. Typing keeps its caret through redraws, as BrewStart's box does.
+   - pH: empty to start; the keys step from `target`, else 5.40; "5.42" and "5,42" accepted, rounded to `decimals`;
+     outside `min` to `max`, "pH is between 0 and 14: check the figure." SAVE is "SAVE pH – –", greyed, with no
+     reading: "Give the pH first: type it, or step from 5.40."
+   - The sample temperature only where the reminder's reading says `sample_temperature: "asked"`, in
+     `temperature_unit`, and never needed. Outside `sample_usual`, the line under it: "140.0 °F is warmer than a
+     cooled sample (50 to 95 °F): check it.", "45.0 °F is colder than a cooled sample (50 to 95 °F): check it."; not a
+     figure: "The sample temperature isn't a figure: check it, or leave it empty." No temperature box when
+     `temperature_unit` is null.
+   - `saved` not null: BrewScribe's line at the top, "BrewScribe has pH 5.42 for Early mash. A new reading here is
+     kept as well, as the latest." No time: BrewScribe's times are the real clock's (The One Clock Rule).
+   - ON BREWSCRIBE'S PAGE opens the reminder's `page` in BrewScribe's tab.
+4. **SAVE** (`phSave`): `POST /brewscribe/api/brew-day/readings` with `entry_id` (a new UUID when the box opens or
+   its content changes, the same on a retry of the same content), `day_id`, `title`, `kind: "ph"`, `value`, and the
+   temperature with its unit when given. SAVING… at once, the box's keys, CANCEL, RECORD pH and OK greyed ("Waiting
+   for BrewScribe to answer."). On 201 (or 200 for a retry already saved), the reminder's OK as above; SAVING… lasts
+   until it has closed. LOG: BrewScribe's `text`, "pH 5.42 saved in BrewScribe (Early mash, Mash Tun) · confirmed",
+   on top, and spoken; focus to LOG.
+   - 400, 403, 409, 503: the box and the reminder stay, with BrewScribe's `error` above SAVE (spoken at once);
+     LOG "pH 5.42 not saved in BrewScribe · failed". A 409 `log_changed` asks BrewScribe again.
+   - No answer in 5 s: "BrewScribe didn't answer, so it may not have saved it. SAVE again: it won't be saved
+     twice."; LOG "pH 5.42 may not be saved in BrewScribe · failed: no answer in 5 s".
+   - Saved but the OK not answered: the box closes, LOG has the saved line, and the reminder stays with "pH 5.42
+     recorded" under RECORD pH and OK outlined in Alarm Red, "tap to try again".
+   - The reminder answered on another screen while the box is open: the box closes, saying "Check mash pH was
+     answered on another screen, so nothing was saved here." LOG "Check mash pH answered · from another screen".
+   - No connection: greyed as every command is; what was typed stays.
+5. RESET and UNLOAD take both reminders down with the brew's other questions.
+6. **Moments for the demo:** `#ph`, `#ph-open`, `#ph-set`, `#ph-target`, `#ph-had`, `#ph-end`, `#ph-warm`,
+   `#ph-nolog`, `#ph-vessel`, `#ph-saved`, `#ph-fail`, `#ph-slow`, `#ph-noclose`, `#ph-other`, and
+   `?brewscribe=none#ph`. The mockup's BrewScribe is `st.bscribe`, in the contract's shape.
+
+### In CraftBeerPi and BrewScribe
+
+- Nothing new: BrewScribe dev51's two calls are in place, and the reminders' OK is CraftBeerPi's own.
+
+### Checked
+
+- `files\ph\ph_presses.py`, 128 presses, all pass, no page errors; `files\ph\ph_measure.py`, 134 checks at 1180 × 860,
+  1440 × 900, 1920 × 950, 1024 × 768, 820 × 1180 and 390 × 844: the box on screen and clear of the reminder and ALL
+  OFF, every key and button at least 44 px tall, the reminder's buttons under its words on a phone.
+- The title bar is one line taller with RECORD pH at some sizes while the reminder waits: at 1920 × 950, 102 px
+  instead of 83 for "Check mash pH".
+- The other suites all pass: the clock 17, the boil kettle 23, UNLOAD 61, the strike water 28 and 30, the timers 72
+  and 37, the review page 36, the clock's sizes, the timers' places 149 and 262, BrewStart 212.
+- Pictures of every moment there before, at 1440 × 900 and 390 × 844: unchanged, but for LOAD's question's new words
+  (above) in `#load-notinbook`.
+
+### Changed
+
+- `proposal\brew-day.js`, `proposal\brew-day.css`, `proposal\brew-day.html` (the moments' links and notes);
+  `proposal\PH-ENTRY.md` (new) and this section.
+- `DESIGN.md`: Alarm Banner (RECORD pH, the pH box), The Measured Value Rule.
+- `.impeccable\decisions\direction-log.md`; `.impeccable\design.json`, regenerated.
+
 ## Open questions about the drawing
 
 Both were answered on 10 Nov. The valves have been in the drawing since then; the path after the boil was

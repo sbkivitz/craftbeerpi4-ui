@@ -1,5 +1,30 @@
 # Direction decision log
 
+## Mash pH from Brew Day's reminder: RECORD pH and its box (22 Nov 2026, evening)
+- The brewer: "I'd like to enter the pH without clicking over to separate tab (without losing functionality on
+  brewScribe page in case I wish to click over there and make all my entries there)". Agreed with Porter (BrewScribe
+  dev51): Brew Day asks BrewScribe which reminders take a reading, and saves it through BrewScribe's call.
+- Chosen: RECORD pH beside OK on "Check mash pH" and BrewScribe's end-of-mash reminder, at the right end where a
+  timer's alarm has its main answer, so a habitual tap there opens the box rather than closing the reminder with
+  nothing recorded. The box opens under the reminder, as LOG's list opens under LOG. SAVE pH 5.42 saves and closes the
+  reminder through CraftBeerPi's OK, so it goes from every screen.
+- The reading starts empty (The Measured Value Rule): a filled-in 5.40 could be saved without measuring and kept in
+  BrewScribe's report. The sample temperature only on the reminder that asks for it, questioned in a line, not a
+  second question. No UNDO here (BrewScribe's page corrects), no BrewScribe time (The One Clock Rule).
+- Not chosen: a field inside the reminder (every such reminder taller); the reminder left up after SAVE for a second
+  OK.
+- Also: LOAD's question names SAVE TO BOOK, now on Brew Steps ("SAVE TO BOOK on Brew Steps keeps it."); reminder
+  titles keep "pH" as written in their capitals.
+
+## Section cues: A, each kind of section on its own ground, proposed (22 Nov 2026, evening)
+- The brewer: "the information is becoming more difficult to discern at a glance. Can we improve color coding or other
+  secondary queues to hint that each section describes something different? I'm looking for a subtle shift".
+- Every section is the same panel today. Proposed on `cues.html` (`CUES.md`): A, four kinds by their grounds (the
+  title bar's band for what calls for him, a faintly cool ground and blue edge for the recipe, the faceplates as they
+  are, the drawing set back), no new colours; B, the same with a muted colour for each vessel. My pick: A, as common
+  region groups without colour and colour stays for what needs him; B's copper and grain sit near the heating orange
+  and the waiting amber.
+
 ## The timers: C chosen, then D, his own idea, proposed in its place (22 Nov 2026, evening)
 - He chose C, the bar along the bottom ("I think I like C"), then before it was built: "I am concerned that the
   brewery icons might become too small, even though they are only decorative." Measured on a 24-inch 1920 × 1080

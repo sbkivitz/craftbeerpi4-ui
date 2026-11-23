@@ -65,6 +65,7 @@ html.bare .mock{display:none}
 .banner[data-tone=alarm]{background:var(--alarm-bg);border:2px solid var(--alarm);color:#fff}
 .banner .msg{flex:1;min-width:0}
 .banner .msg b{display:block;font-size:20px;letter-spacing:.06em;text-transform:uppercase}
+.banner .msg b .nc{text-transform:none}
 .banner .act{position:relative;overflow:hidden;flex:none;min-height:48px;padding:0 20px;border:0;border-radius:var(--r);background:#f4f6f8;color:#10161c;font:700 18px/1 var(--cond);letter-spacing:.06em}
 /* an answer that puts heat on (START THE BOIL) is held, as START is, and says so under its name */
 .banner .act small{position:relative;display:block;margin-top:3px;font:500 13px/1.1 var(--cond);letter-spacing:.04em;color:#3a4652}
@@ -157,7 +158,7 @@ html.bare .mock{display:none}
    A pressed choice, the target's amber "no target", the blue main actions of the timer editor and BrewStart's box, the
    strike water's USE (blue, or amber while it waits for the grain), OK on a timer that has run out, that timer's amber
    state and a greyed button keep their own colours */
-.seg button:not([aria-pressed=true]):not([aria-disabled=true]):hover small,.tgtbtn:not(.notgt):not([aria-disabled=true]):hover small,.cmdbtn:not([aria-pressed=true]):not([aria-disabled=true]):not(.tgo):not(.tok):not(.swuse):not(.bsgo):hover small,.trow:not([data-state=done]) .tsel:not([aria-disabled=true]):hover .ts{color:var(--text-2)}
+.seg button:not([aria-pressed=true]):not([aria-disabled=true]):hover small,.tgtbtn:not(.notgt):not([aria-disabled=true]):hover small,.cmdbtn:not([aria-pressed=true]):not([aria-disabled=true]):not(.tgo):not(.tok):not(.swuse):not(.bsgo):not(.phgo):hover small,.trow:not([data-state=done]) .tsel:not([aria-disabled=true]):hover .ts{color:var(--text-2)}
 .tgtbtn,.cmdbtn{border:1px solid var(--edge);border-radius:var(--r)}
 .seg button[aria-disabled=true],.tgtbtn[aria-disabled=true],.cmdbtn[aria-disabled=true]{color:var(--text-3)}
 .note{margin:0;font:500 15px/1.35 var(--sans);color:#ffd9a0}
@@ -761,6 +762,63 @@ button.step{width:100%;margin:0;color:inherit;text-align:left;touch-action:manip
 .keep.snd.blocked .kl{color:var(--prompt)}
 .banner .act.sec{background:none;color:#fff1d2;box-shadow:inset 0 0 0 2px #c99a3c}
 .banner .act.sec:not([aria-disabled=true]):hover{background:rgb(255 178 30/.14)}
+/* a reminder BrewScribe takes a pH for (data-ph, PH-ENTRY.md): OK, the lesser answer, then RECORD pH at the right end,
+   its small line saying what BrewScribe has. Greyed (BrewScribe can't take a reading, SAVE waiting, no connection) both
+   take the greyed look of the screen's other main buttons, Dim Steel on Raised Slate. An OK that got no answer has a
+   failed command's look, a red outline on Fault Wash, until it is pressed again */
+.banner .act.sec.failed{background:#2b1315;color:#fff;box-shadow:inset 0 0 0 2px var(--alarm)}
+.banner .act.sec.failed small{color:#ffd0cc}
+.banner .act.sec.failed:not([aria-disabled=true]):hover{background:#3a181b}
+.banner[data-ph] .act[aria-disabled=true]{background:var(--panel-2);color:var(--text-3);box-shadow:inset 0 0 0 1px var(--edge);cursor:not-allowed}
+.banner[data-ph] .act[aria-disabled=true] small{color:var(--text-3)}
+/* the pH box (phHTML): BrewStart's box, a 2 px Selection Blue edge on Panel with MASH pH set into its top edge (pH as
+   written, not in capitals), and LOG's list's shadow. From 701 px wide it drops under the reminder, over the event line
+   and what is below, right-aligned to the reminder's right edge and kept inside the window (phFit), above LOG's list;
+   it never covers the reminder or ALL OFF. On a phone it opens in the page under the reminder and pushes the page down.
+   --pu sizes the command buttons in it as in the recipe column */
+.phbox{--pu:3.2px;display:flex;flex-direction:column;gap:10px;padding:14px 12px 12px;border:2px solid var(--select);border-radius:var(--r);background:var(--panel);box-shadow:0 18px 40px rgb(0 0 0/.5);font:400 16px/1.35 var(--sans);color:var(--text)}
+.phbox[hidden]{display:none}
+.phbox .pht{align-self:flex-start;margin:-26px 0 -2px -4px;padding:0 6px;background:var(--panel);font:700 17px/1.2 var(--cond);letter-spacing:.06em}
+.phbox p{margin:0}
+.phfor{font:500 16px/1.35 var(--sans)}
+.phhad{font:500 15px/1.35 var(--sans);color:var(--text-2)}
+/* the keys' part, which scrolls where the window is too short for the box; its 5 px inside its edge keep a focus ring
+   whole */
+.phmid{display:grid;gap:12px;min-height:0;margin:-5px;padding:5px;overflow:auto;overscroll-behavior:contain}
+.phsec{display:grid;gap:6px}
+.phlab{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font:600 17px/1.2 var(--cond);letter-spacing:.04em}
+/* the recipe's target in Setpoint Green, as every target is */
+.phtgt{font:500 16px/1.2 var(--cond);letter-spacing:.03em;color:var(--sv)}
+/* a reading, not a target: its figures are Panel White */
+.phkeys input{color:var(--text)}
+.phhelp{font:500 14px/1.35 var(--sans);color:var(--text-3)}
+.phwarm{font:500 14px/1.35 var(--sans);color:#ffd9a0}
+.phwarm:empty{display:none}
+.phact{display:grid;grid-template-columns:3fr 2fr;gap:8px}
+.phact .cmdbtn{min-height:54px;font-size:17px}
+.phgo{background:var(--select);border-color:var(--select);color:#fff}
+.phgo small{color:#fff}
+.phgo:not([aria-disabled=true]):hover{background:#3477c8}
+.phgo[aria-disabled=true]{background:var(--panel-2);border-color:var(--edge);color:var(--text-3)}
+.phgo[aria-disabled=true] small{color:var(--text-3)}
+/* ON BREWSCRIBE'S PAGE: a quiet button, as LOG and UNLOAD are, its words Soft Steel, with the BREWSCRIBE tab's icon for
+   another tab */
+.phpage{position:relative;align-self:flex-end;min-height:44px;padding:0 12px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);font:600 15px/1 var(--cond);letter-spacing:.08em;touch-action:manipulation}
+.phpage .lb{color:var(--text-2)}
+.phpage svg{width:.8em;height:.8em;margin-left:.4em;vertical-align:-.05em;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.phpage:not([aria-disabled=true]):hover{background:#253545}
+.phpage:not([aria-disabled=true]):hover .lb{color:var(--text)}
+.phpage[aria-disabled=true]{cursor:not-allowed}
+.phpage[aria-disabled=true] .lb{color:var(--text-3)}
+.phbox [aria-disabled=true]{cursor:not-allowed}
+@media (min-width:701px){
+  [data-layout=b] .topbar,[data-layout=a] .status{position:relative}
+  .phbox{position:absolute;z-index:45;width:min(460px,calc(100vw - 16px))}
+}
+@media (max-width:700px){
+  .phbox{margin-top:6px}
+  [data-layout=b] .topbar .phbox{grid-column:1/-1;grid-row:3}
+}
 /* the alarm: one slow pulse (1 s up, 1 s down, far under the 3 flashes a second WCAG 2.3.1 allows), shared by the row,
    the title bar and a frame round the whole screen; steady with reduced motion. Nothing else on the screen pulses */
 .trow[data-state=done]::after,.banner[data-ring]::after,.app[data-ring]::after{content:"";pointer-events:none;animation:ring 1s ease-in-out infinite alternate}

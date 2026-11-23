@@ -891,8 +891,95 @@ const SCENES = {
      leading to BrewStart's box. #sw-where-am: brew morning (#sw-late), BrewStart finished and the grain still not
      answered, so USE leads to the strike water box's own grain box */
   "sw-where": () => Object.assign(swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})), {base: "sw-plan"}),
-  "sw-where-am": () => Object.assign(swUnsaid(swMorning(DAY2 + 6 * 3600 + 51 * 60 + 10, 126)), {base: "sw-late"})
+  "sw-where-am": () => Object.assign(swUnsaid(swMorning(DAY2 + 6 * 3600 + 51 * 60 + 10, 126)), {base: "sw-late"}),
+  /* the mash pH for BrewScribe (PH-ENTRY.md), on the #mash day (phMash, phEnd). #ph: "Check mash pH" up since 13:42:05,
+     at 13:42:20, BrewScribe's log open and nothing saved for Early mash, so RECORD pH sits beside OK. #ph-open: RECORD
+     pH pressed, the pH box open and empty. #ph-set: 5.42 typed. #ph-target: the recipe's target 5.3. #ph-had: a reading
+     already saved for Early mash, 5.42. #ph-end: BrewScribe's reminder before mash-out, up since 14:51:19, the box open
+     with the sample temperature. #ph-warm: the same with pH 5.38 and the sample at 140 °F. #ph-nolog: no BrewScribe log
+     open, and #ph-vessel: BrewScribe can't tell the vessel: RECORD pH greyed, tapped. #ph-saved: SAVE pressed at
+     13:42:30, the reading saved and the reminder closed, focus on LOG. #ph-fail: SAVE refused by BrewScribe (503).
+     #ph-slow: no answer from BrewScribe in 5 s; the reading had reached it, so SAVE again sends the same entry and
+     BrewScribe answers that it has it. #ph-noclose: the reading saved, and the OK that closes the reminder got no answer.
+     #ph-other: the box open with 5.42 typed, the reminder answered on another screen a moment on. With ?brewscribe=none,
+     BrewScribe isn't installed (404) and the reminders have OK alone, as without this design */
+  ph: () => phMash(),
+  "ph-open": () => Object.assign(phMash(), {open: {phAt: {}}}),
+  "ph-set": () => Object.assign(phMash(), {open: {phAt: {txt: "5.42"}}}),
+  "ph-target": () => { const s = phMash(); s.bscribe.reminders[0].readings[0].target = 5.3; return Object.assign(s, {open: {phAt: {}}}); },
+  "ph-had": () => { const s = phMash(); scribeHas(s, 0, 5.42); return Object.assign(s, {open: {phAt: {}}}); },
+  "ph-end": () => Object.assign(phEnd(), {open: {phAt: {}}}),
+  "ph-warm": () => Object.assign(phEnd(), {open: {phAt: {txt: "5.38", ttxt: "140.0"}}}),
+  "ph-nolog": () => Object.assign(phMash(), {bscribe: scribeDay(false), open: {tap: "ph:open"}}),
+  "ph-vessel": () => {
+    const s = phMash();
+    s.bscribe.reminders.forEach(r => Object.assign(r, {vessel: null, vessel_problem: "The recipe has ambiguous actual mash step vessels. Choose the actual vessel."}));
+    return Object.assign(s, {open: {tap: "ph:open"}});
+  },
+  "ph-saved": () => {
+    const s = phMash(13 * 3600 + 42 * 60 + 33);
+    scribeHas(s, 0, 5.42, PH_SENT);
+    s.banner = null; s.events[0][2] = "answered"; s.events[0][3] = "";
+    s.events.unshift(...phSavedLines("13:42:32"));
+    return Object.assign(s, {open: {phLog: true}});
+  },
+  "ph-fail": () => {
+    const s = phMash(13 * 3600 + 42 * 60 + 31);
+    s.events.unshift(["13:42:31", "pH 5.42 not saved in BrewScribe", "failed", "bad"]);
+    return Object.assign(s, {open: {phAt: {txt: "5.42", err: "BrewScribe storage is unavailable; retry the operation", sent: PH_SENT}}});
+  },
+  "ph-slow": () => {
+    const s = phMash(13 * 3600 + 42 * 60 + 36);
+    /* Brew Day's copy is from before SAVE; BrewScribe has the reading, under the entry Brew Day sent */
+    s.bscribeSeen = JSON.parse(JSON.stringify(s.bscribe));
+    scribeHas(s, 0, 5.42, PH_SENT);
+    s.scribeMock = {ids: {[PH_SENT]: phKey(SCRIBE_DAY, PH_Q[0].title, 5.42, null, null)}};
+    s.events.unshift(["13:42:35", "pH 5.42 may not be saved in BrewScribe", "failed: no answer in 5 s", "bad"]);
+    return Object.assign(s, {open: {phAt: {txt: "5.42", err: PH_SLOW, sent: PH_SENT}}});
+  },
+  "ph-noclose": () => {
+    const s = phMash(13 * 3600 + 42 * 60 + 38);
+    scribeHas(s, 0, 5.42, PH_SENT);
+    s.banner.ackFailed = true;
+    s.events.unshift(["13:42:36", "pH 5.42 saved in BrewScribe (Early mash, Mash Tun)", "confirmed", "ok"], ["13:42:36", `${PH_Q[0].title} answered: OK`, "failed: no answer in 5 s", "bad"]);
+    return s;
+  },
+  "ph-other": () => Object.assign(phMash(), {open: {phAt: {txt: "5.42"}, phElse: 1200}})
 };
+/* the mash pH moments (PH-ENTRY.md), the #mash day. MashIn was confirmed at 13:27:05, so "Check mash pH" went up at
+   13:42:05, in Protein Rest, with the mash still coming back to 126 °F after the malt went in (its 20 minutes start at
+   13:49:38), its pump recirculating through the coil and the HLT holding 131.4 °F for it */
+function phMash(t = 13 * 3600 + 42 * 60 + 20) {
+  return Object.assign(mash(), {
+    t, banner: phBanner(0),
+    v: {hlt: {pv: 131.4, sv: 131.4, own: 168.0, mode: "manual"}, mt: {pv: 125.5, sv: 126.0, mode: "auto"}, bk: {pv: 68.0, sv: null, mode: "manual"}},
+    a: {hltEl: {on: true, pct: 40}, hltPump: {on: false}, wortPump: {on: true}, bkEl: {on: false, pct: 0}},
+    recipe: {state: "running", cur: 1, left: 20 * 60, adds: [], wait: true},
+    events: [["13:42:05", `${PH_Q[0].title}: ${PH_Q[0].text}`, "waiting for you", "wait"], ...MASH_EVENTS.slice(4).map(e => e.slice())],
+    bscribe: scribeDay()
+  });
+}
+/* BrewScribe's reminder before mash-out, the same day: Saccharification's 40 minutes started at 14:16:19, so it went up
+   at 14:51:19, 5 minutes before they end. "Check mash pH" was answered with SAVE at 13:42:30: pH 5.42 */
+function phEnd() {
+  const s = mash(), t = 14 * 3600 + 51 * 60 + 34, E = MASH_EVENTS.map(e => e.slice());
+  Object.assign(s, {t, banner: phBanner(1), bscribe: scribeDay()});
+  s.recipe.left = 14 * 3600 + 56 * 60 + 19 - t;
+  s.events = [["14:51:19", `${PH_Q[1].title}: ${PH_Q[1].text}`, "waiting for you", "wait"], ...E.slice(0, 4), ...phSavedLines("13:42:32"),
+    ["13:42:05", `${PH_Q[0].title}: ${PH_Q[0].text}`, "answered", ""], ...E.slice(4)];
+  scribeHas(s, 0, 5.42);
+  return s;
+}
+/* SAVE's LOG lines for "Check mash pH", logged as the reminder closes: BrewScribe's sentence, with CraftBeerPi's answer
+   to OK under it */
+const phSavedLines = at => [[at, "pH 5.42 saved in BrewScribe (Early mash, Mash Tun)", "confirmed", "ok"], [at, `${PH_Q[0].title} answered: OK`, "confirmed", "ok"]];
+/* the entry Brew Day sends in the moments, and a reading BrewScribe has for reminder i's stage (the one standing there
+   now, which BrewScribe's page shows as recorded) */
+const PH_SENT = "0b6f8a52-3d4e-4f1a-9c7b-5e2d8a1f6c30";
+function scribeHas(s, i, v, id = "9f0c3b7e-5d21-4a8c-b6e4-1f2a3c4d5e6f") {
+  const rd = s.bscribe.reminders[i].readings[0];
+  rd.saved = {entry_id: id, value: v, text: `pH ${v.toFixed(rd.decimals)}`, occurred_at: "2026-11-22T18:41:07Z"};
+}
 /* the strike water's temperature once USE is pressed in the moments: USE for Test Recipe v5 with 15 gal in the HLT and
    the grain at 60.4 °F (the boil kettle's 61.4 °F, less its 1.0 °F offset), from the model's answers */
 const swHot = () => swModel(60.4, 15, "coil").use;
@@ -1047,6 +1134,26 @@ function boilHoldBanner(s) {
 function pauseBanner() {
   return {tone: "prompt", title: `${KNAME.bk} heat still paused`, pausegt: true, act: "OK", cmd: "b:ok",
     text: `The heat has been paused for 2 minutes. To heat again, press and hold PAUSED on the ${KNAME.bk}.`};
+}
+/* the two reminders that ask for the mash pH, in their own words: CraftBeerPi's, 15 brewing minutes after the malt is
+   confirmed, and BrewScribe's, 5 minutes before the last rest's timer ends. Each has CraftBeerPi's own OK, which
+   CraftBeerPi runs for every screen (b:ack, phAck) */
+const PH_Q = [
+  {title: "Check mash pH", text: "It has been 15 minutes since you confirmed mash-in. Check mash pH. Acknowledging this reminder does not record a measurement or change the brew."},
+  {title: "BrewScribe: Check mash pH before mash-out", text: "Check mash pH again before mash-out or transfer. Cool a separate sample and record its actual temperature."}
+];
+const phBanner = i => ({tone: "prompt", title: PH_Q[i].title, text: PH_Q[i].text, act: "OK", cmd: "b:ack"});
+/* BrewScribe's answer to GET /brewscribe/api/brew-day/readings on the #mash day, in its shape: Test Recipe v5's brew log
+   open, both reminders for the Mash Tun, nothing saved yet. With no log open (log false) the reminders are still
+   listed, with no vessel and nothing saved, and why_not says why, in BrewScribe's words */
+const SCRIBE_DAY = "4c1d2e0a-7b1f-4c55-9a8e-2f6d1b0c9e31";
+const PH_NOLOG = "No BrewScribe log is open, so there's nowhere to save it. Start one on BrewScribe's page.";
+function scribeDay(log = true) {
+  const rd = asks => ({kind: "ph", label: "pH", min: 0, max: 14, decimals: 2, target: null, sample_temperature: asks, sample_usual: {min: 50, max: 95}, saved: null});
+  const rem = (i, stage, name) => ({title: PH_Q[i].title, stage, stage_name: name, vessel: log ? KNAME.mt : null, vessel_problem: null,
+    page: `/brewscribe/#stage=${stage}&focus=ph`, readings: [rd(i ? "asked" : "optional")]});
+  return {log: log ? {day_id: SCRIBE_DAY, name: RECIPE_NAME} : null, why_not: log ? null : PH_NOLOG, temperature_unit: "f",
+    reminders: [rem(0, "mash_start", "Early mash"), rem(1, "mash_end", "End of mash")]};
 }
 /* ---------- the boil kettle: the default faceplate (?bk=power), the faceplate the screen shows with an older BoilPower
    (?bk=today), which boil-kettle.html compares with it, or ?bk=words, a words-only alternative kept for comparison. The
@@ -1605,8 +1712,8 @@ function unloadAskHTML() {
 const loadAsks = () => !inBook() && ((!st.recipe && st.finished) || (!!st.recipe && pbFresh()));
 function loadAskHTML() {
   const to = esc(BOOK[st.confirmLoad].n), name = esc(RECIPE.name);
-  const said = name ? `Load ${to} in place of ${name}? ${name} isn't in the Recipe Book, so it can't be loaded again. Save it there on Brew Steps to keep it.`
-    : `Load ${to} in place of the steps on Brew Day? They aren't in the Recipe Book, so they can't be loaded again. Save them there on Brew Steps to keep them.`;
+  const said = name ? `Load ${to} in place of ${name}? ${name} isn't in the Recipe Book, so it can't be loaded again. SAVE TO BOOK on Brew Steps keeps it.`
+    : `Load ${to} in place of the steps on Brew Day? They aren't in the Recipe Book, so they can't be loaded again. SAVE TO BOOK on Brew Steps keeps them.`;
   return `<div class="confirm" role="group" aria-labelledby="ld-t"><p id="ld-t">${said} Kettles, pumps and timers stay as they are.</p><div><button type="button" class="yes" data-cmd="r:load-yes">LOAD INSTEAD</button><button type="button" data-cmd="r:load-no">DON'T LOAD</button></div></div>`;
 }
 /* ---------- the pre-brew check ----------
@@ -1936,9 +2043,11 @@ function cmpDone(log) {
    Brewing Complete, Resume brew? and BrewScribe's. A reset takes them down (StepController.reset_all; BrewScribe its
    own); not a timer's alarm, nor a warning, nor another plugin's question */
 function brewQuestions() {
-  const names = new Set([...RECIPE.steps.map(s => s.n), "Hop Alert", "Brewing Complete", "Resume brew?", "BrewScribe"]);
+  const names = new Set([...RECIPE.steps.map(s => s.n), "Hop Alert", "Brewing Complete", "Resume brew?", "BrewScribe", PH_Q[0].title]);
   return st.events.filter(e => e[2] === "waiting for you" && names.has(e[1].split(":")[0])).map(e => e[1].split(":")[0]);
 }
+/* the title bar's question is one of them: BrewScribe's are titled "BrewScribe: …", so they go by its name */
+const brewAsks = (q, x) => q.has(x.title) || (x.title.startsWith("BrewScribe: ") && q.has("BrewScribe"));
 /* ---------- the strike water box (STRIKE-WATER.md) ----------
    Under START, STOP and NEXT STEP (and COMPARE PROBES), from the recipe's loading until the malt goes in: how much
    water goes to the mash tun and how hot, where the mash lands once the grain is in, and the forecast and its numbers.
@@ -2919,9 +3028,11 @@ function bannerHTML() {
   /* several answers, as screen.js shows them (acts). A timer's alarm (?timers=new) has two: +5 MIN, drawn as the
      lesser one (sec), and OK. Its own command is pending, not the banner's */
   const acts = x.acts || (x.act ? [{label: x.act, cmd: x.cmd, hold: x.hold}] : []), busy = x.timer != null ? st.pend["t:" + x.timer] : st.pend.b;
-  /* an answer that switches heat on (START THE BOIL) takes a held press, as START does, and says so under it */
-  const act = acts.map(y => b(y.sec ? "act sec" : "act", busy && (acts.length === 1 || busy === y.dir || busy === y.cmd) ? "SENDING…" : y.label, y.hold && !busy ? "hold to start" : "", {cmd: y.cmd, why: busy ? WAIT : "", hold: y.hold})).join("");
-  return `${x.tone === "prompt" ? ICON.bell : ICON.warn}<span class="msg"><b>${esc(x.title)}${x.more ? ` · ${x.more} more waiting` : ""}</b>${x.text.replace("{age}", `<span id="ban-age">${st.age}</span>`)}</span>${act}`;
+  /* an answer that switches heat on (START THE BOIL) takes a held press, as START does, and says so under it. A reminder
+     BrewScribe takes a pH for has OK and RECORD pH (phActsHTML) */
+  const ph = phOffer(x), act = ph ? phActsHTML(x, ph) : acts.map(y => b(y.sec ? "act sec" : "act", busy && (acts.length === 1 || busy === y.dir || busy === y.cmd) ? "SENDING…" : y.label, y.hold && !busy ? "hold to start" : "", {cmd: y.cmd, why: busy ? WAIT : "", hold: y.hold})).join("");
+  /* the title in capitals, but a unit's own spelling kept: "CHECK MASH pH" */
+  return `${x.tone === "prompt" ? ICON.bell : ICON.warn}<span class="msg"><b>${esc(x.title).replace(/\bpH\b/g, '<span class="nc">pH</span>')}${x.more ? ` · ${x.more} more waiting` : ""}</b>${x.text.replace("{age}", `<span id="ban-age">${st.age}</span>`)}</span>${act}`;
 }
 function eventHTML() {
   const e = st.events[0], row = e => `<time>${logDate(e)}${e[0]}</time>${esc(e[1])} · <span class="res ${e[3]}">${e[2]}</span>${e[4] ? ` · <span class="res">${esc(e[4])}</span>` : ""}`;
@@ -3070,6 +3181,7 @@ function drawRig() {
 function renderAll() {
   const lost = st.link === "lost";
   if (TIMERS === "new" && st.banner && st.banner.timer != null) st.banner.more = st.tmrs.filter(t => t.state === "done").length - 1;
+  phCheck();
   $("#app").dataset.link = st.link;
   $("#app").toggleAttribute("data-editing", !!st.edit);
   $("#link").dataset.link = st.link;
@@ -3081,10 +3193,17 @@ function renderAll() {
   const bn = $("#banner");
   bn.dataset.tone = st.banner ? st.banner.tone : "ok";
   /* a long question with a button (CraftBeerPi's sparge and boil prompts): on a phone its words keep the width and its
-     buttons go under them, rather than a column of three or four words a line beside them (brew-day.css) */
-  bn.toggleAttribute("data-long", !!(st.banner && (st.banner.act || st.banner.acts) && st.banner.text.length > LONG_Q));
+     buttons go under them, rather than a column of three or four words a line beside them (brew-day.css). So do a
+     reminder's OK and RECORD pH (data-ph), which keep their focus as the bar is drawn again, as LOG keeps its own */
+  const phx = phOffer(), bf = phx && bn.contains(document.activeElement) ? document.activeElement.dataset.cmd : null;
+  bn.toggleAttribute("data-long", !!(st.banner && (st.banner.act || st.banner.acts) && (st.banner.text.length > LONG_Q || phx)));
+  bn.toggleAttribute("data-ph", !!phx);
   bn.innerHTML = bannerHTML();
+  if (bf) bn.querySelector(`[data-cmd="${bf}"]`)?.focus({preventScroll: true});
+  phDraw();
+  const lf = !!document.activeElement && document.activeElement.classList.contains("logbtn");
   $("#event").innerHTML = eventHTML();
+  if (lf) $("#event .logbtn").focus({preventScroll: true});
   /* ?tplace: the event line holding the timers keeps its height (brew-day.css), the bottom bar is drawn, or goes, and so
      does the column beside the drawing */
   if (TPLACE) { $("#event").toggleAttribute("data-tev", tHere() === "event"); tbarDraw(); tsideDraw(); }
@@ -3188,7 +3307,7 @@ function note(where, text) {
 function explain(el) {
   const why = el.dataset.why, pl = el.closest(".plate");
   if (!why) return;
-  if (pl) note(pl.id.slice(3), why); else if (el.closest(".tmrs, .tev, .tbarb, .tside")) note("t", why); else if (el.closest(".recipe")) note("r", why); else toast(why);
+  if (pl) note(pl.id.slice(3), why); else if (el.closest(".tmrs, .tev, .tbarb, .tside")) note("t", why); else if (el.closest(".recipe")) note("r", why); else if (el.closest("#ph-box")) note("ph", why); else toast(why);
 }
 /* cav: what "confirmed" can't promise, such as a pump that its own override switch can still run */
 function send(key, dir, label, apply, cav = "") {
@@ -3561,7 +3680,7 @@ function cmdReset() {
   send("r:reset", "reset", "Recipe reset to step 1", () => {
     const q = new Set(brewQuestions());
     q.forEach(t => questionGone(t, "no longer needed"));
-    if (st.banner && q.has(st.banner.title)) st.banner = null;
+    if (st.banner && brewAsks(q, st.banner)) st.banner = null;
     st.recipe = {state: "ready", cur: 0, left: 0, adds: []};
     st.finished = false;
     if (st.hist) { st.hist.steps = []; st.hist.start = st.t - 8 * 3600; }
@@ -3585,7 +3704,7 @@ function cmdUnloadGo() {
   send("r:unload", "unload", `${RECIPE.name} unloaded: Brew Day is brewing by hand`, () => {
     const q = new Set(brewQuestions());
     q.forEach(t => questionGone(t, "no longer needed"));
-    if (st.banner && (q.has(st.banner.title) || st.banner.cmd === "r:unload-yes")) st.banner = null;
+    if (st.banner && (brewAsks(q, st.banner) || st.banner.cmd === "r:unload-yes")) st.banner = null;
     if (st.sw && !st.sw.hand) swAsSaved();
     st.recipe = null; st.finished = false; st.pbOpen = false; st.cmpOpen = false; st.rbOpen = false;
     if (st.hist) { st.hist.steps = []; st.hist.start = st.t - 8 * 3600; }
@@ -3630,6 +3749,8 @@ function cmdBanner(x) {
   /* OK on CraftBeerPi's own warning or error, one without buttons (cbpi): it goes from every screen's title bar, and its
      lines say "seen", a warning's in the plain colour, an error's still red. No line of its own */
   else if (st.banner && st.banner.cbpi) { seenLines(`${st.banner.title}: ${st.banner.text}`); st.banner = null; renderAll(); }
+  /* OK on a reminder whose OK CraftBeerPi runs, such as the two that ask for the mash pH (phAck) */
+  else if (x === "ack") phAck();
   /* OK: the rest timer's alarm, or a warning that waits for one (no target, a forgotten pause) */
   else { if (st.banner) questionGone(st.banner.title); st.banner = null; renderAll(); }
 }
@@ -3642,6 +3763,390 @@ function seenLines(words) {
     e[4] = "seen";
     if (e[3] === "wait") e[3] = "";
   });
+}
+/* ---------- the mash pH for BrewScribe (PH-ENTRY.md) ----------
+   The two reminders that ask for the mash pH take the reading here, for BrewScribe's brew log, without a trip to its
+   page. Brew Day keeps no list of them: BrewScribe names them in its answer to GET /brewscribe/api/brew-day/readings,
+   asked as a reminder shows and every 15 real seconds while one it names is up, with its open log, the stage and vessel
+   each reading goes to, and the reading standing there now. Such a reminder gets RECORD pH, its main answer, at the
+   right end, with OK, the lesser one, to its left. RECORD pH opens the pH box under the reminder; SAVE sends the reading
+   (POST /brewscribe/api/brew-day/readings), then closes the reminder as OK does. While BrewScribe can't take a reading
+   (no log open, the vessel unclear) RECORD pH is greyed and says why; where BrewScribe isn't installed or doesn't
+   answer, there is none. In the mockup st.bscribe is BrewScribe, holding what its answer says, and st.scribe is Brew
+   Day's copy of the last answer it had (st.scribeSeen: the reminder it was for). st.scribeMock holds what a moment has
+   BrewScribe or CraftBeerPi do: refuse a SAVE, not answer it, or save it and lose the answer (post); not answer an OK
+   (ack); not answer the GET (get); take a reading on BrewScribe's own page (page); and the entries BrewScribe has saved
+   from Brew Day (ids). st.scribePosts keeps what each SAVE sent */
+const PH_WAIT = "Waiting for BrewScribe to answer.";
+const PH_SLOW = "BrewScribe didn't answer, so it may not have saved it. SAVE again: it won't be saved twice.";
+const PH_ASK = 15; // real seconds between asks while such a reminder is up, as often as BrewScribe's own page asks
+const EXT_ICON = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M5 1.8H2.4a.6.6 0 0 0-.6.6v7.2c0 .3.3.6.6.6h7.2c.3 0 .6-.3.6-.6V7M7.2 1.8h3v3M10.2 1.8 5.6 6.4"/></svg>';
+const phKey = (day, title, v, t, u) => JSON.stringify([day, title, v, t, u]);
+const phCopy = o => o == null ? null : JSON.parse(JSON.stringify(o));
+const phUUID = () => crypto.randomUUID ? crypto.randomUUID() : "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+/* a moment's BrewScribe: the #mash day's unless the moment says otherwise, or none with ?brewscribe=none, where
+   CraftBeerPi answers 404. Brew Day had its answer before the moment, as it asked when the reminder went up; a moment can
+   give it an older copy (bscribeSeen) */
+function phLoad() {
+  if (QS.get("brewscribe") === "none") st.bscribe = null;
+  else if (st.bscribe === undefined) st.bscribe = scribeDay();
+  st.scribeMock = Object.assign({post: [], ack: [], get: null, page: null, ids: {}}, st.scribeMock);
+  const seen = st.bscribe && st.bscribeSeen !== undefined ? st.bscribeSeen : st.bscribe;
+  delete st.bscribeSeen;
+  Object.assign(st, {scribe: phCopy(seen), scribeSeen: st.banner, scribeTried: st.banner, scribeAsking: null, scribeAt: Date.now(), scribeT0: Date.now(), scribePosts: [], ph: null, phSent: null});
+}
+/* the reminder in the title bar, if BrewScribe takes a pH for it: BrewScribe's answer since it showed, its entry for the
+   reminder, and the pH reading's. Other kinds of reading aren't offered yet */
+function phOffer(x = st.banner) {
+  const A = st.scribe;
+  if (!x || !A || st.scribeSeen !== x) return null;
+  const rem = A.reminders.find(r => r.title === x.title), rd = rem && rem.readings.find(r => r.kind === "ph");
+  return rd ? {A, rem, rd} : null;
+}
+/* why BrewScribe can't take a reading, in its words, and the small line under RECORD pH that says so */
+const phCant = o => !o.A.log ? {why: o.A.why_not || PH_NOLOG, small: "no BrewScribe log"}
+  : o.rem.vessel_problem ? {why: `${o.rem.vessel_problem} Record it on BrewScribe's page.`, small: "on BrewScribe's page"} : null;
+const phUnit = A => A.temperature_unit === "f" ? "°F" : A.temperature_unit === "c" ? "°C" : null;
+/* where the keys start: the recipe's target, else 5.40; the sample's at a cooled sample's usual temperature */
+const phFrom = rd => rd.target != null ? +rd.target : 5.4;
+const phTFrom = A => A.temperature_unit === "c" ? 20 : 68;
+/* the sample's temperature is asked only where the reminder's own words ask for it, and only with a unit to give it in */
+const phTemp = o => o.rd.sample_temperature === "asked" && !!phUnit(o.A);
+/* a figure as typed, "5.42" or "5,42", to dec decimals; null while it isn't one */
+function phNum(txt, dec) {
+  const s = String(txt || "").trim().replace(",", ".");
+  if (!/^-?(\d+(\.\d*)?|\.\d+)$/.test(s)) return null;
+  const f = 10 ** dec;
+  return Math.round(parseFloat(s) * f) / f;
+}
+/* the reminder's two answers (bannerHTML): OK, the lesser one, then RECORD pH at the right end, its small line saying
+   what BrewScribe has for that stage. Both wait while SAVE does, and with no connection, as every command does. Greyed
+   while BrewScribe can't take a reading, RECORD pH says why when tapped, unless its box is open, which it then closes.
+   An OK that got no answer shows it failed, as a failed command's button does, until it is pressed again */
+function phActsHTML(x, o) {
+  const P = st.ph, open = !!(P && P.open), cant = phCant(o), sending = st.pend.b;
+  const wait = st.link === "lost" ? PAUSED : st.pend.ph === "post" ? PH_WAIT : st.pend.ph || sending ? WAIT : "";
+  const failed = !!x.ackFailed && !sending;
+  const ok = b(`act sec${failed ? " failed" : ""}`, sending ? "SENDING…" : "OK", failed ? "tap to try again" : "", {cmd: x.cmd, why: wait, label: failed ? `OK: ${x.title} didn't close. Tap to try again` : ""});
+  const small = cant ? cant.small : o.rd.saved ? `${o.rd.saved.text} recorded` : "for BrewScribe";
+  return ok + b("act phrec", "RECORD pH", small, {cmd: "ph:open", why: wait || (open || !cant ? "" : cant.why), expanded: open, controls: "ph-box"});
+}
+/* why SAVE waits or is greyed: no connection, a command on its way, BrewScribe unable to take a reading, no reading yet,
+   a figure outside what BrewScribe accepts, or a sample's temperature that isn't a figure */
+function phSaveWhy(o) {
+  const P = st.ph, rd = o.rd, dec = rd.decimals ?? 2, v = phNum(P.txt, dec), cant = phCant(o);
+  if (st.link === "lost") return PAUSED;
+  if (st.pend.ph) return st.pend.ph === "post" ? PH_WAIT : WAIT;
+  if (st.pend.b) return WAIT;
+  if (cant) return cant.why;
+  if (v == null) return `Give the pH first: type it, or step from ${phFrom(rd).toFixed(dec)}.`;
+  if (v < rd.min || v > rd.max) return `pH is between ${rd.min} and ${rd.max}: check the figure.`;
+  if (phTemp(o) && P.ttxt.trim() && phNum(P.ttxt, 1) == null) return "The sample temperature isn't a figure: check it, or leave it empty.";
+  return "";
+}
+/* SAVE names the figure it sends, "SAVE pH 5.42", or "SAVE pH – –" while there is none */
+let phGoLast = "";
+function phGoHTML(o) {
+  const dec = o.rd.decimals ?? 2, v = phNum(st.ph.txt, dec);
+  return b("cmdbtn phgo", st.pend.ph ? "SAVING…" : `SAVE pH ${v == null ? "– –" : v.toFixed(dec)}`, "closes the reminder too", {cmd: "ph:save", why: phSaveWhy(o)});
+}
+/* a sample outside a cooled sample's usual range is questioned as it is set, in a line read before SAVE; SAVE still
+   saves it */
+function phWarm(o) {
+  const U = phUnit(o.A), u = o.rd.sample_usual, t = phNum(st.ph.ttxt, 1);
+  if (!phTemp(o) || !u || t == null || (t >= u.min && t <= u.max)) return "";
+  return `${t.toFixed(1)} ${U} is ${t > u.max ? "warmer" : "colder"} than a cooled sample (${u.min} to ${u.max} ${U}): check it.`;
+}
+/* the pH box: MASH pH set into its top edge; for BrewScribe's log, the stage and vessel; what BrewScribe has for the
+   stage already; the pH's keys round its figure, as TARGET's are, with the recipe's target at the right; the sample's
+   temperature where the reminder asks for it; the line for what went wrong; SAVE and CANCEL; and a quiet way to
+   BrewScribe's page instead. While SAVE waits, everything in it waits too */
+function phHTML() {
+  const P = st.ph, o = phOffer() || P.o, {A, rem, rd} = o, dec = rd.decimals ?? 2, U = phUnit(A), tg = rd.target != null;
+  const why = st.pend.ph ? (st.pend.ph === "post" ? PH_WAIT : WAIT) : "", dis = why ? ` aria-disabled="true" data-why="${esc(why)}"` : "", ro = why ? " readonly" : "";
+  const key = (k, d, l, a) => `<button type="button" data-cmd="ph:step:${k}:${d}" aria-label="${a}"${dis}>${l}</button>`;
+  const pH = `<div class="phsec"><p class="phlab"><label for="phin" id="ph-l">pH</label>${tg ? `<span class="phtgt" id="ph-tg">recipe target ${+rd.target}</span>` : ""}</p>`
+    + `<div class="editor phkeys" role="group" aria-labelledby="ph-l">${key("v", -0.1, "−.1", "Down 0.1")}${key("v", -0.01, "−.01", "Down 0.01")}`
+    + `<input id="phin" inputmode="decimal" autocomplete="off" maxlength="6" value="${esc(P.txt)}" aria-describedby="${tg ? "ph-tg " : ""}ph-h"${ro}>`
+    + `${key("v", 0.01, "+.01", "Up 0.01")}${key("v", 0.1, "+.1", "Up 0.1")}</div>`
+    + `<p class="phhelp" id="ph-h">From the meter, to ${dec} decimals: type it, or step from ${phFrom(rd).toFixed(dec)}.</p></div>`;
+  const temp = !phTemp(o) ? "" : `<div class="phsec"><p class="phlab"><label for="phtin" id="pht-l">Sample temperature, ${U}</label></p>`
+    + `<div class="editor phkeys" role="group" aria-labelledby="pht-l">${key("t", -1, "−1", "Down 1 degree")}${key("t", -0.1, "−.1", "Down 0.1 degree")}`
+    + `<input id="phtin" inputmode="decimal" autocomplete="off" maxlength="6" value="${esc(P.ttxt)}" aria-describedby="pht-h phw"${ro}>`
+    + `${key("t", 0.1, "+.1", "Up 0.1 degree")}${key("t", 1, "+1", "Up 1 degree")}</div>`
+    + `<p class="phhelp" id="pht-h">If you took it: type it, or step from ${phTFrom(A)} ${U}.</p><p class="phwarm" id="phw">${phWarm(o)}</p></div>`;
+  phGoLast = phGoHTML(o);
+  return `<h2 class="pht" id="ph-t">MASH pH</h2><p class="phfor">For BrewScribe's log: ${esc(rem.stage_name)}${rem.vessel ? `, ${esc(rem.vessel)}` : ""}.</p>`
+    + (rd.saved ? `<p class="phhad">BrewScribe has ${esc(rd.saved.text)} for ${esc(rem.stage_name)}. A new reading here is kept as well, as the latest.</p>` : "")
+    + `<div class="phmid">${pH}${temp}</div><p class="note" id="ph-note">${esc(st.notes.ph || P.err || "")}</p>`
+    + `<div class="phact">${phGoLast}${b("cmdbtn", "CANCEL", "", {cmd: "ph:x", why})}</div>`
+    + b("phpage", `ON BREWSCRIBE'S PAGE${EXT_ICON}<span class="sr"> (opens ${esc(rem.stage_name)} in BrewScribe's tab)</span>`, "", {cmd: "ph:page", why});
+}
+/* the box drawn again, keeping what has focus in it, a typed figure's caret included, then fitted under the reminder */
+function phDraw() {
+  const box = $("#ph-box"), P = st.ph, o = phOffer();
+  if (!(P && P.open && (o || st.pend.ph))) { if (!box.hidden) { box.hidden = true; box.innerHTML = ""; } return; }
+  if (o) P.o = o;
+  const fa = document.activeElement, inn = !!fa && box.contains(fa);
+  const sel = inn ? (fa.id ? "#" + fa.id : fa.dataset.cmd ? `[data-cmd="${fa.dataset.cmd}"]` : "") : "", rng = inn && fa.tagName === "INPUT" ? [fa.selectionStart, fa.selectionEnd] : null;
+  box.innerHTML = phHTML(); box.hidden = false;
+  if (sel) { const n = box.querySelector(sel); if (n) { n.focus({preventScroll: true}); if (rng) try { n.setSelectionRange(...rng); } catch (_) {} } }
+  phFit();
+}
+/* from 701 px wide the box drops under the reminder, right-aligned to its right edge and clear of it (MASH pH sits in
+   the box's top edge), kept inside the window; where the window is too short for it, its middle scrolls. On a phone it
+   is in the page under the reminder (brew-day.css) */
+const PHONE = matchMedia("(max-width:700px)");
+function phFit() {
+  const box = $("#ph-box");
+  if (!box || box.hidden) return;
+  const mid = box.querySelector(".phmid");
+  box.style.top = box.style.right = "";
+  if (mid) mid.style.maxHeight = "";
+  if (PHONE.matches || !box.offsetParent) return;
+  const P = box.offsetParent.getBoundingClientRect(), B = $("#banner").getBoundingClientRect(), W = document.documentElement.clientWidth;
+  let right = P.right - B.right;
+  box.style.top = `${Math.round(B.bottom - P.top + 14)}px`;
+  box.style.right = `${right}px`;
+  const r = box.getBoundingClientRect();
+  if (r.left < 8) right -= 8 - r.left; else if (r.right > W - 8) right += r.right - (W - 8);
+  box.style.right = `${right}px`;
+  const over = r.bottom - (innerHeight - 8);
+  if (over > 0 && mid) mid.style.maxHeight = `${Math.max(120, mid.getBoundingClientRect().height - over)}px`;
+}
+/* as each reminder shows, Brew Day asks BrewScribe about it (phAsk); the box goes with its reminder, answered here or
+   elsewhere or taken down, unless its SAVE is on its way */
+function phCheck() {
+  const x = st.banner;
+  if (x && x.tone === "prompt" && st.scribeSeen !== x && st.scribeTried !== x && st.link !== "lost") phAsk();
+  if (st.ph && !st.pend.ph && !(x && x.title === st.ph.title && phOffer(x))) st.ph = null;
+}
+/* GET /brewscribe/api/brew-day/readings, simulated: BrewScribe's answer within a second (600 ms); with the moment's get
+   "none", no answer, so the screen keeps what BrewScribe said last and asks again 15 s on. 404, where BrewScribe isn't
+   installed, is an answer: nothing to offer. The screen is drawn again only where what it shows changes */
+function phAsk() {
+  const x = st.banner, none = st.scribeMock.get === "none";
+  Object.assign(st, {scribeAsking: x, scribeTried: x, scribeAt: Date.now()});
+  timers.push(setTimeout(() => {
+    if (st.scribeAsking !== x) return;
+    st.scribeAsking = null;
+    if (none) return;
+    const was = phView();
+    st.scribe = phCopy(st.bscribe); st.scribeSeen = x;
+    if (phView() !== was) renderAll();
+  }, none ? 5000 : 600));
+}
+/* what the screen shows from BrewScribe for the reminder in the title bar */
+function phView() { const o = phOffer(); return o ? JSON.stringify([o.A.log, o.A.why_not, o.A.temperature_unit, o.rem]) : ""; }
+/* every real second: a reading typed on BrewScribe's own page reaches BrewScribe at the moment's time (page), and while a
+   reminder BrewScribe names is up, or one it hasn't answered for, Brew Day asks again every 15 s */
+function phPoll() {
+  if (!st || !st.scribeMock) return;
+  const M = st.scribeMock, x = st.banner;
+  if (M.page && Date.now() - st.scribeT0 >= M.page.after * 1000) { scribePage(M.page); M.page = null; }
+  if (!x || x.tone !== "prompt" || st.scribeAsking || st.link === "lost" || (st.scribeSeen === x && !phOffer(x))) return;
+  if (Date.now() - st.scribeAt >= PH_ASK * 1000) phAsk();
+}
+/* a reading saved on BrewScribe's page for reminder i's stage, which becomes the one standing there */
+function scribePage(p) {
+  const S = st.bscribe, rd = S && S.log && S.reminders[p.i] && S.reminders[p.i].readings[0];
+  if (rd) rd.saved = {entry_id: phUUID(), value: p.value, text: `pH ${p.value.toFixed(rd.decimals)}`, occurred_at: new Date().toISOString()};
+}
+/* CraftBeerPi raising reminder i in its own time: its line in LOG, said aloud; RECORD pH comes with BrewScribe's answer
+   to the ask its showing starts */
+function phRaise(i) {
+  st.banner = phBanner(i);
+  logEvent(`${PH_Q[i].title}: ${PH_Q[i].text}`, "waiting for you", "wait");
+  say(`${PH_Q[i].title}. ${PH_Q[i].text}`, true);
+  renderAll();
+}
+/* RECORD pH: the box opens under the reminder, LOG's list closing (one at a time), the pH empty and focus in it with its
+   text selected; pressed again, it closes. A moment can open it with figures typed, BrewScribe's sentence from a SAVE
+   that didn't go, and the entry that SAVE sent (o) */
+function phOpen(o = {}) {
+  const x = st.banner, f = phOffer(x);
+  if (!f || st.pend.ph) return;
+  if (st.ph && st.ph.open && !o.moment) return phClose();
+  st.logOpen = false; st.notes.ph = "";
+  st.ph = {title: x.title, open: true, txt: o.txt || "", ttxt: o.ttxt || "", err: o.err || "", o: f};
+  if (o.sent) st.phSent = {key: phBody(f).key, id: o.sent};
+  renderAll();
+  setTimeout(() => { const i = $("#phin"); if (i) { i.focus(); i.select(); } }, 0);
+}
+/* CANCEL, Escape and RECORD pH pressed again close the box and keep nothing, focus back on RECORD pH; not while SAVE
+   waits, which can't be called back */
+function phClose() {
+  if (!st.ph || st.pend.ph) return;
+  st.ph = null; renderAll();
+  setTimeout(() => $('#banner [data-cmd="ph:open"]')?.focus({preventScroll: true}), 0);
+}
+/* LOG's list and the box, one at a time: LOG opened closes the box, keeping nothing; while its SAVE waits the box only
+   steps out of sight, and comes back if BrewScribe doesn't take the reading */
+function phLogOpened() { if (st.ph) { if (st.pend.ph) st.ph.open = false; else st.ph = null; } }
+/* the keys: −.1 −.01 +.01 +.1 from the pH typed, or from the recipe's target, else 5.40, while there is none, kept within
+   what BrewScribe accepts; −1 −.1 +.1 +1 for the sample, from 68 °F. The new figure is said aloud */
+function phStep(k, d) {
+  const P = st.ph, o = P && (phOffer() || P.o);
+  if (!o || st.pend.ph) return;
+  const rd = o.rd, dec = rd.decimals ?? 2;
+  if (k === "v") {
+    const f = 10 ** dec;
+    P.txt = Math.min(rd.max, Math.max(rd.min, Math.round(((phNum(P.txt, dec) ?? phFrom(rd)) + d) * f) / f)).toFixed(dec);
+    say(`pH ${P.txt}`);
+  } else {
+    P.ttxt = (Math.round(((phNum(P.ttxt, 1) ?? phTFrom(o.A)) + d) * 10) / 10).toFixed(1);
+    const w = phWarm(o);
+    say(`${P.ttxt} ${phUnit(o.A)}${w ? `. ${w}` : ""}`);
+  }
+  renderAll();
+}
+/* typing in the box: SAVE and the sample's range line follow the figures in place, so the caret stays where it is */
+function phPatch() {
+  const o = st.ph && (phOffer() || st.ph.o), go = $("#ph-box .phgo"), w = $("#phw");
+  if (!o) return;
+  const h = phGoHTML(o);
+  if (go && h !== phGoLast) { go.outerHTML = h; phGoLast = h; }
+  if (w) { const t = phWarm(o); if (w.textContent !== t) w.textContent = t; }
+  phFit();
+}
+/* what SAVE sends: the reading to its decimals, and the sample's temperature with its unit when one is given. key: its
+   content, so the same reading sent again keeps its entry_id */
+function phBody(o) {
+  const P = st.ph, v = phNum(P.txt, o.rd.decimals ?? 2), t = phTemp(o) && P.ttxt.trim() ? phNum(P.ttxt, 1) : null, u = t == null ? null : o.A.temperature_unit;
+  const day = o.A.log ? o.A.log.day_id : null, body = {entry_id: null, day_id: day, title: P.title, kind: "ph", value: v};
+  if (t != null) Object.assign(body, {temperature: t, temperature_unit: u});
+  return {body, key: phKey(day, P.title, v, t, u)};
+}
+/* SAVE: SAVING… at once, everything in the box and both of the reminder's answers waiting. BrewScribe saves it, then the
+   reminder closes as OK closes it (phAck). The same reading sent again keeps its entry_id, so BrewScribe never saves it
+   twice; a changed one is a new reading, with a new one */
+function phSave() {
+  const P = st.ph, x = st.banner, o = phOffer(x);
+  if (!P || !o || st.pend.ph || st.pend.b) return;
+  const why = phSaveWhy(o);
+  if (why) return note("ph", why);
+  const {body, key} = phBody(o);
+  if (!st.phSent || st.phSent.key !== key) st.phSent = {key, id: phUUID()};
+  body.entry_id = st.phSent.id;
+  P.err = ""; st.notes.ph = ""; st.pend.ph = "post";
+  renderAll();
+  phPost(body, (code, res) => phAnswer(code, res, body, x));
+}
+/* POST /brewscribe/api/brew-day/readings, simulated: BrewScribe's answer about half a second on (scribeTake), unless the
+   moment has it refuse ({status, error, reason}), not answer ("none"), or save it and lose the answer ("lost"). Brew
+   Day waits 5 s for an answer */
+function phPost(body, done) {
+  st.scribePosts.push(phCopy(body));
+  const M = st.scribeMock, how = M.post.length ? M.post.shift() : null;
+  if (how === "none" || how === "lost") {
+    if (how === "lost") scribeTake(body);
+    return timers.push(setTimeout(() => done(0, null), 5000));
+  }
+  timers.push(setTimeout(() => how ? done(how.status, {error: how.error, reason: how.reason}) : done(...scribeTake(body)), 500));
+}
+/* BrewScribe taking a reading, as its call does: the same entry again answers 200 and saves nothing; no log open, a log
+   that isn't the open one any more, a vessel it can't tell, or an entry_id saved with other figures are refused (409);
+   a value outside its range is a bad request (400). Saved, it is the reading standing in that stage */
+function scribeTake(b) {
+  const S = st.bscribe, M = st.scribeMock;
+  if (!S) return [404, null];
+  const rem = S.reminders.find(r => r.title === b.title), rd = rem && rem.readings.find(r => r.kind === b.kind);
+  if (!rd) return [400, {error: `BrewScribe takes no ${b.kind} reading for ${b.title}`}];
+  if (typeof b.value !== "number" || b.value < rd.min || b.value > rd.max) return [400, {error: `pH must be between ${rd.min} and ${rd.max}`}];
+  const key = phKey(b.day_id, b.title, b.value, b.temperature ?? null, b.temperature_unit ?? null), text = `pH ${b.value.toFixed(rd.decimals)}`;
+  const ok = () => ({entry_id: b.entry_id, day_id: b.day_id, stage: rem.stage, vessel: rem.vessel, text: `${text} saved in BrewScribe (${rem.stage_name}, ${rem.vessel})`});
+  if (M.ids[b.entry_id] != null) return M.ids[b.entry_id] === key ? [200, ok()] : [409, {error: "That entry was already saved with other figures, so this reading wasn't saved.", reason: "entry_id_reused"}];
+  if (!S.log) return [409, {error: S.why_not, reason: "no_open_log"}];
+  if (S.log.day_id !== b.day_id) return [409, {error: "The open BrewScribe log has changed, so this reading wasn't saved.", reason: "log_changed"}];
+  if (rem.vessel_problem) return [409, {error: `${rem.vessel_problem} This reading wasn't saved: record it on BrewScribe's page.`, reason: "vessel_unknown"}];
+  M.ids[b.entry_id] = key;
+  rd.saved = {entry_id: b.entry_id, value: b.value, text, occurred_at: new Date().toISOString()};
+  return [201, ok()];
+}
+/* BrewScribe's answer to SAVE. Saved (201, or 200 for the same entry again): Brew Day's copy has it at once, so RECORD pH
+   says so, and the reminder closes as OK closes it, unless it went on another screen meanwhile. Refused, or no answer
+   in 5 s: nothing closes, the box says why above SAVE, LOG says it failed, and after a 409 Brew Day asks BrewScribe
+   again */
+function phAnswer(code, res, body, x) {
+  const P = st.ph, v = `pH ${body.value.toFixed(2)}`;
+  if (code === 200 || code === 201) {
+    phHad(body);
+    st.phSent = null;
+    if (st.banner === x) { st.pend.ph = "close"; renderAll(); return phAck(closed => phDone(res.text, x, closed)); }
+    return phDone(res.text, x, null);
+  }
+  delete st.pend.ph;
+  const why = code === 0 ? PH_SLOW : (res && res.error) || "BrewScribe didn't take the reading.";
+  logEvent(code === 0 ? `${v} may not be saved in BrewScribe` : `${v} not saved in BrewScribe`, code === 0 ? "failed: no answer in 5 s" : "failed", "bad");
+  if (code === 409) phAsk();
+  if (st.banner !== x || !P) { st.ph = null; renderAll(); return phOther(x); }
+  Object.assign(P, {err: why, open: true});
+  st.logOpen = false;
+  say(why, true);
+  renderAll();
+}
+/* the reading BrewScribe now has, in Brew Day's copy */
+function phHad(b) {
+  const rem = st.scribe && st.scribe.reminders.find(r => r.title === b.title), rd = rem && rem.readings.find(r => r.kind === b.kind);
+  if (rd) rd.saved = {entry_id: b.entry_id, value: b.value, text: `pH ${b.value.toFixed(rd.decimals)}`, occurred_at: new Date().toISOString()};
+}
+/* OK on these reminders: CraftBeerPi's own button, which it runs for every screen, so the reminder goes from all of them;
+   for BrewScribe's reminder it is also how BrewScribe knows it was seen. SAVE closes the reminder the same way (after).
+   With no answer in 5 s the reminder stays and OK shows it failed, as any failed command's button does */
+function phAck(after) {
+  const x = st.banner;
+  if (!x || st.pend.b) return;
+  st.pend.b = "ok"; x.ackFailed = false;
+  renderAll();
+  const M = st.scribeMock, fail = M.ack.length ? M.ack.shift() === "none" : false;
+  timers.push(setTimeout(() => {
+    delete st.pend.b;
+    const line = `${x.title} answered: OK`;
+    if (fail) { x.ackFailed = true; logEvent(line, "failed: no answer in 5 s", "bad"); }
+    else { questionGone(x.title); if (st.banner === x) st.banner = null; logEvent(line, "confirmed", "ok"); }
+    if (after) return after(!fail);
+    say(fail ? `${line}: failed, no answer in 5 s. The reminder is still up.` : `${line}: confirmed`, fail);
+    renderAll();
+  }, fail ? 5000 : 700 + Math.random() * 400));
+}
+/* SAVE done: the box closes, and BrewScribe's sentence goes in LOG, on top of CraftBeerPi's answer, and is said aloud;
+   focus goes to LOG. If OK didn't close the reminder, the reminder stays, with "pH 5.42 recorded" under RECORD pH and
+   its failure on OK */
+function phDone(text, x, closed) {
+  delete st.pend.ph; st.ph = null;
+  logEvent(text, "confirmed", "ok");
+  say(closed === false ? `${text}. ${x.title} didn't close: OK got no answer in 5 s.` : `${text}: confirmed`, closed === false);
+  renderAll();
+  setTimeout(() => $("#event .logbtn")?.focus({preventScroll: true}), 0);
+}
+/* the box closed because the reminder was answered on another screen: it says so, and that nothing was sent */
+function phOther(x, here = true) {
+  const w = `${x.title} was answered on another screen, so nothing was saved here.`;
+  toast(w); say(w);
+  if (here) setTimeout(() => $("#event .logbtn")?.focus({preventScroll: true}), 0);
+}
+/* the mockup: CraftBeerPi telling this screen the reminder was answered on another (a moment's phElse). Its line says
+   "answered" and one line says where; an open box closes, unless its SAVE is on its way, whose answer then decides
+   (phAnswer) */
+function phElsewhere() {
+  const x = st.banner, P = st.ph;
+  if (!x) return;
+  const here = $("#ph-box").contains(document.activeElement) || $("#banner").contains(document.activeElement);
+  questionGone(x.title); st.banner = null;
+  logEvent(`${x.title} answered`, "from another screen", "");
+  if (P && !st.pend.ph) { st.ph = null; renderAll(); return phOther(x, here); }
+  renderAll();
+}
+function phCmd(cmd) {
+  const [, x, k, d] = cmd.split(":");
+  if (x === "open") return phOpen();
+  if (x === "x") return phClose();
+  if (x === "save") return phSave();
+  if (x === "step") return phStep(k, parseFloat(d));
+  if (x === "page") {
+    const o = phOffer() || (st.ph && st.ph.o);
+    return toast(`Mockup: this opens ${o ? `${o.rem.stage_name} on BrewScribe's page` : "BrewScribe's page"} in BrewScribe's own tab, with the cursor in its pH box${o ? ` (${o.rem.page})` : ""}.`);
+  }
 }
 function cmdLoad(i, asked) {
   /* over a recipe the Recipe Book doesn't have, LOAD asks first (loadAskHTML); LOAD INSTEAD comes back here */
@@ -4337,7 +4842,8 @@ function run(cmd) {
     case "swg": return swGrain(x, y);
     case "bs": return bsCmd(x, y);
     case "alloff": return cmdAllOff();
-    case "log": st.logOpen = !st.logOpen; return renderAll();
+    case "log": st.logOpen = !st.logOpen; if (st.logOpen) phLogOpened(); return renderAll();
+    case "ph": return phCmd(cmd);
     case "tm": return cmdTimer(x);
     case "te": return cmdTe(x, y);
     case "tm2": { const p = cmd.split(":"); return cmdTm2(p[1], p[2], p[3]); }
@@ -4404,6 +4910,13 @@ document.addEventListener("keydown", e => {
   }
   if (e.target.id === "swvin" && e.key === "Enter") { e.preventDefault(); swVol("set"); return; }
   if (e.target.id === "swgin" && e.key === "Enter") { e.preventDefault(); swGrain("set"); return; }
+  /* Enter in the pH box's figures is SAVE; a greyed SAVE says why, in the box's line for what went wrong */
+  if ((e.target.id === "phin" || e.target.id === "phtin") && e.key === "Enter" && st.ph) {
+    e.preventDefault();
+    const go = $("#ph-box .phgo");
+    if (go && go.getAttribute("aria-disabled") === "true") explain(go); else phSave();
+    return;
+  }
   /* Enter in BrewStart's time box, or its grain figure, is SET; a greyed SET says why. The box drawn again keeps the
      caret, at its end */
   if ((e.target.id === "bstin" || e.target.id === "bsgin") && e.key === "Enter" && st.bs) {
@@ -4415,6 +4928,9 @@ document.addEventListener("keydown", e => {
     return;
   }
   if (e.key === "Escape" && (st.swVol || st.swGrain)) { st.swVol = null; st.swGrain = null; renderAll(); return; }
+  /* the pH box: Escape closes it while focus is in it or on its reminder; from elsewhere, once nothing else open is left
+     to close first (below) */
+  if (e.key === "Escape" && st.ph && st.ph.open && e.target.closest && e.target.closest("#ph-box, #banner")) { phClose(); return; }
   /* on one screen a box open in the column has the timers make way, a timer's editor with them, so Escape is for the box;
      an editor in a box of its own (?tplace) is still there, and Escape closes it first */
   if (e.key === "Escape" && st.tedit && (tHere() !== "col" || !(ONE_SCREEN.matches && (st.pbOpen || st.cmpOpen || st.swOpen || st.rbOpen || st.bsOpen)))) { st.tedit = null; renderAll(); return; }
@@ -4423,9 +4939,12 @@ document.addEventListener("keydown", e => {
   /* the proposal's boxes (?col=new): the recipe book, and the timers opened from their folded line */
   if (e.key === "Escape" && (st.rbOpen || st.tfOpen)) { st.rbOpen = false; st.tfOpen = false; renderAll(); return; }
   if (e.key === "Escape" && (st.edit || st.logOpen || st.confirmNext || st.confirmReset || st.confirmUnload || st.pbOpen || st.cmpOpen || st.swOpen)) { st.edit = null; st.logOpen = false; st.confirmNext = false; st.confirmReset = false; st.confirmUnload = false; st.pbOpen = false; st.cmpOpen = false; st.swOpen = false; renderAll(); }
+  else if (e.key === "Escape" && st.ph && st.ph.open) phClose();
 });
 document.addEventListener("keyup", e => { if (hold && (e.key === " " || e.key === "Enter")) { e.preventDefault(); holdEnd(true); } });
 document.addEventListener("input", e => {
+  /* the pH box's figures: kept as typed, SAVE and the sample's range line following them in place (phPatch) */
+  if ((e.target.id === "phin" || e.target.id === "phtin") && st.ph) { st.ph[e.target.id === "phin" ? "txt" : "ttxt"] = e.target.value; phPatch(); return; }
   /* BrewStart's time box: kept as typed, its words and SET following it in place (bsPatch), and said aloud once the
      brewer stops typing; its grain figure, kept as typed, un-presses the chips */
   if (e.target.id === "bstin" && st.bs) { st.bs.txt = e.target.value; bsPatch(); bsAnnounce(true); return; }
@@ -4621,6 +5140,8 @@ function load(name) {
   const open = st.open, base = st.base || key;
   delete st.open; delete st.base;
   Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, logOpen: false, pbOpen: false, cmpOpen: false, swOpen: false, bsOpen: false, bs: null}, open);
+  /* BrewScribe as the moment has it, and Brew Day's copy of its answer (phLoad) */
+  phLoad();
   /* the strike water box: CraftBeerPi's answer for the moment's numbers, worked out already, unless the moment has it
      working one out (sw.has: null) or showing an older one */
   if (st.sw && st.sw.has === undefined) st.sw.has = swNow();
@@ -4652,6 +5173,11 @@ function load(name) {
   if (st.bsAt) { const o = st.bsAt; delete st.bsAt; bsOpen(o); }
   /* a moment can show FORECAST's details scrolled to a part of them (swAt) */
   if (st.swAt) { const at = st.swAt; delete st.swAt; requestAnimationFrame(() => { const el = $(at); if (el) el.scrollIntoView({block: "center"}); }); }
+  /* a moment can open the pH box, as RECORD pH does (phAt: what it opens it with), put focus on LOG, as SAVE does once
+     it is done (phLog), and have the reminder answered on another screen some real milliseconds on (phElse) */
+  if (st.phAt) { const o = st.phAt; delete st.phAt; phOpen(Object.assign({moment: true}, o)); }
+  if (st.phLog) { delete st.phLog; setTimeout(() => $("#event .logbtn")?.focus(), 0); }
+  if (st.phElse) { const ms = st.phElse; delete st.phElse; timers.push(setTimeout(phElsewhere, ms)); }
   document.querySelectorAll(".mock a[href^='#']").forEach(a => a.setAttribute("aria-current", a.getAttribute("href") === "#" + key ? "true" : "false"));
   document.querySelectorAll(".mock a[data-layout]").forEach(a => {
     a.href = `?layout=${a.dataset.layout}#${key}`;
@@ -4708,6 +5234,8 @@ document.documentElement.dataset.layout = LAYOUT;
 if (QS.has("bare")) document.documentElement.classList.add("bare");
 if (LAYOUT === "b") {
   $(".topbar .link").before($("#banner"));
+  /* the pH box goes with the reminder, just after it (phFit) */
+  $("#banner").after($("#ph-box"));
   $(".main").before($(".tabs"));
   $(".main").prepend($("#recipe"));
   $(".brewhouse").append($("#rig"));
@@ -4799,6 +5327,11 @@ if (FOCUS) {
 window.addEventListener("hashchange", () => load(location.hash.slice(1)));
 load(location.hash.slice(1));
 new ResizeObserver(drawRig).observe($("#rig"));
+/* the pH box follows its reminder as the title bar changes size, and Brew Day asks BrewScribe again on its own time
+   (phPoll) */
+new ResizeObserver(() => phFit()).observe($("#banner"));
+addEventListener("resize", () => phFit());
+setInterval(phPoll, 1000);
 /* the faceplates' width crossing 276 px inside moves the boil power's steps and a box's keys between one row and two;
    the recipe column going under the brewhouse, or back beside it, decides whether the steps' row keeps its place; and
    a new width for the recipe column, which changes with the faceplates', drops the kept height (pbFit) */
