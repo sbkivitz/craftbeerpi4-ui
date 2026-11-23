@@ -76,6 +76,10 @@ export const api = {
   answer: (notificationId, actionId) => post(`/notification/${id(notificationId)}/action/${id(actionId)}`),
   // OK on a warning or an error without buttons: CraftBeerPi takes it down from every page, and BrewScribe's
   seen: (notificationId) => post(`/notification/${id(notificationId)}/seen`),
+  // BrewScribe's readings from Brew Day (BrewScribe 0.1.0.dev51 and later): which reminders take a reading, with its open
+  // log and what it would save each as; and a reading saved in that log. CraftBeerPi answers 404 without BrewScribe.
+  brewDayReadings: () => get("/brewscribe/api/brew-day/readings"),
+  brewDayReading: (reading) => post("/brewscribe/api/brew-day/readings", reading),
   recipes: () => get("/recipe/"),
   recipe: (file) => get(`/recipe/${id(file)}`),
   brew: (file) => post(`/recipe/${id(file)}/brew`),

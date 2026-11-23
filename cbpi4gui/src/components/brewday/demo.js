@@ -11,8 +11,9 @@
 // sw-volume, sw-grain-edit, sw-grain, sw-hot, sw-used, sw-backhot, sw-working, sw-working-open, sw-reworking, sw-levers,
 // sw-refused, sw-refused-moved, sw-failed, sw-tunprobe, sw-wait, sw-heat, sw-move, sw-late, sw-doughin, sw-hand,
 // sw-novol, sw-missing, sw-missing-steps, sw-noprobe, sw-grain-bad and sw-interval, the one clock's sim-clock and
-// sim-clock-1x, the timers' timer-change and timer-removed, and the boil kettle's MANUAL's bk-hand, bk-hand-off and
-// bk-man-boil) runs on this, so it can be compared with the mockup pixel for pixel.
+// sim-clock-1x, the timers' timer-change and timer-removed, the boil kettle's MANUAL's bk-hand, bk-hand-off and
+// bk-man-boil, and the mash pH's ph, ph-open, ph-set, ph-target, ph-had, ph-end, ph-warm, ph-nolog, ph-vessel, ph-saved,
+// ph-fail, ph-slow, ph-noclose and ph-other) runs on this, so it can be compared with the mockup pixel for pixel.
 import { swModel, SW_MORNING, SW_LEVER_S } from "./strike-demo";
 
 const RECIPE = {
@@ -99,6 +100,65 @@ const mash = () => ({
   recipe: {state: "running", cur: 2, left: 23 * 60 + 41, adds: []},
   events: MASH_EVENTS.map(e => e.slice())
 });
+/* the two reminders that ask for the mash pH, in their own words: CraftBeerPi's, 15 brewing minutes after the malt is
+   confirmed, and BrewScribe's, 5 minutes before the last rest's timer ends. Each has CraftBeerPi's own OK, which
+   CraftBeerPi runs for every screen (b:ack, the screen's phAck) */
+const PH_Q = [
+  {title: "Check mash pH", text: "It has been 15 minutes since you confirmed mash-in. Check mash pH. Acknowledging this reminder does not record a measurement or change the brew."},
+  {title: "BrewScribe: Check mash pH before mash-out", text: "Check mash pH again before mash-out or transfer. Cool a separate sample and record its actual temperature."}
+];
+const phBanner = i => ({tone: "prompt", title: PH_Q[i].title, text: PH_Q[i].text, act: "OK", cmd: "b:ack"});
+/* BrewScribe's answer to GET /brewscribe/api/brew-day/readings on the #mash day, in its shape: Test Recipe v5's brew log
+   open, both reminders for the Mash Tun, nothing saved yet. With no log open (log false) the reminders are still
+   listed, with no vessel and nothing saved, and why_not says why, in BrewScribe's words */
+const SCRIBE_DAY = "4c1d2e0a-7b1f-4c55-9a8e-2f6d1b0c9e31";
+const PH_NOLOG = "No BrewScribe log is open, so there's nowhere to save it. Start one on BrewScribe's page.";
+/* what the screen says when BrewScribe doesn't answer a SAVE in 5 s */
+const PH_SLOW = "BrewScribe didn't answer, so it may not have saved it. SAVE again: it won't be saved twice.";
+function scribeDay(log = true) {
+  const rd = asks => ({kind: "ph", label: "pH", min: 0, max: 14, decimals: 2, target: null, sample_temperature: asks, sample_usual: {min: 50, max: 95}, saved: null});
+  const rem = (i, stage, name) => ({title: PH_Q[i].title, stage, stage_name: name, vessel: log ? KNAME.mt : null, vessel_problem: null,
+    page: `/brewscribe/#stage=${stage}&focus=ph`, readings: [rd(i ? "asked" : "optional")]});
+  return {log: log ? {day_id: SCRIBE_DAY, name: RECIPE.name} : null, why_not: log ? null : PH_NOLOG, temperature_unit: "f",
+    reminders: [rem(0, "mash_start", "Early mash"), rem(1, "mash_end", "End of mash")]};
+}
+/* a reading's content, so the same reading sent again keeps its entry_id */
+const phKey = (day, title, v, t, u) => JSON.stringify([day, title, v, t, u]);
+/* the mash pH moments, the #mash day. MashIn was confirmed at 13:27:05, so "Check mash pH" went up at 13:42:05, in
+   Protein Rest, with the mash still coming back to 126 °F after the malt went in (its 20 minutes start at 13:49:38), its
+   pump recirculating through the coil and the HLT holding 131.4 °F for it */
+function phMash(t = 13 * 3600 + 42 * 60 + 20) {
+  return Object.assign(mash(), {
+    t, banner: phBanner(0),
+    v: {hlt: {pv: 131.4, sv: 131.4, own: 168.0, mode: "manual"}, mt: {pv: 125.5, sv: 126.0, mode: "auto"}, bk: {pv: 68.0, sv: null, mode: "manual"}},
+    a: {hltEl: {on: true, pct: 40}, hltPump: {on: false}, wortPump: {on: true}, bkEl: {on: false, pct: 0}},
+    recipe: {state: "running", cur: 1, left: 20 * 60, adds: [], wait: true},
+    events: [["13:42:05", `${PH_Q[0].title}: ${PH_Q[0].text}`, "waiting for you", "wait"], ...MASH_EVENTS.slice(4).map(e => e.slice())],
+    bscribe: scribeDay()
+  });
+}
+/* BrewScribe's reminder before mash-out, the same day: Saccharification's 40 minutes started at 14:16:19, so it went up
+   at 14:51:19, 5 minutes before they end. "Check mash pH" was answered with SAVE at 13:42:30: pH 5.42 */
+function phEnd() {
+  const s = mash(), t = 14 * 3600 + 51 * 60 + 34, E = MASH_EVENTS.map(e => e.slice());
+  Object.assign(s, {t, banner: phBanner(1), bscribe: scribeDay()});
+  s.recipe.left = 14 * 3600 + 56 * 60 + 19 - t;
+  s.events = [["14:51:19", `${PH_Q[1].title}: ${PH_Q[1].text}`, "waiting for you", "wait"], ...E.slice(0, 4), ...phSavedLines("13:42:32"),
+    ["13:42:05", `${PH_Q[0].title}: ${PH_Q[0].text}`, "answered", ""], ...E.slice(4)];
+  scribeHas(s, 0, 5.42);
+  return s;
+}
+/* SAVE's LOG lines for "Check mash pH", logged as the reminder closes: BrewScribe's sentence, with CraftBeerPi's answer
+   to OK under it */
+const phSavedLines = at => [[at, "pH 5.42 saved in BrewScribe (Early mash, Mash Tun)", "confirmed", "ok"], [at, `${PH_Q[0].title} answered: OK`, "confirmed", "ok"]];
+/* the entry Brew Day sends in the moments, and a reading BrewScribe has for reminder i's stage (the one standing there
+   now, which BrewScribe's page shows as recorded) */
+const PH_SENT = "0b6f8a52-3d4e-4f1a-9c7b-5e2d8a1f6c30";
+function scribeHas(s, i, v, id = "9f0c3b7e-5d21-4a8c-b6e4-1f2a3c4d5e6f") {
+  const rd = s.bscribe.reminders[i].readings[0];
+  rd.saved = {entry_id: id, value: v, text: `pH ${v.toFixed(rd.decimals)}`, occurred_at: "2026-11-22T18:41:07Z"};
+}
+export { PH_Q, phBanner, scribeDay, phKey, PH_NOLOG, PH_SLOW };
 const SCENES = {
   mash,
   hop: () => Object.assign(mash(), {
@@ -632,6 +692,59 @@ const SCENES = {
     s.events.unshift(["07:41:17", `${RECIPE.name} unloaded: Brew Day is brewing by hand`, "failed: no answer in 5 s", "bad"]);
     return Object.assign(s, {base: "prebrew"});
   },
+  /* the mash pH for BrewScribe (design/brewday/PH-ENTRY.md), on the #mash day (phMash, phEnd). #ph: "Check mash pH" up
+     since 13:42:05, at 13:42:20, BrewScribe's log open and nothing saved for Early mash, so RECORD pH sits beside OK.
+     #ph-open: RECORD pH pressed, the pH box open and empty. #ph-set: 5.42 typed. #ph-target: the recipe's target 5.3.
+     #ph-had: a reading already saved for Early mash, 5.42. #ph-end: BrewScribe's reminder before mash-out, up since
+     14:51:19, the box open with the sample temperature. #ph-warm: the same with pH 5.38 and the sample at 140 °F.
+     #ph-nolog: no BrewScribe log open, and #ph-vessel: BrewScribe can't tell the vessel: RECORD pH greyed, tapped.
+     #ph-saved: SAVE pressed at 13:42:30, the reading saved and the reminder closed, focus on LOG. #ph-fail: SAVE refused
+     by BrewScribe (503). #ph-slow: no answer from BrewScribe in 5 s; the reading had reached it, so SAVE again sends the
+     same entry and BrewScribe answers that it has it. #ph-noclose: the reading saved, and the OK that closes the
+     reminder got no answer. #ph-other: the box open with 5.42 typed, the reminder answered on another screen a moment
+     on. With ?brewscribe=none, BrewScribe isn't installed (404) and the reminders have OK alone */
+  ph: () => phMash(),
+  "ph-open": () => Object.assign(phMash(), {open: {phAt: {}}}),
+  "ph-set": () => Object.assign(phMash(), {open: {phAt: {txt: "5.42"}}}),
+  "ph-target": () => { const s = phMash(); s.bscribe.reminders[0].readings[0].target = 5.3; return Object.assign(s, {open: {phAt: {}}}); },
+  "ph-had": () => { const s = phMash(); scribeHas(s, 0, 5.42); return Object.assign(s, {open: {phAt: {}}}); },
+  "ph-end": () => Object.assign(phEnd(), {open: {phAt: {}}}),
+  "ph-warm": () => Object.assign(phEnd(), {open: {phAt: {txt: "5.38", ttxt: "140.0"}}}),
+  "ph-nolog": () => Object.assign(phMash(), {bscribe: scribeDay(false), open: {tap: "ph:open"}}),
+  "ph-vessel": () => {
+    const s = phMash();
+    s.bscribe.reminders.forEach(r => Object.assign(r, {vessel: null, vessel_problem: "The recipe has ambiguous actual mash step vessels. Choose the actual vessel."}));
+    return Object.assign(s, {open: {tap: "ph:open"}});
+  },
+  "ph-saved": () => {
+    const s = phMash(13 * 3600 + 42 * 60 + 33);
+    scribeHas(s, 0, 5.42, PH_SENT);
+    s.banner = null; s.events[0][2] = "answered"; s.events[0][3] = "";
+    s.events.unshift(...phSavedLines("13:42:32"));
+    return Object.assign(s, {open: {phLog: true}});
+  },
+  "ph-fail": () => {
+    const s = phMash(13 * 3600 + 42 * 60 + 31);
+    s.events.unshift(["13:42:31", "pH 5.42 not saved in BrewScribe", "failed", "bad"]);
+    return Object.assign(s, {open: {phAt: {txt: "5.42", err: "BrewScribe storage is unavailable; retry the operation", sent: PH_SENT}}});
+  },
+  "ph-slow": () => {
+    const s = phMash(13 * 3600 + 42 * 60 + 36);
+    /* Brew Day's copy is from before SAVE; BrewScribe has the reading, under the entry Brew Day sent */
+    s.bscribeSeen = JSON.parse(JSON.stringify(s.bscribe));
+    scribeHas(s, 0, 5.42, PH_SENT);
+    s.scribeMock = {ids: {[PH_SENT]: phKey(SCRIBE_DAY, PH_Q[0].title, 5.42, null, null)}};
+    s.events.unshift(["13:42:35", "pH 5.42 may not be saved in BrewScribe", "failed: no answer in 5 s", "bad"]);
+    return Object.assign(s, {open: {phAt: {txt: "5.42", err: PH_SLOW, sent: PH_SENT}}});
+  },
+  "ph-noclose": () => {
+    const s = phMash(13 * 3600 + 42 * 60 + 38);
+    scribeHas(s, 0, 5.42, PH_SENT);
+    s.banner.ackFailed = true;
+    s.events.unshift(["13:42:36", "pH 5.42 saved in BrewScribe (Early mash, Mash Tun)", "confirmed", "ok"], ["13:42:36", `${PH_Q[0].title} answered: OK`, "failed: no answer in 5 s", "bad"]);
+    return s;
+  },
+  "ph-other": () => Object.assign(phMash(), {open: {phAt: {txt: "5.42"}, phElse: 1200}}),
   /* the pre-brew check (pbMorning). #prebrew: COMPARE PROBES under START. #probes, #probes-apart, #probes-off,
      #probes-none: the probes side by side, agreeing; the boil kettle 3.8 °F cooler than the others, as one by a door
      can be; the boil kettle's 17.5 °F low, more than its spot explains; the mash tun's giving no reading for 4 min.

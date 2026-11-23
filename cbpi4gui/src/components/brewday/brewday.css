@@ -52,6 +52,7 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .banner[data-tone=alarm]{background:var(--alarm-bg);border:2px solid var(--alarm);color:#fff}
 :where(html.bd-page) .banner .msg{flex:1;min-width:0}
 :where(html.bd-page) .banner .msg b{display:block;font-size:20px;letter-spacing:.06em;text-transform:uppercase}
+:where(html.bd-page) .banner .msg b .nc{text-transform:none}
 :where(html.bd-page) .banner .act{position:relative;overflow:hidden;flex:none;min-height:48px;padding:0 20px;border:0;border-radius:var(--r);background:#f4f6f8;color:#10161c;font:700 18px/1 var(--cond);letter-spacing:.06em}
 :where(html.bd-page) .banner .act small{position:relative;display:block;margin-top:3px;font:500 13px/1.1 var(--cond);letter-spacing:.04em;color:#3a4652}
 :where(html.bd-page) .event{position:relative;font:500 18px/1.2 var(--cond);letter-spacing:.02em;min-width:0}
@@ -129,7 +130,7 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .seg small,:where(html.bd-page) .tgtbtn small,:where(html.bd-page) .cmdbtn small{position:relative;display:block;margin-top:5px;font:500 clamp(12px,calc(3.9 * var(--pu)),14px)/1.1 var(--cond);letter-spacing:.04em;color:var(--text-3)}
 :where(html.bd-page) .seg button[aria-pressed=true] small{color:#c9d6e2}
 :where(html.bd-page) .seg button:not([aria-pressed=true]):not([aria-disabled=true]):hover,:where(html.bd-page) .tgtbtn:not([aria-disabled=true]):hover,:where(html.bd-page) .cmdbtn:not([aria-disabled=true]):hover{background:#253545}
-:where(html.bd-page) .seg button:not([aria-pressed=true]):not([aria-disabled=true]):hover small,:where(html.bd-page) .tgtbtn:not(.notgt):not([aria-disabled=true]):hover small,:where(html.bd-page) .cmdbtn:not([aria-pressed=true]):not([aria-disabled=true]):not(.tgo):not(.tok):not(.swuse):not(.bsgo):hover small,:where(html.bd-page) .trow:not([data-state=done]) .tsel:not([aria-disabled=true]):hover .ts{color:var(--text-2)}
+:where(html.bd-page) .seg button:not([aria-pressed=true]):not([aria-disabled=true]):hover small,:where(html.bd-page) .tgtbtn:not(.notgt):not([aria-disabled=true]):hover small,:where(html.bd-page) .cmdbtn:not([aria-pressed=true]):not([aria-disabled=true]):not(.tgo):not(.tok):not(.swuse):not(.bsgo):not(.phgo):hover small,:where(html.bd-page) .trow:not([data-state=done]) .tsel:not([aria-disabled=true]):hover .ts{color:var(--text-2)}
 :where(html.bd-page) .tgtbtn,:where(html.bd-page) .cmdbtn{border:1px solid var(--edge);border-radius:var(--r)}
 :where(html.bd-page) .seg button[aria-disabled=true],:where(html.bd-page) .tgtbtn[aria-disabled=true],:where(html.bd-page) .cmdbtn[aria-disabled=true]{color:var(--text-3)}
 :where(html.bd-page) .note{margin:0;font:500 15px/1.35 var(--sans);color:#ffd9a0}
@@ -502,6 +503,53 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .keep.snd.blocked .kl{color:var(--prompt)}
 :where(html.bd-page) .banner .act.sec{background:none;color:#fff1d2;box-shadow:inset 0 0 0 2px #c99a3c}
 :where(html.bd-page) .banner .act.sec:not([aria-disabled=true]):hover{background:rgb(255 178 30/.14)}
+/* a reminder BrewScribe takes a pH for (data-ph, design/brewday/PH-ENTRY.md): OK, the lesser answer, then RECORD pH at
+   the right end. Greyed, both take the greyed look of the screen's other main buttons; an OK that got no answer has a
+   failed command's look until it is pressed again */
+:where(html.bd-page) .banner .act.sec.failed{background:#2b1315;color:#fff;box-shadow:inset 0 0 0 2px var(--alarm)}
+:where(html.bd-page) .banner .act.sec.failed small{color:#ffd0cc}
+:where(html.bd-page) .banner .act.sec.failed:not([aria-disabled=true]):hover{background:#3a181b}
+:where(html.bd-page) .banner[data-ph] .act[aria-disabled=true]{background:var(--panel-2);color:var(--text-3);box-shadow:inset 0 0 0 1px var(--edge);cursor:not-allowed}
+:where(html.bd-page) .banner[data-ph] .act[aria-disabled=true] small{color:var(--text-3)}
+/* the pH box (phHTML): from 701 px wide it drops under the reminder, over what is below, right-aligned to the
+   reminder and kept inside the window (phFit), above LOG's list; on a phone it opens in the page under the reminder */
+:where(html.bd-page) .phbox{--pu:3.2px;display:flex;flex-direction:column;gap:10px;padding:14px 12px 12px;border:2px solid var(--select);border-radius:var(--r);background:var(--panel);box-shadow:0 18px 40px rgb(0 0 0/.5);font:400 16px/1.35 var(--sans);color:var(--text)}
+:where(html.bd-page) .phbox[hidden]{display:none}
+:where(html.bd-page) .phbox .pht{align-self:flex-start;margin:-26px 0 -2px -4px;padding:0 6px;background:var(--panel);font:700 17px/1.2 var(--cond);letter-spacing:.06em}
+:where(html.bd-page) .phbox p{margin:0}
+:where(html.bd-page) .phfor{font:500 16px/1.35 var(--sans)}
+:where(html.bd-page) .phhad{font:500 15px/1.35 var(--sans);color:var(--text-2)}
+:where(html.bd-page) .phmid{display:grid;gap:12px;min-height:0;margin:-5px;padding:5px;overflow:auto;overscroll-behavior:contain}
+:where(html.bd-page) .phsec{display:grid;gap:6px}
+:where(html.bd-page) .phlab{display:flex;justify-content:space-between;align-items:baseline;gap:10px;font:600 17px/1.2 var(--cond);letter-spacing:.04em}
+:where(html.bd-page) .phtgt{font:500 16px/1.2 var(--cond);letter-spacing:.03em;color:var(--sv)}
+:where(html.bd-page) .phkeys input{color:var(--text)}
+:where(html.bd-page) .phhelp{font:500 14px/1.35 var(--sans);color:var(--text-3)}
+:where(html.bd-page) .phwarm{font:500 14px/1.35 var(--sans);color:#ffd9a0}
+:where(html.bd-page) .phwarm:empty{display:none}
+:where(html.bd-page) .phact{display:grid;grid-template-columns:3fr 2fr;gap:8px}
+:where(html.bd-page) .phact .cmdbtn{min-height:54px;font-size:17px}
+:where(html.bd-page) .phgo{background:var(--select);border-color:var(--select);color:#fff}
+:where(html.bd-page) .phgo small{color:#fff}
+:where(html.bd-page) .phgo:not([aria-disabled=true]):hover{background:#3477c8}
+:where(html.bd-page) .phgo[aria-disabled=true]{background:var(--panel-2);border-color:var(--edge);color:var(--text-3)}
+:where(html.bd-page) .phgo[aria-disabled=true] small{color:var(--text-3)}
+:where(html.bd-page) .phpage{position:relative;align-self:flex-end;min-height:44px;padding:0 12px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);font:600 15px/1 var(--cond);letter-spacing:.08em;touch-action:manipulation}
+:where(html.bd-page) .phpage .lb{color:var(--text-2)}
+:where(html.bd-page) .phpage svg{width:.8em;height:.8em;margin-left:.4em;vertical-align:-.05em;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+:where(html.bd-page) .phpage:not([aria-disabled=true]):hover{background:#253545}
+:where(html.bd-page) .phpage:not([aria-disabled=true]):hover .lb{color:var(--text)}
+:where(html.bd-page) .phpage[aria-disabled=true]{cursor:not-allowed}
+:where(html.bd-page) .phpage[aria-disabled=true] .lb{color:var(--text-3)}
+:where(html.bd-page) .phbox [aria-disabled=true]{cursor:not-allowed}
+@media (min-width:701px){
+:where(html.bd-page)[data-layout=b] .topbar,:where(html.bd-page)[data-layout=a] .status{position:relative}
+:where(html.bd-page) .phbox{position:absolute;z-index:45;width:min(460px,calc(100vw - 16px))}
+}
+@media (max-width:700px){
+:where(html.bd-page) .phbox{margin-top:6px}
+:where(html.bd-page)[data-layout=b] .topbar .phbox{grid-column:1/-1;grid-row:3}
+}
 :where(html.bd-page) .trow[data-state=done]::after,:where(html.bd-page) .banner[data-ring]::after,:where(html.bd-page) .app[data-ring]::after{content:"";pointer-events:none;animation:bd-ring 1s ease-in-out infinite alternate}
 :where(html.bd-page) .trow[data-state=done]::after,:where(html.bd-page) .banner[data-ring]::after{position:absolute;inset:-2px;border:2px solid var(--prompt);border-radius:calc(var(--r) + 1px);box-shadow:0 0 18px rgb(255 178 30/.55)}
 :where(html.bd-page) .banner[data-ring]{position:relative}
