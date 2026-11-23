@@ -192,9 +192,10 @@ function brewStartModel(p, U, kname) {
 export function stepModel(s, roleOf, U, kname = {}) {
   const p = (s && s.props) || {};
   const temp = num(p.Temp), t = num(p.Timer);
+  // BrewStart names its kettle Heat_Kettle: on the HLT it is the step that heats the strike water (BrewStart 1.3.0)
   const m = {
     n: String((s && s.name) ?? ""),
-    k: roleOf[p.Kettle] || (/boil|whirlpool|cool/i.test(String(s.type || "")) ? "bk" : "mt"),
+    k: roleOf[p.Kettle] || (s && s.type === "BrewStart" && roleOf[p.Heat_Kettle]) || (/boil|whirlpool|cool/i.test(String(s.type || "")) ? "bk" : "mt"),
     id: s.id, type: s.type, status: s.status, text: s.state_text,
   };
   if (temp != null) m.temp = temp;

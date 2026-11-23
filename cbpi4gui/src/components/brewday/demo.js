@@ -672,11 +672,12 @@ const SCENES = {
      screen that hadn't caught up with the grain's temperature given on another, so CraftBeerPi refused it and the box
      offers its new figure; #sw-refused-moved, USE pressed on a screen that hadn't caught up with the water going to the
      mash tun. #sw-failed: CraftBeerPi's work on USE failed. #sw-tunprobe: the mash probe at the tun's outlet instead,
-     where PID_HERMS takes the mash over the rest by itself. Brew day: #sw-wait, BrewStart waiting to start heating for
-     07:00; #sw-heat, the strike water step heating the HLT; #sw-move, the water there and CraftBeerPi asking for it to
-     be moved; #sw-late, the same at the rest, with USE not pressed the night before; #sw-doughin, the water in the mash
-     tun, MashIn on the Mash Tun asking for the malt and its probe reading the HLT's water. #sw-hand: the recipe as
-     imported, without the flow, and the HLT heating the strike water on its own AUTO. With a number missing: #sw-novol,
+     where PID_HERMS takes the mash over the rest by itself. Brew day, with BrewStart step 1 and the current step until
+     the water is moved: #sw-wait, BrewStart waiting to start heating for 07:00; #sw-heat, BrewStart heating the HLT on
+     its AUTO; #sw-move, BrewStart holding the strike water, asking for it to be moved; #sw-late, the same at the rest,
+     with USE not pressed the night before; #sw-doughin, the water in the mash tun, BrewStart finished and MashIn on the
+     Mash Tun asking for the malt, its probe reading the HLT's water. #sw-hand: the recipe as imported, without the flow,
+     and the HLT heating the strike water on its own AUTO. With a number missing: #sw-novol,
      BrewStart without a water volume; #sw-missing, a recipe built on Brew Steps, with no grain weight or mash water;
      #sw-noprobe, the boil kettle's probe giving no reading; #sw-grain-bad, BrewStart's grain temperature saved on Brew
      Steps as 150 °F; #sw-interval, the mash tun's control interval set to 2.5 s. swd: the moment's numbers, which the
@@ -769,14 +770,15 @@ const SCENES = {
      #bs-past: TODAY pressed, so 07:00 has passed and SET is greyed. #bs-startat: START AT chosen, 05:30 tomorrow.
      #bs-set: SET pressed at 21:12:31 for Ready by 06:30 with the grain indoors at 68 °F: the box closed, the row and LOG
      saying so, and CraftBeerPi working USE out again for the grain. #bs-wait: #sw-wait, BrewStart waiting for its time,
-     with the box opened from its row as #bs-edit's is. #bs-new: a recipe with the strike water step but no BrewStart,
-     so + BrewStart above its first step; the strike water box works from the HLT's water CraftBeerPi keeps for brewing
-     by hand. #bs-new-open: its box, for a new BrewStart. #bs-sim: #bs-edit on a simulator at 60×, its own clock on the
-     same Friday night, so the time in words also says how long that is in real minutes. #bs-novol: #bs-edit with
-     BrewStart's water blank. #bs-soon: #sw-wait, BrewStart waiting at 05:40 to have the water hot by 07:00, the box
-     opened from its row with 06:00 typed: sooner than BrewStart plans for heating the water, so the time in words says
-     the heating starts at once and SET reads HEAT NOW. #bs-past, #bs-startat, #bs-sim, #bs-novol and #bs-soon show the
-     box from its top, focus in the time box */
+     with the box opened from its row as #bs-edit's is. #bs-new: a recipe without BrewStart, so + BrewStart above its
+     first step. Without BrewStart there is no strike water step either, so the strike water box works from the HLT's
+     water CraftBeerPi keeps for brewing by hand, and USE sets the HLT's target; the BrewStart + BrewStart adds, Ready
+     by, becomes the strike water step. #bs-new-open: its box, for a new BrewStart. #bs-sim: #bs-edit on a simulator at
+     60×, its own clock on the same Friday night, so the time in words also says how long that is in real minutes.
+     #bs-novol: #bs-edit with BrewStart's water blank. #bs-soon: #sw-wait, BrewStart waiting at 05:40 to have the water
+     hot by 07:00, the box opened from its row with 06:00 typed: sooner than BrewStart plans for heating the water, so
+     the time in words says the heating starts at once and SET reads HEAT NOW, which has BrewStart heat the HLT at once.
+     #bs-past, #bs-startat, #bs-sim, #bs-novol and #bs-soon show the box from its top, focus in the time box */
   "bs-edit": () => Object.assign(swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})), {base: "sw-plan", open: {bsAt: {focus: "garage"}}}),
   "bs-indoors": () => Object.assign(swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})), {base: "sw-plan", open: {bsAt: {where: "indoors", at: "#bs-box .bsin"}}}),
   "bs-past": () => Object.assign(swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})), {base: "sw-plan", open: {bsAt: {rel: 0}}}),
@@ -797,28 +799,30 @@ const SCENES = {
   "bs-soon": () => Object.assign(SCENES["sw-wait"](), {base: "sw-wait", open: {bsAt: {txt: "06:00"}}}),
   /* USE waiting for where the grain spent the night (screen.js swHTML). #sw-where: the #sw-plan night before,
      BrewStart's time set and the grain not answered yet, so BrewStart's row asks "where's the grain?" and USE's place
-     says so too, leading to BrewStart's box. #sw-where-am: brew morning (#sw-late), BrewStart finished and the grain
-     still not answered, so USE leads to the strike water box's own grain box */
+     says so too, leading to BrewStart's box. #sw-where-am: brew morning (#sw-late), BrewStart holding the strike water,
+     not finished, and the grain still not answered; BrewStart's row isn't a button once it heats, so USE leads to the
+     strike water box's own grain box */
   "sw-where": () => Object.assign(swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})), {base: "sw-plan"}),
   "sw-where-am": () => Object.assign(swUnsaid(swMorning(DAY2 + 6 * 3600 + 51 * 60 + 10, 126)), {base: "sw-late"})
 };
 /* ---------- the strike water's moments ----------
-   The brewer's own flow (the rig page, 9b) in front of the recipe: BrewStart waits for Ready by on the HLT, then a
-   MashInStep on the HLT, the strike water step, heats all the water in it, strike and sparge, and holds it until he has
-   moved the strike water to the Mash Tun and pressed Next; then the recipe's steps from MashIn on the Mash Tun. Under
-   Kal's way (The Electric Brewery's method) the strike water is at the rest temperature, as the recipe comes; USE
-   changes it to the strike temperature the forecast works out. The moments put the two in front of Test Recipe v5, with
-   the numbers its BeerSmith export carries: 20 lb of grain at 1.5 qt/lb, so 7.50 gal for the grain (INFUSE_AMOUNT), plus
-   the equipment profile's recoverable mash deadspace, 0.76 gal, which BeerSmith adds to the first infusion
-   (DISPLAY_INFUSE_AMT 33.04 qt), so it is never added again; the mash tun, 33 lb of steel (TUN_WEIGHT, TUN_SPECIFIC_HEAT
-   0.12); and BeerSmith's own strike temperature, INFUSE_TEMP 134.6 °F, worked out for grain at 65 °F (GRAIN_TEMP). The
-   export doesn't say how much water is in the HLT: that is BrewStart's water volume (vol, from the moment: swDay), which
-   also sets its Campden dose. BrewStart's element power (Heater_Watts) is the HLT element's, SW_WATTS */
+   The brewer's own flow (the rig page, 9b) in front of the recipe: BrewStart (1.3.0), Ready by on the HLT, works out
+   when heating must start, then at that time heats all the water in the HLT, strike and sparge, on the HLT's own AUTO,
+   and holds it until the strike water has been moved to the Mash Tun and Next pressed; then the recipe's steps from
+   MashIn on the Mash Tun. Under Kal's way (The Electric Brewery's method) the strike water is at the rest temperature,
+   as the recipe comes; USE changes it to the strike temperature the forecast works out. The moments put BrewStart in
+   front of Test Recipe v5, with the numbers its BeerSmith export carries: 20 lb of grain at 1.5 qt/lb, so 7.50 gal for
+   the grain (INFUSE_AMOUNT), plus the equipment profile's recoverable mash deadspace, 0.76 gal, which BeerSmith adds to
+   the first infusion (DISPLAY_INFUSE_AMT 33.04 qt), so it is never added again; the mash tun, 33 lb of steel
+   (TUN_WEIGHT, TUN_SPECIFIC_HEAT 0.12); and BeerSmith's own strike temperature, INFUSE_TEMP 134.6 °F, worked out for
+   grain at 65 °F (GRAIN_TEMP). The export doesn't say how much water is in the HLT: that is BrewStart's water volume
+   (vol, from the moment: swDay), which also sets its Campden dose. BrewStart's element power (Heater_Watts) is the HLT
+   element's, SW_WATTS */
 const SW_WATTS = 6500;
-const SW_STEPS = [
-  {n: "BrewStart", type: "BrewStart", k: "hlt", ready: "07:00", campden: true, watts: SW_WATTS},
-  {n: "Strike water", type: "MashInStep", k: "hlt", note: "Move the strike water to the Mash Tun, then press Next"}
-];
+/* the question that holds the strike water until it has been moved, in BrewStart's words */
+const SW_ASK = "Move the strike water to the Mash Tun, then press Next";
+/* the steps the strike water moments put in front of the recipe (load): BrewStart alone, as the brewer's recipe has it */
+const SW_STEPS = [{n: "BrewStart", type: "BrewStart", k: "hlt", ready: "07:00", campden: true, watts: SW_WATTS}];
 const SW_FROM = {grainLb: 20, forGrain: 7.5, dead: 0.76, tunLb: 33, bs: 134.6, bsGrain: 65, bsTun: 72};
 /* Test Recipe v5 as the Recipe Book keeps it: its strike water at the rest, and BrewStart's water (swAsSaved) */
 const SW_PLAN0 = 126, SW_VOL0 = 15;
@@ -872,35 +876,38 @@ function swDay(t, o) {
     ["21:13:01", "Checked before starting: probes, clock, reminders", "all passed", "ok"]);
   return s;
 }
-/* brew day, from BrewStart's start: the strike water step heats the HLT on its own AUTO at the rig's rate to plan, and
-   asks for the water to be moved half a degree short of it, as the step counts it there; the HLT holds it until Next.
-   At SW_MOVED the water is in the mash tun and Next pressed. It came through the coil, so the Mash Tun's probe, at the
+/* brew day, from BrewStart's heating start: BrewStart (1.3.0) heats the HLT on its own AUTO at the rig's rate to plan,
+   and once the water is half a degree short of it, as it counts it there, holds it and asks for it to be moved; it
+   stays the current step until Next (bsHeat: "heating", then "holding"). At SW_MOVED the water is in the mash tun and
+   Next pressed: BrewStart finishes, its HLT AUTO off. The water came through the coil, so the Mash Tun's probe, at the
    coil's outlet, reads the strike water: MashIn on the Mash Tun finds the rest reached and asks for the malt within
    seconds, the strike water at the rest as much as above it. Its pump stops for the dough-in, PID_HERMS holds the HLT
    at no more than the rest while it does, and the probe reads the HLT's water. The time of the ask and the readings
-   40 s on are the model's, its middle guesses (SW_MORNING). swd.g gives the graphs the times */
+   40 s on are the model's, its middle guesses (SW_MORNING). swd.g gives the graphs the times, and the steps' starts
+   (marks) */
 function swMorning(t, plan) {
-  const s = swDay(t, {used: plan !== 126, state: "running"}), S = SW_STEPS[1], kal = plan <= 126;
+  const s = swDay(t, {used: plan !== 126, state: "running"}), S = SW_STEPS[0], kal = plan <= 126;
   const heat = swStartAt(plan, 59.8), hot = heat + Math.round((plan - 0.5 - 59.8) / SW_RATE * 60);
-  const M = SW_MORNING[kal ? "rest" : "use"], ask = SW_MOVED + M.ask;
+  const M = SW_MORNING[kal ? "rest" : "use"], ask = SW_MOVED + M.ask, held = t >= hot;
   const log = s.events.slice().reverse();
   log.push([hhmmss(heat), `BrewStart: Time to heat - the water should be ready by ${SW_DAY}, 07:00.`, "from CraftBeerPi", ""],
-    [hhmmss(heat), "BrewStart finished", "by recipe", ""], [hhmmss(heat), `${S.n} started, HLT target ${plan.toFixed(1)} °F`, "by recipe", ""]);
+    [hhmmss(heat), `BrewStart heating, HLT target ${plan.toFixed(1)} °F`, "by recipe", ""]);
   Object.assign(s.a, {hltPump: {on: true}});
-  s.swd.g = {from: 59.8, heat, hot, plan, ask};
+  s.swd.g = {from: 59.8, heat, hot, plan, ask, marks: []};
   if (t < SW_MOVED) {
-    s.recipe.cur = 1;
-    const held = t >= hot;
+    s.recipe.cur = 0;
+    s.recipe.bsHeat = held ? "holding" : "heating";
     Object.assign(s.v.hlt, {pv: held ? +(plan - 0.1).toFixed(1) : +(59.8 + (t - heat) / 60 * SW_RATE).toFixed(1), sv: plan, own: plan, mode: "auto"});
     s.a.hltEl = {on: true, pct: held ? 16 : 100};
     s.recipe.wait = held ? WFY : true;
     if (held) {
-      s.banner = {tone: "prompt", title: S.n, text: S.note, act: "NEXT STEP", cmd: "b:done"};
-      log.push([hhmmss(hot + 6), `${S.n}: ${S.note}`, "waiting for you", "wait"]);
+      s.banner = {tone: "prompt", title: S.n, text: SW_ASK, act: "NEXT STEP", cmd: "b:done"};
+      log.push([hhmmss(hot + 6), `${S.n}: ${SW_ASK}`, "waiting for you", "wait"]);
     }
   } else {
-    s.recipe.cur = 2; s.swd.g.moved = SW_MOVED;
-    log.push([hhmmss(hot + 6), `${S.n}: ${S.note}`, "answered", ""], [hhmmss(SW_MOVED), `${S.n} answered: Next Step`, "confirmed", "ok"],
+    s.recipe.cur = 1; s.swd.g.moved = SW_MOVED; s.swd.g.marks.push([SW_MOVED, 2]);
+    log.push([hhmmss(hot + 6), `${S.n}: ${SW_ASK}`, "answered", ""], [hhmmss(SW_MOVED), `${S.n} answered: Next Step`, "confirmed", "ok"],
+      [hhmmss(SW_MOVED), "BrewStart finished, HLT AUTO off", "by recipe", ""],
       [hhmmss(SW_MOVED + 1), "MashIn started, mash tun target 126.0 °F", "by recipe", ""]);
     const asked = t >= ask;
     Object.assign(s.v.mt, {pv: asked ? M.mt : plan, sv: 126, mode: "auto"});
@@ -1012,12 +1019,13 @@ const gWob = (t, k) => 0.16 * Math.sin(t / 47 + k) + 0.09 * Math.sin(t / 13.7 + 
 
 function gDemo(scene, now, x = {}) {
   const E = 30 * 3600;
-  /* the strike water moments (x.sw, swMorning's swd.g): the night in the garage, then from BrewStart's start (g.heat) the
-     HLT heating the strike water at the rig's rate to g.plan, the step asking half a degree short (g.hot), and the HLT
-     holding it; from g.moved the water in the mash tun and PID_HERMS on it, MashIn asking for the malt at once (g.ask).
-     #sw-hand: the HLT on its own AUTO from g.heat, and no recipe begun. Times run on past midnight, so the end is a day
-     and a bit on. The mash tun's probe sits at the coil's outlet: it reads the strike water as it comes through the coil,
-     and with the pump stopped for the dough-in, the HLT's water. x.pv: the moment's readings; x.hltSv: the HLT's target */
+  /* the strike water moments (x.sw, swMorning's swd.g): the night in the garage, then from BrewStart's heating start
+     (g.heat) the HLT heating the strike water at the rig's rate to g.plan, ready half a degree short (g.hot), and the
+     HLT holding it; from g.moved the water in the mash tun and PID_HERMS on it, MashIn asking for the malt at once
+     (g.ask). The steps' starts are swMorning's (g.marks). #sw-hand: the HLT on its own AUTO from g.heat, and no recipe
+     begun. Times run on past midnight, so the end is a day and a bit on. The mash tun's probe sits at the coil's outlet:
+     it reads the strike water as it comes through the coil, and with the pump stopped for the dough-in, the HLT's
+     water. x.pv: the moment's readings; x.hltSv: the HLT's target */
   const g = x.sw;
   if (g) {
     const Z = now + 3600, start = now - 8 * 3600, hot = g.hot ?? Infinity, mv = g.moved ?? Infinity, kal = g.plan <= 126;
@@ -1037,7 +1045,7 @@ function gDemo(scene, now, x = {}) {
     /* PID_HERMS holds the HLT at no more than the rest while the pump is stopped: off above it, a trickle at it */
     if (now >= mv) out.push([mv, Z, kal ? [0, 6] : 0]);
     return {
-      start, steps: g.hand ? [] : [[g.heat, 2], ...(now >= mv ? [[mv, 3]] : [])],
+      start, steps: g.marks || [],
       hlt: {pv: hlt, sv: [[g.heat, Math.min(mv, Z), g.plan], ...(now >= mv ? [[mv, Z, x.hltSv]] : [])], out},
       mt: {pv: mt, sv: now >= mv ? [[mv, Z, 126]] : []},
       bk: {pv: [[start, x.pv.bk - 1.2], [now, x.pv.bk, "s"]], out: [[start, Z, 0]]}
@@ -1233,7 +1241,7 @@ function history(scene, now, x) {
 }
 
 export { RECIPE, SPARGE_STEP, BIG_ADDS, VNAME, KNAME, PROBE, VACT, ACT, HERMS_DELTA, BOIL_TH, BOOK, SCENES, history, noTargetBanner, pauseBanner, spargeBanner, boilHoldBanner, boilStartLine, tfmt, tBanner, byHandBanner, versions,
-  SW_STEPS, swStartAt, swPlanLine, SW_PLAN0, SW_VOL0, SW_WATTS, SW_NEED, SW_RATE, SW_SPARE };
+  SW_STEPS, SW_ASK, swStartAt, swPlanLine, SW_PLAN0, SW_VOL0, SW_WATTS, SW_NEED, SW_RATE, SW_SPARE };
 
 // Not the mockup's: two moments of the screen's own, for checking how the title bar holds what CraftBeerPi
 // really asks. Not compared with the mockup.

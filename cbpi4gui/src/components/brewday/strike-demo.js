@@ -26,10 +26,12 @@ const swIntervalOk = s => Number.isInteger(swRuns(s));
 const GUESSES = [["next_min", "min"], ["tun_share", "share"], ["tun_loss", "W/K"], ["transfer_f", "F"], ["coil_ua", "W/K"],
   ["dough_min", "min"], ["flow", "L/min"], ["grain_c", "cal/g C"], ["hlt_loss", "share"], ["hlt_steel", "kg"], ["probe_lag", "s"]];
 
-/* the steps the box works from: BrewStart (bi), the strike water step on the HLT (si) and the first step on the mash tun
-   (mi), whose temperature is the rest */
+/* the steps the box works from: BrewStart (bi), the strike water step (si) and the first step on the mash tun (mi), whose
+   temperature is the rest. The strike water step is a MashInStep on the HLT where the recipe has one; without one it is
+   BrewStart itself with Ready by (BrewStart 1.3.0 heats the HLT and holds the water), so then si is bi */
 export function swSteps(S) {
-  return {bi: S.findIndex(s => s.type === "BrewStart"), si: S.findIndex(s => s.k === "hlt" && s.type === "MashInStep"), mi: S.findIndex(s => s.k === "mt")};
+  const bi = S.findIndex(s => s.type === "BrewStart"), hi = S.findIndex(s => s.k === "hlt" && s.type === "MashInStep");
+  return {bi, si: hi >= 0 ? hi : bi >= 0 && !S[bi].start ? bi : -1, mi: S.findIndex(s => s.k === "mt")};
 }
 
 /* ---------- the model's answers, as the mockup reads them (brew-day.js, swFcOf to swModel) ---------- */
@@ -144,17 +146,18 @@ function strikeInputs(st, M) {
 /* the recipe's place: "plan" before the strike water is heated, "heat" while the strike water step runs, "moved" once the
    water is in the mash tun; brewing by hand (no strike water step) "moved" once MashIn on the mash tun has started. None
    once the malt is in. A recipe whose first step is the strike water step (no BrewStart in front) is still planning
-   until it begins. By hand the screen adds its own rule (swShown) */
-function strikePhase(st, si, mi) {
+   until it begins; BrewStart as the strike water step plans until it heats (bsHeat). By hand the screen adds its own
+   rule (swShown) */
+function strikePhase(st, bi, si, mi) {
   const r = st.recipe;
   if (!r || r.held || r.cur > mi) return null;
   if (si < 0) return r.cur === mi && r.state !== "ready" ? "moved" : "plan";
-  return r.cur === mi ? "moved" : r.cur === si && !(r.state === "ready" && r.cur === 0) ? "heat" : "plan";
+  return r.cur === mi ? "moved" : (r.cur === si && si !== bi && !(r.state === "ready" && r.cur === 0)) || (r.cur === bi && si === bi && !!r.bsHeat) ? "heat" : "plan";
 }
 export function strikeState(st, M) {
   const s = strikeInputs(st, M);
   if (!s) return null;
-  const d = st.swd, {S, bi, si, mi, F, gal, inputs, sample} = s, phase = strikePhase(st, si, mi);
+  const d = st.swd, {S, bi, si, mi, F, gal, inputs, sample} = s, phase = strikePhase(st, bi, si, mi);
   let miss = s.miss, answer = null;
   const A = !miss && d.has ? d.has : null;
   if (A) {

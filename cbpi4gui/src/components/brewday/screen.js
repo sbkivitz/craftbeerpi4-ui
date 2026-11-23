@@ -782,9 +782,14 @@ function recipeHTML() {
     ${st.bsOpen ? bsHTML() : `<p class="note">${esc(st.notes.r || "")}</p>`}
     <ol class="steps" aria-label="Recipe steps">${bsAddHTML()}${S.map(stepHTML).join("")}</ol>${M.TIMERS ? timersHTML() : ""}`;
 }
+/* NEXT STEP's question. Skipping BrewStart as the strike water step before it holds the water (while it waits or heats)
+   starts MashIn on the Mash Tun with the tun still empty, so it says so; once BrewStart holds the water, the answer moves
+   it on as its own question's does */
 function confirmHTML() {
   const r = st.recipe, cur = M.RECIPE.steps[r.cur], nx = M.RECIPE.steps[r.cur + 1];
-  return `<div class="confirm" role="group" aria-labelledby="cf-t"><p id="cf-t">Skip the rest of <b>${esc(cur.n)}</b>${cur.min ? ` (${mmss(r.left)} left)` : ""} and start <b>${esc(nx.n)}</b>${nx.temp ? ` at ${nx.temp} ${M.U}` : ""}?</p><div><button type="button" class="yes" data-cmd="r:next-yes">SKIP TO ${esc(nx.n.toUpperCase())}</button><button type="button" data-cmd="r:next-no">KEEP GOING</button></div></div>`;
+  const dry = cur.type === "BrewStart" && bsStrike() && r.bsHeat !== "holding" && nx.k === "mt"
+    ? ` The strike water isn't in the ${esc(DEMO_MODE ? DEMO.KNAME.mt : (M.K && M.K.mt && M.K.mt.name) || "Mash Tun")} yet, so its pump would start with the tun empty.` : "";
+  return `<div class="confirm" role="group" aria-labelledby="cf-t"><p id="cf-t">Skip the rest of <b>${esc(cur.n)}</b>${cur.min ? ` (${mmss(r.left)} left)` : ""} and start <b>${esc(nx.n)}</b>${nx.temp ? ` at ${nx.temp} ${M.U}` : ""}?${dry}</p><div><button type="button" class="yes" data-cmd="r:next-yes">SKIP TO ${esc(nx.n.toUpperCase())}</button><button type="button" data-cmd="r:next-no">KEEP GOING</button></div></div>`;
 }
 /* RESET's question, as NEXT STEP's: a reset can't be undone, so it says what CraftBeerPi forgets (the steps done, and the
    minutes the stopped step had run: a 40 min rest stopped at 16 runs all 40 again), what goes with it (the questions about
@@ -818,13 +823,13 @@ function unloadRule() {
 const unloadAsks = r => r.state === "stopped" || r.cur > 0 || inBook() !== true;
 /* what runs, in brewing words, as the recipe pages' greyed LOAD says it: the step and what it waits for, as its row
    says it, or its time left. BrewStart planning Ready by names its kettle (its Heat_Kettle), its water's temperature
-   and the time */
+   and the time; once it heats (bsHeat), the water it heats, and holding it, that it waits for you */
 function unloadRunWhy(r) {
   const s = M.RECIPE.steps[r.cur], U = M.U, at = s.temp == null ? "" : s.type === "SpargeStep" ? ` the water to ${s.temp} ${U}` : ` to ${s.temp} ${U}`;
   const starts = typeof r.wait === "string" && r.wait.startsWith("STARTS ") ? r.wait.slice(7) : "";
-  const what = s.type === "BrewStart" ? (s.ready ? `BrewStart is waiting to have the ${s.kn || (DEMO_MODE ? DEMO.KNAME[s.k] : "kettle")} at ${s.temp} ${U} by ${s.ready}` : `BrewStart is waiting to start${starts ? ` at ${starts}` : ""}`)
+  const what = s.type === "BrewStart" && !r.bsHeat ? (s.ready ? `BrewStart is waiting to have the ${s.kn || (DEMO_MODE ? DEMO.KNAME[s.k] : "kettle")} at ${s.temp} ${U} by ${s.ready}` : `BrewStart is waiting to start${starts ? ` at ${starts}` : ""}`)
     : r.wait === WAITING_FOR_YOU ? `${s.n}, waiting for you`
-    : r.wait === true || r.wait === "HEATING" ? `${s.n}, heating${at}` : r.wait === "COOLING" ? `${s.n}, cooling${at}`
+    : r.wait === true || r.wait === "HEATING" ? `${s.n}, heating${s.type === "BrewStart" ? ` the water to ${s.temp} ${U}` : at}` : r.wait === "COOLING" ? `${s.n}, cooling${at}`
     : r.wait ? `${s.n}, ${String(r.wait).toLowerCase()}` : s.min ? `${s.n}, ${mmss(r.left)} left` : s.n;
   return `${M.RECIPE.name} is running: ${what}. Stop it first.`;
 }
@@ -1280,10 +1285,12 @@ function brewQuestions() {
    question or a panel in the same place, as they give way to each other.
    CraftBeerPi works its figures out (core's strike water helper: GET /step2/strike, and the topic "strike", whose state
    is st.sw), and USE, BACK TO, the HLT's water and the grain's temperature are its calls. The demo makes the same state
-   from the mockup's numbers (strike-demo.js). Its phases, by the recipe's place: "plan" while BrewStart is next or
-   waits, "heat" while the strike water step heats and holds the water, "moved" while MashIn on the Mash Tun brings the
-   water to the rest before the malt. A recipe without the brewer's flow in front (no strike water step) has the box only
-   while it waits to start and the HLT heats the strike water by hand; there USE sets the HLT's target, as SET would */
+   from the mockup's numbers (strike-demo.js). The strike water step is a MashInStep on the HLT where the recipe has one;
+   without one it is a Ready by BrewStart, which heats the HLT itself and holds the water (BrewStart 1.3.0). Its
+   phases, by the recipe's place: "plan" while BrewStart is next or waits, "heat" while BrewStart or the strike water
+   step heats and holds the water, "moved" while MashIn on the Mash Tun brings the water to the rest before the malt. A
+   recipe without the brewer's flow in front (no strike water step) has the box only while it waits to start and the
+   HLT heats the strike water by hand; there USE sets the HLT's target, as SET would */
 /* the limits, in the brewery's unit: within half a degree the strike water is USE's (SW_SAME); a room's reading is
    35-120 °F; a figure more than 27 °F above the rest is too far to trust, and so is one over MashInStep's ceiling, the
    hottest strike water the box sets; with the pump stopped, a Mash Tun reading 3 °F over the forecast isn't the mash */
@@ -1784,8 +1791,8 @@ function swHTML() {
 /* the box's head: the window, then what goes under it */
 const head0 = (N, under) => `<div class="swhead">${swWin(N)}${under}</div>`;
 /* USE waiting for the grain (swHTML) leads to the answer: while BrewStart's row is the way to its box, that box, with
-   focus on IN THE GARAGE and back on USE as it closes; once BrewStart has finished, the strike water box's own grain
-   box, in its details */
+   focus on IN THE GARAGE and back on USE as it closes; once BrewStart heats or has finished, the strike water box's own
+   grain box, in its details */
 function swWhere() {
   const bi = bsIdx();
   if (bi >= 0 && bsLive(bi)) return bsOpen({focus: "garage", from: "use"});
@@ -1793,10 +1800,10 @@ function swWhere() {
   swGrain("open");
 }
 /* USE: CraftBeerPi's call puts the temperature in the strike water step, and in BrewStart's while it is next or waits,
-   so Ready by plans for it; and while the strike water step runs, in the HLT's target too. A question already up from
-   the old temperature goes, and the step asks again at the new one. By hand it sets the HLT's target alone, as SET does.
-   BACK TO undoes it the same way, to the temperature before the first USE. A figure worked out from numbers since changed
-   on another screen is refused, and said (swRefusal) */
+   so Ready by plans for it; and while the strike water step heats or holds the water (BrewStart heating included), in
+   the HLT's target too. A question already up from the old temperature goes, and the step asks again at the new one. By
+   hand it sets the HLT's target alone, as SET does. BACK TO undoes it the same way, to the temperature before the first
+   USE. A figure worked out from numbers since changed on another screen is refused, and said (swRefusal) */
 function swUse() {
   const N = swNumbers();
   if (!N.ok || N.stale || st.pend.sw) return;
@@ -1951,9 +1958,9 @@ const runWord = s => s.type === "SpargeStep" ? "SPARGING" : "NOW";
    CraftBeerPi's clock, which the step keeps as a date; and where the grain spent the night, asked once a brew as USE
    depends on it: in the garage, where the boil kettle's probe stands for it, or indoors, at a figure. BrewStart's water
    is never typed here: the strike water box gives it (USE, HLT WATER). The row opens the box while BrewStart hasn't
-   finished: on a recipe not begun, and while it waits for its time. A recipe without BrewStart has + BrewStart above
-   its first step, which opens the box for a new one. On one screen the box takes the step list's room, as the pre-brew
-   check's box does; where the page scrolls it sits where the list is */
+   started heating: on a recipe not begun, and while it waits for its time. A recipe without BrewStart has + BrewStart
+   above its first step, which opens the box for a new one. On one screen the box takes the step list's room, as the
+   pre-brew check's box does; where the page scrolls it sits where the list is */
 /* a day on CraftBeerPi's clock as a number, and its time counted the same way, in seconds (bsNow): the demo's days from
    its moment's first day (a simulator's own date, else Friday 20 Nov 2026, the night before brew day in the strike
    water moments), as st.t counts them; live, from 1 Jan 1970 by CraftBeerPi's own date and time of day (The One Clock
@@ -1984,7 +1991,23 @@ const bsIdx = () => M.RECIPE.steps.findIndex(s => s.type === "BrewStart");
 const bsKind = s => s.kind || (s.start ? "start" : "ready");
 const bsTime = s => s.start || s.ready || null;
 const bsWaits = () => { const r = st.recipe, s = r && M.RECIPE.steps[r.cur]; return !!s && s.type === "BrewStart" && r.state === "running" && typeof r.wait === "string" && r.wait.startsWith("STARTS "); };
-/* BrewStart's row is the way to its box while BrewStart hasn't finished: on a recipe not begun, and while it waits */
+/* BrewStart as the strike water step (BrewStart 1.3.0; BUILD-NOTES "BrewStart heats the HLT itself"): with Ready by on
+   the HLT, in a recipe with no MashInStep on the HLT, it heats the HLT itself at its heating start, then holds the water
+   until it has been moved to the Mash Tun and Next pressed. The recipe's shape says so, as the strike water box finds
+   its steps (swSteps). A recipe with a strike water step on the HLT keeps that step, which BrewStart hands over to as
+   heating is due */
+const bsStrike = () => {
+  const S = M.RECIPE.steps, i = bsIdx();
+  return i >= 0 && bsKind(S[i]) === "ready" && S[i].k === "hlt" && !S.some(s => s.k === "hlt" && s.type === "MashInStep");
+};
+/* BrewStart's question while it holds the water, in its words: live as CraftBeerPi asked it, naming the next kettle;
+   with no question up (after a restart it doesn't ask a second time), the same words for the Mash Tun */
+function bsAsk(s) {
+  const q = !DEMO_MODE && st.prompts.find(p => String(p.title || "") === s.n && p.message);
+  return q ? ut(q.message) : `Move the strike water to the ${DEMO_MODE ? DEMO.KNAME.mt : (M.K && M.K.mt && M.K.mt.name) || "Mash Tun"}, then press Next`;
+}
+/* BrewStart's row is the way to its box while BrewStart hasn't started heating: on a recipe not begun, and while it
+   waits */
 function bsLive(i) {
   const r = st.recipe, s = M.RECIPE.steps[i];
   if (!r || !s || s.type !== "BrewStart" || i !== bsIdx()) return false;
@@ -2102,7 +2125,7 @@ function bsNewTemp() {
 const bsIn = sec => inWords(sec, SC());
 /* while BrewStart waits with Ready by, what it plans for heating the water: its ready time less its heating start, as
    its row has them (live, the heating start is the STARTS its status line gives, on the ready day or the day before);
-   null otherwise. A new ready time no further away than that, and a minute, has BrewStart hand over at once
+   null otherwise. A new ready time no further away than that, and a minute, has BrewStart start heating at once
    (change_time), as START does for a time too soon */
 function bsLead() {
   const bi = bsIdx(), s = bi >= 0 ? M.RECIPE.steps[bi] : null, at = s ? bsAt(s) : null;
@@ -2278,8 +2301,8 @@ function bsCmd(x, y) {
    saved as a date (never Today or Tomorrow, which BrewStart counts from START), with the time and the kind; a new grain
    answer has CraftBeerPi work USE out again, as the strike water box's GRAIN does. While BrewStart waits it plans again
    at once (change_time): STARTS for the new time, and its notification in its words; HEAT NOW, a time too soon to wait
-   for, has it hand over at once, so the strike water step heats and focus goes to LOG, the row being no longer a
-   button. ADD BREWSTART puts a new BrewStart in as step 1 (bsAdd, bsAddLive) */
+   for, has it start heating the HLT at once (bsHeat), and focus goes to LOG, the row being no longer a button. ADD
+   BREWSTART puts a new BrewStart in as step 1 (bsAdd, bsAddLive) */
 function bsSet() {
   const B = st.bs, r = st.recipe, U = M.U;
   if (!B || st.pend.bs || B.fillBusy) return;
@@ -2318,13 +2341,11 @@ function bsSet() {
     if (timeCh && M.RECIPE.steps[r.cur] === s && bsWaits()) {
       const pv = st.v.hlt.pv;
       if (ws.soon) {
-        const nx = M.RECIPE.steps[r.cur + 1];
+        /* HEAT NOW: BrewStart's notice, then it heats the HLT itself at once (bsHeat), the current step still */
         soon(() => {
           const due = bsDueLine(s, pv);
           logEvent(due, "from CraftBeerPi", "");
-          logEvent("BrewStart finished", "by recipe", "");
-          stepStart(r.cur + 1);
-          if (nx) logEvent(`${nx.n} started${nx.temp != null ? `, ${nx.k === "hlt" ? "HLT" : M.VNAME[nx.k].toLowerCase()} target ${nx.temp.toFixed(1)} ${M.U}` : ""}`, "by recipe", "");
+          bsHeat(s);
           say(due);
           setTimeout(() => $("#event .logbtn")?.focus({preventScroll: true}), 0);
         });
@@ -2396,7 +2417,8 @@ function bsPut(B, s, o) {
 }
 /* a new time while BrewStart waits: its change_time (POST /step2/action/{id}) with the day as a date, confirmed once the
    steps show it; BrewStart plans again from the water as it is and says so in a notice of its own, or, for a ready time
-   too soon to wait for (HEAT NOW), hands over at once, its notice then spoken. Not taken (400): BrewStart's reason, as
+   too soon to wait for (HEAT NOW), starts heating at once (BrewStart 1.3.0 heats the HLT itself; an older one, or one
+   before a strike water step on the HLT, hands over), its notice then spoken. Not taken (400): BrewStart's reason, as
    the answer's detail where CraftBeerPi passes it on ("action refused"); else as BrewStart tells every screen, in a
    notice under the step's name, which comes on the websocket just before or after the answer and is waited for a
    second; else that the time wasn't taken. Said under the box, and logged as failed */
@@ -2417,8 +2439,8 @@ function bsRetime(s, o, B) {
   };
 }
 /* CraftBeerPi's notices as they came, newest first, for a refusal whose reason comes in one (bsRetime): its words, under
-   its title, since a moment, waiting up to ms for it. bsSpeak: BrewStart's notice to say aloud as it hands over for HEAT
-   NOW (logAlert) */
+   its title, since a moment, waiting up to ms for it. bsSpeak: BrewStart's notice to say aloud as it starts heating for
+   HEAT NOW (logAlert) */
 let bsHeardList = [], bsSpeak = null;
 const bsHear = a => { bsHeardList.unshift({title: String(a.title ?? ""), msg: ut(a.message), at: Date.now()}); bsHeardList = bsHeardList.slice(0, 8); };
 async function bsHeard(title, since, ms = 1000) {
@@ -2531,21 +2553,23 @@ async function bsFillLoad(B) {
   renderAll();
 }
 /* BrewStart's row says when it's ready by and its water: "126 °F · ready by 07:00 Sat · 15 gal". As the way to its box
-   it says its day too, or that no time is set; finished, it stays as it was. The details line never splits a figure
-   from its unit or a time from its day, and each "·" stays with what comes before it, so a line can end with one but
-   never start with one. On one screen the title bar is always in view, so a step's note steps aside while the title
-   bar shows that step's own question (brewday.css) */
+   it says its day too, or that no time is set; heating, holding or finished, it stays as it was. The details line never
+   splits a figure from its unit or a time from its day, and each "·" stays with what comes before it, so a line can end
+   with one but never start with one. BrewStart holding the strike water has its question as its note line, as the
+   strike water step's note shows it. On one screen the title bar is always in view, so a step's note steps aside while
+   the title bar shows that step's own question (brewday.css) */
 function stepHTML(s, i) {
   const r = st.recipe, state = i < r.cur ? "done" : i === r.cur ? "cur" : "", live = bsLive(i), tm = s.type === "BrewStart" ? bsTime(s) : null;
   const when = live ? (tm ? `${bsKind(s) === "start" ? "start at" : "ready by"} ${tm}${(d => d != null ? `&nbsp;${dShort(d)}` : "")(bsDayOf(s))}` : '<span class="amb">no time set</span>')
-    : s.ready ? `ready by ${esc(s.ready)}` : s.start ? `start at ${esc(s.start)}` : "";
+    : s.ready ? `ready&nbsp;by&nbsp;${esc(s.ready)}` : s.start ? `start&nbsp;at&nbsp;${esc(s.start)}` : "";
   const p = [s.temp != null ? `${stepTemp(s)}&nbsp;${M.U}` : "", s.min ? `${s.min}&nbsp;min` : "", when, s.vol != null ? `${+s.vol.toFixed(2)}&nbsp;${s.volU || "gal"}` : ""].filter(Boolean).join("&nbsp;· ");
   const right = state === "done" ? "✓ DONE" : state === "cur" ? (r.state === "running" ? (r.wait ? waitHTML(r.wait) : (s.min ? `<span id="r-left">${mmss(r.left)}</span> LEFT` : runWord(s))) : r.state === "ready" ? (r.wait ? waitHTML(r.wait) : "READY") : "STOPPED") : '<i class="todo" aria-hidden="true"></i><span class="sr">to come</span>';
   if (live) return bsRowHTML(s, i, state, p, right);
   const pct = s.min ? pctOf(r.left, s.min) : 0;
   const bar = state === "cur" && s.min ? `<span class="bar"><i id="r-bar" style="width:${pct}%"></i></span>` : "";
   const adds = s.adds ? `<span class="adds">${s.adds.map((a, j) => addHTML(a, j, state, s)).join("")}</span>` : "";
-  return `<li class="step${state === "done" ? " done" : ""}"${state === "cur" ? ' aria-current="step"' : ""}><span class="n">${i + 1}</span><span class="t">${esc(s.n)}</span>${p ? `<span class="p">${p}</span>` : ""}${s.note ? `<span class="p pn${state === "cur" && st.banner && st.banner.title === s.n ? " asked" : ""}">${esc(s.note)}</span>` : ""}<span class="s">${right}</span>${bar}${adds}</li>`;
+  const nt = s.note || (state === "cur" && s.type === "BrewStart" && r.bsHeat === "holding" ? bsAsk(s) : "");
+  return `<li class="step${state === "done" ? " done" : ""}"${state === "cur" ? ' aria-current="step"' : ""}><span class="n">${i + 1}</span><span class="t">${esc(s.n)}</span>${p ? `<span class="p">${p}</span>` : ""}${nt ? `<span class="p pn${state === "cur" && st.banner && st.banner.title === s.n ? " asked" : ""}">${esc(nt)}</span>` : ""}<span class="s">${right}</span>${bar}${adds}</li>`;
 }
 /* a finished boil ticks the additions it asked for; one it never asked for (skipped, or ended early) is dimmed,
    without a tick. The demo's steps don't say, so all of a finished step's are ticked, as in the mockup. */
@@ -3233,6 +3257,18 @@ function stepStart(i) {
   }
   /* a NotificationStep's question goes unanswered as its step ends some other way (NEXT): CraftBeerPi takes it down */
   if (moved && st.banner && st.banner.cmd === "b:done" && st.banner.title === was.n) { st.banner = null; questionGone(was.n, "no longer needed"); }
+  /* BrewStart ending once it has heated the strike water (bsHeat): as the strike water step, by Next once the water is
+     moved (or NEXT STEP before), it switches the HLT's AUTO off. LOG says so, then the next step's start, after the
+     press's own line */
+  const bsHot = moved && was.type === "BrewStart" ? r.bsHeat : null;
+  if (bsHot) {
+    if (st.v.hlt.mode === "auto") setMode("hlt", "manual");
+    r.bsHeat = null;
+    soon(() => {
+      logEvent("BrewStart finished, HLT AUTO off", "by recipe", "");
+      logEvent(`${s.n} started${s.temp != null ? `, ${kettleWord(s.k)} target ${s.temp.toFixed(1)} ${M.U}` : ""}`, "by recipe", "");
+    });
+  }
   /* on to the boil kettle: the mash tun's AUTO, and a mash step's HERMS with it, has done its work */
   if (s.k === "bk") { st.fill.bk = true; if (st.v.mt.mode === "auto") setMode("mt", "manual"); }
   /* the runoff over (the hltpump extension): as the last step named for the runoff ends, by NEXT here or its
@@ -3261,9 +3297,10 @@ function stepStart(i) {
   if (s.temp != null) {
     stepTarget(s);
     /* the strike water step on the HLT says HEATING, then asks for the water to be moved; on to the mash tun from it,
-       the water is there (the strike water box's moments) */
+       or from BrewStart once it has held the water for the move, the water is there (the strike water box's moments).
+       From BrewStart skipped while it still heats, the tun is empty */
     if (s.k === "hlt" && s.type === "MashInStep") swHeating(s);
-    else if (st.swd && moved && was.k === "hlt" && was.type === "MashInStep" && s.k === "mt") swMovedIn(s);
+    else if (st.swd && moved && s.k === "mt" && ((was.k === "hlt" && was.type === "MashInStep") || bsHot === "holding")) swMovedIn(s);
   }
   /* a NotificationStep asks a moment after it starts, in its own words; NEXT STEP, CraftBeerPi's label, answers it */
   else if (s.note) {
@@ -3362,18 +3399,21 @@ function swWorked() {
    day's. On BrewStart it also answers where the grain spent the night: a figure is indoors, the probe the garage */
 const swDemoGrain = v => () => { const {S, bi} = swDemoSteps(); if (bi >= 0) Object.assign(S[bi], {grain: v, where: v == null ? "garage" : "indoors"}); else st.swd.grain = v; st.swGrain = null; swRework("grain"); };
 /* USE or BACK TO, as CraftBeerPi applies it: the strike water step's temperature, BrewStart's while it is next or waits,
-   and while the strike water step runs the HLT's target; by hand the HLT's target alone */
+   and while the strike water step heats or holds the water (BrewStart heating included) the HLT's target; by hand the
+   HLT's target alone */
 function swSet(t) {
-  const r = st.recipe, {S, bi, si} = swDemoSteps(), H = st.v.hlt, he = st.a.hltEl;
+  const r = st.recipe, {S, bi, si} = swDemoSteps(), H = st.v.hlt, he = st.a.hltEl, run = r.state === "running";
   const heatTo = () => { he.on = t > H.pv; he.pct = he.on ? (t - H.pv > 2 ? 100 : 40) : 0; };
   if (si < 0) { H.sv = H.own = t; if (H.mode === "auto") heatTo(); return; }
   S[si].temp = t;
-  if (bi >= 0 && r.cur <= bi) { S[bi].temp = t; if (r.cur === bi && r.state === "running") r.wait = `STARTS ${hhmm(DEMO.swStartAt(t, H.pv))}`; }
-  if (r.cur === si && r.state === "running") {
+  if (bi >= 0 && r.cur <= bi) S[bi].temp = t;
+  /* the step heating or holding the water: BrewStart once it heats (bsHeat), or the strike water step on the HLT */
+  const hs = r.cur === bi && r.bsHeat ? S[bi] : r.cur === si && si !== bi ? S[si] : null;
+  if (run && hs) {
     H.sv = H.own = t; heatTo();
-    if (st.banner && st.banner.title === S[si].n) { st.banner = null; questionGone(S[si].n, "no longer needed"); }
-    swHeating(S[si]);
-  }
+    if (st.banner && st.banner.title === hs.n) { st.banner = null; questionGone(hs.n, "no longer needed"); }
+    if (hs.type === "BrewStart") bsHeating(hs); else swHeating(hs);
+  } else if (run && r.cur === bi && bsWaits()) r.wait = `STARTS ${hhmm(bsHeatAt(S[bi], H.pv))}`;
 }
 /* the strike water step heats until the water is half a degree short of its temperature, then asks for it to be moved
    (its Notification), and holds it */
@@ -3383,14 +3423,41 @@ function swHeating(s) {
   r.wait = WAITING_FOR_YOU;
   soon(() => { st.banner = {tone: "prompt", title: s.n, text: s.note, act: "NEXT STEP", cmd: "b:done"}; logEvent(`${s.n}: ${s.note}`, "waiting for you", "wait"); });
 }
-/* BrewStart, started: it heats nothing, and waits for the time its plan works out: with Ready by, as early as heating
-   the water needs; with Start at, the time itself (bsHeatAt). Without a time it can't plan, and says so in its words
-   (err_time_missing), waiting for the brewer */
+/* BrewStart, started: it heats nothing yet, and waits for the time its plan works out: with Ready by, as early as
+   heating the water needs; with Start at, the time itself (bsHeatAt). Without a time it can't plan, and says so in its
+   words (err_time_missing), waiting for the brewer */
 function swWaitBegin(s) {
   const r = st.recipe, pv = st.v.hlt.pv;
+  r.bsHeat = null;
   if (bsAt(s) == null) { r.wait = WAITING_FOR_YOU; soon(() => logEvent("BrewStart: Error: The time is blank - set it", "from CraftBeerPi", "bad")); return; }
   r.wait = `STARTS ${hhmm(bsHeatAt(s, pv))}`;
   soon(() => logEvent(bsPlanLine(s, pv), "from CraftBeerPi", ""));
+}
+/* BrewStart (1.3.0) with Ready by, at its heating start: it heats the HLT itself to its own temperature, the strike
+   water's, on the HLT's AUTO, with the HLT pump on as the brew morning has it, and stays the current step (bsHeat:
+   "heating", then "holding"). Its line in LOG comes just after what set it going */
+function bsHeat(s) {
+  const H = st.v.hlt, he = st.a.hltEl;
+  st.recipe.bsHeat = "heating";
+  H.own = s.temp;
+  stepTarget(s);
+  he.on = s.temp > H.pv; he.pct = he.on ? (s.temp - H.pv > 2 ? 100 : 40) : 0;
+  if (!st.a.hltPump.on) setActor("hltPump", true);
+  soon(() => logEvent(`BrewStart heating, HLT target ${s.temp.toFixed(1)} °F`, "by recipe", ""));
+  bsHeating(s);
+}
+/* BrewStart heating: HEATING until the water is half a degree short of its temperature, as the strike water step
+   counts it. Then, as the strike water step, it holds the water and asks in the title bar for it to be moved, until
+   Next (cmdBanner, stepStart) */
+function bsHeating(s) {
+  const r = st.recipe;
+  if (st.v.hlt.pv < s.temp - 0.5) { r.wait = true; r.bsHeat = "heating"; return; }
+  r.wait = WAITING_FOR_YOU; r.bsHeat = "holding";
+  soon(() => {
+    st.banner = {tone: "prompt", title: s.n, text: DEMO.SW_ASK, act: "NEXT STEP", cmd: "b:done"};
+    logEvent(`${s.n}: ${DEMO.SW_ASK}`, "waiting for you", "wait");
+    say(`${s.n}. ${DEMO.SW_ASK}.`, true);
+  });
 }
 /* when the demo's BrewStart goes on to the heating: with Start at, at its time; with Ready by, as early as heating the
    water at pv needs (swStartAt) */
@@ -3406,8 +3473,8 @@ function bsPlanLine(s, pv) {
 /* BrewStart's notification for a new time taken while it waits (change_time's notify_time_changed): the time it had,
    then its plan as above */
 const bsChangedLine = (s, pv, was) => `BrewStart: Time changed, was ${bsFmt(was)}. ${bsPlanLine(s, pv).slice(11)}`;
-/* BrewStart's notification as a new ready time makes it hand over at once (_due_message): on time if heating the water
-   from pv, without the spare minutes, still makes it; else when the water will be ready */
+/* BrewStart's notification as a new ready time makes it start heating at once (_due_message): on time if heating the
+   water from pv, without the spare minutes, still makes it; else when the water will be ready */
 function bsDueLine(s, pv) {
   const at = bsAt(s), heat = (s.temp - pv) / DEMO.SW_RATE, eta = st.t + Math.round(heat * 60);
   return eta <= at ? `BrewStart: Time to heat - the water should be ready by ${bsFmt(at)}.`
@@ -3447,7 +3514,8 @@ function cmdStart(force, cav = "") {
     if (fresh && st.hist) st.hist.steps.push([st.t, r.cur + 1]);
     r.state = "running";
     if (s.type === "SpargeStep") spargeBegin(s);
-    else if (s.type === "BrewStart") swWaitBegin(s);
+    /* BrewStart started again after a STOP once it had begun heating carries on heating, as its time has passed */
+    else if (s.type === "BrewStart") { if (r.bsHeat) bsHeat(s); else swWaitBegin(s); }
     else if (s.temp != null) { stepTarget(s); if (s.k === "hlt" && s.type === "MashInStep") swHeating(s); }
     /* a recipe started from its first step puts the boil power back to the usual power (Usual_Boil_Power). A change made
        later that day, before or during the boil, is kept for the boil, and doesn't carry over to the next brew day */
@@ -4487,10 +4555,16 @@ function liveRecipe(snap) {
   if (cur < 0) { cur = S.findIndex(s => s.status === "I"); state = "ready"; }
   if (cur < 0) return null;
   const s = S[cur], text = String(s.text || "").trim(), left = parseLeft(text);
+  const p = (snap.steps || []).find(x => x && x.id === s.id);
+  const props = (p && p.props) || {}, done = new Set((props._hops_done || []).map(Number));
+  /* BrewStart 1.3.0 heating the HLT itself (its _brewstart_heating, kept with the step), then holding the water for the
+     move once it has asked (_brewstart_asked), until Next: its row says HEATING, then WAITING FOR YOU */
+  const heat = s.type === "BrewStart" && state !== "ready" && props._brewstart_heating ? (props._brewstart_asked ? "holding" : "heating") : null;
   let wait = null;
   // a question CraftBeerPi asks under the step's own name that holds the step up - the malt, a notification step,
   // the boil's hold - but not one asked while the step's timer runs on (the whirlpool's "Heat and hold?")
   if (((state === "running" && left == null) || state === "ready") && st.prompts.some(q => String(q.title || "") === s.n)) wait = WAITING_FOR_YOU;
+  else if (state === "running" && heat) wait = heat === "holding" ? WAITING_FOR_YOU : "HEATING";
   else if (state === "running" && s.type === "BrewStart") {
     // cbpi4_BrewStart: "Start Fri Oct 30, 07:00 · 2:35:10 to go", "Ready … · heating from Fri Oct 30, 05:30 · …", or on
     // CraftBeerPi's 12-hour clock (CLOCK_FORMAT) "… heating from Sat Nov 21, 5:53 AM · …"; STARTS says it as 05:53
@@ -4502,8 +4576,6 @@ function liveRecipe(snap) {
     wait = /cool/i.test(s.type || "") || (/target temp/i.test(text) && pv != null && s.temp != null && pv > s.temp + 0.5) ? "COOLING"
       : /target temp/i.test(text) ? "HEATING" : "WAITING";
   }
-  const p = (snap.steps || []).find(x => x && x.id === s.id);
-  const props = (p && p.props) || {}, done = new Set((props._hops_done || []).map(Number));
   const adds = (s.adds || []).map(a => {
     const n = a[3];
     const due = st.prompts.some(q => n === "fw" ? /first wort/i.test(q.message || "") : /hop alert/i.test(q.title || "") && (String(q.message || "").trim().endsWith(`(${n})`) || String(q.message || "").trim() === `Please add Hop ${n}`));
@@ -4514,7 +4586,7 @@ function liveRecipe(snap) {
   // CraftBeerPi's question under its name, whose button starts it. NEXT STEP is greyed then (HELD_NEXT), and the
   // question's button takes a held press, as START does
   const held = state === "ready" && !!s.boil && S.some(x => x.status === "D") && st.prompts.some(q => String(q.title || "") === s.n);
-  return {state, cur, left: left ?? (s.min ? s.min * 60 : 0), wait, adds, held, started: s.type === "SpargeStep" && !!props._sparge_started};
+  return {state, cur, left: left ?? (s.min ? s.min * 60 : 0), wait, adds, held, started: s.type === "SpargeStep" && !!props._sparge_started, bsHeat: heat};
 }
 // The title bar: no connection first, then a command that failed, then CraftBeerPi's errors, then the rest by how urgent
 // (rank, below). For its first few seconds a page that has not connected yet says so calmly. fresh: it has just arrived,
@@ -4630,15 +4702,25 @@ function seenElsewhere(snap) {
   }
   words.forEach(seenHere);
 }
+/* BrewStart 1.3.0 heating the HLT itself, as CraftBeerPi's steps tell it: its heating begun (_brewstart_heating, kept
+   with the step) and its status line no longer the waiting one, which it writes just after its notice ("Time to heat -
+   …"); bsHadHeat, it had begun. bsOff: the step after a BrewStart that heated, as it finished, and when */
+const BS_WAITING = /(?:^start|heating from)\s+[^·]*?\d{1,2}:\d{2}/i;
+const bsHadHeat = x => !!x && x.type === "BrewStart" && !!(x.props || {})._brewstart_heating;
+const bsHeatsNow = x => bsHadHeat(x) && !BS_WAITING.test(String(x.state_text || "").trim());
+const kettleWord = k => k === "hlt" ? "HLT" : M.VNAME[k].toLowerCase();
+let bsOff = null;
 /* a step starting, or resuming after a Stop, for the event line. A SpargeStep says what it does as it starts: it heats
    the sparge water with the mash tun MANUAL, or with no water to heat leaves the pumps to the brewer.
-   Resumed after Sparge started, it doesn't heat again, so it names no target */
+   Resumed after Sparge started, it doesn't heat again, so it names no target. BrewStart sets no target as it starts: it
+   waits, and its heating has a line of its own */
 function stepStartLine(m, resumed, s) {
   const p = (s && s.props) || {};
   if (s && s.type === "SpargeStep") {
     if (resumed && p._sparge_started) return `${m.n} resumed`;
     if (!resumed) return p.Kettle && m.temp > 0 ? `${m.n}: heating the sparge water to ${m.temp} ${M.U}, mash tun MANUAL` : `${m.n}: mash tun MANUAL, the pumps are yours`;
   }
+  if (s && s.type === "BrewStart") return `${m.n} ${resumed ? "resumed" : "started"}`;
   /* a whirlpool sets no target as it starts: it holds its temperature only after "Heat and hold" */
   if (s && s.type === "WhirlpoolStep") return `${m.n} ${resumed ? "resumed" : "started"}${m.min ? `, ${m.min} min` : ""}`;
   /* the proposed boil kettle shows a target at or above where BOIL starts as BOIL, never as a temperature, as its window
@@ -4735,6 +4817,8 @@ function observe(prev, snap) {
   // START and NEXT STEP pressed here have logged themselves ("Recipe started", "Skipped to …"), as in the
   // mockup: the steps they start and finish are the brewer's doing, not the recipe's.
   const mine = id => ["start", "next"].some(k => own[k] && Date.now() - own[k].at < 10000 && own[k].ids.includes(id));
+  /* BrewStart heating the HLT itself, seen as it begins: its line goes after BrewStart's own notice (below) */
+  const heatLines = [];
   for (const s of steps) {
     const o = old.get(s.id);
     if (!o) continue;
@@ -4742,10 +4826,19 @@ function observe(prev, snap) {
     // a SpargeStep's Sparge started pressed elsewhere: its timer starts at the press, not at a temperature
     if (sparge && !(o.props || {})._sparge_started && (s.props || {})._sparge_started
       && !(own.sparge && own.sparge.id === s.id && Date.now() - own.sparge.at < 10000)) logStep(spargeStartedLine(m), "from another screen", "", s.name);
+    if (s.status === "A" && bsHeatsNow(s) && !bsHeatsNow(o)) heatLines.push(`${m.n} heating${m.temp != null ? `, ${kettleWord(m.k)} target ${m.temp.toFixed(1)} ${M.U}` : ""}`);
     if (o.status === s.status && parseLeft(o.state_text) != null) continue;
     if (o.status !== "A" && s.status === "A") {
-      if (!mine(s.id)) logStep(stepStartLine(m, o.status === "S", s), "by recipe", "", s.name);
-    } else if (o.status === "A" && s.status === "D") { if (!mine(s.id)) logStep(`${m.n} finished`, "by recipe", "", s.name, true); }
+      /* the step after a BrewStart that heated the HLT itself starts with the strike water moved: said whoever moved on */
+      const after = !!bsOff && bsOff.id === s.id && o.status === "I" && Date.now() - bsOff.at < 10000;
+      if (!mine(s.id) || after) logStep(stepStartLine(m, o.status === "S", s), "by recipe", "", s.name);
+    } else if (o.status === "A" && s.status === "D") {
+      /* BrewStart that heated the HLT itself switches the HLT's AUTO off as it ends (BrewStart 1.3.0), NEXT pressed here
+         or not: the press's own line says only what it skipped to */
+      const hot = bsHadHeat(o), i = M.RECIPE.steps.findIndex(x => x.id === s.id), nx = i >= 0 ? M.RECIPE.steps[i + 1] : null;
+      if (hot) bsOff = nx ? {id: nx.id, at: Date.now()} : null;
+      if (!mine(s.id) || hot) logStep(`${m.n} finished${hot ? `, ${kettleWord(m.k)} AUTO off` : ""}`, "by recipe", "", s.name, true);
+    }
     else if (o.status === "A" && s.status === "S" && !(Date.now() - (own.stop || 0) < 10000)) logStep(`${m.n} stopped`, "from another screen", "", s.name, true);
     else if (s.status === "E" && o.status !== "E") logStep(`${m.n}: error`, "by recipe", "bad", s.name, true);
     /* a timer that waited for a temperature. Not a SpargeStep's, which starts at the press, nor a whirlpool's, which starts
@@ -4771,6 +4864,7 @@ function observe(prev, snap) {
     logEvent(`${String((prev.basic && prev.basic.name) || "") || "Brew steps"} unloaded`, "from another screen", "");
   }
   fresh.filter(a => !lastWords(a)).forEach(logAlert);
+  heatLines.forEach(w => logEvent(w, "by recipe", ""));
 }
 /* the screen opened inside the app (back from Brew Steps, say) with questions already waiting: each gets its "waiting for
    you" line if this tab has none, as on a page loaded afresh, where CraftBeerPi sends them again as it connects. LOG's
@@ -4787,8 +4881,8 @@ function firstLines(snap) {
 /* one of CraftBeerPi's new messages, for the event line, and for the title bar when it waits there: a question (a timer's
    alarm, by its name) waits for you, in amber, until it goes (questionGone); an error stays red; a warning is amber while
    it waits in the title bar for OK (warningsGone); anything else, but the routine, in the plain colour. Each is kept a
-   moment too, for a refusal whose reason comes in a notice (bsHeard), and BrewStart's notice as it hands over for HEAT
-   NOW is said aloud (bsSpeak) */
+   moment too, for a refusal whose reason comes in a notice (bsHeard), and BrewStart's notice as it starts heating for
+   HEAT NOW is said aloud (bsSpeak) */
 function logAlert(a) {
   const id = String(a.id), type = String(a.type || "").toLowerCase(), title = ut(a.title), msg = ut(a.message), line = `${title}: ${msg}`;
   bsHear(a);
@@ -5225,7 +5319,7 @@ export function createBrewDay(el, o = {}) {
   if (!DEMO_MODE) { try { window.name = "craftbeerpi"; } catch (_) { /* a sandboxed frame: no name */ } }
   timers = []; noteTimers = {}; hold = null; afterHold = null; heldOn = null; pbKeep = null; rigW = 0; last = null; everConnected = false; book = []; bookBusy = false; bookShown = false;
   bookNames = null; bookFor = null;
-  tAns = null; tMsg = null; lastBannerKey = null; rangAt = 0; newIds = new Set(); openIds = null; sAns = null; swFailedAt = null; swFcGap = null;
+  tAns = null; tMsg = null; lastBannerKey = null; rangAt = 0; newIds = new Set(); openIds = null; sAns = null; swFailedAt = null; swFcGap = null; bsOff = null;
   answered.clear(); Object.keys(own).forEach(k => delete own[k]);
   const html = document.documentElement;
   // The stylesheets go in once and stay: every rule is scoped to html.bd-page, so they rest while it is off.
@@ -5271,9 +5365,9 @@ export function createBrewDay(el, o = {}) {
     if (st.sparge4) M.RECIPE = {...DEMO.RECIPE, steps: DEMO.RECIPE.steps.map((s, i) => i === 3 ? {...DEMO.SPARGE_STEP, ...st.sparge4} : s)};
     // #check-adds and #check-many: a recipe with eight boil additions, of which the boil step holds the first six
     if (st.adds5) M.RECIPE = {...M.RECIPE, steps: M.RECIPE.steps.map((s, i) => i === 4 ? {...s, adds: st.adds5} : s)};
-    /* the strike water moments put the brewer's own flow in front of the recipe, BrewStart and the strike water step on
-       the HLT, at the strike water's temperature in that moment; #sw-hand has the recipe as imported, without them, and
-       #bs-new the strike water step without BrewStart. BrewStart is Ready by 07:00 on brew day, the moment's second day,
+    /* the strike water moments put the brewer's own flow in front of the recipe, BrewStart (SW_STEPS), at the strike
+       water's temperature in that moment; #sw-hand has the recipe as imported, without it, and #bs-new without
+       BrewStart. BrewStart is Ready by 07:00 on brew day, the moment's second day,
        and anything else a moment changes is in swd.bs. Where the grain spent the night is answered unless a moment says
        otherwise (swd.where, null for not yet): in the garage with BrewStart's grain temperature blank, so the boil
        kettle's probe stands for it, and indoors with a figure */
