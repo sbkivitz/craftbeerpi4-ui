@@ -4055,9 +4055,9 @@ function scribeTake(b) {
   if (typeof b.value !== "number" || b.value < rd.min || b.value > rd.max) return [400, {error: `pH must be between ${rd.min} and ${rd.max}`}];
   const key = phKey(b.day_id, b.title, b.value, b.temperature ?? null, b.temperature_unit ?? null), text = `pH ${b.value.toFixed(rd.decimals)}`;
   const ok = () => ({entry_id: b.entry_id, day_id: b.day_id, stage: rem.stage, vessel: rem.vessel, text: `${text} saved in BrewScribe (${rem.stage_name}, ${rem.vessel})`});
-  if (M.ids[b.entry_id] != null) return M.ids[b.entry_id] === key ? [200, ok()] : [409, {error: "That entry was already saved with other figures, so this reading wasn't saved.", reason: "entry_id_reused"}];
+  if (M.ids[b.entry_id] != null) return M.ids[b.entry_id] === key ? [200, ok()] : [409, {error: "BrewScribe already has a different reading saved under this one's ID, so this one wasn't saved.", reason: "entry_id_reused"}];
   if (!S.log) return [409, {error: S.why_not, reason: "no_open_log"}];
-  if (S.log.day_id !== b.day_id) return [409, {error: "The open BrewScribe log has changed, so this reading wasn't saved.", reason: "log_changed"}];
+  if (S.log.day_id !== b.day_id) return [409, {error: "BrewScribe's open log has changed, so this reading wasn't saved. Check BrewScribe's page, then try again.", reason: "log_changed"}];
   if (rem.vessel_problem) return [409, {error: `${rem.vessel_problem} This reading wasn't saved: record it on BrewScribe's page.`, reason: "vessel_unknown"}];
   M.ids[b.entry_id] = key;
   rd.saved = {entry_id: b.entry_id, value: b.value, text, occurred_at: new Date().toISOString()};

@@ -5900,9 +5900,21 @@ draft 3, in his session folder (`files\brewday-entry\contract.md`).
 ### In CraftBeerPi and BrewScribe
 
 - Nothing new: BrewScribe dev51's two calls are in place, and the reminders' OK is CraftBeerPi's own.
+- BrewScribe dev52 (Porter, coming) writes a pH with at least 2 decimals in `text`, in `saved.text` and on its own
+  page, as the mockup does: SAVE pH 5.40 comes back as "pH 5.40 saved in BrewScribe (Early mash, Mash Tun)". dev51
+  writes the shortest number, "pH 5.4 saved…". Nothing in the build changes for it.
+
+### Testing against BrewScribe
+
+- Brew Day shows BrewScribe's `error` as sent, so a test should expect what BrewScribe sent, not fixed words. The
+  mockup's BrewScribe (`scribeTake`) now uses dev51's own sentences, for example for `log_changed`: "BrewScribe's open
+  log has changed, so this reading wasn't saved. Check BrewScribe's page, then try again."
+- Until dev52 is on 8000 and 8012, a test that saves a figure ending in 0, such as 5.40, gets "pH 5.4 saved…".
+  Compare LOG with BrewScribe's `text` as sent, or save a figure such as 5.42: either passes with dev51 and dev52.
 
 ### Checked
 
+- Porter checked the code and the moments against his contract, draft 3: nothing to change.
 - `files\ph\ph_presses.py`, 128 presses, all pass, no page errors; `files\ph\ph_measure.py`, 134 checks at 1180 × 860,
   1440 × 900, 1920 × 950, 1024 × 768, 820 × 1180 and 390 × 844: the box on screen and clear of the reminder and ALL
   OFF, every key and button at least 44 px tall, the reminder's buttons under its words on a phone.

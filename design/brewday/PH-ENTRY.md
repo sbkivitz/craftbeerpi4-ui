@@ -116,7 +116,7 @@ OK (an extra tap every brew to catch a rare slip); a list of quick choices (pH n
 | Change | Where |
 |---|---|
 | RECORD pH on the reminders BrewScribe names, the pH box, SAVE and closing the reminder after it | React UI (`brewday`) |
-| `GET` and `POST /brewscribe/api/brew-day/readings`, with `sample_temperature` "asked", `sample_usual` and `target` | BrewScribe dev51 (Porter, being built) |
+| `GET` and `POST /brewscribe/api/brew-day/readings`, with `sample_temperature` "asked", `sample_usual` and `target` | BrewScribe dev51 (Porter), on 8000 and 8012. dev52, coming, writes a saved pH as "pH 5.40", not "pH 5.4" |
 | Closing the reminder | Nothing new: OK's own call |
 | Anything in CraftBeerPi | Nothing |
 | Dashboard layout files | Nothing |
