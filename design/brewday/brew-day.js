@@ -867,8 +867,10 @@ const SCENES = {
      above its first step; the strike water box works from the HLT's water CraftBeerPi keeps for brewing by hand.
      #bs-new-open: its box, for a new BrewStart. #bs-sim: #bs-edit on a simulator at 60×, its own clock on the same
      Friday night, so the time in words also says how long that is in real minutes. #bs-novol: #bs-edit with
-     BrewStart's water blank. #bs-past, #bs-startat, #bs-sim and #bs-novol show the box from its top, focus in the time
-     box */
+     BrewStart's water blank. #bs-soon: #sw-wait, BrewStart waiting at 05:40 to have the water hot by 07:00, the box
+     opened from its row with 06:00 typed: sooner than BrewStart plans for heating the water, so the time in words says
+     the heating starts at once and SET reads HEAT NOW. #bs-past, #bs-startat, #bs-sim, #bs-novol and #bs-soon show the
+     box from its top, focus in the time box */
   "bs-edit": () => Object.assign(swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})), {base: "sw-plan", open: {bsAt: {focus: "garage"}}}),
   "bs-indoors": () => Object.assign(swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})), {base: "sw-plan", open: {bsAt: {where: "indoors", at: "#bs-box .bsin"}}}),
   "bs-past": () => Object.assign(swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})), {base: "sw-plan", open: {bsAt: {rel: 0}}}),
@@ -886,6 +888,7 @@ const SCENES = {
   "bs-new-open": () => Object.assign(SCENES["bs-new"](), {open: {bsAt: {neu: true}}}),
   "bs-sim": () => Object.assign(swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})), {base: "sw-plan", sim: {scale: 60, day0: "2026-11-20", pc: "2026-11-22"}, open: {bsAt: {}}}),
   "bs-novol": () => { const s = swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})); s.sw.vol = null; return Object.assign(s, {base: "sw-plan", open: {bsAt: {}}}); },
+  "bs-soon": () => Object.assign(SCENES["sw-wait"](), {base: "sw-wait", open: {bsAt: {txt: "06:00"}}}),
   /* USE waiting for where the grain spent the night (swHTML). #sw-where: the #sw-plan night before, BrewStart's time
      set and the grain not answered yet, so BrewStart's row asks "where's the grain?" and USE's place says so too,
      leading to BrewStart's box. #sw-where-am: brew morning (#sw-late), BrewStart finished and the grain still not
@@ -2731,6 +2734,16 @@ function bsPlanLine(s, pv) {
   if (s.start) return `BrewStart: Brew start scheduled for ${bsFmt(bsAt(s))}`;
   return `BrewStart: Ready by ${bsFmt(bsAt(s))}: heating starts about ${bsFmt(bsHeatAt(s, pv))}. ${pv.toFixed(1)} °F to ${s.temp.toFixed(1)} °F takes about ${Math.round((s.temp - pv) / SW_RATE)} min, plus ${SW_SPARE} min spare.`;
 }
+/* BrewStart's notification for a new time taken while it waits (change_time's notify_time_changed): the time it had,
+   then its plan as above */
+const bsChangedLine = (s, pv, was) => `BrewStart: Time changed, was ${bsFmt(was)}. ${bsPlanLine(s, pv).slice(11)}`;
+/* BrewStart's notification as a new ready time makes it hand over at once (_due_message): on time if heating the water
+   from pv, without the spare minutes, still makes it; else when the water will be ready */
+function bsDueLine(s, pv) {
+  const at = bsAt(s), heat = (s.temp - pv) / SW_RATE, eta = st.t + Math.round(heat * 60);
+  return eta <= at ? `BrewStart: Time to heat - the water should be ready by ${bsFmt(at)}.`
+    : `BrewStart: Heating has to start now: from ${pv.toFixed(1)} °F it needs about ${Math.round(heat)} min, so the water will be ready around ${bsFmt(eta)}, after ${bsFmt(at)}.`;
+}
 /* the row and + BrewStart wait with the recipe's own commands and pause with no connection; a tap says why */
 function bsRowWhy() {
   const P = st.pend;
@@ -2782,12 +2795,24 @@ function bsIn(sec) {
   const real = sec / sc, rm = Math.round(real / 60);
   return `${says}, ${real < 60 ? "under a real minute" : rm < 90 ? `about ${rm} real minute${rm === 1 ? "" : "s"}` : `about ${Math.round(real / 3600)} real hours`} at ${sc}×`;
 }
-/* the box's time in words, or that it has passed (past), or null while what's typed isn't a time */
+/* a length of time in words, for the sentence of a ready time too soon to wait for: "20 min", "1 h 5 min" */
+function bsDur(sec) { const m = Math.round(sec / 60); return sec < 60 ? "under a minute" : m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ""}`; }
+/* while BrewStart waits with Ready by, what it plans for heating the water: its ready time less its heating start, as
+   its row's STARTS says it; null otherwise. A new ready time no further away than that, and a minute, has BrewStart
+   hand over at once (change_time), as START does for a time too soon */
+function bsLead() {
+  const {S, bi} = swSteps(), s = bi >= 0 ? S[bi] : null;
+  return !s || s.start || !bsWaits() ? null : bsAt(s) - bsHeatAt(s, st.v.hlt.pv);
+}
+/* the box's time in words, or that it has passed (past), or that it is too soon to wait for, so SET starts the heating
+   (soon); null while what's typed isn't a time */
 function bsSays(B) {
   const m = bsParse(B.txt);
   if (m == null) return null;
   const at = B.day * 86400 + m * 60, now = dayOf(st.t), hm = hhmm(m * 60), rel = B.day === now ? "today" : B.day === now + 1 ? "tomorrow" : "";
   if (at <= st.t) return {past: true, text: `${hm} ${rel || dMid(B.day)} has passed, so nothing would start by itself. For tomorrow morning, choose TOMORROW.`};
+  const lead = B.neu || B.kind === "start" ? null : bsLead();
+  if (lead != null && at - st.t <= lead + 60) return {past: false, soon: true, text: `Heating starts as soon as you press HEAT NOW: BrewStart plans ${bsDur(lead)} for heating the water, and ${hm} ${rel || dMid(B.day)} is ${bsDur(at - st.t)} away.`};
   const {S, bi} = swSteps(), nx = B.neu ? S[0] : S[bi + 1], when = `${hm}${rel ? ` ${rel},` : ""} ${dMid(B.day)}: ${bsIn(at - st.t)}.`;
   return {past: false, text: B.kind === "start" ? `${nx ? nx.n : "The next step"} starts at ${when}` : `The ${KNAME[B.neu ? "hlt" : S[bi].k]}'s water is hot by ${when}`};
 }
@@ -2802,12 +2827,13 @@ function bsWater(B) {
 }
 const bsHint = B => { const m = bsParse(B.txt); return `${B.kind === "start" ? "start at" : "ready by"} ${m == null ? "– –" : hhmm(m * 60)} ${dShort(B.day)}`; };
 /* SET, or ADD BREWSTART for a new one, in Selection Blue as the editors' main action; greyed with no connection, while
-   a command waits, and for a time that has passed, with the sentence that says so as its reason */
+   a command waits, and for a time that has passed, with the sentence that says so as its reason. For a ready time too
+   soon for BrewStart to wait, it says what it does: HEAT NOW */
 function bsGoHTML(B, ws) {
   const P = st.pend, busy = !!P.bs;
   const why = st.link === "lost" ? PAUSED : busy ? WAIT : P["r:check"] ? PB_WAIT : ["r:start", "r:stop", "r:next", "r:reset", "r:unload", "r:load"].some(k => P[k]) ? WAIT : ws && ws.past ? ws.text : "";
   return B.neu ? b("cmdbtn bsgo", busy ? "ADDING…" : "ADD BREWSTART", "as step 1", {cmd: "bs:set", why})
-    : b("cmdbtn bsgo", busy ? "SETTING…" : "SET", bsHint(B), {cmd: "bs:set", why});
+    : b("cmdbtn bsgo", busy ? "SETTING…" : ws && ws.soon ? "HEAT NOW" : "SET", bsHint(B), {cmd: "bs:set", why});
 }
 let bsGoLast = "";
 /* the box: a legend in its top border as the timer editor's; then, only while BrewStart waits, that it does, pinned
@@ -2911,8 +2937,9 @@ function bsCmd(x, y) {
 /* SET: one command with what changed, its LOG line saying so; with nothing changed the box closes and nothing is sent.
    On the answer the step keeps the time, the day as a date (never Today or Tomorrow), the kind and the grain's answer;
    a new grain answer has CraftBeerPi work USE out again, as the strike water box's GRAIN does. While BrewStart waits it
-   plans again at once: STARTS for the new time, and its notification in its words. ADD BREWSTART puts a new BrewStart
-   in as step 1 (bsAdd) */
+   plans again at once (change_time): STARTS for the new time, and its notification in its words; HEAT NOW, a time too
+   soon to wait for, has it hand over at once, so the strike water step heats and focus goes to LOG, the row being no
+   longer a button. ADD BREWSTART puts a new BrewStart in as step 1 (bsAdd) */
 function bsSet() {
   const B = st.bs, r = st.recipe;
   if (!B || st.pend.bs) return;
@@ -2934,6 +2961,7 @@ function bsSet() {
   if (!timeCh && !grainCh) return bsClose();
   const wasT = was ? `, was ${B.kind === wasKind ? "" : `${wasKind === "start" ? "start at" : "ready by"} `}${was}${s.date ? ` ${dShort(dayIdx(s.date))}` : ""}` : "";
   const wasG = B.where === "garage" ? (s.grain == null ? "" : `, was ${s.where === "indoors" ? "indoors at " : ""}${swGrainSays(s.grain)}`) : s.grain == null ? ", was the boil kettle's probe" : `, was ${swGrainSays(s.grain)}`;
+  const wasAt = bsAt(s);
   send("bs", "set", timeCh ? `BrewStart: ${kw} ${hm} ${dMid(B.day)}${wasT}${grainCh ? ` · ${grainSays}` : ""}` : `BrewStart: ${grainSays}${wasG}`, () => {
     if (timeCh) Object.assign(s, {ready: B.kind === "ready" ? hm : null, start: B.kind === "start" ? hm : null, date});
     if (grainCh) Object.assign(s, {where: B.where, grain: B.where === "indoors" ? g : null});
@@ -2941,8 +2969,21 @@ function bsSet() {
     if (grainCh && st.sw) swRework("grain");
     if (timeCh && RECIPE.steps[r.cur] === s && bsWaits()) {
       const pv = st.v.hlt.pv;
+      if (ws.soon) {
+        const nx = RECIPE.steps[r.cur + 1];
+        soon(() => {
+          const due = bsDueLine(s, pv);
+          logEvent(due, "from CraftBeerPi", "");
+          logEvent("BrewStart finished", "by recipe", "");
+          stepStart(r.cur + 1);
+          if (nx) logEvent(`${nx.n} started${nx.temp != null ? `, ${nx.k === "hlt" ? "HLT" : VNAME[nx.k].toLowerCase()} target ${nx.temp.toFixed(1)} °F` : ""}`, "by recipe", "");
+          say(due);
+          setTimeout(() => $("#event .logbtn")?.focus({preventScroll: true}), 0);
+        });
+        return;
+      }
       r.wait = `STARTS ${hhmm(bsHeatAt(s, pv))}`;
-      soon(() => logEvent(bsPlanLine(s, pv), "from CraftBeerPi", ""));
+      soon(() => logEvent(bsChangedLine(s, pv, wasAt), "from CraftBeerPi", ""));
     }
     bsBack(B.from);
   });

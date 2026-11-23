@@ -2,7 +2,7 @@
 
 Approved to build: Brett told the brewer it makes sense, and decided the time is set on Brew Day the night before.
 The mockup has it by default; its moments are #bs-edit, #bs-indoors, #bs-past, #bs-startat, #bs-set, #bs-wait,
-#bs-new, #bs-new-open, #bs-sim and #bs-novol, and for USE waiting on the grain #sw-where and #sw-where-am.
+#bs-new, #bs-new-open, #bs-sim, #bs-novol and #bs-soon, and for USE waiting on the grain #sw-where and #sw-where-am.
 
 ## What the brewer asked
 
@@ -65,8 +65,13 @@ step 1: ready by 07:00 Sat 21 Nov".
 
 Once START is pressed, BrewStart waits for its heating start (its row says STARTS 05:30). Its box still opens, and says
 so: "BrewStart is waiting: heating starts about 05:30. A change here plans it again at once." The time, the day and the
-grain can change; START AT and READY BY can't swap until it's stopped. This needs CraftBeerPi to take a new time while
-BrewStart waits (below).
+grain can change; START AT and READY BY can't swap until it's stopped. BrewStart 1.2.0.post10 takes the new time (its
+`change_time`) and plans again from the water as it is.
+
+A ready time sooner than BrewStart plans for heating the water can't be waited for: BrewStart hands over at once and the
+strike water step heats, as at START. So the box says that first, and SET says what it does: "Heating starts as soon as
+you press HEAT NOW: BrewStart plans 43 min for heating the water, and 06:00 today is 20 min away.", with SET reading
+HEAT NOW. A later time brings SET back.
 
 ### USE waits for the grain's answer
 
@@ -101,6 +106,10 @@ BrewStart, or with the grain answered, USE is as before.
    warmer than the garage, with v5's 8.26 gal on 20 lb (Palmer's strike formula), and USE is meant to err low. The
    grain changes nothing but USE's figure, so USE is where the question can't be skipped. A check at START would ask
    even when the recipe's own strike temperature is used, and couldn't mend a USE already pressed.
+8. **HEAT NOW for a time too soon, not a second question.** Such a time starts the heating at once. NEXT STEP, the
+   other way to start it early, asks first and is answered with SKIP TO STRIKE WATER. Here the brewer is already in a
+   box he opened to change the time, so its main button says what it will do, and the sentence above it says why. A
+   time too soon isn't refused: on brew morning, wanting the water sooner is a reason to open the box.
 
 Not chosen: every BrewStart setting on Brew Day (Campden, heads-up and element power are rare, and on Brew Steps);
 a date picker (a brew further off than tomorrow isn't set the night before); the time in the title bar.
@@ -114,13 +123,13 @@ a date picker (a brew further off than tomorrow isn't set the night before); the
 | **New: where the grain is, for this brew** ("garage" or "indoors"), kept with the loaded steps and left out of the book, so a blank Grain_Temp (the garage) can be told from "not asked yet" on every screen. `POST /step2/strike/grain` takes it | Server (core post59, being built: `grain_place` in the brew steps' basic data; `{"grain": null, "place": "garage"}` for the garage, a figure for indoors) |
 | Add BrewStart as step 1: `POST /step2/` with `index` 0 (Robin's change 6, core post58) | Being built |
 | A new BrewStart's water: `recipeWater()` from `mash_numbers` (Robin's change 7) | Planned; until then the last brew's |
-| **New: a waiting BrewStart takes a new time.** Today `PUT /step2/{id}` is refused (409) while it waits. BrewStart works out its moment once, at START, so it needs to take a new day and time while waiting, plan again from the water as it is, and say so in its words. The grain and the water already change while it waits, through the strike water box | Server (BrewStart, and the call the screen uses: Brett's choice) |
+| A waiting BrewStart takes a new time: `POST /step2/action/{id}` with `change_time`, as `PUT /step2/{id}` is refused (409) while it waits. It plans again from the water as it is and says so in its words; with too little time left for the heating, it hands over at once. The grain and the water already change while it waits, through the strike water box | BrewStart 1.2.0.post10, on 8000 and 8012 |
 | SAVE TO BOOK: BrewStart's date back to Tomorrow, the strike temperature back to before the first USE, no grain figure (Robin's change 8, asked of Brett) | Server (the book's copy, `book_data()`) |
 | Nothing | Dashboard layout files |
 
-Until the server takes a new time while BrewStart waits, the box shows the time greyed while it waits, with
-CraftBeerPi's way: "BrewStart is waiting, so its time can't change now. Press STOP, change it, then hold START." The
-grain can still change.
+With a BrewStart older than post10, which doesn't declare `change_time`, the box shows the time greyed while it waits,
+with CraftBeerPi's way: "BrewStart is waiting, so its time can't change now. Press STOP, change it, then hold START."
+The grain can still change.
 
 ## In the mockup
 
@@ -128,9 +137,9 @@ grain can still change.
 
 ## How it was checked
 
-- `files\bs_presses.py`, 212 presses, all passing: the row and its hint, the box and every part of it, SET and its LOG
-  lines, + BrewStart, Escape and CANCEL, no connection, SETTING…, the simulator, USE waiting for the grain, and the box
-  opening at the grain.
+- `files\bs_presses.py`, 233 presses, all passing: the row and its hint, the box and every part of it, SET and its LOG
+  lines, + BrewStart, Escape and CANCEL, no connection, SETTING…, the simulator, USE waiting for the grain, the box
+  opening at the grain, and a time too soon: HEAT NOW, where it starts, and BrewStart handing over.
 - As each box opens, at 1180 × 860, 1440 × 900 and 1920 × 950, the grain's two answers and SET and CANCEL are fully in
   view. While BrewStart waits, its sentence stays fixed above the part that scrolls.
 - On one screen, every step row is the same height as before. A phone's BrewStart row is 20 px taller, its details on

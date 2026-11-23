@@ -1,5 +1,16 @@
 # Direction decision log
 
+## BrewStart's new time while it waits: HEAT NOW for a time too soon (22 Nov 2026, night)
+- BrewStart 1.2.0.post10's `change_time` (on 8000 and 8012) takes a new time while BrewStart waits, which the box was
+  waiting for. Its code shows that a ready time leaving less than BrewStart plans for heating starts the heating at
+  once (Ready by always goes on by itself), and that a refusal answers with the core's general sentence, BrewStart's
+  reason coming as a notice.
+- Chosen: the box says it first, the consequence leading ("Heating starts as soon as you press HEAT NOW: …"), and SET
+  reads HEAT NOW. One tap, as NEXT STEP's SKIP TO STRIKE WATER starts the same heating after its question: the box is
+  already the question. A refusal shows BrewStart's own reason in the box.
+- Not chosen: a hold on HEAT NOW (START was held already; this moves the heating sooner); refusing a time too soon (on
+  brew morning, wanting the water sooner is a reason to open the box).
+
 ## Mash pH from Brew Day's reminder: RECORD pH and its box (22 Nov 2026, evening)
 - The brewer: "I'd like to enter the pH without clicking over to separate tab (without losing functionality on
   brewScribe page in case I wish to click over there and make all my entries there)". Agreed with Porter (BrewScribe

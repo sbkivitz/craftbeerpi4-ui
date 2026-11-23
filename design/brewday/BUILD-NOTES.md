@@ -5755,11 +5755,12 @@ the time, his fill rules for a new BrewStart, and his change 8 for what SAVE TO 
    `recipeWater()` (beside `stepModel` in `live.js`, shared with his pages), else the newest BrewStart's, else blank;
    the day TOMORROW from noon by CraftBeerPi's clock, TODAY before. ADD BREWSTART (`bsAdd`): `POST /step2/` with
    `index` 0 (change 6, core post58). LOG: "BrewStart added as step 1: ready by 07:00 Sat 21 Nov". CANCEL adds nothing.
-5. **While BrewStart waits** (running, STARTS 05:30): the box opens as above. SET needs the server change below; with
-   it, the row's STARTS follows the new plan, and BrewStart's own notice says the new heating start.
-   - Until the server change is in: the time, the day and START AT are greyed while BrewStart waits, with "BrewStart is
-     waiting, so its time can't change now. Press STOP, change it, then hold START." The grain still changes, through
-     the strike water box's call.
+5. **While BrewStart waits** (running, STARTS 05:30): the box opens as above. SET sends the new time with BrewStart's
+   `change_time` (1.2.0.post10): see "BrewStart while it waits: its change_time, and HEAT NOW for a time too soon"
+   below, which also says what a time too soon for the heating does.
+   - With a BrewStart that doesn't declare `change_time` (older than post10): the time, the day and START AT are greyed
+     while BrewStart waits, with "BrewStart is waiting, so its time can't change now. Press STOP, change it, then hold
+     START." The grain still changes, through the strike water box's call.
 6. **USE waits for the grain** (`swHTML`'s USE, `sw:where`). On a recipe with BrewStart, while `grain_place` is unset,
    where the strike water box would offer USE: "USE – – °F", USE's size in the look CraftBeerPi's questions have
    (var(--prompt-bg), a 2 px Prompt Amber edge, the words #fff1d2), with "where's the grain?" in Prompt Amber under
@@ -5780,11 +5781,8 @@ the time, his fill rules for a new BrewStart, and his change 8 for what SAVE TO 
 
 ### In CraftBeerPi
 
-- **New: a waiting BrewStart takes a new time.** `PUT /step2/{id}` is refused while it waits (409). BrewStart works its
-  moment out once, at START (`resolve_start`), so it needs to take a new day and time while waiting, work out its
-  heating start again from the water as it is, and say so in its words (as `notify_ready_scheduled`). The call is your
-  choice: a BrewStart action, or the strike water controller's path, which already writes Ready_Temp, Volume and
-  Grain_Temp while BrewStart waits.
+- **Done: a waiting BrewStart takes a new time.** BrewStart 1.2.0.post10's `change_time` action, on 8000 and 8012
+  (your note `files\plans\brewstart-edit.md`); see "BrewStart while it waits" below.
 - `POST /step2/` with `index` (Robin's change 6, post58), and `recipeWater()`'s figures (change 7).
 - `grain_place` (core post59, being built): where the grain is for this brew, in the brew steps' basic data, cleared by
   a load or unload and left out by SAVE TO BOOK; `POST /step2/strike/grain` takes `{"grain": null, "place":
@@ -5900,17 +5898,17 @@ draft 3, in his session folder (`files\brewday-entry\contract.md`).
 ### In CraftBeerPi and BrewScribe
 
 - Nothing new: BrewScribe dev51's two calls are in place, and the reminders' OK is CraftBeerPi's own.
-- BrewScribe dev52 (Porter, coming) writes a pH with at least 2 decimals in `text`, in `saved.text` and on its own
-  page, as the mockup does: SAVE pH 5.40 comes back as "pH 5.40 saved in BrewScribe (Early mash, Mash Tun)". dev51
-  writes the shortest number, "pH 5.4 saved…". Nothing in the build changes for it.
+- BrewScribe dev52, now on 8000 and 8012, writes a pH with at least 2 decimals in `text`, in `saved.text` and on its
+  own page, as the mockup does: SAVE pH 5.40 comes back as "pH 5.40 saved in BrewScribe (Early mash, Mash Tun)". dev51
+  wrote the shortest number, "pH 5.4 saved…". Nothing in the build changes for it.
 
 ### Testing against BrewScribe
 
 - Brew Day shows BrewScribe's `error` as sent, so a test should expect what BrewScribe sent, not fixed words. The
   mockup's BrewScribe (`scribeTake`) now uses dev51's own sentences, for example for `log_changed`: "BrewScribe's open
   log has changed, so this reading wasn't saved. Check BrewScribe's page, then try again."
-- Until dev52 is on 8000 and 8012, a test that saves a figure ending in 0, such as 5.40, gets "pH 5.4 saved…".
-  Compare LOG with BrewScribe's `text` as sent, or save a figure such as 5.42: either passes with dev51 and dev52.
+- Against dev51, a test that saves a figure ending in 0, such as 5.40, gets "pH 5.4 saved…". Compare LOG with
+  BrewScribe's `text` as sent, or save a figure such as 5.42: either passes with dev51 and dev52.
 
 ### Checked
 
@@ -5931,6 +5929,81 @@ draft 3, in his session folder (`files\brewday-entry\contract.md`).
   `proposal\PH-ENTRY.md` (new) and this section.
 - `DESIGN.md`: Alarm Banner (RECORD pH, the pH box), The Measured Value Rule.
 - `.impeccable\decisions\direction-log.md`; `.impeccable\design.json`, regenerated.
+
+## BrewStart while it waits: its change_time, and HEAT NOW for a time too soon (22 Nov, night)
+
+BrewStart 1.2.0.post10, on 8000 and 8012, takes a new day and time while it waits: its `change_time` action, as your
+note `files\plans\brewstart-edit.md` describes it. That is the server change item 5 of "BrewStart on Brew Day" was
+waiting for. BrewStart's code (`change_time`, `_arrive`, `_refuse_change`) shows three things that change what the box
+does; the rest is as that section says.
+
+### What to build (screen.js)
+
+1. **The call.** With `change_time` declared (`declares(stepTypes, "BrewStart", "change_time")`, as your note says),
+   SET on a waiting BrewStart sends the time and the day by `POST /step2/action/{id}`, with `{"action": "change_time",
+   "parameter": {"Mode": "Date", "StartDate": "2026-11-21", "StartTime": "06:30"}}`. A changed grain still goes by
+   `POST /step2/strike/grain`. Before START and while stopped, `PUT /step2/{id}` as now, which also carries START AT
+   INSTEAD's Timing; `change_time` doesn't take it. Without `change_time`: item 5's greyed time.
+2. **Taken (200).** As built: SETTING… until the answer, LOG "BrewStart: ready by 06:30 Sat 21 Nov, was 07:00 Sat ·
+   confirmed", and the row's STARTS from BrewStart's new status line. BrewStart's own notice comes with it, and goes in
+   LOG from CraftBeerPi as its others do: "BrewStart: Time changed, was Sat Nov 21, 07:00. Ready by Sat Nov 21, 06:30:
+   heating starts about Sat Nov 21, 05:46. 59.8 °F to 132.4 °F takes about 33 min, plus 10 min spare."
+   (`bsChangedLine`).
+3. **A ready time too soon for the heating** (`bsLead`, `bsSays`, `bsGoHTML`, `bsSet`). Ready by always goes on by
+   itself, so a new ready time that leaves less than BrewStart plans for heating has it hand over at once, as START
+   does: the strike water step starts and heats the HLT. The box says so before SET is pressed, and SET says what it
+   does.
+   - What BrewStart plans for heating: its ready time less its heating start, both as its row has them now (StartDate
+     and StartTime; STARTS from its status line), 43 min in `#bs-soon`. A new ready time no further away than that,
+     and a minute, is too soon. Never with Start at, whose time only has to be later than now, and never before START.
+   - The time in words, in place of "The HLT's water is hot by …": "Heating starts as soon as you press HEAT NOW:
+     BrewStart plans 43 min for heating the water, and 06:00 today is 20 min away." SET reads HEAT NOW, its hint as
+     SET's ("ready by 06:00 Sat"). A later time brings SET back.
+   - One tap, as NEXT STEP's SKIP TO STRIKE WATER, which starts the same heating after its question: the brewer is
+     already in a box he opened to change the time, and its main button names what it will do.
+   - Taken: LOG has the confirmed line, then BrewStart's notice, spoken: "BrewStart: Heating has to start now: from
+     59.8 °F it needs about 33 min, so the water will be ready around Sat Nov 21, 06:13, after Sat Nov 21, 06:00.", or,
+     where only the spare minutes go, "BrewStart: Time to heat - the water should be ready by Sat Nov 21, 06:20."
+     Then "BrewStart finished" and the strike water step's start. The box closes and focus goes to LOG, as BrewStart's
+     row is no longer a button.
+4. **Refused (400).** The answer is the core's sentence for any action that didn't run: "'change_time' did not run.
+   Either the step is not running, or that is not a declared action." Here it would read wrongly. BrewStart's reason
+   comes to every screen just before it, as an info notice titled with the step's name ("BrewStart's time has come
+   (Sat Nov 21, 06:16), so it can't change now."), and goes in LOG as CraftBeerPi's notices do. The box shows that
+   sentence above SET and stays open, as for any refused SET, and LOG says "BrewStart: ready by 06:30 Sat 21 Nov, was
+   07:00 Sat · failed". With no such notice within a second of the 400 (a BrewStart older than post10, behind a page
+   that still has post10's step types): "BrewStart didn't take the new time, so nothing changed."
+   - Simpler, if you'd rather: the core passes an action's own `ValueError` message through as the 400's `detail`
+     (your note's first open point). The box then shows `detail`, as for any refusal, and needs nothing from the
+     notice. Your call.
+   - The box meets these only in a race: it closes once BrewStart stops waiting, refuses a time that has passed by its
+     own clock, and can't be opened while BrewStart waits for NEXT STEP, whose row has no STARTS and isn't a button.
+5. **Moment:** `#bs-soon`, #sw-wait at 05:40 with the box opened from the row and 06:00 typed: HEAT NOW.
+
+### In CraftBeerPi
+
+- Nothing new: BrewStart 1.2.0.post10's `change_time`. The core's 400 `detail` (above) is optional.
+
+### Checked
+
+- `files\bs_presses.py`: 233 presses, all pass, no page errors. The 21 new ones cover HEAT NOW and its sentence, the
+  threshold (06:24 HEAT NOW, 06:25 SET, at 05:40 with 43 min planned), SET coming back for a later time, both of
+  BrewStart's notices as it hands over, the strike water step heating, focus on LOG, a time 18 min away before START
+  staying SET, and `#bs-soon` at 1180 × 860, 1440 × 900, 1920 × 950 and 390 × 844: HEAT NOW, CANCEL and the sentence
+  (3 or 4 lines) in view, nothing cut.
+- The other suites, all passing: the clock 17, the clock's sizes, the boil kettle 23, UNLOAD 61, the strike water 28
+  and 30, the timers 72 and 37, the review page 36, the timers' places 149 and 262, and the pH box 128 and 134.
+- Pictures of every moment at 1440 × 900 and 390 × 844, against the copy in `design/brewday` (UI c113498): all 256
+  the same; only the new `#bs-soon` differs.
+
+### Changed
+
+- `proposal\brew-day.js` (`bsChangedLine`, `bsDueLine`, `bsDur`, `bsLead`, `bsSays`, `bsGoHTML`, `bsSet`, the moment
+  `#bs-soon`), `proposal\brew-day.html` (its link and note); `proposal\BREWSTART-EDIT.md`; this section, and item 5
+  and "In CraftBeerPi" of "BrewStart on Brew Day".
+- `DESIGN.md`: BrewStart's box (HEAT NOW).
+- `.impeccable\decisions\direction-log.md`; `.impeccable\design.json`, regenerated.
+- In the mash pH section above, dev52 is now on 8000 and 8012; `proposal\PH-ENTRY.md` says the same.
 
 ## Open questions about the drawing
 
