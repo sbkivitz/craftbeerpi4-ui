@@ -27,8 +27,13 @@ import { call } from "../brewday/api";
 import FIGURES_CSS from "./figures.css";
 import FRAME_CSS from "./figures-frame.css";
 
-/* GET /figures and a brew's graph: the Pi reads its logs for them, so they get as long as the graphs' log window */
-const READ_MS = 20000;
+/* GET /figures: the first time, CraftBeerPi reads every past brew's logs, about 40 s on a PC and minutes on a Pi, then
+   answers from what it kept in well under a second. So the page waits patiently, saying so, and gives up only after
+   READ_MS. A brew's graph is read from the logs too, given GRAPH_MS */
+const READ_MS = 600000;
+const GRAPH_MS = 60000;
+/* how long the first read goes before the head says CraftBeerPi is working the figures out */
+const PATIENT_MS = 5000;
 /* USE, BACK TO and LEAVE OUT */
 const CMD_MS = 5000;
 /* how long a note under a window stays */
@@ -105,12 +110,13 @@ const simulated = () => !!(D && D.simulated);
 const DOMAIN = {hlt: () => [0.7, 1.0], strike: () => [0.45, 1.0], mash: () => [0, 1.5],
   grain: () => (volU() === "L" ? [0.5, 1.3] : [0.06, 0.16]), boil: () => (cel() ? [0, 2] : [0, 3.5])};
 const NONE = {
-  hlt: {pump_on: "the HLT heated the mash too", not_heated: "the HLT wasn't heated", no_water: "BrewStart didn't record its water"},
+  hlt: {pump_on: "the HLT heated the mash too", not_heated: "the HLT wasn't heated", no_water: "BrewStart didn't record its water",
+    no_logs: "no logs for this day"},
   strike: {no_grain: "no grain in the simulated tun", no_forecast: "no forecast kept for it"},
-  mash: {no_rest: "no rest", stopped: "stopped before its rest"},
+  mash: {no_rest: "no rest", stopped: "stopped before its rest", no_logs: "no logs for this day"},
   grain: {no_brewscribe: "BrewScribe isn't installed", no_volumes: "no volumes in BrewScribe", no_levels: "no HLT level before the sparge",
     no_grain_weight: "no grain weight in the recipe"},
-  boil: {no_boil: "no boil", stopped: c => (fin(c.at) ? `stopped at ${Math.round(c.at)} ${deg()}` : "stopped before the boil")}
+  boil: {no_boil: "no boil", stopped: c => (fin(c.at) ? `stopped at ${Math.round(c.at)} ${deg()}` : "stopped before the boil"), no_logs: "no logs for this day"}
 };
 const noneWhy = (fid, c) => { const w = (NONE[fid] || {})[c.none]; return typeof w === "function" ? w(c) : w || String(c.none || "none").replace(/_/g, " "); };
 const cellOf = (b, fid) => (b && b.cells && b.cells[fid]) || {none: "none"};
@@ -239,14 +245,15 @@ function verdictUse(F, g) {
 const HIGH = "This may read slightly high: the HLT's losses count as strike.";
 const fromFill = g => counted(g).some(x => cellOf(brewOf(x.brew), "grain").strike_from === "hlt_fill");
 function verdictInUse(F, g) {
-  const s = g.set || {}, w = wasOf(F, g);
-  if (F.id === "hlt") return `BrewStart plans with <b>${pct(s.value)} %</b>, what the brews measured. It was ${w.short}.`;
+  // "It was" only where USE set it: a setting typed by hand to the figure has no earlier value kept
+  const s = g.set || {}, w = wasOf(F, g), was = inUse(g) ? ` It was ${w.short}.` : "";
+  if (F.id === "hlt") return `BrewStart plans with <b>${pct(s.value)} %</b>, what the brews measured.${was}`;
   if (F.id === "strike") {
     const l = strikeLands();
     return l ? `The strike water box forecasts with <b>${pct(s.value)} %</b>: ${esc(l[0])} lands <b>${f1(l[1])}–${f1(l[2])} ${deg()}</b>.`
       : `The strike water box forecasts with <b>${pct(s.value)} %</b>, what the landings measured.`;
   }
-  return `BrewStart's water allows <b>${num(s.value).toFixed(2)} ${volU()}</b> for each ${massU() === "kg" ? "kilo" : "pound"} of grain. It was ${w.short}.`;
+  return `BrewStart's water allows <b>${num(s.value).toFixed(2)} ${volU()}</b> for each ${massU() === "kg" ? "kilo" : "pound"} of grain.${was}`;
 }
 function noneVerdict(F, g) {
   if (F.id === "strike") {
@@ -413,7 +420,7 @@ function graphOf(b, F, ev, extra) {
   return [VESSEL[vid][0], Object.assign(o, extra)];
 }
 function evidence(b, F) {
-  const c = cellOf(b, F.id), U = deg(), V = volU(), sim = simulated();
+  const c = cellOf(b, F.id), U = deg(), V = volU(), sim = b.simulator != null ? !!b.simulator : simulated();
   const out = isOut(F.id, b.id), key = `${b.id}|${F.id}`, ev = EV.get(key);
   const title = `${day(b.start)} · ${esc(what(b))}`;
   const vtitle = (VESSEL[F.id === "hlt" ? "hlt" : F.id === "boil" ? "boil" : "mash"])[0];
@@ -446,7 +453,8 @@ function evidence(b, F) {
     } else {
       const why = {pump_on: "The wort pump ran through the HERMS coil while the HLT heated, so the mash drew heat as it went: this heat-up says how fast the two heat together, not the HLT alone.",
         not_heated: "The HLT wasn't heated on this brew.",
-        no_water: "BrewStart didn't record the water it heated, so there's nothing to work the figure out from."}[c.none] || "This heat-up isn't part of the figure.";
+        no_water: "BrewStart didn't record the water it heated, so there's nothing to work the figure out from.",
+        no_logs: NO_LOGS}[c.none] || "This heat-up isn't part of the figure.";
       work = `<h3>Not part of this figure<small>${title}</small></h3><p>${why}</p>`;
     }
   } else if (F.id === "mash") {
@@ -455,7 +463,7 @@ function evidence(b, F) {
       const ups = (c.steps_up || []).filter(x => fin(x.rate)).map(x => `<dt>Step up</dt><dd>${tT(x.from)} → ${tT(x.to)} ${U} at ${f1(x.rate)} ${U} a minute</dd>`).join("");
       const dt = figOf("mash").set, dtw = dt && fin(dt.value) ? `${tT(dt.value)} ${U} now` : "as it is now";
       work = `<h3>Each rest, as it held<small>${title}</small></h3><dl>${rows}${ups}</dl>${c.rests.some(r => num(r.over) >= 0.8) ? `<p>A smaller DeltaTemp (${dtw}) comes in gentler but steps up slower. That trade isn't measured, so there's nothing to USE: it's yours to try.</p>` : ""}`;
-    } else work = `<h3>No rest on this brew<small>${title}</small></h3><p>${c.none === "stopped" ? "It was stopped before its rest." : "The mash wasn't held at a rest."}</p>`;
+    } else work = `<h3>No rest on this brew<small>${title}</small></h3><p>${c.none === "stopped" ? "It was stopped before its rest." : c.none === "no_logs" ? NO_LOGS : "The mash wasn't held at a rest."}</p>`;
   } else if (F.id === "boil") {
     if (!c.none) {
       const g = cellOf(b, "grain"), water = !g.none && fin(g.pre_boil) ? `<dt>Water</dt><dd>the runoff, ${f1(g.pre_boil)} ${V}</dd>`
@@ -469,7 +477,7 @@ function evidence(b, F) {
         slow = `<p>About ${fr} of the other ${others.length === 1 ? "brew's" : "brews'"} rate the whole way: the element may have run at the boil power, not full power. Its level wasn't logged then, so the page can't tell.</p>`;
       }
       work = `<h3>${f1(c.rate)} ${U} a minute to the boil<small>${title}</small></h3><dl><dt>Heated</dt><dd>${Math.round(c.from)} → ${boilPt()} ${U} in ${mins(c.minutes)} min</dd>${water}</dl>${slow}`;
-    } else work = `<h3>No boil on this brew<small>${title}</small></h3><p>${c.none === "stopped" ? `The boil kettle was heated to ${fin(c.at) ? Math.round(c.at) + " " + U : "short of the boil"} and stopped.` : "The boil kettle wasn't heated."}</p>`;
+    } else work = `<h3>No boil on this brew<small>${title}</small></h3><p>${c.none === "stopped" ? `The boil kettle was heated to ${fin(c.at) ? Math.round(c.at) + " " + U : "short of the boil"} and stopped.` : c.none === "no_logs" ? NO_LOGS : "The boil kettle wasn't heated."}</p>`;
   } else if (F.id === "strike") {
     if (!c.none) {
       const fit = fin(c.fit_lo) && fin(c.fit_hi) && fin(figOf("strike").measured) ? `<dt>With ${pct(figOf("strike").measured)} %</dt><dd>the forecast would have been ${f1(c.fit_lo)}–${f1(c.fit_hi)} ${U}</dd>` : "";
@@ -494,6 +502,8 @@ function evidence(b, F) {
   const scribe = b.day_id ? `<a class="quiet" href="/brewscribe/#brew=${encodeURIComponent(b.day_id)}" target="brewscribe" data-act="scribe">THIS BREW IN BREWSCRIBE ${EXT}</a>` : "";
   return `<div class="ev" id="ev"><div class="graphs">${graphs}</div><div class="work">${work}<div class="acts">${leave}${scribe}<button class="quiet" type="button" data-act="close">CLOSE</button></div></div></div>`;
 }
+/* a BrewScribe day CraftBeerPi found no logs for: only grain absorption comes from it */
+const NO_LOGS = "CraftBeerPi has no logs for this brew day, so only grain absorption can come from it.";
 const EXT = `<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M5 1.8H2.4a.6.6 0 0 0-.6.6v7.2c0 .3.3.6.6.6h7.2c.3 0 .6-.3.6-.6V7M7.2 1.8h3v3M10.2 1.8 5.6 6.4"/></svg>`;
 
 /* ---------- the foot: one PID window per figure ---------- */
@@ -546,6 +556,8 @@ function foot(F) {
     else if (F.id === "hlt" && g.why_not === "brewstart_old") verdict = `This BrewStart always plans with 90 %. A newer BrewStart plans with a figure from past brews.`;
     else if (g.state === "use") verdict = verdictUse(F, g);
     if (F.info) verdict += ` Nothing plans with this yet.`;
+    // the strike water helper working out the tun's steel again from a new landing: this is its last fit
+    if (F.id === "strike" && g.working) verdict += ` Working out the tun's steel again from the landings: a few minutes.`;
     if (F.use) {
       const btn = (kind, label, small, cls, grey) => {
         const busy = !!st.busy && st.busy.fig === F.id && st.busy.act === kind, failed = !busy && !!st.fail && st.fail.fig === F.id && st.fail.act === kind;
@@ -555,7 +567,8 @@ function foot(F) {
         const u = offerOf(F, g);
         act = btn("use", u.label, u.small, " go", g.state !== "use" || lost || !!g.why_not);
       }
-      if (g.state === "in_use" || inUse(g)) {
+      // BACK TO only where USE set the figure: one typed by hand has nothing to go back to
+      if (inUse(g)) {
         const w = wasOf(F, g);
         act += btn("back", w.label, w.small, "", lost);
       }
@@ -621,7 +634,7 @@ function render() {
   main.dataset.link = st.link;
   if (load.s === "old") main.innerHTML = fhead("This CraftBeerPi can't work out figures from past brews yet: it needs an update. Brewhouse efficiency, boil-off and mash efficiency are in BrewScribe's Past brews.", scribeLink("PAST BREWS IN BREWSCRIBE"));
   else if (!D && load.s === "failed") main.innerHTML = fhead(`CraftBeerPi didn't send the figures: ${esc(load.why)}.`, `<button class="quiet" type="button" data-act="again">TRY AGAIN</button>`);
-  else if (!D) main.innerHTML = fhead("Reading past brews from CraftBeerPi's logs…", "");
+  else if (!D) main.innerHTML = fhead(`<span id="reading">${readingWords()}</span>`, "");
   else if (!brews().length) main.innerHTML = fhead(`No brews in ${esc(brewery())}'s logs yet. Figures start with the first brew day: an HLT heated, a mash rest held or a boil.`, scribeLink("PAST BREWS IN BREWSCRIBE"));
   else main.innerHTML = `${fhead(headLine(), scribeLink("PAST BREWS IN BREWSCRIBE"))}${pick()}<section class="ledger" id="ledger" aria-label="Figures by brew">${ledger()}</section>`;
   refocus(keep);
@@ -645,7 +658,9 @@ function render() {
 }
 
 /* ---------- reading CraftBeerPi ---------- */
-const whyNot = (res, ms) => (res.error === "timeout" ? `no answer in ${Math.round(ms / 1000)} s` : res.error === "network" ? "no connection" : `CraftBeerPi said no (${res.status})`);
+/* why a read or a command went wrong: no answer, no connection, CraftBeerPi unable to read its logs (503), or its refusal */
+const whyNot = (res, ms) => (res.error === "timeout" ? `no answer in ${ms >= 120000 ? `${Math.round(ms / 60000)} min` : `${Math.round(ms / 1000)} s`}` : res.error === "network" ? "no connection"
+  : res.status === 503 ? "CraftBeerPi couldn't read its logs" : `CraftBeerPi said no (${res.status})`);
 /* the figures in a command's answer, or a refusal's: the whole of GET /figures, or its figures alone */
 function absorb(x) {
   if (!x || typeof x !== "object") return;
@@ -664,14 +679,35 @@ async function readFigures() {
   if (reading) { again = true; return; }
   reading = true;
   const g = gen;
-  const res = await call("GET", "/figures", undefined, READ_MS);
+  readSince = Date.now();
+  if (!D) patient();
+  // the figures' own address; "/figures" without the slash is answered with a redirect to it
+  const res = await call("GET", "/figures/", undefined, READ_MS);
   if (g !== gen || !st) return;
   reading = false;
+  clearInterval(tickT);
   if (res.ok && res.data && typeof res.data === "object") take(res.data);
   else if (res.status === 404) { D = null; load = {s: "old", why: ""}; }
   else if (!D) load = {s: "failed", why: whyNot(res, READ_MS)};
   render();
   if (again) { again = false; readFigures(); }
+}
+/* the head while the first read goes on: what CraftBeerPi is doing, and for how long so far, counted every second */
+let readSince = 0, tickT = 0;
+const lasted = ms => { const s = Math.floor(ms / 1000); return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${s % 60} s`; };
+function readingWords() {
+  const ms = reading ? Date.now() - readSince : 0;
+  if (ms < PATIENT_MS) return "Reading past brews from CraftBeerPi's logs…";
+  return `Working out the figures from CraftBeerPi's logs: ${lasted(ms)} so far. The first time, it reads every past brew, which can take a few minutes; after that it's quick.`;
+}
+function patient() {
+  clearInterval(tickT);
+  const g = gen;
+  tickT = setInterval(() => {
+    if (g !== gen || !st || D || !reading) { clearInterval(tickT); return; }
+    const el = $("#reading");
+    if (el) el.textContent = readingWords();
+  }, 1000);
 }
 async function readEv(id, fid) {
   const key = `${id}|${fid}`, b = brewOf(id);
@@ -679,11 +715,11 @@ async function readEv(id, fid) {
   EV.set(key, {s: "reading", end: b && b.end});
   while (EV.size > EV_KEEP) EV.delete(EV.keys().next().value);
   const g = gen;
-  const res = await call("GET", `/figures/brews/${encodeURIComponent(id)}?figure=${encodeURIComponent(fid)}`, undefined, READ_MS);
+  const res = await call("GET", `/figures/brews/${encodeURIComponent(id)}?figure=${encodeURIComponent(fid)}`, undefined, GRAPH_MS);
   if (g !== gen || !st || !EV.has(key)) return;
   const e = EV.get(key);
   if (res.ok && res.data && typeof res.data === "object") Object.assign(e, {s: "ok", data: res.data});
-  else Object.assign(e, {s: "failed", why: whyNot(res, READ_MS)});
+  else Object.assign(e, {s: "failed", why: whyNot(res, GRAPH_MS)});
   render();
 }
 const wantEv = (id, fid) => { const e = EV.get(`${id}|${fid}`); if (!e || e.s === "failed") readEv(id, fid); };
@@ -707,7 +743,8 @@ function appliedLine(F, act, a, g) {
   }
   if (F.id === "strike") {
     if (act === "back") return `Strike water box: the tun's steel warmed at once back to ${was.words}`;
-    const from = a && fin(a.from) ? `${pct(a.from)} %` : was.words;
+    const from = a && fin(a.from) ? `${pct(a.from)} %` : a && a.from_range && fin(a.from_range.low) && fin(a.from_range.high)
+      ? `${pct(a.from_range.low)}–${pct(a.from_range.high)} % (not measured)` : was.words;
     return `Strike water box: the tun's steel warmed at once set to ${a && fin(a.to) ? pct(a.to) : "?"} %, was ${from}`;
   }
   const U = `${volU()}/${massU()}`;
@@ -757,7 +794,8 @@ async function command(F, act) {
     return noteFor(F.id, refusedWords(F, act, label, res.data && res.data.error, g0, figOf(F.id)));
   }
   const why = whyNot(res, CMD_MS);
-  const end = res.error === "timeout" ? `No answer from CraftBeerPi in ${CMD_MS / 1000} s.` : res.error === "network" ? "No connection to CraftBeerPi." : `CraftBeerPi said no (${res.status}).`;
+  const end = res.error === "timeout" ? `No answer from CraftBeerPi in ${CMD_MS / 1000} s.` : res.error === "network" ? "No connection to CraftBeerPi."
+    : res.status === 503 ? "CraftBeerPi couldn't read its logs." : `CraftBeerPi said no (${res.status}).`;
   st.fail = {fig: F.id, act, line: `${still(F, g0)} ${end}`};
   log(`${F.name}: failed: ${why}`, "failed", "bad");
   say(st.fail.line, true);
@@ -914,6 +952,7 @@ export function createFigures(el, o = {}) {
   };
 }
 function teardown() {
+  clearInterval(tickT);
   off.forEach(f => f());
   off = [];
   timers.forEach(clearTimeout);
