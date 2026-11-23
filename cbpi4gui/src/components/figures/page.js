@@ -27,13 +27,17 @@ import { call } from "../brewday/api";
 import FIGURES_CSS from "./figures.css";
 import FRAME_CSS from "./figures-frame.css";
 
-/* GET /figures: the first time, CraftBeerPi reads every past brew's logs, about 40 s on a PC and minutes on a Pi, then
-   answers from what it kept in well under a second. So the page waits patiently, saying so, and gives up only after
+/* GET /figures: CraftBeerPi works the brews out from every past brew's logs, about 40 s on a PC and minutes on a Pi the
+   first time, then from what it kept in well under a second. A core from 4.7.7.post64 answers within 3 s whatever, saying
+   when it's still working (working: true) with the last brews it worked out, or none the very first time; an older one
+   answers only when it has them. Either way the page waits patiently, saying so, and gives up on one read only after
    READ_MS. A brew's graph is read from the logs too, given GRAPH_MS */
 const READ_MS = 600000;
 const GRAPH_MS = 60000;
 /* how long the first read goes before the head says CraftBeerPi is working the figures out */
 const PATIENT_MS = 5000;
+/* while CraftBeerPi says it's still working the brews out (core 4.7.7.post64), how often the page asks again */
+const POLL_MS = 5000;
 /* USE, BACK TO and LEAVE OUT */
 const CMD_MS = 5000;
 /* how long a note under a window stays */
@@ -271,6 +275,7 @@ function noneVerdict(F, g) {
 /* why a greyed USE can't be used, said under its window when it's tapped (The Say Why Rule) */
 function whyGrey(F, g) {
   if (st.link === "lost") return PAUSED;
+  if (working()) return `${WORKING_BREWS}: USE waits until it has them.`;
   if (F.id === "hlt" && g.why_not === "brewstart_old") return "This BrewStart can't take a figure from past brews: it always plans with 90 %.";
   if (g.why_not === "no_plant") return "The strike water helper isn't there to take it: the strike water box needs it.";
   if (g.state === "one") return "One brew so far: USE waits for a second that agrees with it.";
@@ -565,7 +570,7 @@ function foot(F) {
       };
       if (["use", "one", "disagree"].includes(g.state)) {
         const u = offerOf(F, g);
-        act = btn("use", u.label, u.small, " go", g.state !== "use" || lost || !!g.why_not);
+        act = btn("use", u.label, u.small, " go", g.state !== "use" || lost || !!g.why_not || working());
       }
       // BACK TO only where USE set the figure: one typed by hand has nothing to go back to
       if (inUse(g)) {
@@ -584,9 +589,10 @@ const scribeLink = words => (D && D.brewscribe === "none" ? "" : `<a class="quie
 function headLine() {
   const list = brews(), first = Math.min(...list.map(b => b.start)), last = Math.max(...list.map(b => b.start));
   const n = list.length, span = `${dayShort(first)} to ${dayShort(last)}`, what = `<b>${n} ${n === 1 ? "brew" : "brews"}</b>`;
-  if (simulated()) return `From ${what} in ${esc(brewery())}'s logs, ${span}. <span class="simtag">Simulated brews</span> They describe the simulator, not the rig, and USE changes only this simulator.`;
+  const still = working() ? ` ${workingWords()}` : "";
+  if (simulated()) return `From ${what} in ${esc(brewery())}'s logs, ${span}. <span class="simtag">Simulated brews</span> They describe the simulator, not the rig, and USE changes only this simulator.${still}`;
   const bs = list.some(b => b.day_id || String(b.id).startsWith("bs:"));
-  return `From ${what} in ${esc(brewery())}'s logs${bs ? " and BrewScribe" : ""}, ${span}.`;
+  return `From ${what} in ${esc(brewery())}'s logs${bs ? " and BrewScribe" : ""}, ${span}.${still}`;
 }
 function ledger() {
   const list = brews();
@@ -634,7 +640,7 @@ function render() {
   main.dataset.link = st.link;
   if (load.s === "old") main.innerHTML = fhead("This CraftBeerPi can't work out figures from past brews yet: it needs an update. Brewhouse efficiency, boil-off and mash efficiency are in BrewScribe's Past brews.", scribeLink("PAST BREWS IN BREWSCRIBE"));
   else if (!D && load.s === "failed") main.innerHTML = fhead(`CraftBeerPi didn't send the figures: ${esc(load.why)}.`, `<button class="quiet" type="button" data-act="again">TRY AGAIN</button>`);
-  else if (!D) main.innerHTML = fhead(`<span id="reading">${readingWords()}</span>`, "");
+  else if (!D || firstWait()) main.innerHTML = fhead(`<span id="reading">${readingWords()}</span>`, "");
   else if (!brews().length) main.innerHTML = fhead(`No brews in ${esc(brewery())}'s logs yet. Figures start with the first brew day: an HLT heated, a mash rest held or a boil.`, scribeLink("PAST BREWS IN BREWSCRIBE"));
   else main.innerHTML = `${fhead(headLine(), scribeLink("PAST BREWS IN BREWSCRIBE"))}${pick()}<section class="ledger" id="ledger" aria-label="Figures by brew">${ledger()}</section>`;
   refocus(keep);
@@ -658,8 +664,11 @@ function render() {
 }
 
 /* ---------- reading CraftBeerPi ---------- */
-/* why a read or a command went wrong: no answer, no connection, CraftBeerPi unable to read its logs (503), or its refusal */
+/* why a read or a command went wrong: no answer, no connection, CraftBeerPi still working the brews out (409 working),
+   unable to read its logs (503), or its refusal */
+const WORKING_BREWS = "CraftBeerPi is still working out the brews from its logs";
 const whyNot = (res, ms) => (res.error === "timeout" ? `no answer in ${ms >= 120000 ? `${Math.round(ms / 60000)} min` : `${Math.round(ms / 1000)} s`}` : res.error === "network" ? "no connection"
+  : res.status === 409 && res.data && res.data.error === "working" ? WORKING_BREWS
   : res.status === 503 ? "CraftBeerPi couldn't read its logs" : `CraftBeerPi said no (${res.status})`);
 /* the figures in a command's answer, or a refusal's: the whole of GET /figures, or its figures alone */
 function absorb(x) {
@@ -679,24 +688,30 @@ async function readFigures() {
   if (reading) { again = true; return; }
   reading = true;
   const g = gen;
-  readSince = Date.now();
-  if (!D) patient();
+  if (!waitSince && !brews().length) waitSince = Date.now();
+  patient();
   // the figures' own address; "/figures" without the slash is answered with a redirect to it
   const res = await call("GET", "/figures/", undefined, READ_MS);
   if (g !== gen || !st) return;
   reading = false;
-  clearInterval(tickT);
   if (res.ok && res.data && typeof res.data === "object") take(res.data);
   else if (res.status === 404) { D = null; load = {s: "old", why: ""}; }
   else if (!D) load = {s: "failed", why: whyNot(res, READ_MS)};
+  if (!firstWait()) waitSince = 0;
   render();
   if (again) { again = false; readFigures(); }
+  // still working the brews out: asked again every few seconds, as well as on the topic that says they're ready
+  else if (working()) { clearTimeout(pollT); pollT = later(readFigures, POLL_MS); }
 }
-/* the head while the first read goes on: what CraftBeerPi is doing, and for how long so far, counted every second */
-let readSince = 0, tickT = 0;
+/* waiting for the first brews: a read not answered yet (a core before 4.7.7.post64 works them out before it answers), or
+   CraftBeerPi answering at once that it's still working them out and has none yet (post64) */
+const working = () => !!(D && D.working);
+const firstWait = () => (!D && reading) || (working() && !brews().length);
+/* the head while it waits: what CraftBeerPi is doing, and for how long so far, counted every second */
+let waitSince = 0, tickT = 0, pollT = 0;
 const lasted = ms => { const s = Math.floor(ms / 1000); return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${s % 60} s`; };
 function readingWords() {
-  const ms = reading ? Date.now() - readSince : 0;
+  const ms = waitSince ? Date.now() - waitSince : 0;
   if (ms < PATIENT_MS) return "Reading past brews from CraftBeerPi's logs…";
   return `Working out the figures from CraftBeerPi's logs: ${lasted(ms)} so far. The first time, it reads every past brew, which can take a few minutes; after that it's quick.`;
 }
@@ -704,10 +719,15 @@ function patient() {
   clearInterval(tickT);
   const g = gen;
   tickT = setInterval(() => {
-    if (g !== gen || !st || D || !reading) { clearInterval(tickT); return; }
+    if (g !== gen || !st || !firstWait()) { clearInterval(tickT); return; }
     const el = $("#reading");
     if (el) el.textContent = readingWords();
   }, 1000);
+}
+/* the brews shown while CraftBeerPi works them out again: the last it worked out, and when */
+function workingWords() {
+  const at = D && fin(D.as_of) ? `These are as they were at ${hm(D.as_of)} on ${dayShort(D.as_of)}; c` : "C";
+  return `${at}raftBeerPi is looking through its logs for newer brews.`;
 }
 async function readEv(id, fid) {
   const key = `${id}|${fid}`, b = brewOf(id);
@@ -757,6 +777,7 @@ function refusedWords(F, act, label, err, g0, g1) {
   if (err === "not_offered") return `${label} wasn't applied: the brews no longer agree.`;
   if (err === "back_changed") return `${label} wasn't applied: ${SETTING[F.id] === SETTING.strike ? "the strike water box's tun steel" : SETTING[F.id]} was changed ${F.id === "strike" ? "since" : "in Settings since"}. It's ${nowWords(F, g1)} now.`;
   if (err === "not_in_use") return `${label} wasn't applied: the figure isn't in use any more.`;
+  if (err === "working") return `${label} wasn't applied: ${WORKING_BREWS}. Try again in a minute.`;
   if (err === "brews_changed") {
     const was = new Map(g0.values.map(x => [x.brew, x.out])), outNow = g1.values.filter(x => x.out && was.get(x.brew) === false);
     const then = g1.state === "use" ? `It's ${offerOf(F, g1).words} now.` : g1.state === "one" ? "With one brew left, USE waits for a second." : g1.state === "disagree" ? "The brews left disagree." : g1.state === "none" ? "No brews are left in it." : "";
@@ -789,9 +810,11 @@ async function command(F, act) {
   if (res.status === 409) {
     const fx = res.data && res.data.figures;
     absorb(fx);
-    // a new brew: its row comes with the whole of GET /figures, which a refusal with the figures alone doesn't carry
-    if (res.data && res.data.error === "brews_changed" && !(fx && Array.isArray(fx.brews))) readFigures();
-    return noteFor(F.id, refusedWords(F, act, label, res.data && res.data.error, g0, figOf(F.id)));
+    // a new brew: its row comes with the whole of GET /figures, which a refusal with the figures alone doesn't carry;
+    // brews still being worked out: the page asks again until they're ready
+    const err = res.data && res.data.error;
+    if ((err === "brews_changed" && !(fx && Array.isArray(fx.brews))) || err === "working") readFigures();
+    return noteFor(F.id, refusedWords(F, act, label, err, g0, figOf(F.id)));
   }
   const why = whyNot(res, CMD_MS);
   const end = res.error === "timeout" ? `No answer from CraftBeerPi in ${CMD_MS / 1000} s.` : res.error === "network" ? "No connection to CraftBeerPi."
@@ -815,6 +838,12 @@ async function leaveOut(F, bid) {
   if (res.ok) {
     absorb(res.data && res.data.figures);
     log(`${day(b.start)} ${out ? "left out of" : "put back in"} the ${F.name.toLowerCase()} figure`, "", "");
+  } else if (res.status === 409) {
+    // refused, nothing changed: a brew CraftBeerPi hasn't got among the brews it's still working out
+    absorb(res.data && res.data.figures);
+    const err = res.data && res.data.error;
+    if (err === "working") readFigures();
+    return noteFor(F.id, `${day(b.start)} wasn't ${out ? "left out" : "put back"}: ${err === "working" ? `${WORKING_BREWS}. Try again in a minute.` : `CraftBeerPi refused it (${err || "409"}).`}`);
   } else {
     st.outFail = {fig: F.id, brew: bid};
     log(`${F.name}: failed: ${whyNot(res, CMD_MS)}`, "failed", "bad");
