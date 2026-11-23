@@ -12,8 +12,9 @@
 // sw-refused, sw-refused-moved, sw-failed, sw-tunprobe, sw-wait, sw-heat, sw-move, sw-late, sw-doughin, sw-hand,
 // sw-novol, sw-missing, sw-missing-steps, sw-noprobe, sw-grain-bad and sw-interval, the one clock's sim-clock and
 // sim-clock-1x, the timers' timer-change and timer-removed, the boil kettle's MANUAL's bk-hand, bk-hand-off and
-// bk-man-boil, and the mash pH's ph, ph-open, ph-set, ph-target, ph-had, ph-end, ph-warm, ph-nolog, ph-vessel, ph-saved,
-// ph-fail, ph-slow, ph-noclose and ph-other) runs on this, so it can be compared with the mockup pixel for pixel.
+// bk-man-boil, the mash pH's ph, ph-open, ph-set, ph-target, ph-had, ph-end, ph-warm, ph-nolog, ph-vessel, ph-saved,
+// ph-fail, ph-slow, ph-noclose and ph-other, and other-recipe) runs on this, so it can be compared with the mockup
+// pixel for pixel.
 import { swModel, SW_MORNING, SW_LEVER_S } from "./strike-demo";
 
 const RECIPE = {
@@ -64,6 +65,16 @@ const BOOK = [ // the simulator's Recipe Book (config/recipes/*.yaml)
   {n: "Craftbeerpi Test Recipe v3", d: "6 steps · mash 152 °F, mash out 168 °F · 90 min boil"},
   {n: "BrewStart ready-by demo", d: "3 steps · hot strike water by a set time, 152 °F"}
 ];
+/* steps for v4 and v3, so OTHER RECIPE can load them: demonstration data that matches their summaries above, as the
+   simulator's book gives the mockup only those. v5 is RECIPE's own */
+const BOOK_STEPS = {
+  1: [{n: "MashIn", temp: 126, k: "mt", note: "Add the malt when it reaches 126 °F"}, {n: "Protein Rest", temp: 126, min: 20, k: "mt"},
+    {n: "Saccharification", temp: 149, min: 40, k: "mt"}, {n: "Boil", temp: 210.2, min: 90, k: "bk", boil: true, adds: [[60, "Centennial", "2.00 oz"], [10, "Cascade", "2.00 oz"]]},
+    {n: "Whirlpool Hop", k: "bk", note: "Cool down to 170 °F. Then add 1.00 oz Citra."}, {n: "Whirlpool", temp: 170, min: 20, k: "bk"}],
+  2: [{n: "MashIn", temp: 152, k: "mt", note: "Add the malt when it reaches 152 °F"}, {n: "Saccharification", temp: 152, min: 60, k: "mt"},
+    {n: "Mash out", temp: 168, min: 10, k: "mt"}, {n: "Boil", temp: 210.2, min: 90, k: "bk", boil: true, adds: [[60, "Magnum", "1.00 oz"]]},
+    {n: "Whirlpool Hop", k: "bk", note: "Cool down to 170 °F. Then add 2.00 oz Mosaic."}, {n: "Whirlpool", temp: 170, min: 20, k: "bk"}]
+};
 
 /* a question's line and its answer's are CraftBeerPi's words, as the screen logs them (title: message, then "title
    answered: button"). The malt question is an imported recipe's MashIn Notification (upload_controller), and its button
@@ -527,6 +538,8 @@ const SCENES = {
     s.events = [["14:32:28", "Stir removed, 7:15 to go", "confirmed", "ok"], ...s.events];
     return s;
   },
+  /* #other-recipe: the recipe not begun on brew morning (#prebrew), with OTHER RECIPE's book open */
+  "other-recipe": () => Object.assign(SCENES.prebrew(), {open: {rbOpen: true}}),
   /* the boil kettle in MANUAL, brewing by hand: the wort just under a boil, the element on by hand, the boil power 45 %.
      The element runs at that 45 %, which the window reads as HAND 45 %, with the steps beside it, and MODE's MAN is
      boxed (bkManCue). #bk-hand-off: the same with the element off */
@@ -1359,7 +1372,7 @@ function history(scene, now, x) {
   return h;
 }
 
-export { RECIPE, SPARGE_STEP, BIG_ADDS, VNAME, KNAME, PROBE, VACT, ACT, HERMS_DELTA, BOIL_TH, BOOK, SCENES, history, noTargetBanner, pauseBanner, spargeBanner, boilHoldBanner, boilStartLine, tfmt, tBanner, byHandBanner, versions,
+export { RECIPE, SPARGE_STEP, BIG_ADDS, VNAME, KNAME, PROBE, VACT, ACT, HERMS_DELTA, BOIL_TH, BOOK, BOOK_STEPS, SCENES, history, noTargetBanner, pauseBanner, spargeBanner, boilHoldBanner, boilStartLine, tfmt, tBanner, byHandBanner, versions,
   SW_STEPS, SW_ASK, swStartAt, swPlanLine, SW_PLAN0, SW_VOL0, SW_WATTS, SW_NEED, SW_RATE, SW_SPARE, SW_GRAIN_KG };
 
 // Not the mockup's: two moments of the screen's own, for checking how the title bar holds what CraftBeerPi

@@ -233,7 +233,7 @@ let root = null, DEMO_MODE = false, opts = {}, gen = 0, PAGE = "";
 let st, M, timers = [], noteTimers = {}, hold = null, toastT = 0, raf = 0, rigW = 0, rigRs = 1, teardown = () => {};
 // heldOn: the recipe the hold that is running its command now began on (holdStart, recipeOn)
 let heldOn = null;
-let last = null, everConnected = false, book = [], bookBusy = false, bookShown = false;
+let last = null, everConnected = false, book = [], bookBusy = false, bookAgain = false, bookShown = false;
 /* every recipe name the Recipe Book has, for UNLOAD (inBook): null until it has been read, or when its read failed.
    bookFor: the loaded recipe (its steps) it was last read for */
 let bookNames = null, bookFor = null;
@@ -782,7 +782,7 @@ function recipeHTML() {
   return `<h2>${esc(M.RECIPE.name)}</h2>
     <div class="rstat"><p class="rmeta">${run ? "Running" : r.state === "ready" ? "Ready to start" : "Stopped"} · step ${r.cur + 1} of ${S.length}</p>${unl}</div>
     <div class="rctl">${start}${stop}${next}</div>
-    ${st.confirmNext ? confirmHTML() : st.confirmReset && !run && begun ? resetConfirmHTML() : st.confirmUnload && !run && unloadAsks(r) ? unloadAskHTML() : st.pbOpen ? pbHTML() : pbFresh() ? cmpHTML() : ""}
+    ${st.confirmNext ? confirmHTML() : st.confirmReset && !run && begun ? resetConfirmHTML() : st.confirmUnload && !run && unloadAsks(r) ? unloadAskHTML() : st.pbOpen ? pbHTML() : pbFresh() ? nbHTML() : ""}
     ${swHTML()}
     ${st.bsOpen ? bsHTML() : `<p class="note">${esc(st.notes.r || "")}</p>`}
     <ol class="steps" aria-label="Recipe steps">${bsAddHTML()}${S.map(stepHTML).join("")}</ol>${M.TIMERS ? timersHTML() : ""}`;
@@ -852,11 +852,12 @@ function unloadAskHTML() {
   return `<div class="confirm" role="group" aria-labelledby="cf-t"><p id="cf-t">Unload the recipe and brew by hand? ${said}</p><div><button type="button" class="yes" data-cmd="r:unload-yes">UNLOAD</button><button type="button" data-cmd="r:unload-no">${begun ? `STAY AT STEP ${n}` : "DON'T UNLOAD"}</button></div></div>`;
 }
 /* LOAD over a recipe the Recipe Book doesn't have asks first, by the recipe pages' rule, as UNLOAD does: a finished one,
-   whose steps stay loaded, all done, until another is loaded, under the by-hand list. One the book has, or none at all,
-   loads with one tap. Its question takes the list's place, and names SAVE TO BOOK, on Brew Steps, in the recipe pages'
-   words. Live, a finished recipe is steps loaded that show no recipe in the column */
+   whose steps stay loaded, all done, until another is loaded, under the by-hand list; or one not begun, under OTHER
+   RECIPE. One the book has, or none at all, loads with one tap. Its question takes the list's place, and names SAVE
+   TO BOOK, on Brew Steps, in the recipe pages' words. Live, a finished recipe is steps loaded that show no recipe
+   in the column */
 const finishedLoaded = () => !st.recipe && (DEMO_MODE ? !!st.finished : M.RECIPE.steps.length > 0);
-const loadAsks = () => finishedLoaded() && inBook() !== true;
+const loadAsks = () => (finishedLoaded() || (!!st.recipe && pbFresh())) && inBook() !== true;
 function loadAskHTML() {
   const x = M.BOOK[st.confirmLoad], to = esc(x ? x.n : ""), name = esc(M.RECIPE.given ?? M.RECIPE.name), kept = inBook();
   const said = !name ? `Load ${to} in place of the steps on Brew Day? They aren't in the Recipe Book, so they can't be loaded again. SAVE TO BOOK on Brew Steps keeps them.`
@@ -864,11 +865,12 @@ function loadAskHTML() {
     : `Load ${to} in place of ${name}? The Recipe Book can't be checked right now, so ${name} may not be there to load again. SAVE TO BOOK on Brew Steps keeps it.`;
   return `<div class="confirm" role="group" aria-labelledby="ld-t"><p id="ld-t">${said} Kettles, pumps and ${M.TIMERS ? "timers" : "the rest timer"} stay as they are.</p><div><button type="button" class="yes" data-cmd="r:load-yes">LOAD INSTEAD</button><button type="button" data-cmd="r:load-no">DON'T LOAD</button></div></div>`;
 }
-/* LOAD in the by-hand list: one tap, unless it would replace a finished recipe the Recipe Book doesn't have, when it asks
-   first (loadAskHTML); LOAD INSTEAD comes back here */
+/* LOAD in the by-hand list or in OTHER RECIPE's book: one tap, unless it would replace a recipe the Recipe Book doesn't
+   have, when it asks first (loadAskHTML); LOAD INSTEAD comes back here */
 function loadPress(i, asked) {
   if (!asked && loadAsks()) { st.confirmLoad = i; return renderAll(); }
   st.confirmLoad = null;
+  if (st.rbOpen && st.recipe) return DEMO_MODE ? cmdLoad2(i) : liveLoad(i, true);
   renderAll();
   return DEMO_MODE ? cmdLoad(i) : liveLoad(i);
 }
@@ -1239,6 +1241,34 @@ function cmpVerdict(R) {
 /* the panel: DONE beside its title, so the rows and the verdict keep their room on a laptop's column. Brewing by hand,
    COMPARE PROBES sits with RECIPE BOOK and BREW STEPS at the end of the column, out of the way while a brew runs, and
    the panel opens in their place */
+/* a recipe not begun has OTHER RECIPE beside COMPARE PROBES, in the row COMPARE PROBES had to itself, so choosing another
+   recipe costs the column no room; each opens its box in that place (RECIPE-COLUMN.md) */
+function nbHTML() {
+  if (st.cmpOpen) return cmpHTML();
+  if (st.rbOpen) return rbHTML();
+  const off = st.link === "lost" ? PAUSED : st.pend["r:check"] ? PB_WAIT : st.pend["r:unload"] ? WAIT : "";
+  return `<div class="nbrow">${b("cmdbtn", "OTHER RECIPE", "from the recipe book", {cmd: "rb:open", why: off})}${cmpHTML()}</div>`;
+}
+/* the recipe book in the recipe column, opened by OTHER RECIPE, as agreed with the recipe pages: the newest five, each with
+   LOAD, the loaded one saying what it is doing in the recipe column's own words instead; then ALL RECIPES (the Recipe
+   Book tab) and CLOSE. LOAD is one tap here, as it replaces only a recipe not begun, which stays in the book; over one the
+   book doesn't have, it asks first (loadAskHTML). On one screen the box takes the step list's room, as the other boxes
+   do */
+function rbHTML() {
+  const off = st.link === "lost" ? PAUSED : "", p = st.pend["r:load"], cur = st.recipe ? M.BOOK.findIndex(x => x.n === M.RECIPE.name) : -1;
+  if (st.confirmLoad != null) return `<section class="rbox" aria-labelledby="rb-h"><h3 id="rb-h">Recipe book</h3>${loadAskHTML()}</section>`;
+  const rows = M.BOOK.slice(0, 5).map((x, i) => {
+    const right = i === cur ? `<span class="rbst">${rbState()}</span>`
+      : b("cmdbtn", p === String(i) ? "LOADING…" : "LOAD", "", {cmd: "load:" + i, label: p === String(i) ? "" : `Load ${x.n}`, why: off || (p ? WAIT : "")});
+    return `<li${i === cur ? ' class="cur"' : ""}><span class="bn">${esc(x.n)}</span><span class="bd">${esc(x.d)}</span>${right}</li>`;
+  }).join("");
+  return `<section class="rbox" aria-labelledby="rb-h"><h3 id="rb-h">Recipe book</h3><ul>${rows}</ul><div class="rbf">${b("cmdbtn", "ALL RECIPES", "the Recipe Book", {cmd: "tab:Recipe Book"})}${b("cmdbtn", "CLOSE", "", {cmd: "rb:x"})}</div></section>`;
+}
+/* the loaded recipe's line in the book: the recipe column's status line, in capitals */
+function rbState() {
+  const r = st.recipe, at = `STEP ${r.cur + 1} OF ${M.RECIPE.steps.length}`;
+  return `<span>${r.state === "running" ? "RUNNING" : r.state === "ready" ? "READY TO START" : "STOPPED"}</span><span>${at}</span>`;
+}
 function cmpHTML(byHand) {
   const off = st.link === "lost" ? PAUSED : st.pend["r:check"] ? PB_WAIT : "";
   if (!st.cmpOpen) return b("cmdbtn cpbtn", "COMPARE PROBES", "before you fill", {cmd: "cmp:open", why: off});
@@ -1269,7 +1299,7 @@ function cmpDone(log) {
 /* COMPARE PROBES opened: live, CraftBeerPi's check says which probe gives no reading, so it is asked at once, and an
    earlier answer isn't used meanwhile */
 function cmpOpen() {
-  st.pbOpen = false; st.cmpOpen = true;
+  st.pbOpen = false; st.rbOpen = false; st.cmpOpen = true;
   if (!DEMO_MODE) { st.pb = null; if (!pbNone) pbAsk(); }
   renderAll();
 }
@@ -2261,7 +2291,7 @@ function bsAnnounce(later) {
    for the grain open it with (focus "garage": on IN THE GARAGE; from "use": focus back on USE as the box closes) */
 function bsOpen(o = {}) {
   const S = M.RECIPE.steps, bi = bsIdx(), neu = !!o.neu || bi < 0, s = neu ? null : S[bi], now = dayOf(bsNow()), d = s ? bsDayOf(s) : null;
-  Object.assign(st, {confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, pbOpen: false, cmpOpen: false, swOpen: false, swVol: null, swGrain: null});
+  Object.assign(st, {confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, pbOpen: false, cmpOpen: false, rbOpen: false, swOpen: false, swVol: null, swGrain: null});
   const place = bsPlace(), fig = bsGrainFig(s);
   const where = !s || !bsGrainHere() ? null : place === "old" ? (fig != null ? "indoors" : null) : place;
   const B = {neu, from: o.from || (neu ? "new" : "row"), kind: s ? bsKind(s) : "ready", txt: s ? bsTime(s) || "" : "", day: d === now || d === now + 1 ? d : bsNoon(), where, chip: null, fig: ""};
@@ -2802,6 +2832,7 @@ function drawRig() {
   // after the boil, the wort pump at the boil kettle on its loop through the chiller (the mockup's ?wp=chill)
   box.innerHTML = rigSVG(LAYOUT === "b" ? "line" : "kettle", W, rs, "chill");
   renderRig();
+  tsideCorner();
 }
 function renderAll() {
   if (!root || !st) return;
@@ -2834,6 +2865,8 @@ function renderAll() {
   phDraw();
   morph($("#event"), eventHTML());
   if (!PAGE) {
+    /* the timers' column beside the drawing, on one screen, or + TIMER and SOUND over its corner (tsideDraw) */
+    tsideDraw();
     TIGHT = platesTight();
     STACKED = mainStacked();
     $("#plates").toggleAttribute("data-tight", TIGHT);
@@ -2847,7 +2880,9 @@ function renderAll() {
        stays */
     const pbGone = st.pend["r:check"] || st.pbOpen ? recipeLost(st.pbFor) : null;
     if (pbGone) pbEnd(pbGone);
-    if (st.recipe && !pbFresh()) st.cmpOpen = false;
+    if (st.recipe && !pbFresh()) { st.cmpOpen = false; st.rbOpen = false; }
+    /* OTHER RECIPE's book belongs to a recipe not begun: it goes with the recipe too (UNLOAD, here or elsewhere) */
+    if (!st.recipe) st.rbOpen = false;
     /* UNLOAD's question stays while its words stay true: it goes with the recipe, or as a step starts here or elsewhere */
     if (st.confirmUnload && !(st.recipe && st.recipe.state !== "running" && unloadAsks(st.recipe))) st.confirmUnload = false;
     /* LOAD's, while the recipe it would replace is still the one loaded and still isn't in the book */
@@ -2866,23 +2901,24 @@ function renderAll() {
        has a BrewStart), unless its command is on its way */
     if (st.bsOpen && !st.pend.bs) {
       const bi = bsIdx(), still = st.bs && (st.bs.neu ? pbFresh() && bi < 0 : bi >= 0 && bsLive(bi));
-      if (!still || st.pbOpen || st.cmpOpen || st.confirmNext || st.confirmReset || st.confirmUnload || st.swOpen || st.swVol || st.swGrain || st.confirmLoad != null) { st.bsOpen = false; st.bs = null; }
+      if (!still || st.pbOpen || st.cmpOpen || st.confirmNext || st.confirmReset || st.confirmUnload || st.swOpen || st.swVol || st.swGrain || st.rbOpen || st.confirmLoad != null) { st.bsOpen = false; st.bs = null; }
     }
     // the check's box, the probes' panel or the strike water box as it is on screen, before the column is drawn again (pbFit)
     const before = pbMeasure();
-    /* a timer's editor open: on the one-screen layout the step list (by hand, the recipe book) makes room for it, and the
-       strike water box while that box is closed (brewday.css) */
-    $("#recipe").toggleAttribute("data-tedit", !!M.TIMERS && !!st.tedit);
+    /* a timer's editor open in the column: on the one-screen layout the step list (by hand, the recipe book) makes room for
+       it, and the strike water box while that box is closed (brewday.css). Beside the drawing it has a box of its own, and
+       the column stays as it is */
+    $("#recipe").toggleAttribute("data-tedit", !!M.TIMERS && !!st.tedit && tHere() === "col");
     /* and while something in it waits for you (NEXT STEP's, RESET's or UNLOAD's question, the pre-brew check's box or the
        probes side by side, the strike water box opened out or giving a number, a timer's alarm), or BrewStart's box is
        open, the versions' line steps aside on a monitor, so the step list keeps the current step whole (brewday.css) */
-    $("#recipe").toggleAttribute("data-asking", !!(st.confirmNext || st.confirmReset || st.confirmUnload || st.pbOpen || st.cmpOpen || st.swOpen || st.swVol || st.swGrain || st.bsOpen || (M.TIMERS && st.tmrs.some(t => t.state === "done"))));
+    $("#recipe").toggleAttribute("data-asking", !!(st.confirmNext || st.confirmReset || st.confirmUnload || st.pbOpen || st.cmpOpen || st.swOpen || st.swVol || st.swGrain || st.rbOpen || st.bsOpen || (M.TIMERS && st.tmrs.some(t => t.state === "done"))));
     /* the pre-brew check's box, the probes side by side and the strike water box opened out, or with the HLT's water or
        the grain's temperature being given, take the step list's room on one screen, as a timer's editor does, and the
-       timers' too, so the box isn't squeezed and the page doesn't grow; so does BrewStart's box. A timer's editor open as
+       timers' too, so the box isn't squeezed and the page doesn't grow; so do BrewStart's box and OTHER RECIPE's book. A timer's editor open as
        the box opens stays open, with what was typed in it: it makes way with the timers until the box closes
        (brewday.css) */
-    $("#recipe").toggleAttribute("data-pb", !!(st.pbOpen || st.cmpOpen || st.swOpen || st.swVol || st.swGrain || st.bsOpen));
+    $("#recipe").toggleAttribute("data-pb", !!(st.pbOpen || st.cmpOpen || st.swOpen || st.swVol || st.swGrain || st.rbOpen || st.bsOpen));
     /* BrewStart's box: COMPARE PROBES makes way for it on one screen too, as the step list does (brewday.css) */
     $("#recipe").toggleAttribute("data-bs", !!st.bsOpen);
     /* typing in BrewStart's box keeps its caret, whatever draws the column again meanwhile */
@@ -2913,7 +2949,10 @@ function renderAll() {
   // the Settings and Hardware pages' frame has no brewhouse to draw
   if (PAGE) return;
   keepStepInView();
+  tPlaceFit();
   renderRig();
+  /* with no timers: + TIMER and SOUND placed clear of the drawing as it now reads */
+  tsideCorner();
   if (GRAPHS) drawGraphs();
 }
 const bannerKey = x => x ? [x.tone, x.title, x.text, x.cmd || "", (x.acts || []).map(a => a.cmd).join(",")].join("|") : "";
@@ -3030,7 +3069,7 @@ function note(where, text) {
 }
 function noteAt(el, text) {
   const pl = el.closest(".plate");
-  if (pl) note(pl.id.slice(3), text); else if (el.closest(".tmrs")) note("t", text); else if (el.closest(".recipe")) note("r", text); else if (el.closest("#ph-box")) note("ph", text); else toast(text);
+  if (pl) note(pl.id.slice(3), text); else if (el.closest(".tmrs, .tside")) note("t", text); else if (el.closest(".recipe")) note("r", text); else if (el.closest("#ph-box")) note("ph", text); else toast(text);
 }
 function explain(el) {
   const why = el.dataset.why;
@@ -3597,7 +3636,7 @@ function cmdReset() {
 function cmdUnload() {
   const u = unloadRule();
   if (u.why) return;
-  Object.assign(st, {confirmNext: false, confirmReset: false, pbOpen: false, cmpOpen: false, swOpen: false, swVol: null, swGrain: null, bsOpen: false, bs: null});
+  Object.assign(st, {confirmNext: false, confirmReset: false, pbOpen: false, cmpOpen: false, rbOpen: false, swOpen: false, swVol: null, swGrain: null, bsOpen: false, bs: null});
   if (u.ask) { st.confirmUnload = true; return renderAll(); }
   (DEMO_MODE ? cmdUnloadGo : liveUnload)();
 }
@@ -3612,7 +3651,7 @@ function cmdUnloadGo() {
     q.forEach(t => questionGone(t, "no longer needed"));
     if (st.banner && (brewAsks(q, st.banner) || st.banner.cmd === "r:unload-yes")) st.banner = null;
     if (st.swd && !st.swd.hand) swAsSaved();
-    st.recipe = null; st.finished = false; st.pbOpen = false; st.cmpOpen = false;
+    st.recipe = null; st.finished = false; st.pbOpen = false; st.cmpOpen = false; st.rbOpen = false;
     if (st.hist) { st.hist.steps = []; st.hist.start = st.t - 8 * 3600; }
   });
 }
@@ -4109,6 +4148,19 @@ function cmdLoad(i) {
   if (i !== 0) { renderAll(); return toast(`Mockup: only Test Recipe v5 is filled in here. On the real screen, LOAD sends ${M.BOOK[i].n} to Brew Steps, as the Recipe Book does today.`); }
   send("r:load", "load", `${M.BOOK[0].n} loaded`, () => { M.RECIPE = {...M.RECIPE, name: M.BOOK[0].n}; st.recipe = {state: "ready", cur: 0, left: 0, adds: []}; st.finished = false; });
 }
+/* LOAD from OTHER RECIPE's book: one LOADING… at the row pressed, the others greyed meanwhile; once CraftBeerPi has the
+   recipe, the box closes and the column is the recipe, ready to start. Kettles, pumps and timers stay as they are. The
+   strike water box goes with the recipe it was for: the demo has its numbers for v5's brew only */
+function cmdLoad2(i) {
+  const steps = i === 0 ? DEMO.RECIPE.steps : DEMO.BOOK_STEPS[i];
+  if (!steps) { renderAll(); return toast(`Mockup: ${M.BOOK[i].n} isn't filled in here. On the real screen, LOAD sends it to Brew Steps.`); }
+  send("r:load", String(i), `${M.BOOK[i].n} loaded`, () => {
+    st.swd = null;
+    M.RECIPE = {...M.RECIPE, name: M.BOOK[i].n, steps: steps.map(s => ({...s}))};
+    st.recipe = {state: "ready", cur: 0, left: 0, adds: []};
+    st.finished = false; st.rbOpen = false; st.cmpOpen = false;
+  });
+}
 /* ALL OFF: stop the recipe first so it can't switch a kettle back on, then every vessel to MANUAL,
    then both elements and both pumps off */
 function cmdAllOff() {
@@ -4384,11 +4436,13 @@ function livePrompt(nid, aid) {
     }
   });
 }
-function liveLoad(i) {
+/* LOAD, live: the Recipe Book's own (POST /recipe/{file}/brew). From OTHER RECIPE's book (box) the row pressed says
+   LOADING… and the others wait, and the box closes once CraftBeerPi has the recipe; the column is then the new one */
+function liveLoad(i, box = false) {
   const x = M.BOOK[i];
   if (!x) return;
   own.load = Date.now();
-  exec("r:load", "load", `${x.n} loaded`, () => api.brew(x.file), {fail: () => alarm(`${x.n} did not load.`, "OK", "b:ok")});
+  exec("r:load", box ? String(i) : "load", `${x.n} loaded`, () => api.brew(x.file), {ok: () => { if (box) { st.rbOpen = false; st.cmpOpen = false; } }, fail: () => alarm(`${x.n} did not load.`, "OK", "b:ok")});
 }
 /* ALL OFF: the recipe stops first so it can't switch a kettle back on, then every kettle to
    MANUAL, then both elements and both pumps. Kettle /off always answers 204, so what counts is the state
@@ -4474,7 +4528,9 @@ const tTwin = (name, t) => st.tmrs.find(z => z !== t && z.name.toLowerCase() ===
 const tTwinWhy = n => `Another timer is already called ${n}. Give this one another name, so you can tell their alarms apart.`;
 function tDefaultName() { let n = st.tmrs.length + 1; while (tTwin(`Timer ${n}`)) n++; return `Timer ${n}`; }
 function timersHTML() {
-  const off = st.link === "lost" ? PAUSED : "", T = st.tmrs, e = st.tedit, full = T.length >= TMAX;
+  /* on one screen the timers are beside the drawing (tsideHTML), not in the column */
+  if (tHere() !== "col") return "";
+  const off = st.link === "lost" ? PAUSED : "", T = st.tmrs, e = st.tedit;
   const rows = T.map(t => trowHTML(t, off) + (e && e.id === t.id ? teditHTML(off) : ""));
   /* a timer just removed keeps its place for 10 s, with UNDO where its buttons were (tgoneHTML). While its REMOVE is on
      its way, a CraftBeerPi that has already said it's gone still has its row here, REMOVING…, so nothing below moves */
@@ -4483,7 +4539,7 @@ function timersHTML() {
   /* + TIMER in the heading, beside SOUND, rather than a row of its own under the timers: it costs the step list nothing.
      A new timer's editor still opens at the end of the list, where the timer will be. While an editor is open it is
      greyed and says why (one editor at a time) */
-  const plus = b("cmdbtn tplus2", "+ TIMER", "", {cmd: "te:new", why: off || (full ? "Four timers at most. Remove one to add another." : e ? "One timer at a time: close the one that's open first." : "")});
+  const plus = tplusHTML(off, "tplus2");
   return `<section class="tmrs" id="tmrs" aria-labelledby="tmrs-h"${e ? " data-editing" : ""}><div class="thead"><h3 id="tmrs-h">Timers</h3><div class="thr">${soundHTML()}${plus}</div></div>${rows.join("")}${e && e.id == null ? teditHTML(off) : ""}<p class="note">${esc(st.notes.t || "")}</p></section>`;
 }
 /* a timer just removed, for 10 s: its row keeps its place and height, so the timers under it don't move under a reaching
@@ -4501,11 +4557,10 @@ function tgoneHTML(g, off) {
    readers */
 function trowHTML(t, off) {
   const p = st.pend["t:" + t.id], why = off || (p ? WAIT : ""), done = t.state === "done", run = t.state === "running", live = run || t.state === "paused";
-  const up = done && tUpKnown(t) ? tfmt(tUp(t)) : "", time = done ? tUpText(t) : tfmt(t.left), back = tBack(t);
+  const time = done ? tUpText(t) : tfmt(t.left), back = tBack(t);
   const of = `<span class="nw">of ${tfmt(t.run)}</span>`;
   const sub = done ? "TIME'S UP" : run ? of : live ? `<span class="nw">PAUSED ·</span> ${of}` : "ready";
-  const said = (done ? `${t.name}: time's up, ${up ? `${up} ago` : "how long ago isn't known yet"}` : `${t.name}: ${tfmt(t.left)}${run ? " left" : live ? " left, paused" : ", ready"}`)
-    + (back ? `. ${tOff(t)}` : "");
+  const said = tSaid(t);
   // while its time or name is being changed, START or PAUSE waits without saying it is starting or pausing
   const btn = done ? b("cmdbtn", p === "plus5" ? "ADDING…" : "+5 MIN", "", {cmd: `tm2:plus5:${t.id}`, why}) + b("cmdbtn tok", p === "ok" ? "SENDING…" : "OK", "stops the alarm", {cmd: `tm2:ok:${t.id}`, why})
     : b("cmdbtn", p === "start" ? "STARTING…" : p === "pause" ? "PAUSING…" : run ? "PAUSE" : "START", t.state === "paused" ? "carry on" : "", {cmd: `tm2:go:${t.id}`, why});
@@ -4551,7 +4606,11 @@ function teditHTML(off) {
        stopped timer's, so a name typed and not yet saved stays */
     : live ? [b("cmdbtn", pT === "reset" ? "SENDING…" : `BACK TO ${tfmt(t.set)}`, "ready to start again", {cmd: "te:reset", why}), b("cmdbtn tgo", pT === "name" ? "SAVING…" : "DONE", "", {cmd: "te:done", why})]
     : [b("cmdbtn", "CANCEL", "", {cmd: "te:x"}), b("cmdbtn tgo", pT === "save" ? "SAVING…" : "SET", "", {cmd: "te:save", why})];
-  return `<div class="tedit" role="group" aria-labelledby="te-t"><p class="tet" id="te-t">${t ? `Change ${esc(t.name)}` : "New timer"}</p>${nm}${time}<div class="tact">${acts.join("")}</div></div>`;
+  /* a timer shown as a row without its buttons, where the column beside the drawing is too narrow for them (tMode): the
+     editor has a second row with what the row would have, REMOVE (one tap, with UNDO on its row) and START or PAUSE */
+  const two = t && t.state !== "done" && ["plain", "go"].includes(tChipped(t))
+    ? `<div class="tact tact2">${b("cmdbtn trm", pT === "rm" ? "REMOVING…" : "REMOVE", "", {cmd: `tm2:rm:${t.id}`, label: pT === "rm" ? "" : `Remove ${t.name}`, why})}${tGo(t, pT, why, t.state === "paused" ? "carry on" : "")}</div>` : "";
+  return `<div class="tedit" role="group" aria-labelledby="te-t"><p class="tet" id="te-t">${t ? `Change ${esc(t.name)}` : "New timer"}</p>${nm}${time}<div class="tact">${acts.join("")}</div>${two}</div>`;
 }
 /* SOUND: this screen's own setting, for its timers and CraftBeerPi's alerts. A browser plays sound only after a tap on the
    page, so after a reload it says so until the first tap anywhere */
@@ -4568,6 +4627,147 @@ const tmlText = () => st.tmrs.filter(t => t.state !== "stopped").map(t => t.stat
 /* the one-screen layout (brewday.css): from 1180 px wide the page never scrolls, and the recipe column's parts make way
    for one another */
 const ONE_SCREEN = window.matchMedia("(min-width:1180px)");
+/* where the timers are drawn (TIMER-PLACE.md, D): on one screen in a column beside the drawing, which gets narrower while
+   there is a timer and is full width with none; narrower, and on a phone, in the recipe column. A CraftBeerPi without the
+   timers keeps its rest timer in the column */
+const tHere = () => M && M.TIMERS && ONE_SCREEN.matches ? "side" : "col";
+/* what a timer's row or chip says to a screen reader, before "Change it": its name and time, how long ago it ran out,
+   and how long CraftBeerPi was off where it was brought back after a restart */
+function tSaid(t) {
+  const done = t.state === "done", run = t.state === "running", live = run || t.state === "paused";
+  return (done ? `${t.name}: time's up, ${tUpKnown(t) ? `${tfmt(tUp(t))} ago` : "how long ago isn't known yet"}` : `${t.name}: ${tfmt(t.left)}${run ? " left" : live ? " left, paused" : ", ready"}`)
+    + (tBack(t) ? `. ${tOff(t)}` : "");
+}
+/* + TIMER, greyed while four timers are set or an editor is open, saying why */
+const tplusHTML = (off, cls) => b(`cmdbtn ${cls}`, "+ TIMER", "", {cmd: "te:new", why: off || (st.tmrs.length >= TMAX ? "Four timers at most. Remove one to add another." : st.tedit ? "One timer at a time: close the one that's open first." : "")});
+/* START or PAUSE as on a timer's row: STARTING… or PAUSING… while CraftBeerPi answers */
+const tGo = (t, p, why, hint) => b("cmdbtn", p === "start" ? "STARTING…" : p === "pause" ? "PAUSING…" : t.state === "running" ? "PAUSE" : "START", hint, {cmd: `tm2:go:${t.id}`, why});
+/* a running timer with 3:00 or less to go: its time beside the drawing is bigger */
+const TSOON = 180, tSoon = t => t.state === "running" && t.left <= TSOON;
+/* a timer as one row of the column beside the drawing (brewday.css .tside .tchip): its name, giving way first with its
+   ellipsis, its state word (paused, ready; none while counting) and its time on one line, the row's bar along its foot.
+   The name and time open its editor. mode is what else it holds: "plain" nothing, "go" START or PAUSE, "full" REMOVE and
+   START or PAUSE. One that has run out is Prompt Amber, counts up and has OK, while its alarm stays in the title bar */
+function tchipHTML(t, off, mode) {
+  const p = st.pend["t:" + t.id], why = off || (p ? WAIT : ""), done = t.state === "done", live = t.state === "running" || t.state === "paused";
+  const word = done ? "TIME'S UP" : t.state === "paused" ? "paused" : t.state === "stopped" ? "ready" : "";
+  const editing = !!(st.tedit && st.tedit.id === t.id);
+  const btns = mode === "plain" ? "" : done ? b("cmdbtn tok", p === "ok" ? "SENDING…" : "OK", "", {cmd: `tm2:ok:${t.id}`, label: p === "ok" ? "" : "OK, stops the alarm", why})
+    : (mode === "full" ? b("cmdbtn trm", p === "rm" ? "REMOVING…" : "REMOVE", "", {cmd: `tm2:rm:${t.id}`, label: p === "rm" ? "" : `Remove ${t.name}`, why}) : "") + tGo(t, p, why, "");
+  return `<div class="tchip" data-mode="${mode}" data-state="${t.state}" id="tc-${t.id}"${tSoon(t) ? " data-soon" : ""}><button type="button" class="tcsel" data-cmd="te:open:${t.id}" aria-expanded="${editing}" aria-label="${esc(tSaid(t))}. Change it"${off ? ` aria-disabled="true" data-why="${off}"` : ""}><span class="tn">${esc(t.name)}</span><span class="ts">${word}</span><span class="tt" id="tct-${t.id}">${done ? tUpText(t) : tfmt(t.left)}</span></button>${btns ? `<span class="tcx">${btns}</span>` : ""}${live ? `<span class="bar"><i id="tcbar-${t.id}" style="width:${tPct(t)}%"></i></span>` : ""}</div>`;
+}
+/* a timer just removed, as a row of the same size in its place: its name and "removed", in Dim Steel, and UNDO, for its
+   10 real seconds, whatever the rows around it hold, as it is the only way back */
+function tcgoneHTML(g, off, mode) {
+  const p = st.pend["t:" + g.t.id];
+  const undo = b("cmdbtn tundo", p ? "SENDING…" : "UNDO", "put it back", {cmd: `tm2:undo:${g.t.id}`, label: p ? "" : `Undo: put ${g.t.name} back`, why: off || (p ? WAIT : "")});
+  return `<div class="tchip tcgone" data-mode="${mode}" data-state="gone" id="tc-${g.t.id}" role="group" aria-label="${esc(g.t.name)} removed"><p class="tcg"><span class="tn">${esc(g.t.name)}</span><span class="ts">removed</span></p><span class="tcx">${undo}</span></div>`;
+}
+/* a timer just removed is in the list while its UNDO shows; while its REMOVE is on its way, a CraftBeerPi that has already
+   said it's gone still has its row here, REMOVING…, so nothing below moves */
+const tGoneShown = () => { const g = st.tgone; return !!g && !(g.sending && st.tmrs.some(t => t.id === g.t.id)); };
+const tN = () => st.tmrs.length + (tGoneShown() ? 1 : 0);
+/* the rows in the timers' order, a timer just removed in its place; after(id) is what follows a row (its editor's box) */
+function tchipsHTML(off, mode, after) {
+  const out = st.tmrs.map(t => tchipHTML(t, off, mode) + after(t.id)), g = st.tgone;
+  if (tGoneShown()) out.splice(Math.min(g.idx, out.length), 0, g.sending ? tchipHTML(g.t, off, mode) : tcgoneHTML(g, off, mode));
+  return out.join("");
+}
+/* what the rows beside the drawing hold, from the column's width (tsideFit): REMOVE and START or PAUSE where a row has
+   --tcw-full, START or PAUSE where it has --tcw-go, else the name and time alone. At its 300 px it is always the first */
+const tMode = () => ["go", "plain"].includes(st.tcm) ? st.tcm : "full";
+/* how a timer is drawn now where it isn't a row of the recipe column's: its mode beside the drawing, else "" */
+const tChipped = () => tHere() !== "col" ? tMode() : "";
+/* a timer's editor beside the drawing, in a box of its own, with the timers' notes in it */
+const tpopHTML = off => st.tedit ? `<div class="tpop" id="tpop">${teditHTML(off)}<p class="note">${esc(st.notes.t || "")}</p></div>` : "";
+/* the timers' note while no editor is open (UNDO or + TIMER refused), for its 6 s, to the column's left */
+const tpnoteHTML = () => !st.tedit && st.notes.t ? `<p class="tpnote">${esc(st.notes.t)}</p>` : "";
+/* the timers in a column beside the drawing, on one screen, while there is at least one (a timer just removed counts while
+   its UNDO shows): TIMERS with how many there are ("TIMERS · 2"), + TIMER and SOUND, then the timers one to a row, which
+   scroll inside the column where they don't all fit; the count says they are there even where a long question in the
+   title bar leaves no room for a row. The drawing beside it gets narrower, not shorter, so its vessels keep their size
+   (brewday.css). With no timers the drawing is full width, and + TIMER and SOUND are two small buttons over its top-right
+   corner (tsideCorner). A timer's editor opens in a box beside its timer, a new one's beside the end of the timers, kept
+   on screen (tsidePop) */
+let tsideTop = 0, placeBusy = false;
+function tsideHTML(off, n) {
+  const e = st.tedit, pop = tpopHTML(off), plus = tplusHTML(off, "tplus3"), m = st.tmrs.length;
+  if (!n) return `<div class="tcorner">${plus}${soundHTML()}</div>${pop}${tpnoteHTML()}`;
+  const rows = tchipsHTML(off, tMode(), id => e && e.id === id ? pop : "") + (e && e.id == null ? pop : "");
+  return `<div class="tsh"><h3 id="tside-h">Timers${m ? ` <span aria-hidden="true">·</span> ${m}` : ""}</h3><div class="tshr">${plus}${soundHTML()}</div></div><div class="tsl">${rows}</div>${tpnoteHTML()}`;
+}
+/* the column, or the corner's buttons, drawn again in the drawing's row (data-tside: split; data-tcorner: the buttons over
+   the drawing's corner, in its cell); patched in place, so the editor keeps what is being typed and the list where it was
+   scrolled to */
+function tsideDraw() {
+  const bh = $(".brewhouse");
+  if (!bh) return;
+  const on = tHere() === "side", n = tN();
+  let el = $("#tside");
+  bh.toggleAttribute("data-tside", on && n > 0);
+  bh.toggleAttribute("data-tcorner", on && !n);
+  if (!on) { if (el) el.remove(); return; }
+  if (!el) { bh.insertAdjacentHTML("beforeend", '<section class="tside" id="tside" aria-label="Timers"></section>'); el = $("#tside"); }
+  const l = el.querySelector(".tsl");
+  tsideTop = n && l ? l.scrollTop : 0;
+  el.classList.toggle("empty", !n);
+  morph(el, tsideHTML(st.link === "lost" ? PAUSED : "", n));
+}
+/* after drawing: the column as tall as the drawing's box, which keeps its own least height where the row is shorter (a
+   long question in the title bar); what the rows hold, from the column's width. Where they don't all fit, the list's
+   height: a next row that would show all but its last 12 px is cut at half, so it reads as cut; one that would show less
+   is left as it is, as the heading's count says there are more. Then the list scrolled back to where it was, and the
+   editor's box */
+const TSIDE_CUT = 12;
+function tsideFit() {
+  const el = $("#tside"), l = el && el.querySelector(".tsl");
+  if (el) el.style.minHeight = l ? `${$("#rig").offsetHeight}px` : "";
+  if (l && !placeBusy) {
+    const s = getComputedStyle(l), w = l.clientWidth, need = m => parseFloat(s.getPropertyValue("--tcw-" + m));
+    const mode = w >= need("full") ? "full" : w >= need("go") ? "go" : "plain";
+    if (mode !== tMode()) { st.tcm = mode; placeBusy = true; renderAll(); placeBusy = false; return; }
+  }
+  if (l) {
+    l.style.maxHeight = "";
+    const t = [...l.children].filter(x => x.classList.contains("tchip")), H = l.clientHeight;
+    if (t.length > 1 && l.scrollHeight > H + 1) {
+      const P = t[1].offsetTop - t[0].offsetTop, th = t[0].offsetHeight, k = Math.floor((H + P - th) / P), peek = H - k * P;
+      if (peek > th - TSIDE_CUT) l.style.maxHeight = `${k * P + th / 2}px`;
+    }
+    l.scrollTop = tsideTop;
+  }
+  tsidePop();
+}
+/* the editor's box to the left of the column (of the corner's buttons, with no timers), level with its timer, or for a new
+   timer with the end of the timers, moved up or down as far as it must to stay on screen */
+function tsidePop() {
+  const pop = $("#tpop"), el = $("#tside");
+  if (!pop || !el) return;
+  const e = st.tedit, l = el.querySelector(".tsl"), rows = l ? [...l.querySelectorAll(".tchip")] : [];
+  const a = e && e.id != null ? $("#tc-" + e.id) : rows[rows.length - 1] || el.querySelector(".tcorner");
+  if (!a) return;
+  const r = el.getBoundingClientRect(), ar = a.getBoundingClientRect(), m = 8;
+  let y = e && e.id == null && l ? Math.min(ar.bottom, l.getBoundingClientRect().bottom) : ar.top;
+  y = Math.max(m, Math.min(y, window.innerHeight - m - pop.offsetHeight));
+  pop.style.top = `${Math.round(y - r.top - el.clientTop)}px`;
+}
+/* with no timers: + TIMER and SOUND in the drawing's top-right corner, in the first of these that stays inside the
+   drawing's box and clears every part of the drawing as it is drawn (outlines, lines, pumps, labels, the valves' note):
+   side by side, one over the other, then the same with smaller words, still 44 px tall. Tried after every draw of the
+   drawing and once the fonts are in */
+const TCORNER = ["row", "stack", "row small", "stack small"];
+function tsideCorner() {
+  const c = $("#tside .tcorner"), svg = $("#rigsvg");
+  if (!c) return;
+  const box = $("#rig").getBoundingClientRect(), parts = svg ? [...svg.querySelectorAll("path, rect, circle, ellipse, line, polyline, polygon, text")].map(x => x.getBoundingClientRect()).filter(p => p.width > 0 && p.height > 0) : [];
+  const clear = () => [...c.children].every(x => {
+    const r = x.getBoundingClientRect();
+    return r.top >= box.top && r.bottom <= box.bottom && r.left >= box.left && r.right <= box.right && !parts.some(p => r.left < p.right && r.right > p.left && r.top < p.bottom && r.bottom > p.top);
+  });
+  for (const f of TCORNER) { c.dataset.fit = f; if (clear()) return; }
+}
+/* after drawing, with the timers beside the drawing: the column fitted (tsideFit) */
+function tPlaceFit() { if (tHere() === "side") tsideFit(); }
 /* the step list scrolls, where it has to, so the current step is whole in view: on the one-screen layout the list is
    the part of the column that gives up height, to the timers, a question or an editor, with or without the timers.
    Where the current step is taller than the list has room for even at its top (a box above it, a long note), the
@@ -4774,6 +4974,8 @@ function unlockSound(target) {
    alarm waits */
 function tmTick() {
   let changed = false;
+  /* the rows beside the drawing are drawn again as a timer gets to 3:00 to go, or back over it, as its time grows */
+  const soon0 = st.tmrs.filter(tSoon).map(t => t.id).join();
   for (const t of st.tmrs) {
     if (t.state === "running") {
       t.left = Math.max(0, t.left - 1);
@@ -4784,8 +4986,9 @@ function tmTick() {
         continue;
       }
       tmShow(t);
-    } else if (t.state === "done") setText($("#tt-" + t.id), tUpText(t));
+    } else if (t.state === "done") tmUp(t);
   }
+  if (st.tmrs.filter(tSoon).map(t => t.id).join() !== soon0) changed = true;
   if (!st.banner) { const d = st.tmrs.find(t => t.state === "done"); if (d) { st.banner = DEMO.tBanner(d, st.tmrs); changed = true; } }
   /* a removed timer's row goes 10 real seconds after REMOVE, at any speed of CraftBeerPi's clock, unless its UNDO is on
      its way. At 1× CraftBeerPi's seconds are real ones, so they count it, as in a moment set up with no real time */
@@ -4798,9 +5001,13 @@ function tmTick() {
 }
 function tmShow(t) {
   setText($("#tt-" + t.id), tfmt(t.left));
+  setText($("#tct-" + t.id), tfmt(t.left));
   const bar = $("#tb-" + t.id); if (bar) bar.style.width = tPct(t) + "%";
+  const cb = $("#tcbar-" + t.id); if (cb) cb.style.width = tPct(t) + "%";
   if (st.tedit && st.tedit.id === t.id) setText($("#te-left"), tfmt(t.left));
 }
+// a run-out timer counting up, on its row in the column or beside the drawing
+function tmUp(t) { setText($("#tt-" + t.id), tUpText(t)); setText($("#tct-" + t.id), tUpText(t)); }
 /* live: the timers as CraftBeerPi last told them, counted on between its messages, a running one down and a finished one
    up, on its brewing clock (its scale: a simulator runs it faster). up: null while how long ago one ran out isn't known */
 function liveTmrs(x) {
@@ -4831,15 +5038,18 @@ function promptTimer(p) {
 }
 function liveTmTick() {
   if (!tMsg) return;
+  const soon0 = st.tmrs.filter(tSoon).map(t => t.id).join();
   st.tmrs = liveTmrs(tMsg);
   for (const t of st.tmrs) {
     if (t.state === "running") tmShow(t);
-    else if (t.state === "done") setText($("#tt-" + t.id), tUpText(t));
+    else if (t.state === "done") tmUp(t);
   }
   const m = $("#tml-t"); if (m) m.innerHTML = tmlText();
   // a removed timer's row goes 10 real seconds after CraftBeerPi took it, unless its UNDO is on its way
   const g = st.tgone;
   if (g && !g.sending && Date.now() - g.real >= 10000 && !st.pend["t:" + g.t.id]) { st.tgone = null; renderAll(); }
+  /* a timer getting to 3:00 to go, or back over it: its row beside the drawing is drawn again, its time bigger */
+  else if (st.tmrs.filter(tSoon).map(t => t.id).join() !== soon0) renderAll();
   alarmCheck();
 }
 const TAB_PATH = {"Recipe Book": "/recipes", "Brew Steps": "/mashprofile"};
@@ -4883,6 +5093,9 @@ function run(cmd) {
     case "p": return livePrompt(x, y);
     case "pb": if (x === "go") return pbGo(); st.pbOpen = false; return renderAll();
     case "cmp": if (x === "open") return cmpOpen(); return cmpDone(true);
+    /* OTHER RECIPE's book, opened and closed: opening it closes the probes' panel, and reads the book again, so a recipe
+       imported meanwhile on another screen is in it */
+    case "rb": st.rbOpen = x === "open"; st.confirmLoad = null; if (st.rbOpen) { st.cmpOpen = false; if (!DEMO_MODE) loadBook(); } return renderAll();
     /* the strike water box: USE, BACK TO, USE waiting for the grain (where), and FORECAST or CLOSE, one button that opens
        and closes the details; closing them closes a small box open in them. BrewStart's row, + BrewStart and its box */
     case "sw": if (x === "use") return swUse(); if (x === "back") return swBack(); if (x === "where") return swWhere(); st.swOpen = x === "more" ? !st.swOpen : x === "open"; if (!st.swOpen) { st.swVol = null; st.swGrain = null; } return renderAll();
@@ -4912,7 +5125,7 @@ function blankMoment() {
   ACTS.forEach(x => { a[x] = {on: false, pct: 0}; });
   return {t: null, link: "lost", age: null, banner: null, v, a, recipe: null, timer: {left: 3600, running: false},
     tmrs: [], names: [], tedit: null, snd: soundInit(),
-    events: loadEvents(), pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, logOpen: false,
+    events: loadEvents(), pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, logOpen: false, rbOpen: false,
     sw: null, swOpen: false, swVol: null, swGrain: null, bsOpen: false, bs: null,
     fail: {}, expect: {}, alarm: null, errors: [], warnings: [], prompts: [], lostAt: null, openedAt: Date.now(),
     waitN: 0, oldAt: 0, seenN: 0, seenDone: new Set()};
@@ -5011,8 +5224,9 @@ function applyLive(snap) {
   if (!PAGE && !st.recipe && !bookShown) { bookShown = true; loadBook(); }
   if (st.recipe) bookShown = false;
   /* UNLOAD asks for a recipe the Recipe Book doesn't have, so the book's names are read while one is loaded too: as the
-     page opens, and again for each recipe loaded (by its steps) */
-  if (!PAGE && st.recipe) { const k = recipeKey(); if (k !== bookFor) { bookFor = k; loadBook(true); } } else bookFor = null;
+     page opens, and again for each recipe loaded (by its steps). For a recipe not begun the newest five as well, for
+     OTHER RECIPE's book */
+  if (!PAGE && st.recipe) { const k = recipeKey(); if (k !== bookFor) { bookFor = k; loadBook(!pbFresh()); } } else bookFor = null;
   /* UNLOAD's alarm goes once the steps have gone after all */
   if (st.alarm && st.alarm.cmd === "r:unload-yes" && !M.RECIPE.steps.length) st.alarm = null;
   powerModeChanged(st.v.bk.mode);
@@ -5426,11 +5640,14 @@ function saveEvents() {
   try { window.localStorage.setItem(EVENTS_KEY, JSON.stringify(st.events.slice(0, 50))); } catch (e) { /* private window: kept for this visit only */ }
 }
 
-/* ---------- the Recipe Book: its newest five when no recipe is loaded, and every name, for UNLOAD ---------- */
-/* names: the names alone, while a recipe is loaded (inBook); otherwise the newest five with their summaries too, for the
-   column's recipe book. A read that fails leaves the names unknown, so UNLOAD asks */
+/* ---------- the Recipe Book: its newest five when no recipe is loaded or one isn't begun, and every name, for UNLOAD ---------- */
+/* names: the names alone, while a recipe that has begun is loaded (inBook); otherwise the newest five with their summaries
+   too, for the column's recipe book and OTHER RECIPE's. A read that fails leaves the names unknown, so UNLOAD asks */
 async function loadBook(names = false) {
-  if (bookBusy || DEMO_MODE) return;
+  if (DEMO_MODE) return;
+  /* a read already under way may have started before what is asked for now (a recipe imported on another screen just
+     before OTHER RECIPE is pressed): the book is read again once it is done */
+  if (bookBusy) { if (!names) bookAgain = true; return; }
   const g = gen;
   bookBusy = true;
   try {
@@ -5453,7 +5670,10 @@ async function loadBook(names = false) {
     if (last) applyLive(last);
     schedule();
   } finally {
-    if (g === gen) bookBusy = false;
+    if (g === gen) {
+      bookBusy = false;
+      if (bookAgain) { bookAgain = false; loadBook(); }
+    }
   }
 }
 
@@ -5575,10 +5795,15 @@ const handlers = {
     /* the pH box: Escape closes it while focus is in it or on its reminder; from elsewhere, once nothing else open is left
        to close first (below) */
     if (e.key === "Escape" && st.ph && st.ph.open && e.target.closest && e.target.closest("#ph-box, #banner")) { phClose(); return; }
-    /* on one screen a box open in the column has the timers make way, a timer's editor with them, so Escape is for the box */
-    if (e.key === "Escape" && st.tedit && !(ONE_SCREEN.matches && (st.pbOpen || st.cmpOpen || st.swOpen || st.bsOpen))) { st.tedit = null; renderAll(); return; }
+    /* a timer's editor: with the timers in the column on one screen, a box open in the column has them make way, the editor
+       with them, so Escape is for the box. Beside the drawing the editor is in a box of its own and closes first, unless
+       focus is in a box open in the recipe column, which then closes first: Escape closes the box being worked in */
+    const inColBox = !!(e.target.closest && e.target.closest("#recipe")) && !!(st.bsOpen || st.pbOpen || st.cmpOpen || st.swOpen || st.rbOpen || st.confirmLoad != null);
+    if (e.key === "Escape" && st.tedit && (tHere() !== "col" ? !inColBox : !(ONE_SCREEN.matches && (st.pbOpen || st.cmpOpen || st.swOpen || st.rbOpen || st.bsOpen)))) { st.tedit = null; renderAll(); return; }
     if (e.key === "Escape" && st.bsOpen) { bsClose(); return; }
     if (e.key === "Escape" && st.confirmLoad != null) { st.confirmLoad = null; renderAll(); return; }
+    // OTHER RECIPE's book
+    if (e.key === "Escape" && st.rbOpen) { st.rbOpen = false; renderAll(); return; }
     if (e.key === "Escape" && (st.edit || st.logOpen || st.confirmNext || st.confirmReset || st.confirmUnload || st.pbOpen || st.cmpOpen || st.swOpen)) { st.edit = null; st.logOpen = false; st.confirmNext = false; st.confirmReset = false; st.confirmUnload = false; st.pbOpen = false; st.cmpOpen = false; st.swOpen = false; renderAll(); }
     else if (e.key === "Escape" && st.ph && st.ph.open) phClose();
   },
@@ -5819,7 +6044,7 @@ export function createBrewDay(el, o = {}) {
   /* this tab's name, so BrewScribe's BREW DAY button (target="craftbeerpi") comes back to it rather than opening
      another */
   if (!DEMO_MODE) { try { window.name = "craftbeerpi"; } catch (_) { /* a sandboxed frame: no name */ } }
-  timers = []; noteTimers = {}; hold = null; afterHold = null; heldOn = null; pbKeep = null; rigW = 0; last = null; everConnected = false; book = []; bookBusy = false; bookShown = false;
+  timers = []; noteTimers = {}; hold = null; afterHold = null; heldOn = null; pbKeep = null; rigW = 0; last = null; everConnected = false; book = []; bookBusy = false; bookAgain = false; bookShown = false;
   bookNames = null; bookFor = null;
   tAns = null; tMsg = null; lastBannerKey = null; rangAt = 0; newIds = new Set(); openIds = null; sAns = null; swFailedAt = null; swFcGap = null; bsOff = null;
   answered.clear(); Object.keys(own).forEach(k => delete own[k]);
@@ -5883,7 +6108,7 @@ export function createBrewDay(el, o = {}) {
     // a moment can open an editor (open) and borrow another moment's graph history (base)
     const open = st.open, base = st.base || key;
     delete st.open; delete st.base;
-    Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, logOpen: false, pbOpen: false, cmpOpen: false, swOpen: false, swVol: null, swGrain: null, bsOpen: false, bs: null}, open);
+    Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, logOpen: false, pbOpen: false, cmpOpen: false, rbOpen: false, swOpen: false, swVol: null, swGrain: null, bsOpen: false, bs: null}, open);
     /* BrewScribe as the moment has it, and Brew Day's copy of its answer (phLoad) */
     phLoad();
     /* the strike water box: CraftBeerPi's answer for the moment's numbers, worked out already, unless the moment has it
@@ -5998,6 +6223,15 @@ export function createBrewDay(el, o = {}) {
   if (rro) rro.observe($("#recipe"));
   const onFontsStep = () => { if (gen === myGen && st && !PAGE) { bsFit(); keepStepInView(); } };
   if (document.fonts) document.fonts.addEventListener("loadingdone", onFontsStep);
+  /* the timers move between the recipe column and their column beside the drawing as the window crosses one screen's
+     width; the rows hold what fits as it changes size; + TIMER and SOUND over the drawing's corner, and the rows, are
+     worked out again once the fonts are in, which change the words' widths and the drawing's labels */
+  const onOneScreen = () => { if (gen === myGen && st && !PAGE) renderAll(); };
+  if (!PAGE) ONE_SCREEN.addEventListener("change", onOneScreen);
+  const tro = PAGE ? null : new ResizeObserver(() => { if (gen === myGen && st) tPlaceFit(); });
+  if (tro) tro.observe($("#app"));
+  const onFontsSide = () => { if (gen === myGen && st && !PAGE) { tPlaceFit(); tsideCorner(); } };
+  if (document.fonts) document.fonts.addEventListener("loadingdone", onFontsSide);
   function teardownThis() {
     clearInterval(ticker);
     clearInterval(phTick);
@@ -6006,7 +6240,9 @@ export function createBrewDay(el, o = {}) {
     if (pro) pro.disconnect();
     if (gro) gro.disconnect();
     if (rro) rro.disconnect();
-    if (document.fonts) { document.fonts.removeEventListener("loadingdone", onFonts); document.fonts.removeEventListener("loadingdone", onFontsStep); }
+    if (tro) tro.disconnect();
+    ONE_SCREEN.removeEventListener("change", onOneScreen);
+    if (document.fonts) { document.fonts.removeEventListener("loadingdone", onFonts); document.fonts.removeEventListener("loadingdone", onFontsStep); document.fonts.removeEventListener("loadingdone", onFontsSide); }
   }
   teardown = () => {
     teardownThis();
