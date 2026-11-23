@@ -116,7 +116,7 @@ A new `FiguresController` (`cbpi/controller/figures_controller.py`) and `Figures
 | `hlt` | `{"eff": 0.87, "rate": 2.1, "from": 60.4, "to": 158.0, "minutes": 45.9, "volume": 15.0, "watts": 5346, "t0", "t1", "planned": 44.4, "planned_by": "brewstart", "ready_by": 1795327200.0, "early": 8.5}`. `planned_by` is `"brewstart"` (B2's record) or `"worked_out"` (what 90 % would plan). Without B2, `ready_by` and `early` are null. | `pump_on` (the wort pump ran while the HLT heated, so the mash drew heat too), `not_heated`, `no_water` (no BrewStart record of the water on a real brewery, before B2) |
 | `strike` | `{"landed": 151.3, "lo": 149.6, "hi": 152.4, "off": 0.3, "t": <malt in>, "fit_lo": 150.8, "fit_hi": 151.8}`. `lo` and `hi` are the forecast as the box showed it (`lo[0]`, `hi[0]`). `off` is landed less the forecast's middle over minutes 5–15. `fit_lo` and `fit_hi` are the forecast at the fitted value (S2), or null. | `no_grain` (a SimVessel mash tun with `Grain_Kg` 0), `no_forecast` (no record from S1: brewed before it, or the box had no answer) |
 | `mash` | `{"rests": [{"target": 149, "t0", "t1", "minutes": 60, "held": 0.3, "over": 1.1, "last_degree": 6.0}], "steps_up": [{"from": 149, "to": 168, "rate": 1.0}]}` | `no_rest`, `stopped` (stopped before its first rest) |
-| `grain` | `{"per": 0.104, "held": 1.4, "strike": 5.1, "sparge": 5.4, "pre_boil": 8.6, "dead": 0.5, "grain": 13.5}` | `no_brewscribe`, `no_volumes` (no strike, sparge or pre-boil reading), `no_grain_weight` (the recipe has no `mash_numbers.grain_kg`) |
+| `grain` | `{"per": 0.104, "held": 1.4, "strike": 5.1, "hlt_fill": 15.0, "sparge_before": 9.9, "strike_from": "hlt_fill", "sparge": 5.4, "pre_boil": 8.6, "dead": 0.5, "grain": 13.5}`. Every volume is as at 68 °F. `strike_from` says how the strike was found: `"hlt_fill"` for now (below). | `no_brewscribe`, `no_volumes` (no HLT fill, sparge or pre-boil reading), `no_levels` (the sparge water has no `level_before`, so the strike can't be told from the HLT's fill), `no_grain_weight` (the recipe has no `mash_numbers.grain_kg`) |
 | `boil` | `{"rate": 2.6, "from": 165, "minutes": 17.8, "t0", "t1"}` | `no_boil`, `stopped` (with `"at": 139`) |
 
 **How each is worked out** (the mockup does the same from the bench's logs, `build_bench_data.py` in the designer's session folder):
@@ -133,10 +133,13 @@ A new `FiguresController` (`cbpi/controller/figures_controller.py`) and `Figures
   - **last degree:** minutes from the last time it was a degree under to arriving.
   - **step up:** the rise between two rests, over the middle 80 %.
 - **`grain`:**
-  - water held = BrewScribe's `strike_water` volume + its `sparge_water` volume (P1) − its `pre_boil` volume cooled to 68 °F − the recipe's `lauter_dead_l`;
+  - **The strike:** BrewScribe's `strike_water` reading is the HLT's fill, taken at "HLT water prep", not the strike: on this rig the HLT holds the strike and the sparge water. So strike = `hlt_fill` (the `strike_water` volume) − `sparge_before` (the `sparge_water` entry's `level_before`, P1). `strike_from` is `"hlt_fill"`.
+  - **What that costs:** whatever the HLT loses between its fill and the sparge counts as strike. An open HLT may lose 0.1–0.3 gal in an hour of mashing, which raises the figure by about 0.01–0.02 gal/lb on 13.5 lb. The page says it may read slightly high whenever a brew counted has `strike_from: "hlt_fill"`.
+  - **Later:** if BrewScribe adds a reading of the HLT's level right after the strike goes over, at dough-in, strike = `hlt_fill` − that level, and `strike_from` becomes `"dough_in_level"`. The mash's losses then drop out, and so does the page's caveat. P1's fields don't change.
+  - water held = strike + the `sparge_water` volume − the `pre_boil` volume − the recipe's `lauter_dead_l`;
   - ÷ `mash_numbers.grain_kg`;
   - in gal/lb (or L/kg).
-  - "Cooled to 68 °F": multiply by water's density at the reading's sample temperature ÷ its density at 68 °F. That's the correction BrewScribe's boil-off already uses (`report_data.py`, about line 1600).
+  - **Every volume is taken as at 68 °F before it's added or subtracted:** multiply it by water's density at its temperature ÷ its density at 68 °F, the correction BrewScribe's boil-off already uses (`report_data.py`, about line 1600). The fill is usually cold and the sparge levels hot, so this matters: 10 gal at 168 °F is 9.76 gal at 68 °F. Use the entry's own temperature, else the logged probe's reading at the entry's time (the HLT's for the fill and the sparge, the boil kettle's for pre-boil).
 - **`boil`:** from the last reading under 120 °F (or the start) to the first at 211.5 °F; the rate over the middle 80 %.
 
 **A figure:**
@@ -203,7 +206,7 @@ A setting changed by hand after USE (in Settings, or the plant file edited) is n
   "target": {"t": [ … ], "v": [ … ]},
   "element": {"t": [ … ], "v": [ … ]},
   "steps": [[1795320300.0, 1], [1795326720.0, 2], [1795327440.0, 3]],
-  "readings": [[1795327200.0, "strike_water", 5.1], [1795334400.0, "sparge_water", 5.4], [1795336200.0, "pre_boil", 8.6]],
+  "readings": [[1795318800.0, "strike_water", 15.0], [1795334400.0, "sparge_water", 5.4], [1795336200.0, "pre_boil", 8.6]],
   "stretches": [{"t0": 1795327740.0, "t1": 1795328340.0}],
   "forecast": {"lo": 149.6, "hi": 152.4}
 }
@@ -392,11 +395,10 @@ That call always writes, unlike `log_change`, which skips a value equal to the l
 
 ## P: BrewScribe (Porter)
 
-**P1. A sparge water reading.**
-- **The change:** a `volume` reading at a new stage, `sparge_water`, "Sparge water": the water that went from the HLT into the mash tun as sparge. On this rig that's the HLT's level before the sparge less its level after, so BrewScribe may want to offer the two levels and subtract them. How it asks is Porter's call.
-- **Where:** add the stage where the others are listed: `report_data.py:57–65`, `web/app.js` `manualCheckpoints` (`:130–143`) and the API's allowed stages (`service.py:256–264`). Put it between `mash_end` and `first_runnings`.
-- **Why:** grain absorption needs all the water that went into the tun. `strike_water` gives the strike, and nothing gives the sparge today: `"water"` is an addition, not a reading.
-- **On an older BrewScribe:** grain cells say "no sparge water in BrewScribe" (`no_volumes`).
+**P1. A sparge water reading** (BrewScribe 0.1.0.dev55, as Porter is building it).
+- **The change:** a `volume` entry at a new stage, `sparge_water`. Its `value` is the sparge water: what went from the HLT into the mash tun. When the HLT's levels were typed, its data also keeps `level_before` and `level_after`, the HLT's levels before and after the sparge, in the entry's unit.
+- **Why:** grain absorption needs all the water that went into the tun. The `sparge_water` value gives the sparge, and its `level_before` gives the strike: the HLT's fill (`strike_water`) less what was left in it before the sparge.
+- **On an older BrewScribe:** grain cells say "no volumes in BrewScribe" (`no_volumes`). A sparge entered without its levels gives `no_levels`.
 
 **P2, not needed.** BrewScribe already marks a simulator's brew (`simulator` in `/api/history`, from a clock more than 5 % fast or slow, `report_data.py:465`), and each CraftBeerPi has its own BrewScribe. Figures takes the brewery's name from BREWERY_NAME.
 
@@ -409,4 +411,4 @@ That call always writes, unlike `log_change`, which skips a value equal to the l
 
 **What Figures reads from BrewScribe, unchanged** (C1):
 - `GET /brewscribe/api/history`: `brews[].day_id`, `name`, `started_at`, `simulator`.
-- `GET /brewscribe/api/days/{day_id}`: entries of kind `volume`, with `data.measurement_stage`, `value`, `unit`, `temperature` and `temperature_unit`, plus `timing` for the step entries.
+- `GET /brewscribe/api/days/{day_id}`: entries of kind `volume`, with `data.measurement_stage`, `value`, `unit`, `temperature` and `temperature_unit`, and for `sparge_water` `level_before` and `level_after` (P1); plus `timing` for the step entries.

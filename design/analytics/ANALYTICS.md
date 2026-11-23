@@ -152,14 +152,15 @@ The whole ledger needs a window at least 1280 px wide and 860 tall: your 1920 ×
 
 **What it is:** how much water the grain keeps, in gal/lb. This is `GRAIN_ABSORPTION`, 0.12 today, which you asked for help calibrating. A new BrewStart's water is worked out with it (the recipe pages' decision 8).
 
-**How it's worked out:** (strike water + sparge water − the volume before the boil, cooled to 68 °F − what the tun keeps) ÷ the grain's weight.
-- The volumes are BrewScribe's readings: its strike water reading, a new sparge water reading (P1), and the volume before the boil.
+**How it's worked out:** (strike water + sparge water − the volume before the boil − what the tun keeps) ÷ the grain's weight, with every volume taken as at 68 °F.
+- The volumes are BrewScribe's readings. Its strike water reading is the HLT's fill, taken when the HLT is filled: the HLT holds the strike and the sparge water. So the strike is that fill less the HLT's level just before the sparge, which the new sparge water reading keeps along with the sparge itself (P1).
+- **So it may read slightly high.** Whatever the HLT loses between its fill and the sparge counts as strike. An open HLT may lose 0.1–0.3 gal in an hour of mashing, which raises the figure by about 0.01–0.02 gal/lb on 13.5 lb. The page says so beside USE and in each brew's working. A later BrewScribe reading of the HLT's level right after the strike goes over would take the mash's part out.
 - The grain's weight is the recipe's (`mash_numbers`).
 - What the tun keeps is BeerSmith's lauter dead space (`lauter_dead_l`, which the recipe pages asked the import to keep).
 
 **On the bench:** BrewScribe has no finished brew there, only one left open since 19 Nov. So the column says "No volumes yet".
 
-**On the rig (made up):** five brews give 0.098 to 0.110 gal/lb, so the figure is 0.10. For example, Rye Pale Ale: 5.1 gal strike + 5.4 gal sparge − 8.6 gal before the boil − 0.5 gal left in the tun = 1.4 gal held by 13.5 lb, which is 0.104.
+**On the rig (made up):** five brews give 0.098 to 0.110 gal/lb, so the figure is 0.10. For example, Rye Pale Ale: 15.0 gal in the HLT less the 9.9 gal left before the sparge is 5.1 gal strike. Then 5.1 gal strike + 5.4 gal sparge − 8.6 gal before the boil − 0.5 gal left in the tun = 1.4 gal held by 13.5 lb, which is 0.104.
 
 **What USE does:** USE 0.10 sets GRAIN_ABSORPTION, so the next new BrewStart's water allows 0.10 gal a pound.
 
@@ -205,7 +206,7 @@ Leaving 15 Oct out shows the one-brew state.
 | S1 | Strike water box | Keep each brew's forecast as the malt goes in. |
 | S2 | Strike water box | Fit the tun's steel to those landings. |
 | S3 | Strike water box | Send the numbers USE has fixed, so Brew Day's box can list them as measured. |
-| P1 | BrewScribe | A sparge water reading. |
+| P1 | BrewScribe | A sparge water reading, with the HLT's levels before and after it (BrewScribe dev55). |
 | P3 | BrewScribe | Links to Past brews and to one brew's report. |
 
 Two of the first round's BrewScribe rows aren't needed after all:

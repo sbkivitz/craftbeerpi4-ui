@@ -112,12 +112,12 @@
         BOIL_ELEMENT: [[w0, 0], [boilAt, 100], [boilEnd, 45]],
       },
       steps: [[hStart, 1, "BrewStart"], [move, 2, "Mash in"], [dough, 3, "Mash " + s.rest + " °F"], [restEnd, 4, "Mash out"], [outEnd, 5, "Sparge"], [boilEnd, 6, "Boil"]],
-      entries: [[move, "STRIKE " + f1(g.strike) + " gal"], [outEnd + 600, "SPARGE " + f1(g.sparge) + " gal"], [boilAt, "PRE-BOIL " + f1(g.pre) + " gal"]],
+      entries: [[hStart - 600, "HLT FILLED " + f1(RIG_GAL) + " gal"], [outEnd + 600, "SPARGE " + f1(g.sparge) + " gal"], [boilAt, "PRE-BOIL " + f1(g.pre) + " gal"]],
       hlt: { t0: hStart, t1: hEnd, T0: s.cold, T1: s.ready, minutes: took, eff: s.eff, planned, readyBy, gal: RIG_GAL, watts: RIG_W, rate: (s.ready - s.cold) / took },
       strikeFig: s.strike && Object.assign({ t: dough }, s.strike),
       rests: [{ target: s.rest, t0: dough + 10 * 60, t1: restEnd, minutes: 60, over: s.over, dev: s.held, near: dough + 4 * 60, settle: 6 }],
       stepsUp: [{ from: s.rest, to: 168, rate: 0.95 }],
-      grainFig: { lb: g.lb, strike: g.strike, sparge: g.sparge, pre: g.pre, dead: DEAD, held, per: held / g.lb },
+      grainFig: { lb: g.lb, strike: g.strike, fill: RIG_GAL, before: RIG_GAL - g.strike, tIn: move, sparge: g.sparge, pre: g.pre, dead: DEAD, held, per: held / g.lb },
       boil: { t0: boilAt, t1: boilEnd, T0: boilFrom, minutes: (boilEnd - boilAt) / 60, rate: s.boil },
     };
   }
@@ -215,7 +215,7 @@
       agree: 0.02,
       verdictUse(m, vals) {
         const lo = Math.min(...vals.map((x) => x.v)), hi = Math.max(...vals.map((x) => x.v));
-        return `At 0.12, BrewStart's water is <b>${f1((0.12 - m) * 13.5)} gal</b> more than 13.5 lb of grain holds.`;
+        return `At 0.12, BrewStart's water is <b>${f1((0.12 - m) * 13.5)} gal</b> more than 13.5 lb of grain holds. This may read slightly high: the HLT's losses count as strike.`;
       },
       verdictInUse() { return `BrewStart's water allows <b>${st.used.grain.toFixed(2)} gal</b> for each pound of grain. It was 0.12.`; },
       still() { return `Grain absorption did not change. It is still ${(st.used.grain != null ? st.used.grain : 0.12).toFixed(2)} gal/lb.`; },
@@ -424,8 +424,8 @@
     } else if (F.id === "grain") {
       if (b.rig) {
         const g = b.grainFig;
-        graphs = gwin("Mash tun", base("MASH", "MASH", { bands: [{ t0: b.entries[0][0], t1: b.entries[2][0], label: "STRIKE IN TO PRE-BOIL OUT" }], label: `Mash tun on ${day(b.start)}, with BrewScribe's volumes.` }));
-        work = `<h3>${g.per.toFixed(3)} gal a pound<small>${title}</small></h3><dl><dt>In</dt><dd>${f1(g.strike)} gal strike + ${f1(g.sparge)} gal sparge</dd><dt>Out</dt><dd>${f1(g.pre)} gal before the boil, as cold, + ${f1(g.dead)} gal left in the tun</dd><dt>Held</dt><dd>${f1(g.held)} gal by ${f1(g.lb)} lb of grain</dd></dl><p>The volumes are BrewScribe's readings; the grain is the recipe's, and what the tun keeps is BeerSmith's lauter dead space.</p>`;
+        graphs = gwin("Mash tun", base("MASH", "MASH", { bands: [{ t0: g.tIn, t1: b.entries[2][0], label: "STRIKE IN TO PRE-BOIL OUT" }], label: `Mash tun on ${day(b.start)}, with BrewScribe's volumes.` }));
+        work = `<h3>${g.per.toFixed(3)} gal a pound<small>${title}</small></h3><dl><dt>Strike</dt><dd>${f1(g.fill)} gal in the HLT, less the ${f1(g.before)} gal left before the sparge</dd><dt>In</dt><dd>${f1(g.strike)} gal strike + ${f1(g.sparge)} gal sparge</dd><dt>Out</dt><dd>${f1(g.pre)} gal before the boil + ${f1(g.dead)} gal left in the tun</dd><dt>Held</dt><dd>${f1(g.held)} gal by the recipe's ${f1(g.lb)} lb of grain</dd></dl><p>From BrewScribe's volumes, at 68 °F. The HLT's losses before the sparge count as strike, so this may read slightly high.</p>`;
       } else {
         graphs = gwin("Mash tun", base("MASH", "MASH", { label: `Mash tun on ${day(b.start)}.` }));
         work = `<h3>No volumes for this brew<small>${title}</small></h3><p>BrewScribe didn't record it, so there's no strike, sparge or pre-boil volume to work from.</p>`;

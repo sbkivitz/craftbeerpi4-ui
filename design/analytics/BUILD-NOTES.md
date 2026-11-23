@@ -160,7 +160,7 @@ A real `<table>`:
 | `hlt` | "85 %" · "3.7 °F a min · 10.6 gal" | `pump_on` "the HLT heated the mash too" · `not_heated` "the HLT wasn't heated" · `no_water` "BrewStart didn't record its water" |
 | `strike` | "151.3 °F" · "forecast 149.6–152.4 · 0.3 over its middle" (or "under") | `no_grain` "no grain in the simulated tun" · `no_forecast` "no forecast kept for it" |
 | `mash` | "±0.3 °F" · "3 rests at 126, 149, 168 · came 0.3 over" (one rest: "rest at 152 · came 0.1 over") | `no_rest` "no rest" · `stopped` "stopped before its rest" |
-| `grain` | "0.104 gal/lb" · "1.4 gal held by 13.5 lb" | `no_brewscribe` "BrewScribe isn't installed" · `no_volumes` "no volumes in BrewScribe" · `no_grain_weight` "no grain weight in the recipe" |
+| `grain` | "0.104 gal/lb" · "1.4 gal held by 13.5 lb" | `no_brewscribe` "BrewScribe isn't installed" · `no_volumes` "no volumes in BrewScribe" · `no_levels` "no HLT level before the sparge" · `no_grain_weight` "no grain weight in the recipe" |
 | `boil` | "2.9 °F/min" · "68 → 212 °F in 51 min" | `no_boil` "no boil" · `stopped` "stopped at 139 °F" |
 
 **Mash cell details:** ± is the largest `held` of the brew's rests. "came … over" is the largest `over`.
@@ -196,6 +196,7 @@ Under the window, a line or two of words, then the action. The words, by figure 
 - **Grain absorption:**
   - SET is "0.12 gal/lb in Settings", or "0.10 since 21 Nov".
   - `use`: "At 0.12, BrewStart's water is **0.2 gal** more than 13.5 lb of grain holds." (the newest brew's grain), then **USE 0.10** · "gal/lb as grain absorption".
+  - While any brew counted has `strike_from: "hlt_fill"` (BUILDERS, C1), the words go on: "This may read slightly high: the HLT's losses count as strike." The opened brew's working says it too.
   - `in_use`: "BrewStart's water allows **0.10 gal** for each pound of grain. It was 0.12." then **BACK TO 0.12** · "gal/lb, as it was".
   - `none`: "No volumes yet: BrewScribe has no finished brew on this simulator." On a brewery without BrewScribe: "No volumes: BrewScribe isn't installed."
 - **Boil kettle:**
@@ -234,7 +235,7 @@ Under the window, a line or two of words, then the action. The words, by figure 
 - the stretch the figure comes from, as a band in Current Step Blue at 38 % with its edge, labelled in capitals: "MEASURED HERE: 68.0 → 117.5 °F IN 14 MIN", "149 °F ±0.3", "LANDED 151.3", "TO THE BOIL IN 51 MIN", "STRIKE IN TO PRE-BOIL OUT";
 - for strike water, the forecast as a horizontal Process Red band at 22 % with its edge, "FORECAST 149.6–152.4 °F", as the strike water box draws the plan;
 - step numbers (C3) in small tags at the top, with dashed lines;
-- BrewScribe's volume readings as small white diamonds labelled "STRIKE 5.1 gal", "SPARGE 5.4 gal", "PRE-BOIL 8.6 gal";
+- BrewScribe's volume readings as small white diamonds labelled "HLT FILLED 15.0 gal", "SPARGE 5.4 gal", "PRE-BOIL 8.6 gal";
 - gaps in the log in Graph Gap.
 
 **The key under the graph** says each mark in words: HLT TEMPERATURE · TARGET · ELEMENT · WHERE THE FIGURE COMES FROM · BREWSCRIBE'S READINGS · NUMBERS: STEPS. Without C3's steps: "NO STEP MARKS: THIS RUN'S STEPS WEREN'T KEPT". On a run before 15 Nov it adds ", NOR ITS TARGETS (LOGGED FROM 15 NOV)".
