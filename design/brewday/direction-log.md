@@ -1,5 +1,14 @@
 # Direction decision log
 
+## The strike water box names what the recipe lacks (23 Nov 2026)
+- Found on 8000: a recipe imported before CraftBeerPi kept BeerSmith's mash figures (all of the rig's book) got "No
+  grain weight or mash water… A recipe imported from BeerSmith has both", though its MashIn has a grain weight and it
+  came from BeerSmith. Brett asked for the sentence to name what's missing and point to importing again.
+- Chosen: name the grain weight, the mash water and the mash tun's weight from CraftBeerPi's `lacks`, the grain weight
+  only where no step has one; then "Import it again and load it.", short enough that the rig's case keeps the box's
+  height on a monitor and a phone. Not chosen: telling an old import from a Brew Steps recipe, which `imported_from`
+  can't, as saving drops it.
+
 ## Section cues A approved: each kind of section on its own ground; built as the default (23 Nov 2026)
 - The brewer chose A on cues.html ("Section cues: A · Each kind of section on its own ground") and D for the timers, so
   A is built on D: the timers' column beside the drawing takes the band's ground, as what calls for him.

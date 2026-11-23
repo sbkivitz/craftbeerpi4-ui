@@ -541,8 +541,15 @@ When CraftBeerPi doesn't answer, or answers with an error that isn't one of thes
 When a number is missing, the reason takes the buttons' place, and each says what to do:
 
 - "How much water is in the HLT, strike and sparge? The forecast needs it." with `HLT WATER` / "set it" beside it.
-- "No grain weight or mash water in this recipe, so where the mash lands isn't known. A recipe imported from BeerSmith
-  has both." (a recipe built on Brew Steps)
+- What the recipe lacks, from CraftBeerPi's `recipe.lacks`, named: "This recipe has no mash water or mash tun weight
+  from BeerSmith, so where the mash lands isn't known. Import it again and load it." That is a recipe imported before
+  CraftBeerPi kept BeerSmith's mash figures (core post55), as every recipe in the rig's book is; its MashIn has a grain
+  weight, so the grain weight isn't named. With no grain weight in any step either (a recipe built on Brew Steps): "…
+  no grain weight, mash water or mash tun weight from BeerSmith, …". One missing: "it", as "no mash water from
+  BeerSmith". BeerSmith's own strike temperature and the grain's and the tun's, which only FORECAST's comparison
+  uses, aren't named; the same import brings them. Importing again changes the recipe book's copy only, so the loaded
+  recipe has to be loaded again. The mash step with no temperature: "MashIn has no temperature, so where the mash
+  lands isn't known. Give it one in Brew Steps."
 - "The mash tun's control interval is 2.5 s. The forecast can't use it: set it to 2 or 5 s in Hardware." It comes only
   for a fraction from 1 to 60 s, such as 2.5: PID_HERMS runs a SampleTime from 1 to 60 s as it is, but one that's
   blank, not a number, or outside 1-60 s at its 5 s default, and says so in a notice. The forecast does the same, so
@@ -658,7 +665,7 @@ PROBE blanks the grain temperature. Each is changed back the same way, and each 
 | The HLT's water box: CHANGE, and HLT WATER when there's none | React UI | `swVolHTML` and `swVol`, laid out as TARGET's box. |
 | The grain's temperature: its line, CHANGE, its box and THE PROBE | React UI | `swGrainOf`, `swGrainHTML` and `swGrain`, laid out as the HLT water's box. |
 | The model's answers | Server (the bench's model, ported) | `strike_model.py`, run in a worker process of its own, never in the control loop: when a recipe is loaded, when the grain's or the room's temperature moves by more than half a degree, and when a number it works from changes. The last answer is kept with the numbers it came from and a short id, and sent until the new one is ready, with when the work started and why. The mockup carries the model's answers for Test Recipe v5 in `strike-model.js`, written by a generator from the bench's model; `swModel` weights them between the model's points, standing in for the server working out those very numbers. |
-| The numbers | Server | The grain weight, the water as BeerSmith shows it and how much is the recoverable dead space, the tun's weight and specific heat (TUN_WEIGHT is in ounces in the mash section), BeerSmith's INFUSE_TEMP, GRAIN_TEMP and TUN_TEMP, and which of them the recipe lacks. Today the import keeps only Grain_Kg. |
+| The numbers | Server | The grain weight, the water as BeerSmith shows it and how much is the recoverable dead space, the tun's weight and specific heat (TUN_WEIGHT is in ounces in the mash section), BeerSmith's INFUSE_TEMP, GRAIN_TEMP and TUN_TEMP, and which of them the recipe lacks. From core post55 the import keeps them (`mash_numbers`); a recipe imported before has only MashIn's Grain_Kg. |
 | The rig's numbers and setup | Server (a plant file) | Each unmeasured number's range and middle, for NOT MEASURED YET; where the mash probe sits and how the strike water moves, for THE RIG'S SETUP; the Mash Tun probe's reading with the pump stopped, held. A number becomes measured only from a calibration run, or the brewer entering a result. |
 | The HLT's water | Server | Read BrewStart's Volume and Volume_Unit for the loaded recipe, and a call that changes it, logged, refusing a recipe that has changed as USE does. Brewing by hand, a figure CraftBeerPi keeps for the brew day. |
 | BrewStart's Grain temperature | Plugin (the brewer's fork of cbpi4_BrewStart) | A new setting beside Volume, empty by default, in the brewery's unit, with the description above. BrewStart itself needn't use it. |

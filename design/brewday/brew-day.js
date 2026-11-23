@@ -88,6 +88,9 @@ const SW_ASK = "Move the strike water to the Mash Tun, then press Next";
 const SW_STEPS = [{n: "BrewStart", type: "BrewStart", k: "hlt", ready: "07:00", campden: true, watts: SW_WATTS}];
 const SW_STRIKE = {n: "Strike water", type: "MashInStep", k: "hlt", note: SW_ASK};
 const SW_FROM = {grainLb: 20, forGrain: 7.5, dead: 0.76, tunLb: 33, bs: 134.6, bsGrain: 65, bsTun: 72};
+/* CraftBeerPi's `recipe.lacks` for a recipe with none of BeerSmith's mash figures: one imported before CraftBeerPi kept
+   them (core post55), or built on Brew Steps */
+const SW_LACKS_ALL = ["grain", "water", "tun", "infuse_temp", "grain_temp", "tun_temp"];
 /* Test Recipe v5 as the Recipe Book keeps it: its strike water at the rest, and BrewStart's water (swAsSaved) */
 const SW_PLAN0 = 126, SW_VOL0 = 15;
 /* the water a BrewStart added on Brew Day (+ BrewStart) heats: all the strike and sparge water the recipe needs, as
@@ -779,9 +782,11 @@ const SCENES = {
      nothing and hands over at its heating start to the strike water step on the HLT, which heats the water and asks
      for it to be moved.
      #sw-hand: the recipe as imported, without the flow, and the HLT heating the strike water on its own AUTO. With a
-     number missing: #sw-novol, BrewStart without a water volume; #sw-missing, a recipe built on Brew Steps, with no
-     grain weight or mash water; #sw-noprobe, the boil kettle's probe giving no reading; #sw-grain-bad, BrewStart's
-     grain temperature saved on Brew Steps as 150 °F; #sw-interval, the mash tun's control interval set to 2.5 s */
+     number missing: #sw-novol, BrewStart without a water volume; #sw-missing, a recipe imported before CraftBeerPi kept
+     BeerSmith's mash figures (core post55), as every recipe in the rig's book is, its MashIn with a grain weight;
+     #sw-missing-steps, a recipe built on Brew Steps, with no grain weight either; #sw-noprobe, the boil kettle's probe
+     giving no reading; #sw-grain-bad, BrewStart's grain temperature saved on Brew Steps as 150 °F; #sw-interval, the
+     mash tun's control interval set to 2.5 s */
   "sw-plan": () => swDay(21 * 3600 + 12 * 60 + 5, {}),
   "sw-forecast": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {open: {swOpen: true}}),
   "sw-volume": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {open: {swOpen: true, swVol: {val: 13.5}}}),
@@ -852,7 +857,8 @@ const SCENES = {
     return s;
   },
   "sw-novol": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.sw.vol = null; return s; },
-  "sw-missing": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.sw.from = null; return s; },
+  "sw-missing": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); Object.assign(s.sw, {from: null, lacks: SW_LACKS_ALL.slice(), stepGrain: true}); return s; },
+  "sw-missing-steps": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); Object.assign(s.sw, {from: null, lacks: SW_LACKS_ALL.slice(), stepGrain: false}); return s; },
   "sw-noprobe": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.v.bk.pv = null; s.pb.none.bk = 300; return Object.assign(s, {pbLast: {bk: 61.4}, gap: {bk: 300}}); },
   "sw-grain-bad": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.sw.grain = 150; return s; },
   /* the strike water's temperature (BrewStart's, or with ?sws=step the strike water step's) typed on Brew Steps as
@@ -2228,8 +2234,9 @@ function swIn() {
   const F = st.sw.from, {S, si, mi} = swSteps(), rest = S[mi].temp, plan = si >= 0 ? S[si].temp : st.v.hlt.sv;
   const room = st.v.bk.pv == null ? null : +(st.v.bk.pv - ((st.poff || {}).bk || 0)).toFixed(1), typed = swGrainOf();
   const gal = F && F.grainLb && F.forGrain ? swGal(F) : null, vol = swVolOf();
-  const N = {plan: plan ?? null, rest, room, typed, grain: typed ?? room, vol, step: si >= 0, gal, probe: st.sw.probe || "coil", interval: st.sw.interval};
-  if (gal == null) N.miss = "recipe";
+  const N = {plan: plan ?? null, rest, room, typed, grain: typed ?? room, vol, step: si >= 0, gal, probe: st.sw.probe || "coil", interval: st.sw.interval,
+    lacks: F ? [] : st.sw.lacks || SW_LACKS_ALL, stepGrain: !!st.sw.stepGrain, mashName: S[mi].n};
+  if (gal == null || rest == null) N.miss = "recipe";
   else if (!swIntervalOk(N.interval)) N.miss = "sample_time";
   else if (room == null) N.miss = "probe";
   else if (room < ROOM_LO || room > ROOM_HI) N.miss = "room";
@@ -2345,8 +2352,22 @@ function swWords(N, list) {
     : own ? ` With the water heated only to the rest, PID_HERMS by itself takes the mash to ${swT(N.restPeak)}.` : "";
   return list.map((x, i) => say(x, F[i], i)).join(" ") + tail;
 }
+/* the recipe lacks what the forecast works from (CraftBeerPi's miss "recipe"): the mash step's temperature, or, from
+   `recipe.lacks`, the grain weight or the mash water as BeerSmith gives them. It names what's missing in the brewer's
+   words: the grain weight only where no step of the recipe has one (stepGrain: a MashIn with a Grain_Kg, as a recipe
+   imported before CraftBeerPi kept BeerSmith's mash figures has, with none of them), and the mash tun's weight too
+   where it lacks it, as the same import brings it. BeerSmith's own strike temperature and the grain's and the tun's,
+   which only FORECAST's comparison uses, aren't named. Importing again changes the recipe book's copy only, so the
+   loaded recipe has to be loaded again */
+function swMissRecipe(N) {
+  if (N.rest == null) return `${esc(N.mashName)} has no temperature, so where the mash lands isn't known. Give it one in Brew Steps.`;
+  const L = N.lacks || [];
+  const names = [L.includes("grain") && !N.stepGrain && "grain weight", L.includes("water") && "mash water", L.includes("tun") && "mash tun weight"].filter(Boolean);
+  const list = names.length > 1 ? `${names.slice(0, -1).join(", ")} or ${names[names.length - 1]}` : names[0];
+  return `${list ? `This recipe has no ${list} from BeerSmith` : "This recipe lacks BeerSmith's mash figures"}, so where the mash lands isn't known. Import it again and load it.`;
+}
 const SW_MISS = {
-  recipe: () => "No grain weight or mash water in this recipe, so where the mash lands isn't known. A recipe imported from BeerSmith has both.",
+  recipe: swMissRecipe,
   probe: N => `The boil kettle's probe gives no reading, so the room's temperature isn't known${N.typed == null ? ", nor the grain's" : ""}. Check its plug and cable.`,
   room: N => `The boil kettle's probe reads ${N.room.toFixed(1)}&nbsp;°F, ${N.room > ROOM_HI ? "warmer" : "colder"} than any room, so it can't stand for the room${N.typed == null ? " or the grain" : ""}.`,
   grain: N => `BrewStart's grain temperature ${typeof N.typed === "number" && Number.isFinite(N.typed) ? `is ${N.typed.toFixed(1)}&nbsp;°F, ${N.typed > ROOM_HI ? "warmer" : "colder"} than any room` : "isn't a number"}. The forecast can't use it.`,

@@ -6397,6 +6397,62 @@ Nothing.
   the drawing; `proposal\CUES.md` (new here: approved, and the two changes from `cues.css`);
   `.impeccable\decisions\direction-log.md`; `.impeccable\design.json`.
 
+## The strike water box: what the recipe lacks, named (23 Nov)
+
+Found on 8000 (web UI post37): v5 in its book was imported before core post55, which began keeping BeerSmith's mash
+figures, so the box said "No grain weight or mash water in this recipe… A recipe imported from BeerSmith has both."
+while its MashIn has a grain weight (Grain_Kg 9.072) and the recipe did come from BeerSmith. Every recipe in the rig's
+book was imported before post55, and the next update brings the box there. You asked for the sentence to name what's
+missing, not to say "no grain weight" where a step has one, and to point to importing again.
+
+### What to build (screen.js: `SW_MISS.recipe`; the mockup's `swMissRecipe`)
+
+For `miss` "recipe" only. From the state's `recipe.lacks`, and whether any MashInStep of the loaded recipe has a
+Grain_Kg above 0 (the step props the screen already has):
+
+1. The mash step with no temperature (`inputs.rest` null): "{its name} has no temperature, so where the mash lands
+   isn't known. Give it one in Brew Steps." ("MashIn has no temperature, …")
+2. Otherwise, named in this order, each only if in `lacks`: "grain weight" (and only where no step has a grain weight),
+   "mash water", "mash tun weight" (`tun`). Joined "a", "a or b", "a, b or c":
+   "This recipe has no {names} from BeerSmith, so where the mash lands isn't known. Import it again and load it."
+   - The rig's case (`lacks` all six, MashIn with a grain weight): "This recipe has no mash water or mash tun weight
+     from BeerSmith, so where the mash lands isn't known. Import it again and load it."
+   - Built on Brew Steps (all six, no grain weight in any step): "This recipe has no grain weight, mash water or mash
+     tun weight from BeerSmith, …"
+   - One: "This recipe has no mash water from BeerSmith, …"
+   - Nothing left to name (only "grain" lacking while a step has a grain weight, which today's importers can't
+     produce): "This recipe lacks BeerSmith's mash figures, so where the mash lands isn't known. Import it again and
+     load it."
+3. `infuse_temp`, `grain_temp` and `tun_temp` aren't named: only FORECAST's comparison with BeerSmith's own strike uses
+   them, and the same import brings them.
+
+"Import it again and load it": importing changes the recipe book's copy only, so the loaded recipe needs loading
+again (OTHER RECIPE, or the Recipe Book) to have the figures. The words don't tell an old import from a recipe built
+on Brew Steps, as `imported_from` goes when a recipe is saved or edited.
+
+### In CraftBeerPi
+
+Nothing new: `recipe.lacks` and `inputs.rest` are sent already. Importing the book's recipes again is the brewer's
+choice, as it replaces each one's book copy.
+
+### Checked
+
+- `files\sw8_presses.py` 37 (new: `#sw-missing` and `#sw-missing-steps` in the box with MASH's dashes and no
+  buttons; one, two and three names; nothing left to name; the mash step without a temperature), with the strike water
+  28, BrewStart 285 and the 12-hour time 175, no page errors.
+- The box's height in the rig's case is as before at 1920 × 950, 1440 × 900, 1180 × 860, 390 × 844 and 360 × 740 (159
+  px at 1440, 163 on a phone); at 820 to 1024 px wide, where the page scrolls, it is up to 34 px taller. Built on
+  Brew Steps it is a line taller on one screen (179 px at 1440), the step list scrolling as usual.
+- Pictures against the copy before (UI c643b32, with `?cues=today` against the 12-hour copy), at 1440 × 900 and 390 ×
+  844: all 262 the same but `#sw-missing`, only within the sentence's lines, and the new `#sw-missing-steps`.
+
+### Changed
+
+- `proposal\brew-day.js` (`swMissRecipe`, `SW_LACKS_ALL`, `swIn`'s `lacks`, `stepGrain` and `mashName`, the
+  moments), `proposal\brew-day.html` (the notes and the strip); this section.
+- `DESIGN.md` (Strike Water's "A number missing"), `proposal\STRIKE-WATER.md` (the missing numbers' words and "The
+  numbers"), `.impeccable\decisions\direction-log.md`, `.impeccable\design.json`.
+
 ## Open questions about the drawing
 
 Both were answered on 10 Nov. The valves have been in the drawing since then; the path after the boil was
