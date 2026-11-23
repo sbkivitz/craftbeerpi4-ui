@@ -69,6 +69,7 @@ import { model, num, parseLeft, bookLine, isHerms, unitText, ROLES, cfg, timerNa
 import { play as playSound, soundOf, DEFAULT_SOUND, SOUNDS } from "./alarm";
 import { GSPANS, GSAY, graphHTML, graphSVG, graphETA } from "./graphs";
 import { createHistory } from "./history";
+import { clockFormat, formatTimeOfDay, TWENTY_FOUR_HOUR } from "../util/timefmt";
 // As text, exactly as written (config-overrides.js): the CSS pipeline would rewrite the mockup's colours.
 import BREWDAY_CSS from "./brewday.css";
 import EXTRA_CSS from "./brewday-extra.css";
@@ -420,6 +421,11 @@ function clockKnown() {
 const DOW = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"], MON3 = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 const DOW_SAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"], MON_SAY = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const NO_TIME = "– –:– –";
+/* the title bar's time and the event line's, which every page's frame shows, by CLOCK_FORMAT (util/timefmt.js), as
+   CraftBeerPi's settings last said it (applyLive). The demo draws the brew-day and Settings mockups' moments, whose
+   times are 24-hour */
+let clockFmt = clockFormat(null);
+const frameTime = (t, seconds = false) => formatTimeOfDay(t, {seconds, format: DEMO_MODE ? TWENTY_FOUR_HOUR : clockFmt});
 /* how many of CraftBeerPi's seconds go by in a real second: SIM_TIME_SCALE on a simulator, else 1 */
 const SC = () => DEMO_MODE ? (st && st.sim ? st.sim.scale : 1) : bclk ? bclk.scale : 1;
 function demoDay(t) { const d = new Date(st.sim.day0 + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + Math.floor(t / 86400)); return d; }
@@ -488,7 +494,7 @@ function clockSet() {
   if (!el) return;
   const c = clockNow(), sim = !!c && isSim();
   if (!c || !(sim || c.other || c.scale !== 1)) {
-    const s = c ? hhmm(c.t) : NO_TIME;
+    const s = c ? frameTime(hhmm(c.t)) : NO_TIME;
     if (el.dataset.sim) { el.removeAttribute("data-sim"); el._ct = el._cs = null; }
     if (el.childElementCount || el.textContent !== s) el.textContent = s;
     return;
@@ -499,7 +505,7 @@ function clockSet() {
   const date = words ? `<span class="cdl" aria-hidden="true">${words}</span><span class="sr">${said}</span>` : "";
   const sp = sim ? b("spd", `${n}×<span class="lg"> SPEED</span>${CHEV}`, "", {cmd: "spd:open", expanded: !!st.spdOpen, controls: "spd-box",
     label: `Simulator speed, ${n}×${fast}. Change it`, why: st.link === "lost" ? PAUSED : ""}).replace("<button ", '<button aria-haspopup="dialog" ') : "";
-  const ct = hhmm(c.t), cs = date + sp;
+  const ct = frameTime(hhmm(c.t)), cs = date + sp;
   if (el.dataset.sim !== "spd") { el.innerHTML = '<span class="ct"></span><span class="cs"></span>'; el.dataset.sim = "spd"; el._ct = el._cs = null; }
   if (el._ct !== ct) { el.querySelector(".ct").textContent = ct; el._ct = ct; }
   if (el._cs !== cs) {
@@ -2934,7 +2940,7 @@ function bannerHTML() {
 /* an event with no result word (the connection coming and going) has no " · " after it; one with no time yet
    ("Connecting to CraftBeerPi", or a line before CraftBeerPi has said where its clock is) has no time */
 function eventHTML() {
-  const e = st.events[0], row = e => `${e[0] ? `<time>${logDate(e)}${e[0]}</time>` : ""}${esc(e[1])}${e[2] ? ` · <span class="res ${e[3]}">${esc(e[2])}</span>` : ""}${e[4] ? ` · <span class="res">${esc(e[4])}</span>` : ""}`;
+  const e = st.events[0], row = e => `${e[0] ? `<time>${logDate(e)}${frameTime(e[0], true) || e[0]}</time>` : ""}${esc(e[1])}${e[2] ? ` · <span class="res ${e[3]}">${esc(e[2])}</span>` : ""}${e[4] ? ` · <span class="res">${esc(e[4])}</span>` : ""}`;
   return `<span class="line">${row(e)}</span><button type="button" class="logbtn" data-cmd="log" aria-expanded="${!!st.logOpen}" aria-controls="log">LOG</button>${st.logOpen ? `<ol class="log" id="log" aria-label="Recent events">${st.events.slice(0, 8).map(e => `<li>${row(e)}</li>`).join("")}</ol>` : ""}`;
 }
 const needleAngle = pv => -120 + 240 * (Math.min(220, Math.max(50, pv)) - 50) / 170;
@@ -5494,6 +5500,7 @@ function applyLive(snap) {
      is exactly "12-hour"), for the speed chooser's sentence */
   st.simCfg = cfg(snap.config, "SIM_TIME_SCALE") != null;
   st.clock12 = cfg(snap.config, "CLOCK_FORMAT") === "12-hour";
+  clockFmt = clockFormat(cfg(snap.config, "CLOCK_FORMAT"));
   if (st.tedit && st.tedit.id != null) {
     const t = tById(st.tedit.id);
     if (!t || (t.state === "done" && was && was.state !== "done")) st.tedit = null;

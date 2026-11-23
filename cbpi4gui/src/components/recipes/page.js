@@ -39,9 +39,12 @@
 //   goes back one, as the ‹ link does.
 // - Leaving with changes not saved, by a tab, MORE's list, a link or Back within these pages, asks first; closing or
 //   reloading the browser tab can only get the browser's own question.
+// - Times of day follow CraftBeerPi's CLOCK_FORMAT setting through util/timefmt.js, the one formatter and typed-time
+//   reader for every screen, where the mockup has its own timeOfDay, boxText and readTime.
 import { GROUPS, KINDS, TYPES, START } from "./catalog";
 import { call, why as callWhy } from "../brewday/api";
 import { stepModel, bookLine as dayBookLine, cfg as cfgOf, parseLeft, recipeWater, inWords, kettleRoles, hermsLogics, ROLES } from "../brewday/live";
+import { clockFormat, formatTimeOfDay, formatDayTime, parseTypedTime, halfOfDay, NBSP, TWELVE_HOUR } from "../util/timefmt";
 // As text, exactly as written (config-overrides.js): recipes.css for the shadow root; recipes-frame.css, the mockup's
 // .app rules (one screen tall from 620 px, scrolling below 1180 px, room for the phone's save bar), for the document,
 // where they apply only while <html> has data-page=recipes or brewsteps
@@ -105,6 +108,11 @@ const hhmmOf = d => `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 const isoOf = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 const today = () => { const d = cbNow(); return d ? isoOf(d) : null; };
 const CLOCK_WAIT = "Waiting for CraftBeerPi's clock.";
+/* times of day as the brewer reads them, by CLOCK_FORMAT (util/timefmt.js): "7:00 AM" or "07:00". Times kept in a step
+   stay "HH:MM" */
+const clockFmt = () => clockFormat(D.config);
+const twelve = () => clockFmt() === TWELVE_HOUR;
+const tod = (t, o = {}) => formatTimeOfDay(t, {...o, format: clockFmt()});
 
 /* ---------- numbers and words ---------- */
 const num = v => { if (v === null || v === undefined || typeof v === "boolean" || String(v).trim() === "") return null; const n = Number(String(v).replace(",", ".")); return Number.isFinite(n) ? n : null; };
@@ -132,25 +140,32 @@ function epoch(v) {
   const t = Date.parse(String(v));
   return Number.isFinite(t) ? t / 1000 : null;
 }
-function dateWords(ep) {
+/* a recipe file's time: "Today 7:44 AM" in the book's column, "today at 7:44 AM" in a sentence (inLine), or its date */
+function dateWords(ep, inLine) {
   if (ep == null) return "";
   const d = new Date(ep * 1000);
-  if (isoOf(d) === today()) return `Today ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+  if (isoOf(d) === today()) return `${inLine ? "today at" : "Today"} ${tod(d)}`;
   return `${d.getDate()} ${MON[d.getMonth()]}`;
 }
-/* when the brew steps were loaded, for "loaded at 07:38": the time today, else the day and time; nothing when CraftBeerPi
-   doesn't say */
+/* when the brew steps were loaded, on CraftBeerPi's clock, for "loaded at 7:38 AM": the time today; within the week
+   before, the time and its weekday, "loaded at 8:31 PM Sat"; else its date, "loaded at 8:31 PM 14 Nov". Nothing when
+   CraftBeerPi doesn't say */
 function atWords(ep) {
   if (ep == null) return "";
-  const d = new Date(ep * 1000), t = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-  return isoOf(d) === today() ? ` at ${t}` : ` on ${d.getDate()} ${MON[d.getMonth()]} at ${t}`;
+  const d = new Date(ep * 1000), now = cbNow();
+  if (isoOf(d) === today()) return ` at ${tod(d)}`;
+  const week = now && now - d > 0 && now - d < 6 * 86400000;
+  return ` at ${formatDayTime(d, {day: week ? "weekday" : "date", format: clockFmt()})}`;
 }
 /* a step as Brew Day's recipe column lists it (live.js stepModel): its name, its temperature and minutes, a note, the
-   boil's additions; a BrewStart on Ready by gives the water's temperature, when it's ready by and how much there is */
+   boil's additions; a BrewStart on Ready by gives the water's temperature, when it's ready by and how much there is,
+   with the weekday where its day is a date ("ready by 7:00 AM Sat") */
 function stepView(s) {
   const p = s.props || {}, m = stepModel({...s, props: p}, D.roles, U()), v = {n: s.name || kindName(s.type)};
-  if (s.type === "BrewStart" && readyBy(p)) v.p = [m.temp != null ? `${fmt(m.temp)} ${U()}` : "", m.ready ? `ready by ${m.ready}` : "", m.vol ? `${fmt(m.vol)} ${m.volU}` : ""].filter(Boolean).join(" · ");
-  else v.p = [m.temp != null ? `${s.type === "SpargeStep" ? "water " : ""}${fmt(m.temp)} ${U()}` : "", m.min ? `${fmt(m.min)} min` : ""].filter(Boolean).join(" · ");
+  if (s.type === "BrewStart" && readyBy(p)) {
+    const on = norm(p.Mode) === "Date" && ymd(p.StartDate) ? WEEK[new Date(`${ymd(p.StartDate)}T12:00:00`).getDay()] : "";
+    v.p = [m.temp != null ? `${fmt(m.temp)} ${U()}` : "", m.ready ? `ready by ${tod(m.ready)}${on ? NBSP + on : ""}` : "", m.vol ? `${fmt(m.vol)} ${m.volU}` : ""].filter(Boolean).join(" · ");
+  } else v.p = [m.temp != null ? `${s.type === "SpargeStep" ? "water " : ""}${fmt(m.temp)} ${U()}` : "", m.min ? `${fmt(m.min)} min` : ""].filter(Boolean).join(" · ");
   if (m.note) v.note = m.note;
   if (m.adds) v.adds = m.adds;
   return v;
@@ -275,8 +290,8 @@ function loadRule() {
 function runningWhy() {
   const L = st.loaded, s = L.steps[brew().cur], p = s.props || {}, nx = L.steps[brew().cur + 1];
   const what = s.type !== "BrewStart" ? `${s.name}${L.left != null ? `, ${mmss(L.left)} left` : ""}`
-    : readyBy(p) ? `BrewStart is waiting to have the ${nameOf(D.kettles, p.Heat_Kettle) || "water"} at ${fmt(num(p.Ready_Temp))} ${U()} by ${hm(p.StartTime)}`
-    : `BrewStart is waiting until ${hm(p.StartTime)} to start ${nx ? nameIn(nx) : "the next step"}`;
+    : readyBy(p) ? `BrewStart is waiting to have the ${nameOf(D.kettles, p.Heat_Kettle) || "water"} at ${fmt(num(p.Ready_Temp))} ${U()} by ${tod(hm(p.StartTime)) || norm(p.StartTime)}`
+    : `BrewStart is waiting until ${tod(hm(p.StartTime)) || norm(p.StartTime)} to start ${nx ? nameIn(nx) : "the next step"}`;
   return `${L.name || "The steps on Brew Day"} ${L.name ? "is" : "are"} running: ${what}. Stop it on Brew Day first.`;
 }
 // where the brew stopped, for a question: "stopped at step 3, Saccharification, after 16 of its 40 min"
@@ -364,6 +379,7 @@ function shownValue(s, label, v) {
   if (t === "sensor") return nameOf(D.sensors, v) || "not found";
   if (t === "actor") return nameOf(D.actors, v) || "not found";
   if (Array.isArray(t)) return (m.opts || {})[v] || v;
+  if (t === "time") return tod(hm(v)) || v;
   const u = unitOf(m, s);
   return `${v}${u ? " " + u : ""}`;
 }
@@ -517,33 +533,56 @@ function brewStartProps(ed) {
   return {props, fill: `${from}${water}${temp}`};
 }
 const ymd = t => /^\d{4}-\d{2}-\d{2}$/.test(norm(t)) ? norm(t) : "";
+const dayAfter = iso => { const d = new Date(`${iso}T12:00:00`); d.setDate(d.getDate() + 1); return isoOf(d); };
 /* a day and a time of it as seconds on one count, as Brew Day counts its BrewStart box's: the day's number, and the
    seconds into it */
 const daySecs = (iso, sec) => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 1000 + sec;
+/* how far off that is, in the words of Brew Day's BrewStart box (live.js inWords): "in 10 h 20 min", kept on one line,
+   and on a simulator not at 1x the real time too, ", about 35 real minutes at 30×" */
+function awayWords(sec) {
+  const w = inWords(sec, brewScale()), i = w.indexOf(",");
+  return i < 0 ? w.replace(/ /g, NBSP) : `${w.slice(0, i).replace(/ /g, NBSP)}${w.slice(i)}`;
+}
 /* when a BrewStart's time comes, as the plugin works it out: Today and Tomorrow count from when START is pressed, by
    CraftBeerPi's clock, and a time that has passed by then starts nothing by itself. Then how far off it is from now, by
-   that clock, in the words BrewStart's box on Brew Day uses (inWords): on a simulator, in real time too. Left out until
-   that clock is known */
+   that clock. Left out until that clock is known */
 function whenHTML(ed, s) {
   const p = s.props || {}, t = hm(p.StartTime), mode = norm(p.Mode) || "Today", ready = readyBy(p), cb = cbNow();
   if (!cb || !t || (mode === "Date" && !ymd(p.StartDate))) return "";
-  const now = isoOf(cb), clock = hhmmOf(cb);
-  const day = new Date(`${mode === "Date" ? ymd(p.StartDate) : now}T12:00:00`);
-  if (mode === "Tomorrow") day.setDate(day.getDate() + 1);
-  const iso = isoOf(day), dw = `${WEEK[day.getDay()]} ${day.getDate()} ${MON[day.getMonth()]}`;
-  if (iso < now || (iso === now && t <= clock))
-    return `<span class="late">${t} ${mode === "Today" ? "today" : `on ${dw}`} has passed, so nothing would start by itself. For tomorrow morning, choose TOMORROW.</span>`;
-  const L = live(ed), nx = L[L.indexOf(s) + 1];
-  const what = ready ? `the HLT's water is hot by <b>${t}</b>` : `${esc(nx ? nameIn(nx) : "the next step")} starts at <b>${t}</b>`;
-  const away = inWords(daySecs(iso, +t.slice(0, 2) * 3600 + +t.slice(3) * 60) - daySecs(now, cb.getHours() * 3600 + cb.getMinutes() * 60 + cb.getSeconds()), brewScale());
-  return mode === "Date" ? `${what[0].toUpperCase()}${what.slice(1)} on ${dw}: ${away}.` : `With START pressed today, ${what} ${mode === "Today" ? "today" : "tomorrow"}, ${dw}: ${away}.`;
+  const now = isoOf(cb), iso = mode === "Date" ? ymd(p.StartDate) : mode === "Tomorrow" ? dayAfter(now) : now;
+  const day = new Date(`${iso}T12:00:00`), dw = `${WEEK[day.getDay()]} ${day.getDate()} ${MON[day.getMonth()]}`, tt = tod(t);
+  const rel = iso === now ? "today" : iso === dayAfter(now) ? "tomorrow" : "";
+  const left = daySecs(iso, +t.slice(0, 2) * 3600 + +t.slice(3) * 60) - daySecs(now, cb.getHours() * 3600 + cb.getMinutes() * 60 + cb.getSeconds());
+  if (left <= 0) return `<span class="late">${tt} ${rel || dw} has passed, so nothing would start by itself. For tomorrow morning, choose TOMORROW.</span>`;
+  const L = live(ed), nx = L[L.indexOf(s) + 1], when = `<b>${tt}</b>${rel ? ` ${rel},` : ""} ${dw}: ${awayWords(left)}.`;
+  const what = ready ? `the ${esc(nameOf(D.kettles, p.Heat_Kettle) || "HLT")}'s water is hot by ${when}` : `${esc(nx ? nameIn(nx) : "the next step")} starts at ${when}`;
+  return mode === "Date" ? `${what[0].toUpperCase()}${what.slice(1)}` : `With START pressed today, ${what}`;
+}
+/* CraftBeerPi's clock at the top of BrewStart's When settings, where it isn't the screen's (a simulator: another date,
+   or a speed other than 1×), as the title bar's tag decides it, in the words of Brew Day's BrewStart box: TODAY,
+   TOMORROW and the time in words are all by that clock, and the brewer is looking here, not at the title bar, while he
+   sets the time. The screen's own date only decides whether it shows. A screen reader hears it as a sentence */
+const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+function cbClockHTML() {
+  const d = cbNow(), sc = brewScale();
+  if (!d) return "";
+  const other = isoOf(d) !== isoOf(new Date()), fast = sc !== 1;
+  if (!other && !fast) return "";
+  const t = tod(d);
+  // a narrow screen breaks it only after a "·", never inside a part
+  const seen = ["CraftBeerPi's clock", `${WEEK[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}, ${t}`, fast ? `${sc}× speed` : ""].filter(Boolean).map(x => x.replace(/ /g, NBSP)).join(`${NBSP}· `);
+  const said = `CraftBeerPi's clock: ${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}, ${t}${fast ? `, running ${sc} times as fast` : ""}.`;
+  return `<p class="cbclk"><span class="seen" aria-hidden="true">${esc(seen)}</span><span class="sr">${esc(said)}</span></p>`;
 }
 /* what a BrewStart still needs before it can be saved, for a setting (said under it) or for the whole step (said by
-   SAVE): the time always; the vessel and the element's watts for Ready by, which works out from them when to heat */
+   SAVE): the time always; the vessel and the element's watts for Ready by, which works out from them when to heat. A
+   time typed that can't be read is said once its box is left, not while it is being typed */
 function needOf(s, label) {
   if (s.type !== "BrewStart" || s._removed) return "";
   const p = s.props || {}, ready = readyBy(p);
-  if (label === "StartTime" && !hm(p.StartTime)) return "Needed: without a time, BrewStart can't start.";
+  if (label === "StartTime" && !hm(p.StartTime)) return !norm(s._tt ?? p.StartTime) ? "Needed: without a time, BrewStart can't start." : s._typing ? ""
+    : twelve() ? "That isn't a time: type it as 7, 7:30 or 730, and tap AM or PM." : "That isn't a time: type it as 7, 7:30 or 19:30.";
   if (label === "StartDate" && p.Mode === "Date" && !ymd(p.StartDate)) return "Needed with DATE.";
   if (label === "Heat_Kettle" && ready && !norm(p.Heat_Kettle)) return "Needed for Ready by: the vessel to heat.";
   if (label === "Heater_Watts" && ready && num(p.Heater_Watts) == null) return "Needed for Ready by: it works out when to start heating from the element's watts.";
@@ -658,7 +697,7 @@ function colHTML() {
   }
   const b = brew(), on = isLoaded(r.file) && b.state !== "finished", bad = r.bad ? "CraftBeerPi couldn't read this recipe." : "";
   const meta = on ? `<span class="on${b.state === "running" ? " run" : ""}">On Brew Day · ${statusWords(b).toLowerCase()}</span>`
-    : `Recipe Book${r.imported_from ? ` · imported from ${esc(r.imported_from)}, ${dateWords(r.modified)}` : ` · changed ${dateWords(r.modified)}`}`;
+    : `Recipe Book${r.imported_from ? ` · imported from ${esc(r.imported_from)}, ${dateWords(r.modified, true)}` : ` · changed ${dateWords(r.modified, true)}`}`;
   const first = on ? cmd("", "BREW DAY", b.state === "running" ? "running there" : b.state === "ready" && !b.begun ? "start it there" : "where it is", {data: " data-tabgo=\"Brew Day\""})
     : bad ? cmd("", "LOAD", "onto Brew Day", {why: bad}) : loadBtn(r.file, "col");
   const ask = st.ask && st.ask.kind === "load" && st.ask.from === "col" ? loadAskHTML(st.ask.file) : "";
@@ -734,7 +773,7 @@ function toBookHTML() {
   if (!knowsBook()) return `<div class="confirm" role="group" aria-labelledby="ask-t" id="ask"><p id="ask-t">Keep these steps in the Recipe Book, as a new recipe named <b>${esc(L.name || "Brew steps")}</b>?</p>
     <div class="acts"><button type="button" class="yes" data-yes="asnew">Save as new</button><button type="button" data-no>Cancel</button></div></div>`;
   const name = L.name ? (d ? `${L.name}, ${d.getDate()} ${MON[d.getMonth()]}` : L.name) : "";
-  return `<div class="confirm" role="group" aria-labelledby="ask-t" id="ask"><p id="ask-t">Keep these steps in the Recipe Book. ${r ? `<b>Replace ${esc(r.name)}</b> there, the copy they were loaded from, saved ${dateWords(r.modified)}? Or save them as a new recipe:` : "Save them as a new recipe:"}</p>
+  return `<div class="confirm" role="group" aria-labelledby="ask-t" id="ask"><p id="ask-t">Keep these steps in the Recipe Book. ${r ? `<b>Replace ${esc(r.name)}</b> there, the copy they were loaded from, saved ${dateWords(r.modified, true)}? Or save them as a new recipe:` : "Save them as a new recipe:"}</p>
     <input class="fld" id="tb-name" value="${esc(name)}" placeholder="Its name" aria-label="The new recipe's name"><p class="note" id="tb-note" role="status">${esc(st.notes.tb || "")}</p>
     <div class="acts">${r ? `<button type="button" class="yes" data-yes="replace">Replace the book's copy</button>` : ""}<button type="button"${r ? "" : ' class="yes"'} data-yes="asnew">Save as new</button></div>
     <div class="acts three"><button type="button" data-no>Cancel</button></div></div>`;
@@ -892,7 +931,7 @@ function stepPlateHTML(ed, s, i) {
     const rows = p.adds ? addsHTML(ed, s, run) : (p.rows || []).filter(l => shows(s, l)).map(l => rowHTML(ed, s, l, run)).join("");
     const when = p.when ? `<p class="whenl" id="when-${k}">${whenHTML(ed, s)}</p>` : "";
     const fill = p.fill && s._fill && ch.tag === "new" ? `<p class="pnote fill">${esc(s._fill)}</p>` : "";
-    return `<div class="part">${p.h ? `<h3>${esc(p.h)}</h3>` : ""}${fill}${rows}${when}${p.note ? `<p class="foot">${esc(p.note)}</p>` : ""}</div>`;
+    return `<div class="part">${p.h ? `<h3>${esc(p.h)}</h3>` : ""}${p.when ? cbClockHTML() : ""}${fill}${rows}${when}${p.note ? `<p class="foot">${esc(p.note)}</p>` : ""}</div>`;
   }).join("");
   return `<section class="plate${run ? " locked" : ""}${pickCls(s._k)}${landCls(s._k)}" id="p-${k}" data-k="${k}" aria-labelledby="h-${k}">${head}${lockNote}${blocked}${moving}${placed}${body}</section>`;
 }
@@ -904,7 +943,10 @@ function rowHTML(ed, s, label, locked) {
   const changed = !!o && !same(v, ov);
   const key = isName ? "name" : isType ? `type · ${s.type}` : label;
   const was = !changed ? null : isType ? kindName(ov) : isName ? ov : shownValue(s, label, ov);
-  return `<div class="row${changed ? " chg" : ""}" id="r-${k}-${label}" data-s="${k}" data-p="${label}"><div class="lb"><label class="nm" for="i-${k}-${label}" id="n-${k}-${label}">${esc(m.n)}</label>${m.h ? `<p class="wh">${esc(m.h)}</p>` : ""}<p class="ky">${esc(key)}</p></div>
+  // a time box says how to type a time, as it is typed now rather than picked
+  const timed = !isName && !isType && typeOf(s.type, label) === "time";
+  const help = timed ? [m.h, twelve() ? "Type it as 7, 7:30 or 730, and tap AM or PM." : "Type it as 7, 7:30 or 19:30."].filter(Boolean).join(" ") : m.h;
+  return `<div class="row${changed ? " chg" : ""}" id="r-${k}-${label}" data-s="${k}" data-p="${label}"><div class="lb"><label class="nm" for="i-${k}-${label}" id="n-${k}-${label}">${esc(m.n)}</label>${help ? `<p class="wh" id="wh-${k}-${label}">${esc(help)}</p>` : ""}<p class="ky">${esc(key)}</p></div>
     <div class="ct">${ctlHTML(s, label, v, locked)}${stHTML(changed, ov, s._k, label, was, m.n)}<p class="why" id="need-${k}-${label}" role="status">${esc(needOf(s, label))}</p></div></div>`;
 }
 /* the kinds the page offers: the catalogue's that CraftBeerPi has, in its order, then any a plugin adds */
@@ -933,10 +975,24 @@ function ctlHTML(s, label, v, locked) {
     return `<select class="fld" id="${id}"${data}${dis}><option value=""${norm(v) === "" ? " selected" : ""}>${esc(m.blank || "None chosen")}</option>${found ? "" : `<option value="${esc(v)}" selected>Not found (${esc(v)})</option>`}${list.map(x => `<option value="${esc(x.id)}"${x.id === v ? " selected" : ""}>${esc(x.name)}</option>`).join("")}</select>`;
   }
   if (t === "number") { const u = unitOf(m, s); return `<span class="numf"><input id="${id}" inputmode="decimal" autocomplete="off" value="${esc(norm(v))}"${data}${dis}${m.blank ? ` placeholder="${esc(m.blank)}"` : ""}>${u ? `<span>${esc(u)}</span>` : ""}</span>`; }
-  // a date or time an older form saved in its own words, which the browser's picker can't show, stays in view as text
-  const iso = t === "date" ? /^\d{4}-\d{2}-\d{2}$/ : /^\d{1,2}:\d{2}(:\d{2})?$/;
-  if (t === "date" || t === "time") return `<input class="fld" type="${norm(v) === "" || iso.test(norm(v)) ? t : "text"}" id="${id}" value="${esc(norm(v))}"${data}${dis}>`;
+  if (t === "time") return timeCtl(s, label, v, locked);
+  // a date an older form saved in its own words, which the browser's picker can't show, stays in view as text
+  if (t === "date") return `<input class="fld" type="${norm(v) === "" || /^\d{4}-\d{2}-\d{2}$/.test(norm(v)) ? "date" : "text"}" id="${id}" value="${esc(norm(v))}"${data}${dis}>`;
   return `<textarea class="fld" id="${id}" rows="1"${data}${dis}>${esc(norm(v))}</textarea>`;
+}
+/* a time of day, typed in a box and read by util/timefmt.js's parseTypedTime: not the browser's time box, whose 12- or
+   24-hour look follows the browser's language rather than CLOCK_FORMAT. With 12-hour times, AM and PM are two buttons
+   beside it, as a phone's number keys have no letters, and the box shows "7:00". A box with no time yet shows AM:
+   BrewStart's water is nearly always for the morning. What can't be read stays in the box as typed (_tt), and the step
+   has no time until it can be read */
+function timeCtl(s, label, v, locked) {
+  const k = esc(s._k), id = `i-${k}-${label}`, t = hm(v), half = t ? halfOfDay(t) : s._half || "am", tw = twelve();
+  const shown = (t && formatTimeOfDay(t, {format: clockFmt(), ampm: false})) || norm(s._tt ?? v);
+  const box = `<input class="fld tmbox" id="${id}" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="${tw ? "7:00" : "07:00"}" value="${esc(shown)}" data-s="${k}" data-p="${label}" aria-describedby="wh-${k}-${label}"${locked ? " disabled" : ""}>`;
+  if (!tw) return box;
+  const why = locked ? ' aria-disabled="true" data-why="Running now: CraftBeerPi doesn\'t change a step while it runs."' : "";
+  const b = h => `<button type="button" role="radio" aria-checked="${String(half === h)}" data-half="${h}" data-s="${k}" data-p="${label}"${why}>${h.toUpperCase()}</button>`;
+  return `<div class="tmf" role="group" aria-labelledby="n-${k}-${label}">${box}<div class="seg ampm" role="radiogroup" aria-label="AM or PM" id="${id}-half">${b("am")}${b("pm")}</div></div>`;
 }
 /* the boil's additions: one line each, minutes before the end and what to add; six at most, as the boil step has six
    reminders; and first wort */
@@ -1381,6 +1437,8 @@ function rebase() {
     } else new Set([...ownKeys(d.props), ...ownKeys(o.props)]).forEach(k => { if (!same((d.props || {})[k], (o.props || {})[k])) x.props[k] = (d.props || {})[k]; });
     if (d._removed) x._removed = true;
     if (sameIds && d._moved) x._moved = true;
+    // what is being typed in a time box, and the half of the day it is read in, stay with the step
+    ["_tt", "_typing", "_half", "_base"].forEach(f => { if (f in d) x[f] = d[f]; });
     return x;
   };
   let doc;
@@ -1446,8 +1504,10 @@ function save(then) {
   const ed = E();
   if (!ed || !changes(ed) || st.pend.save) return;
   if (st.link === "lost") return toast(PAUSED);
+  // a time still being typed counts as left: what can't be read stops SAVE, and is said
+  ed.doc.steps.forEach(s => { s._typing = false; });
   const need = needsWhy(ed);
-  if (need) return sayAt("save", null, need);
+  if (need) { render(); return sayAt("save", null, need); }
   return st.page === "steps" ? saveSteps(then) : saveBook(then);
 }
 const tidy = steps => steps.filter(s => !s._removed).map(s => { const c = {...s, props: clone(s.props || {})}; delete c._moved; delete c._where; delete c._fill; return c; });
@@ -1840,11 +1900,24 @@ function onClick(e) {
     return render();
   }
   if (ds.unremove) { const s = stepByKey(ds.unremove); delete s._removed; return render(); }
+  // AM or PM: the time moves to that half of the day, and a time typed next without one is read in it
+  if (ds.half) {
+    const s = stepByKey(ds.s);
+    if (!s) return;
+    const t = hm(s.props[ds.p]);
+    s._half = s._base = ds.half;
+    if (t) setProp(ds.s, ds.p, `${pad2(+t.slice(0, 2) % 12 + (ds.half === "pm" ? 12 : 0))}${t.slice(2)}`);
+    else if (norm(s._tt)) { const r = parseTypedTime(s._tt, ds.half, {format: clockFmt()}); if (r) setProp(ds.s, ds.p, r); }
+    render();
+    const nb = $(`#${CSS.escape(`i-${ds.s}-${ds.p}-half`)} [data-half="${ds.half}"]`);
+    if (nb) nb.focus({preventScroll: true});
+    return;
+  }
   if (ds.set !== undefined && b.closest(".seg")) { setProp(ds.s, ds.p, ds.set); const id = b.closest(".seg").id; render(); const nb = $(`#${CSS.escape(id)} [data-set="${CSS.escape(ds.set)}"]`); if (nb) nb.focus({preventScroll: true}); return; }
   if (ds.undo) {
     const ed = E(), k = ds.undo, label = ds.p;
     if (k === "r") ed.doc[label] = ed.orig[label];
-    else { const s = stepByKey(k), o = origOf(ed, s); if (label === "name") s.name = o.name; else if (label === "type") { s.type = o.type; s.props = clone(o.props); } else s.props[label] = (o.props || {})[label]; }
+    else { const s = stepByKey(k), o = origOf(ed, s); delete s._tt; delete s._typing; if (label === "name") s.name = o.name; else if (label === "type") { s.type = o.type; s.props = clone(o.props); } else s.props[label] = (o.props || {})[label]; }
     return render();
   }
   if ("undoall" in ds) { const ed = E(); ed.doc = clone(ed.orig); ed.kinds = false; ed.mv = null; st.elsewhere = false; log(st.page === "steps" ? "Brew Steps: changes put back" : `${ed.doc.name}: changes put back`, "done", "ok"); return render(); }
@@ -1891,6 +1964,17 @@ function onInput(e) {
   if (f.id === "tb-name" || f === fileIn) return;
   const k = f.dataset.s, label = f.dataset.p;
   if (!k || !label || f.tagName === "SELECT") return;
+  if (f.classList.contains("tmbox")) {
+    // read as it's typed, in the half of the day the box showed as typing began (_base); AM and PM follow the time
+    const s = stepByKey(k);
+    if (!s) return;
+    const base = s._base || (hm(s.props[label]) ? halfOfDay(hm(s.props[label])) : s._half || "am");
+    const r = norm(f.value) === "" ? "" : parseTypedTime(f.value, base, {format: clockFmt()});
+    s._tt = f.value; s._typing = true;
+    setProp(k, label, r || "");
+    if (r) s._half = halfOfDay(r);
+    return render();
+  }
   if (f.tagName === "TEXTAREA") {
     const v = f.value.replace(/(\r\n|\r|\n)+/g, " ");
     if (v !== f.value) f.value = v;
@@ -1902,12 +1986,34 @@ function onInput(e) {
 function onChange(e) {
   const f = e.target;
   if (f === fileIn) { const file = f.files && f.files[0]; if (file) sendFile(file); return; }
+  if (f.classList && f.classList.contains("tmbox")) return settleTime(f);
   if (f.tagName !== "SELECT" || !f.dataset.s) return;
   setProp(f.dataset.s, f.dataset.p, f.value);
   const id = f.id;
   render();
   const n = $("#" + CSS.escape(id));
   if (n) n.focus({preventScroll: true});
+}
+/* a time box once left, or on Enter: a time it read shows as it reads it ("7" becomes "7:00"); what it couldn't read
+   stays as typed, and is said */
+function settleTime(f) {
+  const s = stepByKey(f.dataset.s);
+  if (!s || !s._typing) return;
+  s._typing = false;
+  const t = hm(s.props[f.dataset.p]);
+  if (t) { f.value = formatTimeOfDay(t, {format: clockFmt(), ampm: false}); s._tt = f.value; }
+  render();
+}
+// a time typed next is read in the half of the day the box shows as typing begins
+function onFocusIn(e) {
+  const f = e.target;
+  if (!f || !f.classList || !f.classList.contains("tmbox")) return;
+  const s = stepByKey(f.dataset.s), t = s && hm(s.props[f.dataset.p]);
+  if (s) s._base = t ? halfOfDay(t) : s._half || "am";
+}
+function onFocusOut(e) {
+  const f = e.target;
+  if (f && f.classList && f.classList.contains("tmbox")) settleTime(f);
 }
 function onKey(e) {
   const t = (e.composedPath && e.composedPath()[0]) || e.target;
@@ -1961,6 +2067,8 @@ export function createRecipes(el, o = {}) {
   on(sr, "click", onClick);
   on(sr, "input", onInput);
   on(sr, "change", onChange);
+  on(sr, "focusin", onFocusIn);
+  on(sr, "focusout", onFocusOut);
   on(document, "keydown", onKey);
   on(sr, "dragover", onDragOver);
   on(sr, "dragleave", onDragLeave);
@@ -1971,11 +2079,12 @@ export function createRecipes(el, o = {}) {
   on(document, "click", onFrameClick, true);
   on(window, "beforeunload", onUnload);
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (gen === myGen && st) grow(); });
-  // CraftBeerPi's clock: drawn again as it becomes known and as its minute turns (+ BrewStart, the time in words)
+  // CraftBeerPi's clock: drawn again as it becomes known, as its minute turns and as its speed changes (+ BrewStart, the
+  // time in words, the clock in BrewStart's When settings)
   let clockKey = null;
   const clockTick = setInterval(() => {
     if (gen !== myGen || !st) return;
-    const d = cbNow(), key = d ? isoOf(d) + hhmmOf(d) : "";
+    const d = cbNow(), key = d ? `${isoOf(d)} ${hhmmOf(d)} ${brewScale()}` : "";
     if (key !== clockKey) { clockKey = key; schedule(); }
   }, 1000);
   off.push(() => clearInterval(clockTick));
