@@ -3,7 +3,7 @@
 :where(html.bd-page){--bg:#0f161d;--bar:#0a1016;--panel:#17212b;--panel-2:#1e2b37;--line:#2a3b4b;--edge:#33475a;--face:#030609;
   --text:#e8eef3;--text-2:#b6c3cf;--text-3:#8b9cad;
   --pv:#ff4b3e;--sv:#3ddc6f;--heat:#ff7b1c;--run:#3ddc6f;--off:#566676;
-  --prompt:#ffb21e;--prompt-bg:#3a2a06;--alarm:#ff4a4a;--alarm-bg:#6e1414;
+  --prompt:#ffb21e;--prompt-bg:#3a2a06;--prompt-ink:#fff1d2;--alarm:#ff4a4a;--alarm-bg:#6e1414;
   --select:#2a6fc0;--active:#1c5796;--liquor:#46b8ea;--wort:#e9b33b;
   --steel:#7f91a3;--steel-hi:#9aabbc;--steel-lo:#5f7186;--pipe-idle:#3b4b5b;
   --sans:"Barlow","Segoe UI",system-ui,sans-serif;
@@ -70,7 +70,7 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .main{display:grid;grid-template-columns:minmax(0,1fr) clamp(360px,27vw,500px);gap:var(--gap);padding:var(--gap) var(--pad);min-height:0}
 :where(html.bd-page) .brewhouse{display:grid;grid-template-rows:minmax(0,1fr) auto;gap:var(--gap);min-height:0;min-width:0}
 :where(html.bd-page) .rig{position:relative;min-height:220px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
-:where(html.bd-page) .rig svg{position:absolute;inset:6px;width:calc(100% - 12px);height:calc(100% - 12px)}
+:where(html.bd-page) .rig svg{position:absolute;inset:6px;width:calc(100% - 12px - var(--rig-r,0px));height:calc(100% - 12px)}
 :where(html.bd-page) .app[data-link=lost] .rig svg{opacity:.5}
 :where(html.bd-page) .app[data-link=lost] .lamp::before{opacity:.35}
 :where(html.bd-page) .app[data-link=lost] .lamp .st{color:var(--text-3)}
@@ -562,6 +562,15 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .tside .tchip .cmdbtn{min-height:0;height:38px;padding:0 6px;font-size:16px}
 :where(html.bd-page) .tside .tchip .bar{height:2px}
 :where(html.bd-page) .tside .tcg{display:flex;align-items:baseline;gap:5px}
+/* a timer brought back after a restart: under its line, the row's line across it, saying how long CraftBeerPi was off,
+   in the same words, type and colours as on the row (Prompt Amber while paused, Prompt Cream on one that has run out),
+   so its tile is about 61 px tall until it is started or answered. Its first line stays one line, as on every tile:
+   a long name gives way with its ellipsis, and REMOVE and START or PAUSE keep their place at the right */
+:where(html.bd-page) .tside .tchip[data-back]{height:auto;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:stretch;gap:0}
+:where(html.bd-page) .tside .tchip[data-back]>.tcsel{grid-column:1;grid-row:1;min-height:38px}
+:where(html.bd-page) .tside .tchip[data-back]>.tcx{grid-column:2;grid-row:1;margin-left:4px}
+:where(html.bd-page) .tside .tchip[data-back] .toff{grid-column:1/-1;grid-row:2;margin:-2px 0 0;padding:0 6px 5px;font:500 15px/1.3 var(--sans);color:var(--prompt);text-wrap:pretty}
+:where(html.bd-page) .tside .tchip[data-back][data-state=done] .toff{color:var(--prompt-ink)}
 :where(html.bd-page) .tside :is(.tpop,:where(html.bd-page) .tpnote){top:0;right:calc(100% + 8px);bottom:auto}
 :where(html.bd-page) .tside.empty{grid-column:1/-1;z-index:1;justify-self:end;align-self:start;margin:6px;padding:0;border:0;background:none}
 :where(html.bd-page) .tcorner{display:flex;gap:6px}
