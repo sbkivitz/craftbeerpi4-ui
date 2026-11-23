@@ -6468,7 +6468,7 @@ DESIGN.md (Timers, After a restart) gives it a line across its row. Now the tile
   "CraftBeerPi was off for 12 min", "CraftBeerPi was off; how long isn't known yet". The same words, Barlow 500 15px,
   Prompt Amber on a paused timer, Prompt Cream on a run-out one on its wash; `aria-hidden`, as the button's label
   already says it (`tSaid`). It goes when the timer is started or answered, as on the row (`tBack`).
-- The tile is then about 58 px tall (78 px where the line takes two, at 300 px wide only the "isn't known yet" one);
+- The tile is then about 61 px tall (80 px where the line takes two, at 300 px wide only the "isn't known yet" one);
   its first line keeps its 38 px. Mockup: `tchipHTML`'s `back` (beside the drawing only, `tHere() === "side"`),
   `data-back`, and `.tside .tchip[data-back]` in `brew-day.css`.
 - The column's cut-off reads each tile's own top and height (`tsideFit`), so a taller tile is still cut at half
@@ -6566,6 +6566,23 @@ The kettle fields, the model's use of them, and the state saying which figures c
   `proposal\brew-day.html` (the moments and notes); `proposal\VESSELS.md` (new); this section.
 - `DESIGN.md` (The Only Improves Rule, the Hardware Page's Vessel, FORECAST's From Hardware, BrewStart's box, Note
   Amber), `.impeccable\decisions\direction-log.md`, `.impeccable\design.json`.
+
+## The tile of a timer back after a restart: one first line, as every tile (23 Nov)
+
+From D's build: in the column beside the drawing, a timer brought back after a restart with a long name ("Hop
+stand") had REMOVE and START wrapped under its name, the tile 99 px tall (118 px with "how long isn't known yet"); the
+mockup did the same, as its `flex-wrap` let them go. Your build keeps the first line on one line and cuts the name
+short, as every other tile does. The mockup now does too: `.tside .tchip[data-back]` is a grid, the name, state word
+and time in the first column (the name giving way first, with its ellipsis), REMOVE and START or PAUSE (or OK) in the
+second, and the "was off" line across both under them. Short names look exactly as before: the tile is 61 px tall,
+80 px where the line takes two (the 58 and 78 in the section above were mine, and wrong).
+
+- Checked: `#timer-back`, `#timer-back-done` and `#timer-back-unknown` at 1180 × 860, 1440 × 900 and 1920 × 950 with
+  "Hop stand" and "Whirlpool hop stand" for both timers: the buttons on the name's line on every tile, the long names
+  cut, 61 and 80 px. Pictures of the timer moments against UI 85e7aab at 1920, 1440, 1180 and 390 px wide: all 32
+  the same. The timers' suites pass, unchanged, with no page errors: their places 262 and 149, the timers 72 and 40.
+- Changed: `proposal\brew-day.css` (`.tside .tchip[data-back]`); `DESIGN.md` (Timers, beside the drawing: 61 and 80 px,
+  the one first line); this section and the 61 and 80 above.
 
 ## Open questions about the drawing
 
