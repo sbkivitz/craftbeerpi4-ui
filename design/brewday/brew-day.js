@@ -907,6 +907,15 @@ const SCENES = {
   "bs-sim-day": () => Object.assign(swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})), {base: "sw-plan", sim: {scale: 1, day0: "2026-11-20", pc: "2026-11-22"}, open: {bsAt: {}}}),
   "bs-novol": () => { const s = swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})); s.sw.vol = null; return Object.assign(s, {base: "sw-plan", open: {bsAt: {}}}); },
   "bs-soon": () => Object.assign(SCENES["sw-wait"](), {base: "sw-wait", open: {bsAt: {txt: "06:00"}}}),
+  /* the vessels' own figures from the Hardware page (VESSELS.md), none of which anything needs. #bs-over: the HLT holds
+     20 gal, given on the Hardware page, and BrewStart's water is 25.4 gal, as Test Recipe v5 fills it in: a line under the
+     water in BrewStart's box says so. #sw-hw: FORECAST with the Mash Tun's and the HLT's empty weight and material
+     given, under From Hardware, in place of BeerSmith's tun and the guess about the HLT's steel. #sw-over: FORECAST
+     with BrewStart's water more than the HLT holds, the line under From you's water. With no figures given, every
+     moment is as before */
+  "bs-over": () => { const s = swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})); s.sw.vol = 25.4; s.vessels = {hlt: {capacity: 20}}; return Object.assign(s, {base: "sw-plan", open: {bsAt: {at: "#bs-box .vover"}}}); },
+  "sw-hw": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {vessels: {hlt: {capacity: 20, empty_weight: 30, material: "stainless_steel"}, mt: {capacity: 20, empty_weight: 33, material: "stainless_steel"}}, open: {swOpen: true}}),
+  "sw-over": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.sw.vol = 25.4; return Object.assign(s, {vessels: {hlt: {capacity: 20}}, open: {swOpen: true}}); },
   /* USE waiting for where the grain spent the night (swHTML). #sw-where: the #sw-plan night before, BrewStart's time
      set and the grain not answered yet, so BrewStart's row asks "where's the grain?" and USE's place says so too,
      leading to BrewStart's box. #sw-where-am: brew morning (#sw-late), BrewStart holding the strike water, not
@@ -2448,15 +2457,20 @@ function swList(N) {
   const g = (h, rows) => `<h4 class="swg">${h}</h4><dl class="swd">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>`;
   /* BrewStart's Campden dose for the water, while its Campden reminder is on, as the water sets it */
   const camp = by && S[bi].campden ? ` Campden for it: ${swCampden(N.vol)}.` : "";
-  const water = st.swVol ? swVolHTML(N) : `<div class="swyou"><p>${+N.vol.toFixed(2)}&nbsp;gal in the HLT, strike and sparge${by ? ": BrewStart's water volume" : ""}.${camp} The ${gal(left)} that stays there warms the mash through the coil.</p>${b("cmdbtn", "CHANGE", "", {cmd: "swv:open", label: "Change the water in the HLT", expanded: false})}</div>`;
+  const water = st.swVol ? swVolHTML(N) : `<div class="swyou"><div><p>${+N.vol.toFixed(2)}&nbsp;gal in the HLT, strike and sparge${by ? ": BrewStart's water volume" : ""}.${camp} The ${gal(left)} that stays there warms the mash through the coil.</p>${hltOverHTML(N.vol)}</div>${b("cmdbtn", "CHANGE", "", {cmd: "swv:open", label: "Change the water in the HLT", expanded: false})}</div>`;
   const grainSays = N.typed != null
     ? `Grain at ${swT(N.grain)}${by ? ": BrewStart's grain temperature. Left blank" : ", given for today's brew. Without it"}, the boil kettle's probe would stand for it, at ${swT(N.room)}.`
     : `Grain at ${swT(N.grain)}: the boil kettle's probe${by ? ", as BrewStart's grain temperature is blank" : ""}. Grain that spent the night somewhere warmer lands the mash higher: give its temperature.`;
   const grain = st.swGrain ? swGrainHTML(N) : `<div class="swyou"><p>${grainSays}</p>${b("cmdbtn", "CHANGE", "", {cmd: "swg:open", label: "Change the grain's temperature", expanded: false})}</div>`;
   const R = Object.assign({}, SW_MODEL.box, {hlt_loss: swModel(N.grain, N.vol, N.probe).hlt}), coil = N.probe === "coil";
-  const guesses = SW_GUESS.map(([k, dt, says]) => [dt, says(R[k], +left.toFixed(2))])
+  /* the vessels' own figures from the Hardware page, where given: the Mash Tun's in place of BeerSmith's, and the HLT's in
+     place of the guess about its steel. Named under From Hardware only when there are some */
+  const vMT = vesselOf("mt"), vHLT = vesselOf("hlt"), hwMT = vesselWeighed(vMT), hwHLT = vesselWeighed(vHLT);
+  const hw = [hwMT && ["Mash tun", vesselSays(vMT)], hwHLT && ["HLT", vesselSays(vHLT, ", with what's fixed in it")]].filter(Boolean);
+  const GUESS = SW_GUESS.filter(([k]) => !(hwHLT && k === "hlt_steel"));
+  const guesses = GUESS.map(([k, dt, says]) => [dt, says(R[k], +left.toFixed(2))])
     .concat(coil ? [["PUMP OFF", "the Mash Tun probe taken to read the HLT's water, as still wort beside the coil would. Not checked on the rig yet"]] : []);
-  const top = N.ok && !N.work && N.lv ? SW_GUESS.map(([k, , , name]) => [name, N.lv[k]]).filter(x => x[1] > 0).sort((x, y) => y[1] - x[1]).slice(0, 3) : [];
+  const top = N.ok && !N.work && N.lv ? GUESS.map(([k, , , name]) => [name, N.lv[k]]).filter(x => x[1] > 0).sort((x, y) => y[1] - x[1]).slice(0, 3) : [];
   /* the levers come a few minutes after USE on the Pi; until then the sentence says they're coming */
   const most = top.length ? `<p class="swn" id="sw-lv">Knowing ${swAnd(top.map(x => x[0]))} would raise USE the most: about ${swAnd(top.map(x => x[1].toFixed(1)))}&nbsp;°F. If every one proved to be the middle of its range, USE would be ${swT(N.mid)}.</p>`
     : N.ok && !N.work && N.lvWait ? `<p class="swn" id="sw-lv">CraftBeerPi is still working out which of these would raise USE most if it were known: that comes a few minutes after USE.</p>` : "";
@@ -2465,8 +2479,9 @@ function swList(N) {
   return g("From the recipe", [
       ["Grain", `${F.grainLb}&nbsp;lb`],
       ["Water", `${gal(N.gal)} to the mash tun: ${gal(F.forGrain)} for the grain${F.dead ? ` and ${gal(F.dead)} under the false bottom` : ""}`],
-      ["Mash tun", F.tunLb ? `${F.tunLb}&nbsp;lb of steel` : "not counted: the recipe has no equipment profile"],
+      ...(hwMT ? [] : [["Mash tun", F.tunLb ? `${F.tunLb}&nbsp;lb of steel` : "not counted: the recipe has no equipment profile"]]),
       ["Rest", swT(N.rest)]])
+    + (hw.length ? g("From Hardware", hw) : "")
     + `<h4 class="swg">From you</h4>${water}${grain}`
     + g("Measured on the rig", [
       ["Room", `${swT(N.room)}: the boil kettle's probe, as the kettle is empty, less its offset. The mash tun starts at it, and both vessels lose heat to it`],
@@ -2485,8 +2500,8 @@ function swVolHTML(N) {
   const key = (d, l) => `<button type="button" data-cmd="swv:step:${d}" aria-label="${l}">${d < 0 ? "−" : "+"}${Math.abs(d) === 1 ? "1" : ".1"}</button>`;
   return `<div class="editor swvol" role="group" aria-labelledby="swv-l"><label class="swvl" id="swv-l" for="swvin">HLT water, in gallons</label>`
     + `<p class="swvh" id="swv-h">All the water in the HLT now, strike and sparge${swSteps().bi >= 0 ? ". It is BrewStart's water volume, which also sets the Campden dose" : ""}.</p>`
-    + `${key(-1, "1 gallon less")}${key(-0.1, "0.1 gallon less")}<input id="swvin" inputmode="decimal" autocomplete="off" value="${x}" aria-describedby="swv-h">${key(0.1, "0.1 gallon more")}${key(1, "1 gallon more")}`
-    + `<button type="button" class="ok" data-cmd="swv:set"${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}>${pend ? "SETTING…" : `SET <span id="swvok">${x || "– –"}</span> gal`}</button><button type="button" class="no" data-cmd="swv:x">CANCEL</button></div>`;
+    + `${key(-1, "1 gallon less")}${key(-0.1, "0.1 gallon less")}<input id="swvin" inputmode="decimal" autocomplete="off" value="${x}" aria-describedby="swv-h swv-over">${key(0.1, "0.1 gallon more")}${key(1, "1 gallon more")}`
+    + `<p class="vover" id="swv-over" aria-live="polite">${hltOver(v)}</p><button type="button" class="ok" data-cmd="swv:set"${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}>${pend ? "SETTING…" : `SET <span id="swvok">${x || "– –"}</span> gal`}</button><button type="button" class="no" data-cmd="swv:x">CANCEL</button></div>`;
 }
 /* the HLT's water (swVolHTML): SET writes BrewStart's water volume where the recipe has BrewStart, or by hand the figure
    CraftBeerPi keeps for the brew day, and CraftBeerPi works USE out again for it. It can be changed back the same way,
@@ -2970,14 +2985,37 @@ function bsSays(B) {
   return {past: false, text: B.kind === "start" ? `${nx ? nx.n : "The next step"} starts at ${when}` : `The ${KNAME[B.neu ? "hlt" : S[bi].k]}'s water is hot by ${when}`};
 }
 /* what BrewStart heats, from the step: its kettle, its element's power, its water and its temperature; a new one's
-   water is the recipe's, worked out from its mash numbers */
+   water is the recipe's, worked out from its mash numbers. Under it, where the HLT's capacity is known and the water is
+   more (hltOver) */
 function bsWater(B) {
   const {S, bi} = swSteps(), s = B.neu ? null : S[bi], W = s ? s.watts : SW_WATTS, T = s ? s.temp : bsNewTemp();
   const el = `The ${KNAME[s ? s.k : "hlt"]}'s ${W ? `${W} W ` : ""}element heats`, to = T == null ? "" : ` to ${T.toFixed(1)} °F`;
-  if (!s) return `${el} ${+SW_NEED.toFixed(2)} gal${to}, worked out from the recipe.`;
-  if (s.vol == null) return `${el} the water${to}. <b>How much water isn't known yet</b>: give it with HLT WATER in the strike water box before you START.`;
-  return `${el} ${+s.vol.toFixed(2)} gal${to}. USE and HLT WATER in the strike water box change them.`;
+  if (!s) return `<p class="bswat">${el} ${+SW_NEED.toFixed(2)} gal${to}, worked out from the recipe.</p>${hltOverHTML(SW_NEED)}`;
+  if (s.vol == null) return `<p class="bswat">${el} the water${to}. <b>How much water isn't known yet</b>: give it with HLT WATER in the strike water box before you START.</p>`;
+  return `<p class="bswat">${el} ${+s.vol.toFixed(2)} gal${to}. USE and HLT WATER in the strike water box change them.</p>${hltOverHTML(s.vol)}`;
 }
+/* the vessels' own figures, from the Hardware page (CraftBeerPi's kettle fields capacity, empty_weight, material and
+   specific_heat), each null where it isn't given, which is usual: nothing here needs them. st.vessels[k] for the HLT
+   ("hlt") and the Mash Tun ("mt"); the demo's are none unless a moment gives them */
+const vesselOf = k => (st.vessels || {})[k] || {};
+/* BrewStart's water, or the HLT's water typed in the strike water box, more than the HLT holds: one line in Note Amber
+   under the figure, saying both figures and where the capacity comes from, so either can be put right. It greys and
+   refuses nothing, and with no capacity given there is no line */
+function hltOver(gal) {
+  const c = vesselOf("hlt").capacity;
+  return c != null && c > 0 && gal != null && gal > c + 0.005 ? `${+gal.toFixed(2)} gal is more than the HLT holds: ${+c.toFixed(2)} gal, on the Hardware page.` : "";
+}
+const hltOverHTML = (gal, id) => { const t = hltOver(gal); return t ? `<p class="vover"${id ? ` id="${id}"` : ""}>${t}</p>` : ""; };
+/* the material's name in a sentence, from the Hardware page; with an empty weight but no material, the forecast takes
+   stainless steel, as most brewing vessels are, and says so */
+function vesselSays(v, tail = "") {
+  const lb = `${+v.empty_weight.toFixed(1)}&nbsp;lb`;
+  return v.material === "aluminium" ? `${lb} of aluminum${tail}` : v.material === "other" ? `${lb} of a material holding ${v.specific_heat}&nbsp;cal/g&nbsp;°C${tail}`
+    : v.material === "stainless_steel" ? `${lb} of stainless steel${tail}` : `${lb}${tail}, taken as stainless steel`;
+}
+/* a vessel's weight the forecast can use: given, and more than 0; with "other" as its material, only with its
+   specific heat */
+const vesselWeighed = v => v.empty_weight != null && v.empty_weight > 0 && !(v.material === "other" && !(v.specific_heat > 0));
 const bsHint = B => `${B.kind === "start" ? "start at" : "ready by"} ${B.m == null ? "– –" : tod(B.m * 60)} ${dShort(B.day)}`;
 /* a time that can't be read, said once the time box is left and by SET; in 24-hour SET says it as before */
 const BS_BAD = "That isn't a time: type it as 7, 7:30 or 730, and tap AM or PM.";
@@ -3016,7 +3054,7 @@ function bsHTML() {
     + `<div class="bswhere" role="group" aria-labelledby="bs-gl">${b("cmdbtn", "IN THE GARAGE", `the boil kettle's probe, ${f1(st.v.bk.pv)} °F`, {cmd: "bs:where:garage", pressed: B.where === "garage", why: off})}${b("cmdbtn", "INDOORS", "give its temperature", {cmd: "bs:where:indoors", pressed: B.where === "indoors", why: off})}</div>${chips}</div>`;
   bsGoLast = bsGoHTML(B, ws); bsClkLast = bsClockHTML();
   return `<section class="bsbox" id="bs-box" aria-labelledby="bs-t"><h3 class="bst" id="bs-t">BrewStart</h3>${bsClkLast}${head}<div class="bsmid">${kind}${time}${half}${day}`
-    + `<p class="bssay${ws && ws.past ? " past" : ""}" id="bs-say">${ws ? ws.text : ""}</p>${grain}<p class="bswat">${bsWater(B)}</p></div>`
+    + `<p class="bssay${ws && ws.past ? " past" : ""}" id="bs-say">${ws ? ws.text : ""}</p>${grain}${bsWater(B)}</div>`
     + `<div class="bsfoot"><p class="note">${st.notes.r || ""}</p><div class="bsact">${bsGoLast}${b("cmdbtn", "CANCEL", "", {cmd: "bs:x", why: off})}</div></div></section>`;
 }
 /* the box as the brewer types, or as the clock moves on: its words, AM and PM, SET and the simulator's clock, in place,
@@ -5294,6 +5332,8 @@ document.addEventListener("input", e => {
     const x = parseFloat(e.target.value), ok = $("#swvok");
     st.swVol.val = Number.isFinite(x) ? Math.round(x * 10) / 10 : null;
     if (ok) ok.textContent = st.swVol.val == null ? "– –" : st.swVol.val.toFixed(1);
+    const ov = $("#swv-over");
+    if (ov) ov.textContent = hltOver(st.swVol.val);
     return;
   }
   /* the timer editor's boxes: kept as typed, without redrawing, so the caret stays put */

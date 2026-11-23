@@ -2,7 +2,7 @@
   --bg:#0f161d;--bar:#0a1016;--panel:#17212b;--panel-2:#1e2b37;--line:#2a3b4b;--edge:#33475a;--face:#030609;
   --text:#e8eef3;--text-2:#b6c3cf;--text-3:#8b9cad;
   --pv:#ff4b3e;--sv:#3ddc6f;--heat:#ff7b1c;--run:#3ddc6f;--off:#566676;
-  --prompt:#ffb21e;--prompt-bg:#3a2a06;--alarm:#ff4a4a;--alarm-bg:#6e1414;
+  --prompt:#ffb21e;--prompt-bg:#3a2a06;--prompt-ink:#fff1d2;--alarm:#ff4a4a;--alarm-bg:#6e1414;
   --select:#2a6fc0;--active:#1c5796;--liquor:#46b8ea;--wort:#e9b33b;
   --steel:#7f91a3;--steel-hi:#9aabbc;--steel-lo:#5f7186;--pipe-idle:#3b4b5b;
   --sans:"Barlow","Segoe UI",system-ui,sans-serif;
@@ -499,6 +499,12 @@ button.step{width:100%;margin:0;color:inherit;text-align:left;touch-action:manip
 .bssay.past{color:#ffd9a0}
 .bswat{font:500 15px/1.35 var(--sans);color:var(--text-2)}
 .bswat b{font-weight:600;color:var(--prompt)}
+/* BrewStart's water more than the HLT holds, where the Hardware page gives its capacity: a line in Note Amber under the
+   water's figure, in the BrewStart box, in FORECAST and in the HLT water box (hltOver). It refuses nothing */
+.vover{margin:2px 0 0;font:500 15px/1.35 var(--sans);color:#ffd9a0}
+.vover:empty{display:none}
+.swvol .vover{grid-column:1/-1;margin:0 0 2px;font-size:14px}
+.bsmid>.vover{margin-top:-8px}
 .bsgrain{display:grid;gap:8px}
 .bsgrain .bsgh{margin-top:-4px;font:500 14px/1.35 var(--sans);color:var(--text-3)}
 .bsin{display:flex;flex-wrap:wrap;align-items:center;gap:6px}

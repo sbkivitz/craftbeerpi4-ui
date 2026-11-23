@@ -1,5 +1,14 @@
 # Direction decision log
 
+## A vessel's own figures: capacity, empty weight and material (23 Nov 2026)
+- The brewer asked for vessel sizes, then weights and materials, on the kettles; Brett put them on the Hardware page.
+  His rule: "They should only improve - not hinder". Written as The Only Improves Rule.
+- Chosen: a Vessel group after the kettle's own rows; empty usual, with no "Empty:" line and no question before SAVE;
+  0 or less said at the field once left. On Brew Day one Note Amber line under BrewStart's water where it is more than
+  the HLT holds, in the three places the water is shown, and nowhere else; FORECAST's From Hardware only when there is
+  something in it. Not chosen: a hint on BrewStart's step row (the recipe pages warn as the recipe comes in), and
+  range limits beyond more than 0 (the figures are the brewer's).
+
 ## A timer back after a restart, and the corner's buttons, in D (23 Nov 2026)
 - From D's build: the column's one-line tiles hid "CraftBeerPi was off for …" from sight. Chosen: the row's line under
   the tile, as DESIGN.md had it, rather than changing DESIGN.md, since that line is what tells the brewer why a timer

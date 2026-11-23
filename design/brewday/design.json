@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-23T19:26:05.377Z",
+  "generatedAt": "2026-11-23T21:13:38.416Z",
   "title": "Design System: CraftBeerPi Brew Day",
   "extensions": {
     "colorMeta": {
@@ -1261,6 +1261,11 @@
       {
         "name": "The One Clock Rule",
         "body": "Brew Day has one clock, CraftBeerPi's (cbpi.api.clock), and every time it shows is on it: the title bar's clock, LOG's times, the graphs' times, STARTS, ready by and estimated completion, and every count CraftBeerPi keeps (the step and rest timers, the timers, the boil's pause, how long CraftBeerPi has been working USE out). Nothing reads the PC's or the phone's clock. On the rig CraftBeerPi's clock is the Pi's, so nothing changes there. A simulator's runs SIM_TIME_SCALE times as fast from the moment it starts, so its time and date soon leave the screen's. The title bar then adds CraftBeerPi's date where it isn't the screen's, and its speed where it isn't 1×: \"THU 26 NOV · 60× SPEED\". While it does, a LOG line from another of CraftBeerPi's days says its date: \"26 Nov 11:58:40 PM\". Until CraftBeerPi has said where its clock is, the title bar shows \"– –:– –\" rather than another clock's time. The screen asks when the page opens, once a minute and when the connection comes back, and counts on between. Changing SIM_TIME_SCALE puts a simulator's clock back to the PC's date and time (from 22 Nov: \"Whenever I change the timescale, the simtime date and time need to reset to actual\"), and CraftBeerPi tells open screens at once: the screen asks for the clock again there and then, so at 1× the title bar's tag goes, and an open BrewStart box draws its tag, its days and its time in words again. Only the screen's own waits are in real seconds, at any speed: a held START, the 10 s UNDO, the 5 s wait for an answer, a note's 6 s, the beep every 3 s while an alarm waits, CHECKING…'s 6 s and \"Last reading N s ago\". On 22 Nov the brewer set a BrewStart to start at 12:04 on 8012 and pressed START. CraftBeerPi's clock, at 60×, read 26 Nov 07:22, and BrewStart began 4.7 real minutes later, while the title bar said about 10:05. His rule for the simulators is that \"60x should give same results 60x faster\".",
+        "section": "components"
+      },
+      {
+        "name": "The Only Improves Rule",
+        "body": "A figure the brewer may give but needn't, such as a vessel's capacity, empty weight or material, only ever adds. Left empty, which is usual, everything works as it did: nothing blocks, greys, asks or nags for it, and nowhere says it's missing. Given, it improves what uses it, and the screen says where a figure came from only when there is one. One that can't be right (0 or less) is said at its own field and changes nothing anywhere else. The brewer's words: \"make sure that functionality isn't lost if these new measurements are missing. They should only improve - not hinder\".",
         "section": "components"
       },
       {

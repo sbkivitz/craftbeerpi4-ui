@@ -25,8 +25,12 @@ const PAUSED = "No connection. Switches wait until CraftBeerPi is back.";
 let D, st;
 function fresh(set) {
   D = JSON.parse(JSON.stringify(HW[set]));
+  /* the vessels' own figures, made up for the demo, as the data has none: the HLT holds 20 gal and is stainless steel,
+     its weight not given; the Mash Tun holds 20 gal and weighs 33 lb, stainless steel; the Boil Kettle has none */
+  const fig = {HLT: {capacity: 20, material: "stainless_steel"}, "Mash Tun": {capacity: 20, empty_weight: 33, material: "stainless_steel"}};
+  D.kettle.forEach(k => Object.assign(k, fig[k.name] || {}));
   st = {set, open: null, draft: {}, row: {}, q: "", saving: false, link: "ok", leave: null, del: null, menu: false,
-    file: null, fileSay: null, wait: null, view: "index", busy: {}, more: {}, fail: null, adding: 0, aside: {}, ask: null,
+    file: null, fileSay: null, wait: null, view: "index", busy: {}, more: {}, fail: null, adding: 0, aside: {}, ask: null, left: {},
     events: [["14:32:05", "Connected to CraftBeerPi", "", ""]]};
 }
 const ik = (kind, id) => kind + ":" + id;
@@ -80,6 +84,16 @@ const failed = () => Object.keys(st.row).filter(k => st.row[k].s === "bad");
 const invalid = (kind, id, f) => {
   const v = val(kind, id, f);
   if (f === "name") return blankish(v) ? "Needs a name" : "";
+  /* a vessel's figure: empty is usual and fine; one that can't be right (0 or less) is said at its row once the box is
+     left, or at SAVE, never while it is typed, so "0.12" doesn't flash red on its way. It holds back SAVE, as a box
+     that needs a number does, and changes nothing anywhere else */
+  if (kind === "kettle" && isVessel(f) && f !== "material") {
+    if (blankish(v)) return "";
+    const n = +String(v).replace(",", ".");
+    if (isNaN(n)) return "Needs a number";
+    const u = unitText(rowMeta(kind, id, f).u);
+    return n <= 0 && st.left[ik(kind, id) + "|" + f] ? `${String(v).trim()}${u ? " " + u : ""} can't be right: leave it empty if you don't know it` : "";
+  }
   const p = propDef(kind, id, f);
   return p && p.type === "number" && !blankish(v) && isNaN(+String(v).replace(",", ".")) ? "Needs a number" : "";
 };
@@ -95,7 +109,9 @@ function propDef(kind, id, f) {
 }
 const cat = (kind, type) => (HW_TYPES[kind] || {})[type] || null;
 const pick = line => (Array.isArray(line) ? line[F() ? 0 : 1] : line) || "";
-const unitText = u => (u === "deg" ? unit() : u || "");
+const unitText = u => (u === "deg" ? unit() : u === "vol" ? (F() ? "gal" : "L") : u === "mass" ? (F() ? "lb" : "kg") : u || "");
+/* a kettle's vessel fields (HW_VESSEL): optional, kept with the kettle, edited in its Vessel group */
+const isVessel = f => HW_VESSEL.some(([k]) => k === f);
 /* what an empty kettle setting means: its control's built-in value in the brewery's units (CraftBeerPi's blank_defaults
    for the control), or what the control does when it's empty (HW_EMPTY); a setting with neither is only empty */
 const builtIn = (kind, id, f) => (kind === "kettle" && f.startsWith("props.") ? ((HW.blank_defaults || {})[val(kind, id, "type")] || {})[f.slice(6)] : undefined);
@@ -121,6 +137,8 @@ function partsOf(kind, id) {
   const shownDefs = defs.filter(p => isShown(p, data));
   const known = new Set();
   const parts = [{h: {kettle: "Kettle", sensor: "Probe", actor: "Switch"}[kind], rows: HW_OWN[kind].map(([k, n, l, u]) => ({f: k, n, l, u}))}];
+  /* a kettle's vessel, next: what the pot is, before its settings file and its control's settings */
+  if (kind === "kettle") parts.push({h: "Vessel", intro: HW_VESSEL_INTRO, rows: HW_VESSEL.filter(([k]) => k !== "specific_heat" || val(kind, id, "material") === "other").map(([k, n, l, u]) => ({f: k, n, l, u}))});
   (c ? c.parts : []).forEach(([h, rows]) => {
     const r = rows.filter(([k]) => shownDefs.some(p => p.label === k)).map(([k, n, l, u]) => { known.add(k); return {f: "props." + k, n, l: pick(l), u}; });
     if (r.length) parts.push({h, rows: r});
@@ -260,6 +278,7 @@ function marked(text) {
 /* ---------- what a value reads as ---------- */
 function shown(kind, id, f, v) {
   if (blankish(v)) return f === "type" ? "none" : "blank";
+  if (f === "material") { const m = HW_MATERIALS.find(([k]) => k === v); return m ? m[1] : String(v); }
   const link = f === "sensor" ? "sensor" : f === "heater" || f === "agitator" ? "actor" : null;
   const p = propDef(kind, id, f), lk = link || (p && ["sensor", "actor", "kettle"].includes(p.type) ? p.type : null);
   if (lk) { const x = find(lk, v); return x ? x.name : `an unknown one (${v})`; }
@@ -352,7 +371,7 @@ function effects() {
   return dirty().map(k => {
     const [kind, id] = split(k), x = find(kind, id);
     if (!x || x.fresh) return "";
-    if (kind === "kettle" && x.auto) return `Saving <b>${esc(x.name)}</b> switches its AUTO off, as CraftBeerPi does whenever a kettle's settings are saved. Switch it on again on Brew Day.`;
+    if (kind === "kettle" && x.auto && changedFields(k).some(f => !isVessel(f))) return `Saving <b>${esc(x.name)}</b> switches its AUTO off, as CraftBeerPi does whenever a kettle's settings are saved. Switch it on again on Brew Day.`;
     if (kind === "actor" && x.on) return `Saving <b>${esc(x.name)}</b> switches it off first.`;
     return "";
   }).filter(Boolean);
@@ -472,6 +491,13 @@ function ctlHTML(kind, id, f) {
     const c = cat(kind, v);
     return `<select class="fld" id="${fid}" data-f="type" ${d}><option value=""${blankish(v) ? " selected" : ""}>${find(kind, id).fresh ? "Choose one" : "None"}</option>${types.map(t => `<option value="${esc(t)}"${t === v ? " selected" : ""}>${esc(t)}</option>`).join("")}</select>${c ? `<p class="fx">${esc(c.does)}</p>` : ""}`;
   }
+  /* a vessel's figures: a number with its unit, an empty box reading "empty", and no line under it, as empty is usual;
+     the material from a menu, "Not set" first */
+  if (kind === "kettle" && isVessel(f)) {
+    if (f === "material") return `<select class="fld" id="${fid}" data-f="material" ${d}><option value=""${blankish(v) ? " selected" : ""}>Not set</option>${HW_MATERIALS.map(([k, n]) => `<option value="${k}"${same(k, v) ? " selected" : ""}>${n}</option>`).join("")}</select>`;
+    const u = unitText(rowMeta(kind, id, f).u);
+    return `<div class="numf"><input id="${fid}" data-f="${f}" inputmode="decimal" autocomplete="off" spellcheck="false" value="${esc(v)}" placeholder="empty" ${d}>${u ? `<span aria-hidden="true">${esc(u)}</span>` : ""}</div>`;
+  }
   const linkKind = f === "sensor" ? "sensor" : f === "heater" || f === "agitator" ? "actor" : null;
   const p = propDef(kind, id, f), lk = linkKind || (p && ["sensor", "actor", "kettle", "fermenter"].includes(p.type) ? p.type : null);
   if (lk) {
@@ -556,8 +582,9 @@ function previewHTML(x) {
 function sheetHTML(kind, id) {
   const x = find(kind, id), k = ik(kind, id), part = partOf(k);
   const word = kind === "kettle" ? "Kettle" : kind === "sensor" ? "Probe" : (() => { const u = usesOf("actor", id).find(r => r.role); return u ? ROLE[u.role] : "Switch"; })();
-  const ps = partsOf(kind, id).map((p, j) => `<div class="part" role="group" aria-labelledby="p-${j}"><h3 id="p-${j}">${esc(p.h)}${j === 0 && x.type && !x.fresh ? `<span class="pl">${esc(kind === "kettle" ? "" : x.type)}</span>` : ""}</h3>${p.rows.map(r => rowHTML(kind, id, r)).join("")}</div>`);
-  const parts = `${ps[0] || ""}${kind === "kettle" ? fileHTML(id) : ""}${ps.slice(1).join("")}`;
+  const ps = partsOf(kind, id).map((p, j) => `<div class="part" role="group" aria-labelledby="p-${j}"${p.intro ? ` aria-describedby="pi-${j}"` : ""}><h3 id="p-${j}">${esc(p.h)}${j === 0 && x.type && !x.fresh ? `<span class="pl">${esc(kind === "kettle" ? "" : x.type)}</span>` : ""}</h3>${p.intro ? `<p class="pi" id="pi-${j}">${esc(p.intro)}</p>` : ""}${p.rows.map(r => rowHTML(kind, id, r)).join("")}</div>`);
+  /* a kettle: its own rows and its vessel, then its settings file, then its control's settings */
+  const parts = kind === "kettle" ? `${ps.slice(0, 2).join("")}${fileHTML(id)}${ps.slice(2).join("")}` : ps.join("");
   return `<section class="sheet" id="sheet" data-item="${esc(k)}" aria-labelledby="sh-h"><header class="shd"><button type="button" class="back" data-home>‹ All hardware</button>${part ? `<button type="button" class="mini" data-home aria-label="Back to the brewhouse drawing"><span>‹ Brewhouse</span></button>` : ""}<div class="who"><p class="k">${word}${(() => { const w = !x.fresh && wiring(kind, id); return w ? ` · ${esc(w)}` : ""; })()}</p><h2 id="sh-h">${esc(nameOf(kind, id))}</h2><p class="role">${roleLine(kind, id)}</p></div><div class="live">${liveHTML(kind, id)}</div></header>${parts}<div class="part gone" role="group" aria-labelledby="p-del"><h3 id="p-del">Delete</h3>${delHTML(kind, id)}</div></section>`;
 }
 function waitHTML() {
@@ -666,7 +693,8 @@ function setDraft(f, v) {
   delete st.row[k + "|" + f];
   if (!isChanged(kind, id, f) && !isNew(k)) delete st.draft[k][f];
   if (!Object.keys(st.draft[k]).length && !isNew(k)) delete st.draft[k];
-  if (f === "type") return render();
+  /* a kettle's material brings Specific heat in or takes it away, so the item is drawn again */
+  if (f === "type" || f === "material") return render();
   paintRow(f);
   paintChrome();
 }
@@ -675,7 +703,9 @@ function save(how) {
   if (lost()) return toast("No connection: SAVE sends your changes once CraftBeerPi is back.");
   const ks = dirty();
   if (!ks.length) return toast("Nothing has changed yet: change a setting, then SAVE.");
-  if (invalids().length) return toast("Fix the entry marked in red first.");
+  /* a vessel's figure is checked at SAVE too, if its box wasn't left first */
+  ks.forEach(k => changedFields(k).filter(isVessel).forEach(f => { st.left[k + "|" + f] = true; }));
+  if (invalids().length) { render(); return toast("Fix the entry marked in red first."); }
   /* an empty setting its control fills with a built-in value is named before saving, and the answer is the brewer's */
   const empties = ks.map(k => [k, emptiesOf(k)]).filter(([, e]) => e.length);
   if (empties.length && !how) {
@@ -834,7 +864,7 @@ document.addEventListener("click", e => {
   const d = t.dataset;
   if (t.getAttribute("aria-disabled") === "true") {
     e.preventDefault();
-    if ("save" in d) toast(st.wait === "loading" ? "Waiting for CraftBeerPi to send the item." : st.wait === "missing" ? "There's nothing here to save." : lost() ? "No connection: SAVE sends your changes once CraftBeerPi is back." : invalids().length ? "Fix the entry marked in red first: it needs a number." : "Nothing has changed yet.");
+    if ("save" in d) toast(st.wait === "loading" ? "Waiting for CraftBeerPi to send the item." : st.wait === "missing" ? "There's nothing here to save." : lost() ? "No connection: SAVE sends your changes once CraftBeerPi is back." : invalids().length ? (invalids().every(f => !isVessel(f)) ? "Fix the entry marked in red first: it needs a number." : "Fix the entry marked in red first.") : "Nothing has changed yet.");
     else if ("sw" in d || t.id === "alloff") toast(PAUSED);
     else if ("undoall" in d) toast(st.saving ? "Saving: UNDO is back once CraftBeerPi answers." : "Nothing to undo.");
     else if ("del" in d) toast("Not now: the line under it says why.");
@@ -892,7 +922,12 @@ document.addEventListener("input", e => {
   if (t.id === "q") { st.q = t.value; paintChrome(); $(".clr").hidden = !st.q; return; }
   if (t.dataset.f && t.tagName === "INPUT" && st.open) setDraft(t.dataset.f, t.value);
 });
-document.addEventListener("change", e => { const t = e.target; if (t.dataset.f && t.tagName === "SELECT" && st.open) setDraft(t.dataset.f, t.value); });
+document.addEventListener("change", e => {
+  const t = e.target;
+  if (t.dataset.f && t.tagName === "SELECT" && st.open) setDraft(t.dataset.f, t.value);
+  /* a vessel's box left: its figure is checked from now on (invalid) */
+  if (t.dataset.f && t.tagName === "INPUT" && st.open && isVessel(t.dataset.f)) { st.left[st.open + "|" + t.dataset.f] = true; paintRow(t.dataset.f); paintChrome(); }
+});
 document.addEventListener("keydown", e => {
   if (e.key === "Escape") { if (st.menu) { st.menu = false; render(); $("[data-add]").focus(); } else if (st.del) { st.del = null; render(); } else if (st.file) { st.file = null; render(); } }
   const r = e.target.closest && e.target.closest('[role="radio"]');
@@ -948,7 +983,15 @@ const SCENES = {
   leave() { const h = byName("kettle", "HLT"); st.draft[ik("kettle", h.id)] = {"props.P": "12"}; st.open = ik("kettle", h.id); st.leave = "Settings"; },
   waiting() { st.wait = "loading"; st.waitFor = ["sensor", byName("sensor", "HLT Temp").id]; },
   missing() { st.wait = "missing"; st.waitFor = ["kettle", "no-such-record-0000"]; },
-  offline() { st.link = "lost"; st.events.unshift(["14:31:48", "Connection to CraftBeerPi lost", "waiting", "wait"]); }
+  offline() { st.link = "lost"; st.events.unshift(["14:31:48", "Connection to CraftBeerPi lost", "waiting", "wait"]); },
+  /* a kettle's Vessel group (VESSELS.md): the Mash Tun's, all three given; the Boil Kettle's, none given, which is usual;
+     the HLT's capacity typed as 0 and the box left, said at its row; and the HLT heating in AUTO with its capacity
+     changed, which saving leaves running, so no note says saving switches it off */
+  vessel() { st.open = ik("kettle", byName("kettle", "Mash Tun").id); },
+  vesselnone() { st.open = ik("kettle", byName("kettle", "Boil Kettle").id); },
+  vessel0() { const h = byName("kettle", "HLT"); st.open = ik("kettle", h.id); st.draft[st.open] = {capacity: "0"}; st.left[st.open + "|capacity"] = true; },
+  vesselauto() { heating(); const h = byName("kettle", "HLT"); st.open = ik("kettle", h.id); st.draft[st.open] = {capacity: "18"}; },
+  vesselother() { const m = byName("kettle", "Mash Tun"); st.open = ik("kettle", m.id); st.draft[st.open] = {material: "other", specific_heat: "0.09"}; }
 };
 /* the HLT heating in AUTO, as on a brew day: its element on, and its probe climbing */
 function heating() { const h = byName("kettle", "HLT"); h.auto = true; h.target_temp = 168; const a = find("actor", h.heater); if (a) a.on = true; D.readings[h.sensor] = 152.3; }
@@ -965,7 +1008,7 @@ function scene() {
   $("#clock").innerHTML = clockHTML();
   render();
   $("#pane").scrollTop = 0;
-  if (st.open) { const f = name === "saved" ? "props.DeltaTemp" : name === "changes" || name === "leave" ? "props.P" : name === "pin" ? "props.GPIO" : ""; if (f) { const el = $("#r-" + f.replace(/\W/g, "-")); if (el) el.scrollIntoView({block: "center"}); } }
+  if (st.open) { const f = name === "saved" ? "props.DeltaTemp" : name === "changes" || name === "leave" ? "props.P" : name === "pin" ? "props.GPIO" : name.startsWith("vessel") ? (name === "vesselother" ? "specific_heat" : "capacity") : ""; if (f) { const el = $("#r-" + f.replace(/\W/g, "-")); if (el) el.scrollIntoView({block: "center"}); } }
   if (st.del) { const a = $("#ask"); if (a) a.scrollIntoView({block: "center"}); }
   if (st.file) { const p = $('[data-kettle-file="preview"]'); if (p) p.scrollIntoView({block: "start"}); }
   if (adding) { const n = $("#name"); if (n) n.focus(); }

@@ -20,6 +20,42 @@ The brewer's answers, in order:
 
 The page needs the server support you're adding for empty settings: each logic's `blank_defaults` in the kettle types, and the file preview's `blank` list and `fill`. Nothing else changes in CraftBeerPi's server or plugins.
 
+### A kettle's Vessel group (23 Nov)
+
+From the brewer: "these volumes should be configurable in settings or hardware", then "and if you need to know
+weight/material of kettle too?", and the firm rule "make sure that functionality isn't lost if these new measurements
+are missing. They should only improve - not hinder". The design, with Brew Day's part, is
+`design/brewday/VESSELS.md`; DESIGN.md's Hardware Page (Vessel) and The Only Improves Rule.
+
+- **Where:** a part of its own, "Vessel", after the kettle's own rows (Name, AUTO control, Probe, Heating element,
+  Pump) and before its Settings file. Under its heading, in a row's help type (`.part .pi`): "Each is optional: leave
+  it empty if you don't know it. Saving these leaves the kettle's AUTO as it is." Mockup: `HW_VESSEL_INTRO`,
+  `HW_VESSEL` and `HW_MATERIALS` in `hardware-catalog.js`; `partsOf` and `sheetHTML` in `hardware.js`.
+- **The rows**, in the page's row anatomy, the key under each being CraftBeerPi's field:
+  - Capacity (`capacity`), "How much it holds, full. Brew Day checks BrewStart's water against the HLT's.", a number
+    box with gal (L on a °C brewery);
+  - Empty weight (`empty_weight`), "What it weighs empty, with what's fixed in it, such as a coil or a false bottom.
+    The strike water forecast uses it.", lb (kg);
+  - Material (`material`), "What it's made of. The forecast uses it with the empty weight; without it, it takes
+    stainless steel.", a menu: Not set, Stainless steel, Aluminum, Other;
+  - Specific heat (`specific_heat`), only while Other is chosen, "How much heat the material holds, as BeerSmith's
+    equipment profile gives it: copper 0.09, stainless steel 0.12, aluminum 0.22.", cal/g·°C. Choosing the material
+    draws the item again, so the row comes and goes.
+- **Empty:** the box reads "empty", the menu "Not set". No "Empty: …" line under them, and they are never among the
+  empty settings named before SAVE (`emptyText` and `emptiesOf` only look at a control's settings).
+- **A figure that can't be right**, 0 or less: in red in the row's status line, "0 gal can't be right: leave it empty
+  if you don't know it", once the box is left (its `change` event) or at SAVE, never while it is typed (`invalid`,
+  `st.left`). It holds back SAVE as "Needs a number" does; SAVE's refusal then says "Fix the entry marked in red
+  first." Text that isn't a number says "Needs a number". No other limits.
+- **AUTO stays on:** a SAVE that changes only these leaves the kettle's AUTO running, so the amber "Saving HLT switches
+  its AUTO off…" note isn't shown for it (`effects`). That needs the core to save them without stopping the kettle's
+  logic; until it does, the note must show as before, since it would be true.
+- **Moments:** `#vessel`, `#vesselnone`, `#vessel0`, `#vesselauto`, `#vesselother`. The demo's figures are made up
+  (`fresh` in `hardware.js`): the HLT 20 gal, stainless steel, its weight not given; the Mash Tun 20 gal, 33 lb,
+  stainless steel; the Boil Kettle none.
+- **Checked:** `hw_click.py` 85 of 85; `hw_measure.py` on the five moments at every size: no words broken, no text
+  under its contrast, no target under 44 px, no overlaps, no script errors.
+
 ### Changed after your build (0.5.1.a3.post16)
 
 Your measurements found three problems that were in the mockup too: names split mid-word from 1180 to 1440 px, the list's red readings at 4.3:1, and the MORE buttons and the Fermenters link under 44 px. Measuring every moment at 16 sizes found the same kinds of problem in a few more places. All are fixed in `hardware.css` and `hardware.js`; the sections below say how, and "Checked" says what was measured.

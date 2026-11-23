@@ -6511,6 +6511,62 @@ words, or hanging below the box, once past the window's foot. Now:
 - `DESIGN.md` (Timers: beside the drawing, the tile's line and the corner's room), `proposal\TIMER-PLACE.md`,
   `.impeccable\decisions\direction-log.md`, `.impeccable\design.json`.
 
+## A vessel's own figures on Brew Day, and Prompt Cream defined (23 Nov)
+
+The design is `proposal\VESSELS.md` (with the Hardware page's part in `design/hardware/HARDWARE-BUILD-NOTES.md`) and
+DESIGN.md's The Only Improves Rule: blank is usual, and nothing blocks, greys or nags for a missing figure.
+
+### 1. BrewStart's water more than the HLT holds (screen.js, brewday.css)
+
+Only where the HLT's kettle has a `capacity` and BrewStart's water is more (more than 0.005 gal over): one line, Barlow
+500 15px in Note Amber (#ffd9a0), "25.4 gal is more than the HLT holds: 20 gal, on the Hardware page.", under the
+water's figure in three places. Mockup: `hltOver` and `hltOverHTML`, `.vover`.
+
+- BrewStart's box: under its water sentence (`bsWater`), at the foot of the part that scrolls, 8 px under it.
+- FORECAST's From you: under the water's sentence, beside CHANGE.
+- The HLT water box: under the keys, kept up to date as the figure is typed or stepped (`#swv-over`,
+  `aria-live="polite"`, empty and hidden when it fits).
+
+It greys and refuses nothing (SET, HEAT NOW, USE and START as before), and nothing is shown with no capacity.
+
+### 2. From Hardware in FORECAST (screen.js)
+
+A group of its own after From the recipe, only when it has something (`swList`): the Mash Tun's and the HLT's empty
+weight and material, where the core says it used them, "33 lb of stainless steel", "30 lb of stainless steel, with
+what's fixed in it" (aluminum; "of a material holding 0.09 cal/g °C" for other; "33 lb, taken as stainless steel" with
+no material). The Mash Tun's takes the place of From the recipe's Mash tun line; the HLT's takes HLT STEEL out of Not
+measured yet and out of what would raise USE most. Mockup: `vesselOf`, `vesselWeighed`, `vesselSays`; the figures
+stand in `st.vessels` for what the core will say it used.
+
+### 3. Prompt Cream defined (brewday.css)
+
+`--prompt-ink` (Prompt Cream, #fff1d2, as DESIGN.md has it) wasn't defined, so a run-out timer's "CraftBeerPi was off"
+line, on its row and on its tile beside the drawing, showed in the row's own white. It is now in `:root` beside
+`--prompt` and `--prompt-bg`. Changed: `#timer-back-done` and `#timer-back-unknown` (Stir's line), beside the drawing
+at 1180 px and wider and in the recipe column on a phone and with `?tplace=today`. Nothing else uses it.
+
+### In CraftBeerPi
+
+The kettle fields, the model's use of them, and the state saying which figures came from Hardware: VESSELS.md's
+"What it needs".
+
+### Checked
+
+- All 15 suites pass, unchanged, with no page errors.
+- `#bs-over`, `#sw-hw` and `#sw-over` at 1440 × 900, 1180 × 860 and 390 × 844, no page errors; BrewStart's line in
+  view in its box as it opens, at all three; From Hardware's two lines, and HLT STEEL gone from Not measured yet, in
+  `#sw-hw`.
+- Pictures against UI c643b32 at 1440 × 900, 1180 × 860 and 390 × 844: beyond the two sections above, only
+  `#timer-back-done` and `#timer-back-unknown` on a phone (Stir's line now cream), and the three new moments.
+
+### Changed
+
+- `proposal\brew-day.js` (`bsWater`, `hltOver`, `hltOverHTML`, `vesselOf`, `vesselSays`, `vesselWeighed`, `swList`,
+  `swVolHTML` and its input, the three moments), `proposal\brew-day.css` (`--prompt-ink`, `.vover`),
+  `proposal\brew-day.html` (the moments and notes); `proposal\VESSELS.md` (new); this section.
+- `DESIGN.md` (The Only Improves Rule, the Hardware Page's Vessel, FORECAST's From Hardware, BrewStart's box, Note
+  Amber), `.impeccable\decisions\direction-log.md`, `.impeccable\design.json`.
+
 ## Open questions about the drawing
 
 Both were answered on 10 Nov. The valves have been in the drawing since then; the path after the boil was
