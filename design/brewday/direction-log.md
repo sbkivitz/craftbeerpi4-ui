@@ -1,5 +1,16 @@
 # Direction decision log
 
+## The timers beside the drawing (D) approved, with OTHER RECIPE; built as the default (22 Nov 2026, night)
+- The brewer: "Timers beside the drawing: Yes, build D", on `timers-side.html`, beside today and C.
+- Built as the mockup's default: on one screen, while a timer is set, a 300 px column of one-line timer rows at the
+  drawing's right, the drawing narrower and its vessels their own size; with none, the drawing full width and + TIMER
+  and SOUND over its corner. A phone, and any window under 1180 px, keeps the timers in the recipe column.
+- With it, OTHER RECIPE beside COMPARE PROBES on a recipe not begun, which he kept. Not built from RECIPE-COLUMN.md:
+  the timers folding in the column, and the recipe book folded behind CHOOSE A RECIPE brewing by hand, as nothing he
+  chose needs them; `?col=new` keeps them for comparison.
+- The Under Its Plate Rule now has its one exception: while timers are up on one screen the vessels sit closer together
+  than their plates.
+
 ## BrewStart's new time while it waits: HEAT NOW for a time too soon (22 Nov 2026, night)
 - BrewStart 1.2.0.post10's `change_time` (on 8000 and 8012) takes a new time while BrewStart waits, which the box was
   waiting for. Its code shows that a ready time leaving less than BrewStart plans for heating starts the heating at

@@ -5975,7 +5975,8 @@ does; the rest is as that section says.
    that still has post10's step types): "BrewStart didn't take the new time, so nothing changed."
    - Simpler, if you'd rather: the core passes an action's own `ValueError` message through as the 400's `detail`
      (your note's first open point). The box then shows `detail`, as for any refusal, and needs nothing from the
-     notice. Your call.
+     notice. Your call. Decided: both. Post36 takes the notice; core post60 answers `{"error": "action refused",
+     "detail": reason}`, and the screen prefers `detail` where it is there, as the two can arrive in either order.
    - The box meets these only in a race: it closes once BrewStart stops waiting, refuses a time that has passed by its
      own clock, and can't be opened while BrewStart waits for NEXT STEP, whose row has no STARTS and isn't a button.
 5. **Moment:** `#bs-soon`, #sw-wait at 05:40 with the box opened from the row and 06:00 typed: HEAT NOW.
@@ -6004,6 +6005,122 @@ does; the rest is as that section says.
 - `DESIGN.md`: BrewStart's box (HEAT NOW).
 - `.impeccable\decisions\direction-log.md`; `.impeccable\design.json`, regenerated.
 - In the mash pH section above, dev52 is now on 8000 and 8012; `proposal\PH-ENTRY.md` says the same.
+
+## The timers beside the drawing (D), and OTHER RECIPE: ready to build (22 Nov, night)
+
+The brewer chose D on `timers-side.html`: "Timers beside the drawing: Yes, build D". It was his own idea ("I think the
+vessel drawings can shrink width and add the timers in a column … if there are no timers, the vessels should appear
+full width"), in place of C, the bar along the bottom, which would have made the vessels a third smaller on his
+monitor. OTHER RECIPE beside COMPARE PROBES comes with it, as he kept it ("Yes, keep OTHER RECIPE"). The design is
+`proposal\TIMER-PLACE.md` (D), `proposal\RECIPE-COLUMN.md` (OTHER RECIPE only) and DESIGN.md's Timers (Beside the
+drawing), Recipe Column (OTHER RECIPE), Layout and The Under Its Plate Rule. The mockup has both by default;
+`?tplace=today&col=today` is the screen as built before.
+
+### What to build (screen.js, brewday.css)
+
+1. **Where the timers are.** On one screen (1180 px and wider, `ONE_SCREEN`) the timers leave the recipe column for
+   the drawing's row (`tHere()` "side"; `timersHTML` gives nothing in the column there). Narrower, and on a phone,
+   they are in the column exactly as built, phone strip included. Crossing 1180 px moves them, as the window is
+   resized (`ONE_SCREEN`'s change draws the screen again).
+2. **The drawing's row split** (`tsideDraw`, `.brewhouse[data-tside]`). While there is at least one timer, a timer
+   just removed counting while its UNDO shows, the brewhouse's grid is `minmax(0, 1fr) 300px`: the faceplates across
+   both columns, the drawing in the first under them, the timers' column (`#tside`, a `section` labelled "Timers")
+   in the second, at the drawing's height (`tsideFit` sets its `min-height` to the drawing box's height, which keeps
+   its own least height where a long question in the title bar makes the row shorter).
+   - The drawing is drawn at its narrower box as it is now (`drawRig`: `W = max(1200, 470 × w / h)`), so while the box
+     is wider than 1200 to 470 (2.55 to 1) its vessels keep their size and only sit closer together. It is 3.5 to 1
+     or wider at every size measured (below), so nothing else changes in `rig.js`.
+3. **The column** (`tsideHTML`, `.tside`): Panel Slate, a 1 px Hairline Slate edge, 6 px corners, padding 3 px 8 px.
+   - Its head, 44 px: TIMERS with the count, "TIMERS · 2" (the "·" hidden from screen readers), in Dim Steel 600
+     18 px condensed capitals; + TIMER (`tplus3`) and SOUND at its right.
+   - The timers, one row each, 38 px tall, 4 px apart (`tchipHTML` with the column's mode): the name, giving way first
+     with its ellipsis, the state word (paused, ready; none while counting) and the time, 20 px (26 px in its last
+     3:00), on one line at the left; REMOVE and START or PAUSE at the right, each 38 px tall, its outline drawn inside
+     (`box-shadow: inset 0 0 0 1px`) so they reach the row's edges; the bar a 2 px line along the foot. What a row
+     holds comes from the column's width (`tMode`, `--tcw-full` 250 px, `--tcw-go` 200 px): at 300 px it is always
+     REMOVE and START or PAUSE.
+   - A timer that has run out: its row Dark Amber Wash with a 2 px Prompt Amber edge drawn inside, TIME'S UP and the
+     time counting up in Prompt Amber, OK; it pulses, and its alarm is in the title bar as now. A timer just removed:
+     its row for 10 s with its name, "removed" and UNDO.
+   - Rows that don't all fit scroll inside the column (`.tsl`, `overflow-y: auto`, `overscroll-behavior: contain`),
+     which keeps its scroll place when the screen is drawn again. Where the next row would show all but its last
+     12 px, the list is cut at half that row's height, so it reads as cut (`TSIDE_CUT`); less, and it stays as it is.
+4. **A timer's editor** (`tpopHTML`, `tsidePop`, `.tside .tpop`): the editor as built, in a box of its own 380 px
+   wide to the left of the column (`right: calc(100% + 8px)`), level with its timer, a new timer's level with the
+   end of the list, moved up or down as far as it must to stay on screen; z-index 35, the editor's 2 px Selection Blue
+   edge. A timer shown as a row here has its REMOVE and START or PAUSE, so the editor has no second row for them. The
+   timers' note (a refused UNDO or + TIMER) shows in the same place, with no editor open (`tpnoteHTML`).
+   - Escape closes the editor first, unless focus is in a box open in the recipe column (BrewStart's, the pre-brew
+     check's, COMPARE PROBES, FORECAST, the recipe book), which Escape then closes first.
+   - On one screen the column's boxes no longer make the timers give way, as the timers aren't in the column.
+5. **No timers** (`.brewhouse[data-tcorner]`, `.tside.empty`, `tsideCorner`): the drawing full width, as built, and
+   + TIMER and SOUND as two 44 px buttons over its top-right corner, 6 px in. They take the first of side by side, one
+   over the other, then both again with smaller words (`.tcorner[data-fit]`), that stays inside the drawing's box and
+   clears every part of the drawing (outlines, lines, pumps, labels, the valves' note), tried after every draw of the
+   drawing and once the fonts are in. A new timer's editor opens to their left.
+6. **OTHER RECIPE** (`nbHTML`, `rbHTML`, `cmdLoad2`, `.nbrow`, `.rbox`): on a recipe not begun, OTHER RECIPE ("from
+   the recipe book") and COMPARE PROBES ("before you fill") side by side, two equal command buttons 54 px tall, in
+   the row COMPARE PROBES had to itself. It opens the recipe book in that place (`data-pb` on one screen, taking the
+   step list's room): the newest five, each with LOAD, the loaded one saying "READY TO START · STEP 1 OF 7" instead;
+   ALL RECIPES (the Recipe Book tab) and CLOSE. LOAD: LOADING… on its row, the others greyed (`WAIT`), the box
+   closing once CraftBeerPi has it, LOG "Craftbeerpi Test Recipe v4 loaded · confirmed". Over a recipe the book doesn't
+   have, LOAD asks first in the box (`loadAskHTML`). Opening it closes BrewStart's box and the column's other boxes;
+   Escape and CLOSE close it; UNLOAD and a recipe that begins close it too, and the row goes once a recipe has begun.
+   Brewing by hand, the column's recipe book is as built.
+7. **Moments for the demo:** `#timers`, `#timer-done`, `#timer-removed`, `#timer-change`, `#mash` and `#hop` with
+   timers, any moment with none (the corner), `#other-recipe`, and `?tplace=today&col=today` for the screen as built
+   before.
+
+### In CraftBeerPi
+
+- Nothing: the timers' commands and the recipe book's LOAD are as built.
+
+### What it settles
+
+- DESIGN.md's Strike Water "Known limits": on one screen the closed strike water box no longer shares the column with
+  the timers, so the step list keeps the current step whole with any number of timers.
+- The Under Its Plate Rule has its one exception, while timers are up on one screen.
+
+### Checked
+
+- `files\tplace_side.py`, 262 checks, all pass, at 1180 × 860, 1280 × 800, 1366 × 768, 1440 × 900, 1920 × 950 and
+  1920 × 1080, in `#mash`, `#hop`, `#sw-heat`, `#timers` and `#timer-done`: with two timers, the current step whole, the
+  drawing's box and the hot liquor tank's outline as tall as before (within 0.1 px), the column 300 px at the drawing's
+  height; with four, the list scrolling; with none, the drawing as before and the corner's buttons clear of every
+  part of it; long questions in the title bar with the count still in view; the presses (+ TIMER from the corner, the
+  first timer bringing the column, the editor beside it, PAUSE, Escape, REMOVE and UNDO, the last timer going after
+  its 10 s, a timer running out and OK, the note, the list keeping its place); a phone as before.
+- The drawing's box and the hot liquor tank, before and with D (the same with none):
+
+| Window | Drawing before | With two timers | Tank (px) | Timers whole, of four |
+|---|---|---|---|---|
+| 1180 × 860 | 788 × 137 | 476 × 137 | 56.8 | 2 |
+| 1280 × 800 | 888 × 136 | 576 × 136 | 56.2 | 2 (column's foot 48 px below the window) |
+| 1366 × 768 | 974 × 190 | 662 × 190 | 81.1 | 3 (80 px below the window) |
+| 1440 × 900 | 1048 × 217 | 736 × 217 | 93.7 | 3 |
+| 1920 × 950 | 1428 × 221 | 1116 × 221 | 95.5 | 4 |
+| 1920 × 1080 | 1428 × 289 | 1116 × 289 | 127.0 | 4 |
+
+  On the brewer's 24-inch 1080p monitor (0.277 mm a pixel) the tank is 26 mm tall at 1920 × 950, as before.
+  1280 × 800 and 1366 × 768 are already taller than the window today, so there the column's foot is below the window
+  until the page is scrolled, as the drawing's is.
+- The other suites, all passing on the new default: BrewStart 234, the timers 72 (pinned to the column) and 37, the
+  timers' places 149, UNLOAD 61, the clock 17, the boil kettle 23, the strike water 28 and 30, the review page 36, the
+  pH box 128 and 134. Suites that test the column's timers on one screen now ask for `?tplace=today`.
+- Pictures of every moment at 1440 × 900 and 390 × 844, against the copy in `design/brewday` (UI 939fa5c): with
+  `?tplace=today&col=today` all 258 the same. By default 129 moments differ, as expected: at 1440 × 900 the timers
+  beside the drawing (or + TIMER and SOUND over its corner, where there are none), the recipe column without them,
+  and OTHER RECIPE on a recipe not begun; at 390 × 844 only OTHER RECIPE's row, the timers as before.
+
+### Changed
+
+- `proposal\brew-day.js`: the flags (`COL` new by default, `FOLD` for `?col=new`'s folds, `TPLACE` "side" by default),
+  the folds behind `FOLD`, LOAD from the column's book only from OTHER RECIPE's box, Escape with an editor beside the
+  drawing, the moments strip's links; `proposal\brew-day.html` (the notes and links); `column.html`, `timers.html` and
+  `review.html` pinned to the column as built, so they still compare what they did. `brew-day.css`: nothing.
+- `proposal\TIMER-PLACE.md`, `proposal\RECIPE-COLUMN.md`; this section.
+- `DESIGN.md`: Layout, The Under Its Plate Rule, Recipe Column (OTHER RECIPE), Timers (Beside the drawing), Strike
+  Water's known limits and the boxes' room; `.impeccable\decisions\direction-log.md`; `.impeccable\design.json`.
 
 ## Open questions about the drawing
 

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-23T06:41:13.180Z",
+  "generatedAt": "2026-11-23T07:56:08.967Z",
   "title": "Design System: CraftBeerPi Brew Day",
   "extensions": {
     "colorMeta": {
@@ -1045,7 +1045,7 @@
       },
       {
         "name": "The Under Its Plate Rule",
-        "body": "Each vessel in the drawing sits directly under its own faceplate. The drawing is generated at the width of its box, with the vessels centred at one sixth, one half and five sixths of the width.",
+        "body": "Each vessel in the drawing sits directly under its own faceplate. The drawing is generated at the width of its box, with the vessels centred at one sixth, one half and five sixths of the width. The one exception is on one screen while a timer is set: the timers' column takes the right of the drawing's row, and the drawing gets narrower, not shorter. Drawn at its narrower box, its vessels keep their size and sit closer together, so they no longer stand under their plates; with no timers they do again. The brewer chose this over a drawing made shorter for the timers (\"I think the vessel drawings can shrink width and add the timers in a column\"), as a shorter drawing would have made the vessels a third smaller on his monitor.",
         "section": "layout"
       },
       {

@@ -71,15 +71,21 @@ without the timers.
 ?names=Hop stand,Yeast tries a BREWDAY_TIMER_NAMES list (blank: none), read as CraftBeerPi reads the setting.
 Timer rows: by default (TIMER-REMOVE.md, approved on 22 Nov), REMOVE on every timer's row, with UNDO in its place for
 10 real seconds, BACK TO its own time in its editor and + TIMER in the heading (#timer-change, #timer-removed).
-?trow=today is the rows as built before; timers.html compares the two.
-?col=new is the recipe column's proposal (RECIPE-COLUMN.md), with the new rows: on one screen the timers shrink to tiles
-when the current step wouldn't be whole beside them, a tile in its last 3 minutes growing back where the step still
-fits, and fold into one line only as a last resort; OTHER RECIPE beside COMPARE PROBES on a recipe not begun;
-brewing by hand, the recipe book folds behind CHOOSE A RECIPE (#timers-fold, #timers-open, #other-recipe, #hand-choose).
-Where the timers live (TIMER-PLACE.md): ?col=new is A, in the recipe column; ?col=new&tplace=event is B, beside the
-last event under the title bar; ?col=new&tplace=bottom is C, a bar along the bottom. On one screen only; a phone is as
-today in all three. placement.html shows the three side by side.
-?col=new&tplace=side is D, a column beside the drawing, which is narrower while there are timers (timers-side.html).
+?trow=today is the rows as built before, with the timers in the column; timers.html compares the two.
+Where the timers live on one screen: by default (TIMER-PLACE.md, D, approved on 22 Nov) in a column beside the drawing,
+which is narrower while there is a timer and full width with none, + TIMER and SOUND then in its top-right corner
+(#timers, #timer-done, #mash). A phone, and any window under 1180 px, has them in the recipe column, as built.
+?tplace=today keeps them in the recipe column on one screen too, as built before. timers-side.html showed today, C and
+D side by side.
+Recipe column: by default (RECIPE-COLUMN.md, kept by the brewer on 22 Nov) a recipe not begun has OTHER RECIPE beside
+COMPARE PROBES, which opens the recipe book in that place (#other-recipe). ?col=today is the column as built before.
+?col=new is RECIPE-COLUMN.md's whole proposal, kept for comparison, with the timers in the column: on one screen they
+shrink to tiles when the current step wouldn't be whole beside them, a tile in its last 3 minutes growing back where
+the step still fits, and fold into one line only as a last resort; brewing by hand, the recipe book folds behind
+CHOOSE A RECIPE (#timers-fold, #timers-open, #hand-choose).
+The other places proposed for the timers, kept for comparison: ?col=new is A, in the recipe column;
+?col=new&tplace=event is B, beside the last event under the title bar; ?col=new&tplace=bottom is C, a bar along the
+bottom. placement.html shows the three side by side.
 The boil kettle's MANUAL: by default (BOIL-MANUAL.md, approved on 22 Nov), by hand the element heats at the boil power,
 which the window reads as HAND in MANUAL, with the steps beside the element, and MODE's MAN is boxed in Prompt Amber
 where AUTO is usual (#bk-hand, #bk-hand-off, #bk-man-boil). ?bkman=today is the faceplate as built before;
@@ -176,8 +182,8 @@ whirlpool.html shows them side by side; ?focus=rig is for that page.
   <span class="lay">Wort pump after the boil: <a data-wp="chill" href="?">default: moves, with chiller</a> <a data-wp="today" href="?wp=today">released build</a> <a data-wp="move" href="?wp=move">moves, no chiller</a> <a data-wp="swirl" href="?wp=swirl">stays, kettle swirls</a> <a href="whirlpool.html">side by side</a></span>
   <span class="lay">Timers: <a data-tm="new" href="?">default</a> <a data-tm="today" href="?timers=today">older CraftBeerPi</a></span>
   <span class="lay">Timer rows: <a data-trow="new" href="?">default: REMOVE on the row</a> <a data-trow="today" href="?trow=today">as built before</a> <a href="timers.html">side by side</a></span>
-  <span class="lay">Recipe column: <a data-col="today" href="?">as built</a> <a data-col="new" href="?col=new">proposal: timers shrink, OTHER RECIPE</a> <a href="column.html">side by side</a></span>
-  <span class="lay">Where the timers live: <a href="?col=new">A · in the column</a> <a href="?col=new&amp;tplace=event">B · beside the last event</a> <a href="?col=new&amp;tplace=bottom">C · along the bottom</a> <a href="?col=new&amp;tplace=side">D · beside the drawing</a> <a href="placement.html">side by side</a></span>
+  <span class="lay">Recipe column: <a data-col="new" href="?">default: OTHER RECIPE</a> <a data-col="today" href="?col=today">as built before</a> <a data-col="fold" href="?col=new">RECIPE-COLUMN.md's whole proposal</a> <a href="column.html">side by side</a></span>
+  <span class="lay">Where the timers live: <a data-tplace="side" href="?">default: beside the drawing</a> <a data-tplace="today" href="?tplace=today">in the column, as built before</a> · proposed before: <a href="?col=new">A · in the column</a> <a href="?col=new&amp;tplace=event">B · beside the last event</a> <a href="?col=new&amp;tplace=bottom">C · along the bottom</a> <a href="placement.html">A, B and C</a> <a href="timers-side.html">today, C and D</a></span>
   <span class="lay">Boil kettle: <a data-bk="power" href="?bk=power">default</a> <a data-bk="today" href="?bk=today">older BoilPower</a></span>
   <span class="lay">Boil kettle's MANUAL: <a data-bkman="new" href="?">default: by hand at the boil power</a> <a data-bkman="today" href="?bkman=today">as built before</a> <a href="boil-manual.html">side by side</a></span>
   <span class="lay">Layout: <a data-layout="a" href="?layout=a">A · recipe right</a> <a data-layout="b" href="?layout=b">B · recipe left</a></span>

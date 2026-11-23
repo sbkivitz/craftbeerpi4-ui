@@ -1988,19 +1988,19 @@ function cmpVerdict(R) {
 /* the panel: DONE beside its title, so the rows and the verdict keep their room on a laptop's column. Brewing by hand,
    COMPARE PROBES sits with RECIPE BOOK and BREW STEPS at the end of the column, out of the way while a brew runs, and
    the panel opens in their place */
-/* the proposal (?col=new): a recipe not begun has OTHER RECIPE beside COMPARE PROBES, in the row COMPARE PROBES had to
-   itself, so choosing another recipe costs the column no room; each opens its box in that place */
+/* by default (not with ?col=today), a recipe not begun has OTHER RECIPE beside COMPARE PROBES, in the row COMPARE
+   PROBES had to itself, so choosing another recipe costs the column no room; each opens its box in that place */
 function nbHTML() {
   if (st.cmpOpen) return cmpHTML();
   if (st.rbOpen) return rbHTML();
   const off = st.link === "lost" ? PAUSED : st.pend["r:check"] ? PB_WAIT : st.pend["r:unload"] ? WAIT : "";
   return `<div class="nbrow">${b("cmdbtn", "OTHER RECIPE", "from the recipe book", {cmd: "rb:open", why: off})}${cmpHTML()}</div>`;
 }
-/* the recipe book in the recipe column (?col=new), as agreed with the recipe pages' designer: the newest five, each with
-   LOAD, the loaded one saying what it is doing in the recipe column's own words instead; then ALL RECIPES (the Recipe
-   Book tab) and CLOSE. LOAD is one tap here, as it replaces only a recipe not begun, or loads one brewing by hand: the
-   recipe it replaces stays in the book. On one screen the box takes the step list's room and the timers', as the other
-   boxes do */
+/* the recipe book in the recipe column, opened by OTHER RECIPE (by ?col=new's CHOOSE A RECIPE too), as agreed with the
+   recipe pages' designer: the newest five, each with LOAD, the loaded one saying what it is doing in the recipe
+   column's own words instead; then ALL RECIPES (the Recipe Book tab) and CLOSE. LOAD is one tap here, as it replaces
+   only a recipe not begun, or loads one brewing by hand: the recipe it replaces stays in the book. On one screen the box
+   takes the step list's room and the timers', as the other boxes do */
 function rbHTML() {
   const off = st.link === "lost" ? PAUSED : "", p = st.pend["r:load"], cur = st.recipe ? BOOK.findIndex(x => x.n === RECIPE.name) : -1;
   if (st.confirmLoad != null) return `<section class="rbox" aria-labelledby="rb-h"><h3 id="rb-h">Recipe book</h3>${loadAskHTML()}</section>`;
@@ -3019,11 +3019,11 @@ function addHTML(a, j, state) {
 }
 function handHTML() {
   const t = st.timer, pt = st.pend.tm, off = st.link === "lost" ? PAUSED : "";
-  /* the proposal (?col=new): brewing by hand the timers have the column, and the recipe book folds behind CHOOSE A
-     RECIPE, beside COMPARE PROBES; it opens in that place, as OTHER RECIPE's does on a recipe not begun. RECIPE BOOK and
-     BREW STEPS are the screen's own tabs, so they aren't repeated here. With the timers out of the column (?tplace, on one
-     screen) the column keeps the recipe book as built */
-  if (COL === "new" && tHere() === "col") return `<h2>No recipe running</h2>
+  /* RECIPE-COLUMN.md's whole proposal (?col=new): brewing by hand the timers have the column, and the recipe book folds
+     behind CHOOSE A RECIPE, beside COMPARE PROBES; it opens in that place, as OTHER RECIPE's does on a recipe not begun.
+     RECIPE BOOK and BREW STEPS are the screen's own tabs, so they aren't repeated here. By default, and with the timers
+     out of the column on one screen, the column keeps the recipe book as built */
+  if (FOLD && tHere() === "col") return `<h2>No recipe running</h2>
     <p class="rmeta">Brewing by hand. Kettles and pumps work as usual.</p>
     ${timersHTML()}
     ${st.rbOpen ? rbHTML() : st.cmpOpen ? cmpHTML(true) : `<div class="nbrow">${b("cmdbtn", "CHOOSE A RECIPE", "from the recipe book", {cmd: "rb:open", why: off})}${cmpHTML(true)}</div>`}
@@ -3298,8 +3298,9 @@ function renderAll() {
   $("#recipe").toggleAttribute("data-pb", !!(st.pbOpen || st.cmpOpen || st.swOpen || st.swVol || st.swGrain || st.rbOpen || st.bsOpen));
   /* BrewStart's box: COMPARE PROBES makes way for it on one screen too, as the step list does (brew-day.css) */
   $("#recipe").toggleAttribute("data-bs", !!st.bsOpen);
-  /* the proposal's timers, opened from their folded line, take the step list's room and the strike water box's */
-  $("#recipe").toggleAttribute("data-tbox", COL === "new" && !!st.tfOpen);
+  /* the proposal's timers (?col=new), opened from their folded line, take the step list's room and the strike water
+     box's */
+  $("#recipe").toggleAttribute("data-tbox", FOLD && !!st.tfOpen);
   /* typing in BrewStart's box keeps its caret, whatever draws the column again meanwhile */
   const fa = document.activeElement, fid = fa && (fa.id === "bstin" || fa.id === "bsgin") ? fa.id : null, fsel = fid ? [fa.selectionStart, fa.selectionEnd] : null;
   $("#recipe").innerHTML = recipeHTML() + verHTML();
@@ -4193,13 +4194,15 @@ function cmdLoad(i, asked) {
   /* over a recipe the Recipe Book doesn't have, LOAD asks first (loadAskHTML); LOAD INSTEAD comes back here */
   if (!asked && loadAsks()) { st.confirmLoad = i; return renderAll(); }
   st.confirmLoad = null;
-  if (COL === "new") return cmdLoad2(i);
+  /* LOAD in the book OTHER RECIPE (or ?col=new's CHOOSE A RECIPE) opened; the by-hand list loads as built */
+  if (COL === "new" && st.rbOpen) return cmdLoad2(i);
   if (i !== 0) { renderAll(); return toast(`Mockup: only Test Recipe v5 is filled in here. On the real screen, LOAD sends ${BOOK[i].n} to Brew Steps, as the Recipe Book does today.`); }
   send("r:load", "load", `${BOOK[0].n} loaded`, () => { RECIPE.name = BOOK[0].n; st.recipe = {state: "ready", cur: 0, left: 0, adds: []}; st.finished = false; });
 }
-/* the proposal's LOAD (?col=new): one LOADING… at the row pressed, the others greyed meanwhile; once CraftBeerPi has the
-   recipe, the box closes and the column is the recipe, ready to start. Kettles, pumps and timers stay as they are. The
-   strike water box starts again for the new recipe: the mockup has the numbers of v5 only */
+/* LOAD from the column's recipe book (by default; not with ?col=today): one LOADING… at the row pressed, the others
+   greyed meanwhile; once CraftBeerPi has the recipe, the box closes and the column is the recipe, ready to start.
+   Kettles, pumps and timers stay as they are. The strike water box starts again for the new recipe: the mockup has the
+   numbers of v5 only */
 function cmdLoad2(i) {
   const steps = i === 0 ? RECIPE_STEPS : BOOK_STEPS[i];
   if (!steps) return toast(`Mockup: ${BOOK[i].n} isn't filled in here. On the real screen, LOAD sends it to Brew Steps.`);
@@ -4289,15 +4292,16 @@ function tBanner(t, list = st.tmrs) {
    title bar at the next second. Set anew or removed, CraftBeerPi takes the alarm down unanswered */
 function tAnswered(t, res = "answered") { delete t.at; delete t.interrupted; questionGone(t.name, res); if (st.banner && st.banner.timer === t.id) st.banner = null; }
 function timersHTML() {
-  /* ?tplace on one screen: the timers are beside the last event or in the bottom bar, not in the column */
+  /* on one screen, out of the column (?tplace): beside the drawing by default, or beside the last event or in the
+     bottom bar */
   if (tHere() !== "col") return "";
   const off = st.link === "lost" ? PAUSED : "", T = st.tmrs, e = st.tedit, full = T.length >= TMAX;
   if (TROW === "new") {
     /* the proposal's recipe column (?col=new): where the current step wouldn't be whole beside the timers' rows (tFold),
        they shrink to chips (tsmallHTML), and as a last resort fold into one line; opened from it, the timers take the
        step list's room, and the line's place holds CLOSE */
-    if (COL === "new" && st.tfold === "line" && !st.tfOpen && !e) return tstripHTML();
-    if (COL === "new" && st.tfold === "small") return tsmallHTML(off);
+    if (FOLD && st.tfold === "line" && !st.tfOpen && !e) return tstripHTML();
+    if (FOLD && st.tfold === "small") return tsmallHTML(off);
     const rows = T.map(t => trowHTML(t, off) + (e && e.id === t.id ? teditHTML(off) : ""));
     /* a timer just removed keeps its place for 10 s, with UNDO where its buttons were (tgoneHTML) */
     const g = st.tgone;
@@ -4306,7 +4310,7 @@ function timersHTML() {
        A new timer's editor still opens at the end of the list, where the timer will be. While an editor is open it is
        greyed and says why (one editor at a time) */
     const plus = tplusHTML(off, "tplus2");
-    const close = COL === "new" && st.tfold === "line" && st.tfOpen ? b("cmdbtn tclose", "CLOSE", "the timers", {cmd: "tf:x", expanded: true}) : "";
+    const close = FOLD && st.tfold === "line" && st.tfOpen ? b("cmdbtn tclose", "CLOSE", "the timers", {cmd: "tf:x", expanded: true}) : "";
     return `<section class="tmrs" id="tmrs" aria-labelledby="tmrs-h"${e ? " data-editing" : ""}><div class="thead"><h3 id="tmrs-h">Timers</h3><div class="thr">${soundHTML()}${plus}</div></div>${rows.join("")}${e && e.id == null ? teditHTML(off) : ""}<p class="note">${st.notes.t || ""}</p>${close}</section>`;
   }
   const rows = T.map(t => trowHTML(t, off) + (e && e.id === t.id ? teditHTML(off) : "")).join("");
@@ -4410,7 +4414,7 @@ function tsmallHTML(off) {
   return `<section class="tmrs tsmall" id="tmrs" aria-labelledby="tmrs-h"${e ? " data-editing" : ""}><div class="thead"><h3 id="tmrs-h">Timers</h3><div class="thr">${soundHTML()}${tplusHTML(off, "tplus2")}</div></div><div class="tchips">${rows}${chips}</div>${below}<p class="note">${st.notes.t || ""}</p></section>`;
 }
 /* how a timer is drawn now, where it isn't a row: its chip's mode ("plain", "go", "full"), else "" */
-const tChipped = t => tHere() !== "col" ? tMode() : COL === "new" && st.tfold === "small" && ONE_SCREEN.matches && t.state !== "done" && !(st.tgrow || []).includes(t.id) ? "plain" : "";
+const tChipped = t => tHere() !== "col" ? tMode() : FOLD && st.tfold === "small" && ONE_SCREEN.matches && t.state !== "done" && !(st.tgrow || []).includes(t.id) ? "plain" : "";
 /* where the timers are on one screen (?tplace): what the chips hold. Beside the last event START or PAUSE, or nothing;
    in the bottom bar and in the column beside the drawing REMOVE and START or PAUSE, START or PAUSE, or nothing
    (tPlaceFit) */
@@ -4650,7 +4654,7 @@ function tSmallH(grown) {
   return THEAD_H + (n ? 8 + rows.reduce((h, x) => h + tRowH(x.t), 0) + lines * 48 + (n - 1) * 6 : 0);
 }
 function tFold() {
-  if (COL !== "new" || foldBusy) return;
+  if (!FOLD || foldBusy) return;
   /* the timers out of the column (?tplace): nothing to fold or open, and the column drawn again without them if it was */
   if (tHere() !== "col") { if (st.tfold || st.tfOpen) { st.tfold = false; st.tfOpen = false; foldBusy = true; renderAll(); foldBusy = false; } return; }
   const rc = $("#recipe"), l = $("#recipe .steps"), c = l && l.querySelector('[aria-current="step"]'), tm = $("#tmrs"), row = $("#tmrs .tr2"), hd = $("#tmrs .thead"), add = c && l.querySelector(".bsnew");
@@ -4811,11 +4815,11 @@ document.addEventListener("pointerdown", e => unlockSound(e.target), true);
 document.addEventListener("pointerup", e => { if (e.pointerType !== "mouse") unlockSound(e.target); }, true);
 /* every brewing second: count the running timers down and the finished ones up; raise a finished one's alarm when the
    title bar is free (behind another prompt it waits its turn); beep every 3 real seconds while any alarm waits. The
-   proposal's chips (?col=new, ?tplace) are drawn again as a timer gets to 3:00 to go, or back over it, as its chip's
-   time grows and the small timers may give it its row */
+   timers' chips (beside the drawing, and ?col=new's) are drawn again as a timer gets to 3:00 to go, or back over it, as
+   its chip's time grows and the small timers may give it its row */
 function tmTick() {
   let changed = false;
-  const soon0 = COL === "new" ? st.tmrs.filter(tSoon).map(t => t.id).join() : "";
+  const chips = FOLD || !!TPLACE, soon0 = chips ? st.tmrs.filter(tSoon).map(t => t.id).join() : "";
   for (const t of st.tmrs) {
     if (t.state === "running") {
       t.left = Math.max(0, t.left - 1);
@@ -4834,7 +4838,7 @@ function tmTick() {
       if (cb) cb.style.width = tPct(t) + "%";
     } else if (t.state === "done") { const o = $("#tt-" + t.id), co = $("#tct-" + t.id); if (o) o.textContent = tUpText(t); if (co) co.textContent = tUpText(t); }
   }
-  if (COL === "new" && st.tmrs.filter(tSoon).map(t => t.id).join() !== soon0) changed = true;
+  if (chips && st.tmrs.filter(tSoon).map(t => t.id).join() !== soon0) changed = true;
   if (!st.banner) { const d = st.tmrs.find(t => t.state === "done"); if (d) { st.banner = tBanner(d); changed = true; } }
   /* a removed timer's row goes 10 real seconds after REMOVE, at any speed of CraftBeerPi's clock, unless its UNDO is on
      its way. CraftBeerPi keeps the timer 12 real seconds, for a press still on its way (TimersController.UNDO_FOR and
@@ -4972,9 +4976,12 @@ document.addEventListener("keydown", e => {
   /* the pH box: Escape closes it while focus is in it or on its reminder; from elsewhere, once nothing else open is left
      to close first (below) */
   if (e.key === "Escape" && st.ph && st.ph.open && e.target.closest && e.target.closest("#ph-box, #banner")) { phClose(); return; }
-  /* on one screen a box open in the column has the timers make way, a timer's editor with them, so Escape is for the box;
-     an editor in a box of its own (?tplace) is still there, and Escape closes it first */
-  if (e.key === "Escape" && st.tedit && (tHere() !== "col" || !(ONE_SCREEN.matches && (st.pbOpen || st.cmpOpen || st.swOpen || st.rbOpen || st.bsOpen)))) { st.tedit = null; renderAll(); return; }
+  /* a timer's editor: with the timers in the column on one screen, a box open in the column has them make way, the
+     editor with them, so Escape is for the box. In a box of its own (beside the drawing, ?tplace) the editor closes
+     first, unless focus is in a box open in the recipe column, which then closes first: Escape closes the box being
+     worked in */
+  const inColBox = !!(e.target.closest && e.target.closest("#recipe")) && !!(st.bsOpen || st.pbOpen || st.cmpOpen || st.swOpen || st.rbOpen || st.confirmLoad != null);
+  if (e.key === "Escape" && st.tedit && (tHere() !== "col" ? !inColBox : !(ONE_SCREEN.matches && (st.pbOpen || st.cmpOpen || st.swOpen || st.rbOpen || st.bsOpen)))) { st.tedit = null; renderAll(); return; }
   if (e.key === "Escape" && st.bsOpen) { bsClose(); return; }
   if (e.key === "Escape" && st.confirmLoad != null) { st.confirmLoad = null; renderAll(); return; }
   /* the proposal's boxes (?col=new): the recipe book, and the timers opened from their folded line */
@@ -5243,10 +5250,16 @@ function load(name) {
     a.setAttribute("aria-current", a.dataset.trow === TROW ? "true" : "false");
   });
   document.querySelectorAll(".mock a[data-col]").forEach(a => {
-    const q = new URLSearchParams(location.search);
-    if (a.dataset.col === "new") q.set("col", "new"); else q.delete("col");
+    const q = new URLSearchParams(location.search), c = a.dataset.col;
+    if (c === "new") q.delete("col"); else q.set("col", c === "fold" ? "new" : "today");
     a.href = `?${q}#${key}`;
-    a.setAttribute("aria-current", a.dataset.col === COL ? "true" : "false");
+    a.setAttribute("aria-current", c === (FOLD ? "fold" : COL) ? "true" : "false");
+  });
+  document.querySelectorAll(".mock a[data-tplace]").forEach(a => {
+    const q = new URLSearchParams(location.search);
+    if (a.dataset.tplace === "today") q.set("tplace", "today"); else q.delete("tplace");
+    a.href = `?${q}#${key}`;
+    a.setAttribute("aria-current", a.dataset.tplace === (TPLACE || "today") ? "true" : "false");
   });
   document.querySelectorAll(".mock a[data-bkman]").forEach(a => {
     const q = new URLSearchParams(location.search);
@@ -5300,25 +5313,30 @@ const BKMAN = BK === "power" && QS.get("bkman") !== "today" ? "new" : "today";
    ?timers=today, the one rest timer, which the screen keeps for an older CraftBeerPi without the timers */
 const TIMERS = QS.get("timers") === "today" ? "today" : "new";
 document.documentElement.dataset.timers = TIMERS;
-/* the recipe column: ?col=new is the proposal in RECIPE-COLUMN.md, with the approved timer rows: on one screen the
-   timers shrink to chips when the current step wouldn't be whole beside their rows, and fold into one line only when it
-   wouldn't be whole beside the chips either, opening from it in the step list's room; a recipe not begun has OTHER
-   RECIPE beside COMPARE PROBES; brewing by hand, the recipe book folds behind CHOOSE A RECIPE. Without it, the column as
-   built. ?tplace (below) brings the proposal with it; its column beside the drawing (side) needs layout B, where the
-   drawing has a row of its own under the faceplates */
-const TPQ = TIMERS === "new" && (["event", "bottom"].includes(QS.get("tplace")) || (QS.get("tplace") === "side" && LAYOUT === "b")) ? QS.get("tplace") : "";
-const COL = TIMERS === "new" && (QS.get("col") === "new" || TPQ) ? "new" : "today";
+/* the recipe column: by default a recipe not begun has OTHER RECIPE beside COMPARE PROBES, in the row COMPARE PROBES
+   had to itself, which opens the recipe book in that place (RECIPE-COLUMN.md; the brewer kept it on 22 Nov, and it comes
+   with the timers' column beside the drawing). ?col=today is the column as built before. ?col=new is the rest of
+   RECIPE-COLUMN.md's proposal as well (FOLD), kept for comparison: with the timers in the column on one screen, they
+   shrink to chips where the current step wouldn't be whole beside their rows, and fold into one line only where it
+   wouldn't be whole beside the chips either, opening from it in the step list's room; and brewing by hand the recipe
+   book folds behind CHOOSE A RECIPE. With ?col=new the timers stay in the column unless ?tplace says where else */
+const COL = TIMERS === "new" && QS.get("col") !== "today" ? "new" : "today";
+const FOLD = COL === "new" && QS.get("col") === "new";
 document.documentElement.dataset.col = COL;
 /* the timer's row: by default (TIMER-REMOVE.md, approved on 22 Nov) REMOVE on every row beside START or PAUSE, one tap,
    with UNDO in its place for 10 real seconds; BACK TO its own time in its editor; + TIMER in the section's heading.
-   ?trow=today is the row as built before; timers.html compares the two */
-const TROW = TIMERS === "new" && (QS.get("trow") !== "today" || COL === "new") ? "new" : "today";
+   ?trow=today is the row as built before, with the timers in the column; timers.html compares the two */
+const TROW = TIMERS === "new" && (QS.get("trow") !== "today" || FOLD) ? "new" : "today";
 document.documentElement.dataset.trow = TROW;
-/* where the timers are on one screen, so the recipe column keeps the current step whole: ?tplace=event beside the last
-   event, under the title bar; ?tplace=bottom in a bar along the bottom of the screen; ?tplace=side in a column beside
-   the drawing, which gets narrower while there are timers, and is full width with none. Each has the timers as chips,
-   with the column's proposal (?col=new) for the rest. Narrower than one screen, the timers stay in the column */
-const TPLACE = TROW === "new" ? TPQ : "";
+/* where the timers are on one screen (windows 1180 px wide and more), so the recipe column keeps the current step
+   whole: by default (TIMER-PLACE.md, D, approved on 22 Nov) in a column beside the drawing, which gets narrower while
+   there is a timer and is full width with none; it needs layout B, where the drawing has a row of its own under the
+   faceplates. ?tplace=today keeps them in the recipe column, as built before. Kept for comparison: ?tplace=event
+   beside the last event, under the title bar, and ?tplace=bottom in a bar along the bottom of the screen. Out of the
+   column the timers are chips. Narrower than one screen, they stay in the column, as built */
+const TPP = QS.get("tplace");
+const TPLACE = TIMERS !== "new" || TROW !== "new" ? "" : ["event", "bottom"].includes(TPP) ? TPP
+  : (TPP === "side" || (TPP == null && QS.get("col") !== "new")) && LAYOUT === "b" ? "side" : "";
 if (TPLACE) document.documentElement.dataset.tplace = TPLACE;
 /* the drawing after the boil. During the whirlpool and the hop stand the wort pump serves the boil kettle, not the
    HERMS coil, and the drawing stays simple: rather than pipes and valves drawn across from where the pump sits, it
@@ -5388,6 +5406,6 @@ if (TPLACE) {
   ONE_SCREEN.addEventListener("change", () => { if (st) renderAll(); });
   new ResizeObserver(() => { if (st) tPlaceFit(); }).observe($("#app"));
 }
-/* the proposal's timers (?col=new, ?tplace) worked out again once the fonts are in: the step's height, the widths of
-   + TIMER and SOUND, and the drawing's labels beside the corner's buttons change with them */
-if (COL === "new" && document.fonts) document.fonts.addEventListener("loadingdone", () => { if (st) { tFold(); tPlaceFit(); if (TPLACE) tsideCorner(); } });
+/* the timers' chips (beside the drawing, ?col=new's) worked out again once the fonts are in: the step's height, the
+   widths of + TIMER and SOUND, and the drawing's labels beside the corner's buttons change with them */
+if ((FOLD || TPLACE) && document.fonts) document.fonts.addEventListener("loadingdone", () => { if (st) { tFold(); tPlaceFit(); if (TPLACE) tsideCorner(); } });
