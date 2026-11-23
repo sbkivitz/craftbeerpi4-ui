@@ -74,6 +74,8 @@ const BrewDay = () => {
       brewscribe: qs.get("brewscribe"),
       // with ?demo=, ?ver=release shows an installed release's versions, the release numbers only, and ?ver=none none
       ver: qs.get("ver"),
+      // with ?demo=, ?clock=24 shows the screen with CraftBeerPi's CLOCK_FORMAT 24-hour, as the mockup's does
+      clock: qs.get("clock"),
       navigate: (path) => go.current(path),
       removeAlert: (id) => remove(id),
     });

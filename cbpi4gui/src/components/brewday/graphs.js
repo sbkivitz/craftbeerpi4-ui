@@ -1,10 +1,11 @@
 // The temperature graphs, one in each faceplate's window, always showing, with a smaller rig drawing (the mockup's
 // option A). The brew-day mockup's graphs.js (design/brewday/graphs.js), made into
 // functions of what they draw, so they produce the same pictures:
-//   G = {hist, t, span, lost, V, VNAME, U, hhmm, scale, BK}: the history, now, the span shown, whether the connection is
-//   lost, the vessels as the faceplates show them, their names, the unit's sign, the clock's format, how fast the
-//   brewing clock runs, and for the new boil kettle, under BoilPower 0.0.3.post7 or later, {from: its boil point,
-//   edge: where its targets stop being BOIL, hold: the temperature it holds or null} (else null).
+//   G = {hist, t, span, lost, V, VNAME, U, hhmm, tparts, scale, BK}: the history, now, the span shown, whether the
+//   connection is lost, the vessels as the faceplates show them, their names, the unit's sign, the clock's 24-hour
+//   time ("14:35") and the same by CLOCK_FORMAT in parts ({digits: "2:35", half: "PM"}, util/timefmt.js timeParts), how
+//   fast the brewing clock runs, and for the new boil kettle, under BoilPower 0.0.3.post7 or later, {from: its boil
+//   point, edge: where its targets stop being BOIL, hold: the temperature it holds or null} (else null).
 //   hist = {start, steps: [[t, n]], v: {hlt, mt, bk: [[t, PV, SV or null, OUT % or null]]}}, a row every 10 s.
 //   t is seconds since local midnight: the demo's clock, or CraftBeerPi's brewing clock (history.js).
 // Not here: the mockup's option B, a DRAWING / GRAPHS panel, and the mockup's demo history, which is
@@ -89,12 +90,19 @@ export function graphSVG(G, v, w, h, id, tw = w) {
     grid += `M0 ${f(y)}H${w}`;
     gl += `<text x="3" y="${f(y - 3)}">${gs < 1 ? g.toFixed(1) : Math.round(g)}</text>`;
   }
+  /* the time labels by the clock's setting (G.tparts): in 12-hour AM or PM on the first label and wherever the half
+     changes from the label before, the others the time alone ("2:35"); one with its half is wider, so it keeps
+     further from the ends, and where it can't, it is left out (its grid line stays) and the next label carries the half */
   const tick = [120, 300, 600, 900, 1800, 3600, 7200].find(s => tw * s / (t1 - t0) >= 64) || 7200;
+  let half = null;
   for (let t = Math.ceil(t0 / tick) * tick; t <= t1; t += tick) {
     const x = X(t);
     if (x < 18 || x > w - 18) continue;
     grid += `M${f(x)} ${yT}V${yB}`;
-    if (lab) tl += `<text x="${f(x)}" y="${h - 3}">${G.hhmm(t)}</text>`;
+    const p = G.tparts ? G.tparts(t) : {digits: G.hhmm(t), half: ""}, ap = p.half && p.half !== half ? p.half : "";
+    if (!lab || (ap && (x < 26 || x > w - 26))) continue;
+    tl += `<text x="${f(x)}" y="${h - 3}">${p.digits}${ap ? `\u00a0${ap}` : ""}</text>`;
+    half = p.half;
   }
   for (const [t, n] of H.steps) {
     const x = X(t);

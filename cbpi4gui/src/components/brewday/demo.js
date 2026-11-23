@@ -17,6 +17,7 @@
 // ph-fail, ph-slow, ph-noclose and ph-other, and other-recipe) runs on this, so it can be compared with the mockup
 // pixel for pixel.
 import { swModel, SW_MORNING, SW_LEVER_S } from "./strike-demo";
+import { formatTimeOfDay, TWELVE_HOUR } from "../util/timefmt";
 
 const RECIPE = {
   name: "Craftbeerpi Test Recipe v5",
@@ -409,7 +410,7 @@ const SCENES = {
     /* CraftBeerPi's words after the press (SpargeStep._start_sparge): the HLT's AUTO off, as the step heated the water,
        and the timer's end on the brewing clock */
     s.events.unshift(
-      ["15:05:02", "Sparge: The HLT's AUTO is off now, so its element won't run as the HLT empties. Sparge timer started. Estimated completion: 15:45", "from CraftBeerPi", ""],
+      ["15:05:02", `Sparge: The HLT's AUTO is off now, so its element won't run as the HLT empties. Sparge timer started. Estimated completion: ${todS("15:45")}`, "from CraftBeerPi", ""],
       ["15:05:02", "Sparge: sparge started, 40 min timer started", "confirmed", "ok"],
       ["15:04:58", "WORT PUMP started", "confirmed", "ok"],
       ["15:04:55", "HLT PUMP started", "confirmed", "ok"],
@@ -864,7 +865,7 @@ const SCENES = {
   "sw-wait": () => {
     const s = swDay(DAY2 + 5 * 3600 + 40 * 60 + 12, {used: true, state: "running"});
     s.v.hlt.pv = 59.8;
-    s.recipe.wait = `STARTS ${hhmm(swStartAt(s.swd.plan, 59.8))}`;
+    s.recipe.wait = `STARTS ${tod(swStartAt(s.swd.plan, 59.8))}`;
     return s;
   },
   "sw-heat": () => swMorning(DAY2 + 6 * 3600 + 41 * 60 + 30, swHot()),
@@ -919,13 +920,14 @@ const SCENES = {
     s.swd.grain = 68; s.swd.where = "indoors"; s.swd.bs = {ready: "06:30"};
     s.swd.has = {grain: 60.4, vol: 15, probe: "coil", room: 60.4};
     s.swd.work = {since: 21 * 3600 + 12 * 60 + 31, why: "grain"};
-    s.events.unshift(["21:12:31", "BrewStart: ready by 06:30 Sat 21 Nov, was 07:00 Sat · grain indoors at 68.0 °F", "confirmed", "ok"]);
+    s.events.unshift(["21:12:31", `BrewStart: ready by ${todS("06:30")} Sat 21 Nov, was ${todS("07:00")} Sat · grain indoors at 68.0 °F`, "confirmed", "ok"]);
     return Object.assign(s, {base: "sw-plan"});
   },
   "bs-wait": () => Object.assign(swUnsaid(SCENES["sw-wait"]()), {base: "sw-wait", open: {bsAt: {focus: "garage"}}}),
   "bs-new": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.noBS = true; return Object.assign(s, {base: "sw-plan"}); },
   "bs-new-open": () => Object.assign(SCENES["bs-new"](), {open: {bsAt: {neu: true}}}),
   "bs-sim": () => Object.assign(swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})), {base: "sw-plan", sim: {scale: 60, day0: "2026-11-20", pc: "2026-11-22"}, open: {bsAt: {}}}),
+  "bs-sim-day": () => Object.assign(swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})), {base: "sw-plan", sim: {scale: 1, day0: "2026-11-20", pc: "2026-11-22"}, open: {bsAt: {}}}),
   "bs-novol": () => { const s = swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})); s.swd.vol = null; return Object.assign(s, {base: "sw-plan", open: {bsAt: {}}}); },
   "bs-soon": () => Object.assign(SCENES["sw-wait"](), {base: "sw-wait", open: {bsAt: {txt: "06:00"}}}),
   /* the vessels' own figures from the Hardware page (design/brewday VESSELS.md), none of which anything needs.
@@ -980,6 +982,12 @@ const DAY2 = 24 * 3600;
 const pad2 = n => String(n).padStart(2, "0");
 const hhmm = t => `${pad2(Math.floor(t / 3600) % 24)}:${pad2(Math.floor(t / 60) % 60)}`;
 const hhmmss = t => `${hhmm(t)}:${pad2(t % 60)}`;
+/* the times of day the moments write into their words, by CraftBeerPi's CLOCK_FORMAT as the screen draws the moment
+   (setClock, screen.js fmtNow): "7:00 AM", or with ?clock=24 "07:00". Kept times stay 24-hour */
+let CLOCK_FMT = TWELVE_HOUR;
+export const setClock = f => { CLOCK_FMT = f; };
+const todS = x => formatTimeOfDay(x, {seconds: /^\d{1,2}:\d{2}:\d{2}$/.test(x), format: CLOCK_FMT}) || x;
+const tod = t => todS(hhmm(t));
 /* the strike water's temperature once USE is pressed in the moments: USE for Test Recipe v5 with 15 gal in the HLT and
    the grain at 60.4 °F (the boil kettle's 61.4 °F, less its 1.0 °F offset), from the model's answers */
 const swHot = () => swModel(60.4, 15, "coil").use;
@@ -1000,7 +1008,7 @@ const SW_MOVED = DAY2 + 6 * 3600 + 55 * 60 + 40;
    at pv heated to t: its heat-up at the rig's rate plus its spare minutes */
 const swStartAt = (t, pv, at = DAY2 + 7 * 3600) => at - Math.ceil(((t - pv) / SW_RATE + SW_SPARE) * 60);
 /* BrewStart's notification as the recipe starts (notify_ready_scheduled), in its words */
-const swPlanLine = (t, pv) => `BrewStart: Ready by ${SW_DAY}, 07:00: heating starts about ${SW_DAY}, ${hhmm(swStartAt(t, pv))}. ${pv.toFixed(1)} °F to ${t.toFixed(1)} °F takes about ${Math.round((t - pv) / SW_RATE)} min, plus ${SW_SPARE} min spare.`;
+const swPlanLine = (t, pv) => `BrewStart: Ready by ${SW_DAY}, ${todS("07:00")}: heating starts about ${SW_DAY}, ${tod(swStartAt(t, pv))}. ${pv.toFixed(1)} °F to ${t.toFixed(1)} °F takes about ${Math.round((t - pv) / SW_RATE)} min, plus ${SW_SPARE} min spare.`;
 /* the night before, Friday 21:12: all the strike and sparge water in the HLT, 15 gal at the garage's temperature, every
    other vessel empty, every probe with the rig's offset, and the graphs showing the evening (pbMorning's pbDay); the
    recipe loaded at 21:08, its strike water at the rest, and BrewStart's water volume 15 gal, as the rig page sets it
@@ -1033,7 +1041,7 @@ function swMorning(t, plan) {
   const heat = swStartAt(plan, 59.8), hot = heat + Math.round((plan - 0.5 - 59.8) / SW_RATE * 60);
   const M = SW_MORNING[kal ? "rest" : "use"], ask = SW_MOVED + M.ask, held = t >= hot;
   const log = s.events.slice().reverse();
-  log.push([hhmmss(heat), `BrewStart: Time to heat - the water should be ready by ${SW_DAY}, 07:00.`, "from CraftBeerPi", ""],
+  log.push([hhmmss(heat), `BrewStart: Time to heat - the water should be ready by ${SW_DAY}, ${todS("07:00")}.`, "from CraftBeerPi", ""],
     [hhmmss(heat), `BrewStart heating, HLT target ${plan.toFixed(1)} °F`, "by recipe", ""]);
   Object.assign(s.a, {hltPump: {on: true}});
   s.swd.g = {from: 59.8, heat, hot, plan, ask, marks: []};
@@ -1086,7 +1094,7 @@ function pbMorning() {
 /* the versions' line (screen.js verHTML): made up and fixed, as the mockup's, so the pictures don't change with each
    build. ver "release" (?ver=release): an installed release's, the release numbers only; "none": no line */
 const versions = ver => ver === "none" ? null : ver === "release" ? {ui: "0.5.1.a3.post12", built: "", cbpi: "4.7.7.post36"}
-  : {ui: "0.5.1.a3.post12+abc1234", built: "12 Nov 21:47", cbpi: "4.7.7.post36+def5678"};
+  : {ui: "0.5.1.a3.post12+abc1234", built: `12 Nov ${todS("21:47")}`, cbpi: "4.7.7.post36+def5678"};
 /* CraftBeerPi's alarm for an element left on by hand: past its target (w.over "target"), or near the boil
    (w.over "boil"), whatever its target. An error, not a warning, so the title bar puts it first, before a timer or a
    step's question, and its line stays red: it is the one time heat goes in with nothing watching the temperature. cbpi:

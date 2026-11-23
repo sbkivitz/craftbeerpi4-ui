@@ -36,15 +36,24 @@ function hms(moment) {
   return h < 24 && mi < 60 && s < 60 ? [h, mi, s] : null;
 }
 
+/* a time of day in its two parts, for where AM or PM is drawn apart from the digits (the title bar's smaller AM or PM,
+   a graph's axis): {digits: "7:00" or with seconds "11:15:40", half: "AM" or "PM"}; with 24-hour times {digits:
+   "07:00", half: ""}. null for what isn't a time */
+export function timeParts(moment, {seconds = false, format} = {}) {
+  const t = hms(moment);
+  if (!t) return null;
+  const [h, m, s] = t, rest = `:${pad(m)}${seconds ? `:${pad(s)}` : ""}`;
+  if (clockFormat(format) === TWENTY_FOUR_HOUR) return {digits: `${pad(h)}${rest}`, half: ""};
+  return {digits: `${h % 12 || 12}${rest}`, half: h < 12 ? "AM" : "PM"};
+}
+
 /* a time of day: "11:15 PM" or "23:15"; with seconds, "11:15:40 PM" or "23:15:40". ampm false leaves AM or PM off a
    12-hour time ("7:00"), for a box with AM and PM buttons beside it. format: CLOCK_FORMAT, or what clockFormat reads it
    from. "" for what isn't a time */
 export function formatTimeOfDay(moment, {seconds = false, format, ampm = true} = {}) {
-  const t = hms(moment);
-  if (!t) return "";
-  const [h, m, s] = t, rest = `:${pad(m)}${seconds ? `:${pad(s)}` : ""}`;
-  if (clockFormat(format) === TWENTY_FOUR_HOUR) return `${pad(h)}${rest}`;
-  return `${h % 12 || 12}${rest}${ampm ? `${NBSP}${h < 12 ? "AM" : "PM"}` : ""}`;
+  const p = timeParts(moment, {seconds, format});
+  if (!p) return "";
+  return p.half && ampm ? `${p.digits}${NBSP}${p.half}` : p.digits;
 }
 
 /* a time of day with its day, kept together on one line: "7:00 AM Sat" (day "weekday"), "7:00 AM 22 Nov" ("date") or

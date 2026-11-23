@@ -35,6 +35,8 @@
 import { HW_OWN, HW_VESSEL_INTRO, HW_VESSEL, HW_MATERIALS, HW_TYPES, HW_EMPTY, HW_SYN } from "./catalog";
 import { rigSVG, RIG_H, rigGeom, r1 } from "../brewday/rig";
 import { call, why as callWhy } from "../brewday/api";
+import { brewNow } from "../brewday/screen";
+import { clockFormat, formatTimeOfDay } from "../util/timefmt";
 import { kettleapi, fileError } from "../data/kettleapi";
 import { readChosenFile, saveKettleFile } from "./kettleFile";
 // As text, exactly as written (config-overrides.js): hardware.css for the shadow root; hardware-frame.css, the mockup's
@@ -68,7 +70,12 @@ const same = (a, b) => String(a == null ? "" : a).trim() === String(b == null ? 
 const LINKS = [["sensor", "sensor"], ["heater", "actor"], ["agitator", "actor"]];
 const ROLE = {sensor: "Probe", heater: "Element", agitator: "Pump"};
 const ROLE_OF = {sensor: "probe", heater: "heating element", agitator: "pump"};
-const hhmm = () => new Date().toTimeString().slice(0, 5);
+/* the time now on CraftBeerPi's clock (the title bar's, brewNow), kept 24-hour as "14:31"; the PC's until CraftBeerPi has
+   said where its clock is */
+const hhmm = () => { const e = brewNow(), d = e != null ? new Date(e * 1000) : new Date(); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+/* a time of day as the page shows it, by CraftBeerPi's CLOCK_FORMAT setting (util/timefmt.js): "2:31 PM", or "14:31" in
+   24-hour; what isn't a time stays as it is */
+const tod = x => formatTimeOfDay(x, {format: clockFormat(LAST && LAST.config)}) || String(x ?? "");
 
 /* ---------- state ---------- */
 function fresh() {
@@ -441,7 +448,7 @@ function noteHTML() {
     }
   }
   if (st.leave) return ["note", `<p><b>Leave Hardware with ${nDirty()} ${nDirty() === 1 ? "change" : "changes"} to ${esc(andList(d.map(k => nameOf(...split(k)))))} not saved?</b></p><div class="acts"><button type="button" class="cmd ans" data-leave="save">Save and go<small>then ${esc(st.leave.label)}</small></button><button type="button" class="cmd" data-leave="drop">Go without saving<small>drops ${d.length === 1 && nDirty() === 1 ? "it" : "them"}</small></button><button type="button" class="cmd" data-leave="stay">Stay<small>keep changing</small></button></div>`];
-  if (lost()) return ["note alarm", `<p><b>No connection to CraftBeerPi.</b> Readings are as they were at ${esc(st.lostAt || hhmm())}, in grey. Your changes stay on this page until it's back; then SAVE sends them. Switches wait too.</p>`];
+  if (lost()) return ["note alarm", `<p><b>No connection to CraftBeerPi.</b> Readings are as they were at ${esc(tod(st.lostAt || hhmm()))}, in grey. Your changes stay on this page until it's back; then SAVE sends them. Switches wait too.</p>`];
   const bad = [...new Set(failed().map(x => x.split("|")[0]))];
   if (bad.length) {
     const why = st.why[bad[0]] || {}, them = bad.length === 1 ? "it" : "them";
@@ -543,7 +550,7 @@ function roleLine(kind, id) {
 function liveHTML(kind, id) {
   const x = find(kind, id);
   if (!x || x.fresh) return "";
-  const at = esc(st.lostAt || "");
+  const at = esc(st.lostAt ? tod(st.lostAt) : "");
   if (kind === "sensor") return `<p class="pv${lost() ? " stale" : ""} num">${esc(numR(id))}${isTemp(id) ? `<span class="u">${unit()}</span>` : ""}</p><p>${lost() ? `as at ${at}` : "reading now"}</p>`;
   if (kind === "actor") { const m = pinMates(id); return `${swHTML(id)}<p>${x.on ? `<span class="on">on</span> at ${esc(x.power)} %` : "off"} · one tap</p>${m.length ? `<p class="dup">${esc(m.map(a => a.name).join(", "))} uses GPIO ${esc(pinOf(x))} too</p>` : ""}`; }
   const s = x.sensor && find("sensor", x.sensor);
@@ -597,7 +604,7 @@ function stHTML(kind, id, f) {
   if (r.s === "wait") return ["st", "Saving…"];
   if (r.s === "bad") return ["st no", `Didn't save <span class="why2">· ${esc(r.msg)}</span>`];
   if (isChanged(kind, id, f) && !isNew(k)) return ["st", `Changed <span class="was">· was ${esc(shown(kind, id, f, kept(kind, id, f)))}</span><button type="button" class="lnk" data-undo="${esc(f)}">Undo</button>`];
-  if (r.s === "ok") return ["st ok", `✓ Saved ${r.at}`];
+  if (r.s === "ok") return ["st ok", `✓ Saved ${esc(tod(r.at))}`];
   return ["st", ""];
 }
 /* the line under a row's control: two switches on one pin, which CraftBeerPi allows, or what an empty setting uses */
@@ -642,11 +649,11 @@ function fileHTML(id) {
   const say = st.fileSay ? `<p class="say${st.fileSay.no ? " no" : ""}" data-kettle-file="status" role="${st.fileSay.no ? "alert" : "status"}">${esc(st.fileSay.text)}</p>` : "";
   return `<fieldset class="kf" data-kettle-file="group" aria-describedby="kettle-file-help"><legend>Settings file</legend><p id="kettle-file-help">${esc(fileHelp(x))}</p><div class="acts"><button type="button" class="cmd${st.fileBusy === "save" ? " busy" : ""}" id="kettle-file-save" data-file-save${canSave ? "" : ' aria-disabled="true"'}>${st.fileBusy === "save" ? "Saving…" : "Save to file…"}<small>a copy of it</small></button><button type="button" class="cmd${st.fileBusy === "read" ? " busy" : ""}" id="kettle-file-load" data-file-load${canLoad ? "" : ' aria-disabled="true"'}>${st.fileBusy === "read" && !busy ? "Reading…" : "Load from file…"}<small>shows the changes first</small></button></div>${say}${st.file && st.file.id === id ? previewHTML(x) : ""}</fieldset>`;
 }
-/* the file's date as the preview says it: "15 Nov 2026, 21:40" */
+/* the file's date as the preview says it, its time by the clock's setting: "15 Nov 2026, 9:40 PM" */
 function fileWhen(saved) {
   const t = new Date(saved);
   if (!saved || isNaN(t.getTime())) return "";
-  return `${t.getDate()} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][t.getMonth()]} ${t.getFullYear()}, ${String(t.getHours()).padStart(2, "0")}:${String(t.getMinutes()).padStart(2, "0")}`;
+  return `${t.getDate()} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][t.getMonth()]} ${t.getFullYear()}, ${tod(`${t.getHours()}:${String(t.getMinutes()).padStart(2, "0")}`)}`;
 }
 /* a link's end, as the preview shows it: its name, or the id CraftBeerPi can't find */
 const linkText = x => (!x || !x.id ? "" : x.name || `an unknown one (${x.id})`);
