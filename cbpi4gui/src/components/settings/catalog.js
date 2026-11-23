@@ -13,6 +13,7 @@ export function catalog(F) {
   const M = {
     BREWERY_NAME: {n: "Brewery name", h: "Your brewery's name, at the top of the screen.", syn: "title header brand"},
     TEMP_UNIT: {n: "Temperature unit", h: "Every temperature CraftBeerPi shows.", order: ["F", "C"], lab: {F: "°F", C: "°C"}, keep: 1, syn: "fahrenheit celsius degrees"},
+    CLOCK_FORMAT: {n: "Clock", h: "How times of day are shown: 12-hour (11:15 PM) or 24-hour (23:15).", order: ["12-hour", "24-hour"], keep: 1, syn: "time of day 12 24 hour am pm clock format"},
     PRESSURE_UNIT: {n: "Pressure unit", h: "Used by the fermenter widgets.", keep: 1, syn: "psi kpa fermenter"},
     MASH_TUN: {n: "Mash tun", h: "The kettle that mashes. The brew-day screen, the HLT pump and imported recipes go by it.", blank: "None chosen", syn: "kettle mlt"},
     BoilKettle: {n: "Boil kettle", h: "The kettle that boils. Imported recipes boil, whirlpool and cool in it; with more than one kettle they won't import until it's chosen.", blank: "None chosen", syn: "kettle bk"},
@@ -96,7 +97,7 @@ export function catalog(F) {
 /* the groups, in brewing order; a see-also line names a setting that lives in another group but matters here */
 export const G = [
   {id: "brewhouse", name: "Brewhouse", sum: "Its name and units, which kettle is which, and what may run together",
-    parts: [{rows: ["BREWERY_NAME", "TEMP_UNIT", "PRESSURE_UNIT", "MASH_TUN", "BoilKettle", "ACTOR_INTERLOCK_MODE", "ACTOR_INTERLOCK_GROUPS", "BREWDAY_OVERRIDE_ACTOR"]}]},
+    parts: [{rows: ["BREWERY_NAME", "TEMP_UNIT", "CLOCK_FORMAT", "PRESSURE_UNIT", "MASH_TUN", "BoilKettle", "ACTOR_INTERLOCK_MODE", "ACTOR_INTERLOCK_GROUPS", "BREWDAY_OVERRIDE_ACTOR"]}]},
   {id: "recipes", name: "Recipes", sum: "Bringing recipes in, from Brewfather or a file",
     parts: [{rows: ["AUTHOR", "AutoMode", "brewfather_user_id", "brewfather_api_key", "brewfather_list_length", "RECIPE_CREATION_PATH"]}]},
   {id: "mash", name: "Mash and sparge", sum: "Mash in, the mash, mash out and the sparge", see: "MASH_TUN",

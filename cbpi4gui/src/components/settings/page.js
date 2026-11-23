@@ -32,6 +32,8 @@ import { catalog, G, PLUGIN, PLUGIN_ORDER, ELSEWHERE } from "./catalog";
 import * as DEMO from "./demo-data";
 import { play, soundOf, burstSeconds } from "../brewday/alarm";
 import { call, why as callWhy } from "../brewday/api";
+import { brewNow } from "../brewday/screen";
+import { clockFormat, formatTimeOfDay, TWENTY_FOUR_HOUR } from "../util/timefmt";
 // As text, exactly as written (config-overrides.js): settings.css for the shadow root; settings-frame.css, the mockup's
 // .app rules (one screen tall from 620 px, scrolling below 1180 px, room for the phone's save bar), for the document, where
 // they apply only while <html> has data-page=settings
@@ -370,7 +372,7 @@ function toolHTML() {
 function noteHTML() {
   const d = dirty();
   if (st.leave) return ["note", `<p><b>Leave Settings with ${d.length} ${d.length === 1 ? "change" : "changes"} not saved?</b> ${esc(d.map(nameOf).join(", "))}.</p><div class="acts"><button type="button" class="cmd ans" data-leave="save">Save and go<small>then ${esc(st.leave)}</small></button><button type="button" class="cmd" data-leave="drop">Go without saving<small>drops ${d.length === 1 ? "it" : "them"}</small></button><button type="button" class="cmd" data-leave="stay">Stay<small>keep changing</small></button></div>`];
-  if (st.link === "lost") return ["note alarm", `<p><b>No connection to CraftBeerPi.</b> These are the settings as they were at ${esc(st.lostAt || "14:31")}. Your changes stay on this page until it is back; then SAVE sends them.</p>`];
+  if (st.link === "lost") return ["note alarm", `<p><b>No connection to CraftBeerPi.</b> These are the settings as they were at ${esc(tod(st.lostAt || "14:31"))}. Your changes stay on this page until it is back; then SAVE sends them.</p>`];
   const bad = Object.keys(st.row).filter(k => st.row[k].s === "bad");
   if (bad.length) {
     // CraftBeerPi didn't answer (the mockup's case), or answered with a refusal, which says so
@@ -406,7 +408,7 @@ function testHTML() {
 function testWords(t) {
   const ntfy = t.svc === "ntfy", via = ntfy ? ntfyHost() : "Pushover", timer = t.kind === "timer";
   if (t.s === "wait") return {cls: "st", head: `Sending through ${esc(via)}…`, fx: "", det: ""};
-  if (t.s === "ok") return {cls: "st ok", head: `✓ Sent ${t.at} <span class="why2">· ${timer ? "as a run-out timer's alert" : "through " + esc(via)}</span>`, det: "",
+  if (t.s === "ok") return {cls: "st ok", head: `✓ Sent ${esc(tod(t.at))} <span class="why2">· ${timer ? "as a run-out timer's alert" : "through " + esc(via)}</span>`, det: "",
     fx: ntfy ? (timer ? "A real one comes again every 2 minutes, 10 more times at most, until you answer the timer on a screen. On an iPhone it makes a sound only with the ringer on and no Focus."
                       : "Not on your phone within a minute? The topic in the ntfy app must be exactly the one above, and the app's notifications must be allowed: on the iPhone, Settings, Notifications, ntfy. If it still doesn't come, remove the topic in the app and add it again.")
              : (timer ? "Pushover repeats it once, in about a minute, then it stops. With the phone on silent, it sounds only with Critical Alerts on for emergency priority (step 4)."
@@ -537,8 +539,8 @@ function stHTML(k) {
   if (r.s === "wait") return ["st", "Saving…"];
   if (r.s === "bad") return ["st no", `Didn't save <span class="why2">· ${esc(r.msg)}</span><button type="button" class="cmd ans" data-retry="${k}">Try again<small>send it again</small></button>`];
   if (isChanged(k)) return ["st", `Changed <span class="was">· was ${esc(shown(k, st.saved[k]))}</span><button type="button" class="lnk" data-undo="${k}">Undo</button>`];
-  if (st.fault && st.fault.k === k) return ["st no", `Refused in the test at ${st.fault.at} <span class="why2">· see Send a test</span>`];
-  if (r.s === "ok") return ["st ok", `✓ Saved ${r.at}${r.later ? ` <span class="later">· ${r.later}</span>` : ""}`];
+  if (st.fault && st.fault.k === k) return ["st no", `Refused in the test at ${esc(tod(st.fault.at))} <span class="why2">· see Send a test</span>`];
+  if (r.s === "ok") return ["st ok", `✓ Saved ${esc(tod(r.at))}${r.later ? ` <span class="later">· ${r.later}</span>` : ""}`];
   if (ctlOf(k) === "secret" && blankish(val(k))) return ["st", `<span class="was">${esc(meta(k).unset || "Not set")}</span>`];
   return ["st", ""];
 }
@@ -727,7 +729,12 @@ function setDraft(k, v) {
   if (PHONE.has(k)) { paintAll(); if (k === SVC && words().length) paintFind(); }
   paintChrome();
 }
-const now = () => new Date().toTimeString().slice(0, 8);
+/* the time now, kept 24-hour ("14:32:06"): on CraftBeerPi's clock (the title bar's, brewNow) once it has said where its
+   clock is, else the PC's; the demo's the PC's, as the mockup's */
+const now = () => { const e = DEMO_MODE ? null : brewNow(); return (e != null ? new Date(e * 1000) : new Date()).toTimeString().slice(0, 8); };
+/* a time of day as the page shows it, by CraftBeerPi's CLOCK_FORMAT setting as saved (util/timefmt.js): "2:32 PM", or
+   "14:32" in 24-hour; the demo's 24-hour, as the Settings mockup's. What isn't a time stays as it is */
+const tod = x => formatTimeOfDay(x, {format: DEMO_MODE ? TWENTY_FOUR_HOUR : clockFormat((CFG.CLOCK_FORMAT || {}).v)}) || String(x ?? "");
 function save(then) {
   const ks = dirty();
   if (st.saving) return;
