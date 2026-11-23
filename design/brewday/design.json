@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-22T20:42:27.187Z",
+  "generatedAt": "2026-11-23T04:05:54.522Z",
   "title": "Design System: CraftBeerPi Brew Day",
   "extensions": {
     "colorMeta": {
@@ -1219,7 +1219,8 @@
       "Don't promise more than a forecast with unmeasured parts can keep, or guess a number that's missing: \"aims under the rest\", not \"never over\", and say what's missing.",
       "Don't call PID_HERMS's own overshoot the strike's doing: amber is for a strike that takes the mash over the rest beyond what water heated only to the rest would.",
       "Don't give two different jobs one word: COMPARE PROBES' DONE adds the readings to LOG, so a button that only closes says CLOSE.",
-      "Don't read the PC's or the phone's clock for a time shown on Brew Day: on a simulator it isn't CraftBeerPi's, and the brewer would plan by the wrong one."
+      "Don't read the PC's or the phone's clock for a time shown on Brew Day: on a simulator it isn't CraftBeerPi's, and the brewer would plan by the wrong one.",
+      "Don't save a day as Today or Tomorrow from Brew Day: BrewStart counts those from START, so save the date the box shows."
     ]
   }
 }

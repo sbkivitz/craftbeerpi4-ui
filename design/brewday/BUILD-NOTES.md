@@ -5690,6 +5690,144 @@ For both sections:
   second is the clock's tag, left out of the last copy); The Usual Mode Rule; two Do's.
 - `.impeccable\decisions\direction-log.md`; `.impeccable\design.json`, regenerated.
 
+## BrewStart on Brew Day: its row opens its box, ready to build (22 Nov)
+
+The brewer would like to tap BrewStart on Brew Day and change it there, instead of in the recipe editor. You decided
+its time is set on Brew Day the night before. The design is `proposal\BREWSTART-EDIT.md` and DESIGN.md's Recipe Column
+(BrewStart's row, BrewStart's box, + BrewStart). Agreed with Robin: his "+ BrewStart" row and words, his sentences for
+the time, his fill rules for a new BrewStart, and his change 8 for what SAVE TO BOOK keeps.
+
+### What to build (screen.js, brewday.css)
+
+1. **BrewStart's row as a button** (`bsRowHTML`, `.step.bs`, `.step .bsh`, `.step .amb`), until BrewStart has
+   finished: the whole row, as it looks today, opens the box. Details "126 °F · ready by 07:00 Sat · 15 gal" (the
+   weekday of BrewStart's day), "start at 05:30 Sat" with Start at, "no time set" in amber with no time. Under the
+   state word (READY, STARTS 05:30), the hint, in this order: "set a time" (no time), "where's the grain?" (the grain
+   not answered for this brew), else "change"; the first two in amber (on the current step's blue, the brighter
+   amber that WAITING FOR YOU uses there). The hint stays on one line where the details keep their lines, and wraps
+   inside the state word's width where they wouldn't, so the row keeps its height on one screen (checked after each
+   render). Its aria-label says the step in words, and ". Where the grain spent the night isn't given yet" when
+   that applies. Every step row's details line (`stepHTML`) keeps a figure with its unit or day, with no-break spaces
+   ("126&nbsp;°F", "07:00&nbsp;Sat", "15&nbsp;gal", "40&nbsp;min"), and each "·" with the word before it, so a line
+   ends with "·" and never starts with one.
+2. **BrewStart's box** (`bsHTML`, `bsOpen`, `bsCmd`; `.bsbox` and the rules after it). In the step list's room on one
+   screen, as the pre-brew check's box is (`data-pb`); the strike water box and COMPARE PROBES make way while it is
+   open, and the timers as for the pre-brew box. Opening it closes NEXT STEP's, RESET's and UNLOAD's questions, the
+   pre-brew box and the strike water box's FORECAST and small boxes. Escape and CANCEL close it. Focus goes to the
+   time; from a row whose hint is "where's the grain?", to IN THE GARAGE, with the grain's two answers scrolled into
+   view. Enter is SET. From the top:
+   - while BrewStart waits, fixed at the top above the part that scrolls: "BrewStart is waiting: heating starts about
+     05:30. A change here plans it again at once.";
+   - READY BY with START AT INSTEAD (quiet; greyed while BrewStart waits: "Not while BrewStart waits: STOP it first.");
+   - −1 H, −15, the time, +15, +1 H (`bsParse`: "7", "700", "0700" and "7:00" are 07:00; else "Type the time as
+     07:00."); a new BrewStart's time starts empty, and the keys then start from 07:00;
+   - TODAY and TOMORROW, each with its date, by CraftBeerPi's clock (`brewNow()`, The One Clock Rule);
+   - the time in words (`bsSays`), spoken after the brewer's own changes, not every minute: "The HLT's water is hot by
+     07:00 tomorrow, Sat 21 Nov: in 9 h 48 min.", on a simulator ", about 10 real minutes at 60×", with Start at
+     "Strike water starts at 05:30 tomorrow, Sat 21 Nov: in 8 h 18 min.", and a time passed "07:00 today has passed,
+     so nothing would start by itself. For tomorrow morning, choose TOMORROW." with SET greyed;
+   - WHERE IS THE GRAIN TONIGHT? with "Asked once a brew: USE depends on it.": IN THE GARAGE (the boil kettle's
+     reading) or INDOORS, with 64, 68 (pressed first) and 72 °F, or a figure (40 to 100 °F, else "Indoors, the grain
+     would be between 40 and 100 °F: check the figure."). Neither pressed until answered. The answer is CraftBeerPi's
+     `grain_place`, "garage" or "indoors" (in the brew steps' basic data, core post59; the strike state's
+     `inputs.grain_place`), with Grain_Temp blank for the garage and the figure for indoors. No `grain_place` is "not
+     answered": a load or unload clears it, and SAVE TO BOOK leaves it out. The strike water box's GRAIN sets it too:
+     a figure is indoors, THE PROBE the garage;
+   - the water (`bsWater`), last: "The HLT's 6500 W element heats 15 gal to 126.0 °F. USE and HLT WATER in the strike
+     water box change them." With no Volume: "… How much water isn't known yet: give it with HLT WATER in the strike
+     water box before you START.";
+   - SET (hint "ready by 07:00 Sat") and CANCEL, kept in view while the middle scrolls; the note line above them.
+3. **SET** (`bsSet`): a changed time or day by `PUT /step2/{id}` with BrewStart's settings, all of them, as read, with
+   Timing, Mode `Date`, StartDate and StartTime as the box has them; a changed grain by `POST /step2/strike/grain`,
+   `{"grain": null, "place": "garage"}` or `{"grain": 68.0}` for indoors, the call the strike water box's GRAIN uses,
+   which also works while BrewStart waits and has CraftBeerPi work USE out again. Both changed: both calls, one LOG
+   line; if one is refused, CraftBeerPi's sentence shows and the box stays open, as a failed command. The day is always
+   saved as a date: BrewStart counts Today and Tomorrow from START, so a START after midnight would heat a day late.
+   While it waits: SETTING…, with START, NEXT STEP, RESET, UNLOAD, USE and BACK TO greyed ("Waiting for CraftBeerPi to
+   answer."). LOG: "BrewStart: ready by 06:30 Sat 21 Nov, was 07:00 Sat", with " · grain indoors at 68.0 °F" or " ·
+   grain in the garage, the boil kettle's probe" when the grain changed; the grain alone "BrewStart: grain indoors at
+   68.0 °F, was the boil kettle's probe". Nothing changed: the box closes and nothing is sent. No answer in 5 s: a
+   failed command, as UNLOAD's.
+4. **+ BrewStart** (`bsAddHTML`, `.bsadd`): on a recipe loaded and not begun without BrewStart, above step 1, 58 px,
+   dashed: "+", BrewStart, "Hot water by a set time · goes in as step 1". It opens the box for a new BrewStart, filled
+   in as Robin's pages fill one (his BUILD-NOTES "+ BrewStart"): Ready by; the HLT, its element's watts and the
+   Campden choice from the newest BrewStart; Ready_Temp from the strike water step, else mash in; Volume from
+   `recipeWater()` (beside `stepModel` in `live.js`, shared with his pages), else the newest BrewStart's, else blank;
+   the day TOMORROW from noon by CraftBeerPi's clock, TODAY before. ADD BREWSTART (`bsAdd`): `POST /step2/` with
+   `index` 0 (change 6, core post58). LOG: "BrewStart added as step 1: ready by 07:00 Sat 21 Nov". CANCEL adds nothing.
+5. **While BrewStart waits** (running, STARTS 05:30): the box opens as above. SET needs the server change below; with
+   it, the row's STARTS follows the new plan, and BrewStart's own notice says the new heating start.
+   - Until the server change is in: the time, the day and START AT are greyed while BrewStart waits, with "BrewStart is
+     waiting, so its time can't change now. Press STOP, change it, then hold START." The grain still changes, through
+     the strike water box's call.
+6. **USE waits for the grain** (`swHTML`'s USE, `sw:where`). On a recipe with BrewStart, while `grain_place` is unset,
+   where the strike water box would offer USE: "USE – – °F", USE's size in the look CraftBeerPi's questions have
+   (var(--prompt-bg), a 2 px Prompt Amber edge, the words #fff1d2), with "where's the grain?" in Prompt Amber under
+   it, not greyed; USE's blue comes back with its figure once answered (amber on that blue is only 3.6:1, on the
+   question's ground 7.7:1). aria-label "USE: where the grain spent the night isn't given yet. Say where it is first:
+   USE depends on it." A tap opens the question:
+   - BrewStart's box while its row is a button, with focus on IN THE GARAGE; after SET or CANCEL, focus comes back
+     to USE;
+   - once BrewStart has finished (brew morning), the strike water box's GRAIN box. There, while unanswered, THE PROBE
+     shows as IN THE GARAGE, "the boil kettle's probe, 61.4 °F", and records the garage (LOG "Grain in the garage: the
+     boil kettle's probe, 61.4 °F"). SET is indoors (LOG "Grain indoors at 61.4 °F").
+   Answered, USE is back: at once for the garage (the figure doesn't change), after CraftBeerPi works it out again for
+   indoors. Without BrewStart, with the grain answered, for BACK TO, and while USE is being worked out: as before.
+   START doesn't ask, as the grain changes nothing but USE's figure.
+7. **Moments for the demo**: `#bs-edit`, `#bs-indoors`, `#bs-past`, `#bs-startat`, `#bs-set`, `#bs-wait`, `#bs-new`,
+   `#bs-new-open`, `#bs-sim`, `#bs-novol`, and `#sw-where` and `#sw-where-am` for USE waiting on the grain. `swStartAt`
+   takes any ready time; `bsPlanLine` is BrewStart's notice in its words.
+
+### In CraftBeerPi
+
+- **New: a waiting BrewStart takes a new time.** `PUT /step2/{id}` is refused while it waits (409). BrewStart works its
+  moment out once, at START (`resolve_start`), so it needs to take a new day and time while waiting, work out its
+  heating start again from the water as it is, and say so in its words (as `notify_ready_scheduled`). The call is your
+  choice: a BrewStart action, or the strike water controller's path, which already writes Ready_Temp, Volume and
+  Grain_Temp while BrewStart waits.
+- `POST /step2/` with `index` (Robin's change 6, post58), and `recipeWater()`'s figures (change 7).
+- `grain_place` (core post59, being built): where the grain is for this brew, in the brew steps' basic data, cleared by
+  a load or unload and left out by SAVE TO BOOK; `POST /step2/strike/grain` takes `{"grain": null, "place":
+  "garage"}`, a figure meaning indoors; the strike state shows it as `inputs.grain_place`.
+- SAVE TO BOOK (Robin's change 8, asked of you): a BrewStart's Date goes into the book as Tomorrow with its time; the
+  strike temperature from before the first USE; no grain figure, as Brew Day asks every brew (the row, and USE
+  waiting for the answer).
+
+### Checked
+
+- `files\bs_presses.py`: 212 presses, all pass, no page errors. They cover:
+  - the row, its hint and its label;
+  - the box's parts, keys, typed times, the day, the words, START AT, the grain and its answers, and the water;
+  - SET and its LOG lines; + BrewStart and ADD BREWSTART; Escape and CANCEL; no connection; SETTING… and what waits
+    with it; the simulator's real minutes;
+  - USE waiting for the grain (`#sw-where`, `#sw-where-am`); COMPARE PROBES making way;
+  - the waiting sentence fixed above the part that scrolls; the box opening at the grain.
+- As each box opens, at 1180 × 860, 1440 × 900 and 1920 × 950, in `#bs-edit`, `#bs-indoors`, `#bs-wait` and
+  `#bs-new-open`: both grain answers, IN THE GARAGE's focus ring, SET and CANCEL are fully in view. At most READY BY and
+  5 px of the time row are scrolled out at the top (`#bs-wait` at 1180 × 860).
+- Step rows:
+  - on one screen at 1180, 1440 and 1920, every row is the same height as before BrewStart's row became a button;
+  - on a phone, BrewStart's row is 20 px taller, as its details take two lines there;
+  - no details line splits a figure from its unit or day, or starts with "·".
+- The waiting USE: its words 12.4:1 and its hint 7.7:1 on the dark amber (9.1:1 and 5.6:1 under the pointer), at
+  exactly USE's size at every width.
+- The other suites, all passing: the clock 17, the boil kettle 23, UNLOAD 61, the strike water 28 and 30, the timers 72
+  and 37, the review page 36, the clock's sizes, and the timers' places 149 (A, B, C) and 262 (D).
+- Pictures of every moment at 1440 × 900 and 390 × 844, against the copy in `design/brewday` (UI acf4716): 60 moments
+  differ. They are all in BrewStart's row and box, in USE while it waits for the grain, and in where a step's details
+  line breaks. No row is taller on one screen.
+
+### Changed
+
+- `proposal\brew-day.js`, `proposal\brew-day.css`, `proposal\brew-day.html` (the moments' links and notes);
+  `proposal\BREWSTART-EDIT.md` (new) and this section.
+- Not part of this build: the same three files also carry the timers' places A, B, C and D (`TIMER-PLACE.md`), behind
+  `?col=new` and `?tplace`, off by default; D, the timers in a column beside the drawing, waits for the brewer's
+  answer on `timers-side.html`.
+- `DESIGN.md`: Recipe Column (the step row's day, BrewStart's row, BrewStart's box, + BrewStart), the strike water
+  box's USE waiting for the grain; one Don't.
+- `.impeccable\decisions\direction-log.md`; `.impeccable\design.json`, regenerated.
+
 ## Open questions about the drawing
 
 Both were answered on 10 Nov. The valves have been in the drawing since then; the path after the boil was

@@ -1,5 +1,57 @@
 # Direction decision log
 
+## The timers: C chosen, then D, his own idea, proposed in its place (22 Nov 2026, evening)
+- He chose C, the bar along the bottom ("I think I like C"), then before it was built: "I am concerned that the
+  brewery icons might become too small, even though they are only decorative." Measured on a 24-inch 1920 × 1080
+  monitor, C takes the hot liquor tank from 26 mm to 18 mm tall at his 1920 × 950 window, and from 16 mm to 7 mm at
+  1280 × 800; a slimmer bar would win back only about 1.5 mm.
+- His idea, D: "I think the vessel drawings can shrink width and add the timers in a column", full width with no
+  timers. Built behind `?col=new&tplace=side`: a 300 px column right of the drawing while a timer is set; the vessels
+  keep today's size at every window size, but sit closer together, off their faceplates, while the column is there.
+- Shown on `timers-side.html` beside today and C, with one question: build D? My pick: yes. Not built until he says so;
+  C's build files are cancelled, and the shorter drawing planned for C isn't needed.
+- He kept OTHER RECIPE beside COMPARE PROBES ("Yes, keep OTHER RECIPE"), which comes with any of A to D.
+
+## BrewStart on Brew Day: its row opens its box (22 Nov 2026)
+- The brewer wants to tap BrewStart on Brew Day and edit it there; he uses Ready by, never Start at; Brett decided the
+  time is set on Brew Day the night before; the grain's temperature is asked once a brew (garage or indoors); a new
+  BrewStart's water is filled in, never typed (Robin's rule).
+- Chosen: BrewStart's row is the way in. The night before it is the current step, which the screen always keeps whole,
+  so the time needs no room of its own. Robin had suggested a line in the strike water box; that would take about
+  44 px from the step list. The box leads with READY BY, TODAY or TOMORROW with the date, and the time in words in
+  Robin's sentences; the water is a fact there (USE and HLT WATER set it); the grain is a question with no default.
+- The day is saved as a date, so a START after midnight still means the same morning (BrewStart counts Today and
+  Tomorrow from START). Robin's SAVE TO BOOK writes it back as Tomorrow (his server change 8), with the strike
+  temperature from before the first USE and no grain figure.
+- The grain is asked every brew, even when the box isn't opened: the row's hint is "where's the grain?" in amber
+  until it is answered, and on a recipe with BrewStart USE waits for the answer ("USE – – °F", the same words), since
+  the book keeps no grain figure and the boil kettle's probe, standing in for it, errs hot for grain kept indoors.
+  START doesn't ask: without USE, the grain changes nothing. CraftBeerPi keeps the answer as `grain_place` (core
+  post59), so every screen knows it was asked.
+- A recipe without BrewStart gets the recipe pages' "+ BrewStart" row above step 1; only ADD BREWSTART adds it.
+- While BrewStart waits, the box still opens and plans again at once; that needs BrewStart to take a new time while
+  waiting (server work for Brett). Until then, STOP, change, START.
+- Not chosen: every BrewStart setting (Campden, heads-up and element power stay on Brew Steps), a date picker, a past
+  time saved with a warning.
+
+## Where the timers live: three places proposed, B my pick (22 Nov 2026)
+- The brewer, on the recipe column's fold: "the recipe step has precedence over seeing the timers"; shrink them, and
+  "Maybe the timer gets big again when there's only ~3 minutes left". Brewing by hand: "Is there somewhere else timers
+  could live? I'd like to always see at least the current recipe step." Brett asked for two or three places on one
+  page, my pick marked, one question.
+- Proposed (TIMER-PLACE.md, placement.html), on one screen only, a phone as today: A, the timers in the column,
+  shrinking to tiles when the step needs the room, a tile in its last 3 minutes growing back where the step still fits
+  (his idea); B, the tiles beside the last event, under the title bar; C, a bar along the bottom.
+- My pick, B: the current step never shares its room with the timers, nothing else gets smaller, the timers keep one
+  place and one look, and a run-out timer's tile sits under its alarm. Its cost is the last event's words on a small
+  window with three or four timers, so they now give way in an order (a caveat, then what was done) that keeps the
+  time and "confirmed" or "failed" in view.
+- Why not C: it takes 68 px from the drawing on every window, leaving it unreadable at 1180 × 860, and a long question
+  there pushes the screen into the bar. Why not A first: the timers change form with the room, and a tall step with
+  four timers can only fit by shrinking them.
+- Not proposed: beside the vessel a timer belongs to (the timers aren't a vessel's), and the drawing's free space (it
+  moves with the drawing's size, and the drawing would have to make room as in C).
+
 ## Timers' REMOVE and the boil kettle's MANUAL approved; MAN where AUTO is usual (22 Nov 2026)
 - The brewer, asked one question at a time through Brett: REMOVE on the row with one tap and UNDO for 10 seconds, and
   BACK TO in the timer's box, both as proposed (TIMER-REMOVE.md). In MANUAL the boil element heats at the boil power,
