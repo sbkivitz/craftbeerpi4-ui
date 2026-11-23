@@ -209,6 +209,9 @@ export function model(snap) {
     // the boil power button: only for a boil kettle whose logic declares set_boil_power
     BOILPOWER: !!K.bk && declares(snap.logic, K.bk.type, "set_boil_power"),
     BKNEW,
+    // the new MANUAL: a BoilPower that heats by hand at the boil power declares heat_by_hand_at_boil_power (0.0.3.post13).
+    // An older one heats by hand at the element's own level, so MANUAL stays as before there
+    BKHAND: BKNEW && declares(snap.logic, K.bk.type, "heat_by_hand_at_boil_power"),
     BOIL_TH: boilThreshold(K.bk, C, BKNEW),
     // the recipe's name as CraftBeerPi has it, blank for steps that have none (given); name stands in for it on screen
     RECIPE: { name: (snap.basic && snap.basic.name) || "Brew steps", given: String((snap.basic && snap.basic.name) || ""), steps },

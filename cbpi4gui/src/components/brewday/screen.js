@@ -13,6 +13,9 @@
 // - The boil kettle is the mockup's proposed one (?bk=power) while it runs the new BoilPower (M.BKNEW: it declares
 //   set_boil_at, from 0.0.3.post7), and the mockup's today's one (?bk=today) with an older BoilPower, whose target
 //   is where its boil starts. The demo always shows the proposed one.
+// - Its MANUAL is the mockup's (BOIL-MANUAL.md: by hand at the boil power, HAND in the window, the steps kept, MAN
+//   boxed where AUTO is usual) while BoilPower declares heat_by_hand_at_boil_power (M.BKHAND, from 0.0.3.post13); with
+//   an older one, which heats by hand at the element's own level, MANUAL stays as before (?bkman=today).
 // - From the boil's start the drawing is the mockup's ?wp=chill: the wort pump at the
 //   boil kettle, on a short loop through the chiller. The mockup's other options for it aren't offered.
 // - A command says at its own button whether it worked. One that fails, or gets no answer in 5 s, turns its
@@ -444,10 +447,22 @@ function pausedFor() {
   const el = st.a.bkEl, now = DEMO_MODE ? st.t : brewNow();
   return now == null || el.pausedAt == null ? 0 : Math.max(0, Math.floor(now - el.pausedAt));
 }
+/* the new MANUAL (M.BKHAND: BoilPower 0.0.3.post13 on): by hand the boil element heats at the boil power. The level it
+   heats at by hand: the element's own (manual_power), which BoilPower keeps at the boil power while AUTO isn't running,
+   so the screen never shows a level it won't heat at; the demo's element runs at its boil power */
+const bkHand = () => !!M.BKHAND && st.v.bk.mode !== "auto";
+const handLvl = () => DEMO_MODE ? st.v.bk.bp : st.a.bkEl.lvl;
 /* the line under the boil kettle's window */
 function bkLine() {
   const V = st.v.bk, el = st.a.bkEl, ho = bkHoldT(), U = M.U;
-  if (V.mode !== "auto") { const w = byHand("bk"); return w ? byHandLine("bk", w) : "MANUAL · element by hand"; }
+  if (V.mode !== "auto") {
+    const w = byHand("bk");
+    if (w) return byHandLine("bk", w);
+    /* the new MANUAL: by hand the element runs at the boil power, so the line says at what. A boil kettle boiling by
+       hand needs no caution (The By Hand Rule) */
+    if (M.BKHAND) return el.on ? `Heating by hand at ${handLvl()} %` : `MANUAL · heats at ${handLvl()} % by hand`;
+    return "MANUAL · element by hand";
+  }
   /* a forgotten pause would quietly stop the boil, so the line counts it, in Prompt Amber like the button */
   if (el.paused) return `<span class="warn">Heat paused for <span id="pz">${mmss(pausedFor())}</span></span>`;
   /* a hold is a target like the HLT's, and from BoilPower 0.0.3.post8 a PID holds it as the HLT's PID holds its own, so
@@ -497,10 +512,11 @@ function powerHTML() {
 }
 /* the new boil kettle's boil power, in its window while the target is BOIL: the green number is the setting, so it is the
    button that opens the power box (TARGET sits beside AUTO/MANUAL). Framed like the graph's chosen span, with a
-   small "change" like every other button's, so it reads as a control. Its tap area is at least 44 px tall. */
+   small "change" like every other button's, so it reads as a control. Its tap area is at least 44 px tall. In the new
+   MANUAL it is the level the element heats at by hand, the boil power, read as HAND (svCell) */
 function boilReadHTML() {
-  const V = st.v.bk, pend = st.pend["p:bk"], why = st.link === "lost" ? PAUSED : pend ? WAIT : "";
-  return `<button type="button" class="svbtn" data-cmd="pwr:bk" aria-expanded="${!!st.edit && st.edit.kind === "pwr"}" aria-label="Boil power ${V.bp} percent: change"${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}><span class="svv">${V.bp}<span class="u">%</span></span><small>${pend === "set" ? "sending…" : "change"}</small></button>`;
+  const V = st.v.bk, pend = st.pend["p:bk"], why = st.link === "lost" ? PAUSED : pend ? WAIT : "", hand = bkHand(), p = hand ? handLvl() : V.bp;
+  return `<button type="button" class="svbtn" data-cmd="pwr:bk" aria-expanded="${!!st.edit && st.edit.kind === "pwr"}" aria-label="${hand ? `Power by hand ${p} percent, the boil power` : `Boil power ${p} percent`}: change"${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}><span class="svv">${p}<span class="u">%</span></span><small>${pend === "set" ? "sending…" : "change"}</small></button>`;
 }
 /* the new boil kettle's TARGET box: the HLT's, plus BOIL, so a target of 170 °F holds there, as on the HLT. Anything
    from the boil point less the margin up is BOIL, so the steps run …205.6, 206.5, BOIL, and a
@@ -521,17 +537,19 @@ function bkTgtEditorHTML() {
    box's order, −5 −1 … +1 +5. One tap sends set_boil_power; a step that would pass 0 or 100 % stops there, and only at the
    end itself is the button refused. */
 function nudgeHTML(d) {
-  const V = st.v.bk, pend = st.pend["p:bk"];
-  const why = st.link === "lost" ? PAUSED : pend ? WAIT : d < 0 && V.bp <= 0 ? "The boil power is already 0 %." : d > 0 && V.bp >= 100 ? "The boil power is already 100 %." : "";
+  const V = st.v.bk, pend = st.pend["p:bk"], p = bkHand() ? handLvl() : V.bp;
+  const why = st.link === "lost" ? PAUSED : pend ? WAIT : d < 0 && p <= 0 ? "The boil power is already 0 %." : d > 0 && p >= 100 ? "The boil power is already 100 %." : "";
   /* waiting for CraftBeerPi, all four are greyed and the one pressed shows the lamps' marching stripes; the wait is kept
      under the step itself, so −5 and −1 can't both look pressed. The spoken name says "percent" */
   return b(`cmdbtn nudge${pend === String(d) ? " sending" : ""}`, `${d < 0 ? "−" : "+"}${Math.abs(d)} %`, "",
     {cmd: `pnudge:${d}`, why, label: `Boil power ${d < 0 ? "down" : "up"} ${Math.abs(d)} percent`});
 }
 /* the element button in AUTO: not locked, a tap pauses the heat (set_paused) and keeps AUTO, the recipe and the boil power;
-   PAUSED, in Prompt Amber, heats again with a held press, like any heat. In MANUAL it is the usual element button. */
+   PAUSED, in Prompt Amber, heats again with a held press, like any heat. In MANUAL it is the usual element button; in the
+   new MANUAL, between the steps, narrow as in AUTO (bkHandLampHTML) */
 function bkLampHTML() {
   const a = st.a.bkEl, V = st.v.bk, pend = st.pend["a:bkEl"], name = M.ACT.bkEl.name;
+  if (V.mode !== "auto" && M.BKHAND && bkNudges() && !TIGHT && !a.failed) return bkHandLampHTML();
   if (V.mode !== "auto" || (a.failed && !pend)) return lampHTML("bkEl");
   /* between the boil power's four steps the button is narrow, so its name is left to the faceplate's title (it is the
      boil kettle's only element) and kept for screen readers; the line says only what a press does. Waiting for
@@ -547,9 +565,23 @@ function bkLampHTML() {
   const why = st.link === "lost" ? PAUSED : pend ? WAIT : "", hh = h && !why;
   return `<button type="button" class="lamp" data-state="${s}" data-cmd="${cmd}"${hh ? " data-hold" : ""}${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}>${hh ? '<span class="fill"></span>' : ""}<span class="st">${t}</span><span class="nm">${n}</span></button>`;
 }
-/* the steps show only while AUTO can use the boil power: not in MANUAL, where they would seem to set the element's own
-   level, nor in a hold, nor while the boil kettle's box is open, which has steps of its own */
-const bkNudges = () => !!M.BKNEW && st.v.bk.mode === "auto" && !bkHolding() && !(st.edit && st.edit.v === "bk");
+/* the element in the new MANUAL, narrow between the steps as in AUTO: its name left to the faceplate's title and kept for
+   screen readers, the line saying only what a press does. Switching it on by hand is heat, so held */
+function bkHandLampHTML() {
+  const a = st.a.bkEl, pend = st.pend["a:bkEl"], nm = `<span class="sr">${esc(M.ACT.bkEl.name)} · </span>`;
+  let s, t, n, h = false;
+  if (pend) { s = "pending"; t = a.on ? "HEATING" : "OFF"; n = nm + (pend === "on" ? "heating…" : "stopping…"); }
+  else if (a.on) { s = "heating"; t = "HEATING"; n = nm + "tap to turn off"; }
+  else { s = "off"; t = "OFF"; n = nm + "hold to turn on"; h = true; }
+  const why = st.link === "lost" ? PAUSED : pend ? WAIT : "", hh = h && !why;
+  return `<button type="button" class="lamp" data-state="${s}" data-cmd="act:bkEl"${hh ? " data-hold" : ""}${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}>${hh ? '<span class="fill"></span>' : ""}<span class="st">${t}</span><span class="nm">${n}</span></button>`;
+}
+/* the steps show while the boil power is what the element heats at: in AUTO, not while it holds a temperature, and in the
+   new MANUAL, where the element runs at the boil power by hand too, with a target to hold as well (MANUAL doesn't use the
+   target, and the line, element off, or OUT, heating, shows the level they change). Not in MANUAL with an older
+   BoilPower, where they would seem to set the element's own level, nor while the boil kettle's box is open, which has
+   steps of its own */
+const bkNudges = () => !!M.BKNEW && (st.v.bk.mode === "auto" ? !bkHolding() : !!M.BKHAND) && !(st.edit && st.edit.v === "bk");
 /* KEEP BOILING, which chooses between keeping the boil and letting the boil power alone drive the temperature: at the end
    of the nameplate row, the box is the LED, lit Setpoint Green with a tick while ticked. One tap
    sets Keep_Boiling (set_keep_boiling), in any mode. Shown only while the target is BOIL: a hold never uses it. */
@@ -637,19 +669,32 @@ function auxHTML(v) {
   const e = v === "hlt" ? st.a.hltEl : v === "bk" ? st.a.bkEl : null, el = e && !e.missing ? e : null;
   const mode = v === "hlt" && hermsOn() ? "HERMS" : st.v[v].mode === "auto" ? "AUTO" : "MAN";
   const pct = el && el.on ? el.pct : 0;
-  return `<dl class="aux"><dt>OUT</dt><dd>${el ? pct + " %" : "– –"}<span class="outbar"${el ? "" : ' style="visibility:hidden"'} aria-hidden="true"><i style="width:${pct}%"></i></span></dd><dt>MODE</dt><dd>${mode}</dd></dl>`;
+  const md = v === "bk" && bkManCue() ? `<span class="mc" title="${esc(MAN_CUE)}">MAN</span><span class="sr">. ${MAN_CUE}</span>` : mode;
+  return `<dl class="aux"><dt>OUT</dt><dd>${el ? pct + " %" : "– –"}<span class="outbar"${el ? "" : ' style="visibility:hidden"'} aria-hidden="true"><i style="width:${pct}%"></i></span></dd><dt>MODE</dt><dd>${md}</dd></dl>`;
+}
+/* MANUAL where AUTO is usual (the new MANUAL, The Usual Mode Rule): the boil kettle in MANUAL with a reading AUTO could
+   work from, while its element heats by hand or a step that boils or holds a temperature in it runs. Its MODE then says
+   MAN boxed in Prompt Amber, so that heating by hand isn't taken for BoilPower's boil. Not while the boil waits for the
+   brewer (the recipe ready, held), when nothing heats in either mode, nor with no connection, when nothing on the window
+   is current. No sound, no alarm and no line of its own */
+const MAN_CUE = "In MANUAL, BoilPower isn't running the boil kettle, as it does in AUTO.";
+function bkManCue() {
+  const V = st.v.bk, r = st.recipe, s = r && M.RECIPE.steps[r.cur];
+  if (!M.BKHAND || st.link === "lost" || V.mode === "auto" || V.pv == null) return false;
+  return st.a.bkEl.on || !!(s && s.k === "bk" && s.temp > 0 && r.state === "running");
 }
 function hermsRowHTML() {
   const why = st.link === "lost" ? PAUSED : `The mash tun's AUTO runs this vessel for the HERMS: it switches the HLT element and sets this target up to the mash tun's target plus ${M.HERMS_DELTA} ${M.U}. Switch the mash tun to MANUAL to take the HLT over.`;
   return `<div class="moderow"><button type="button" class="tgtbtn herms" data-cmd="noop" aria-disabled="true" data-why="${esc(why)}"><span class="lb">HERMS</span><small>run by the mash tun · switch it to MANUAL to take over</small></button></div>`;
 }
 /* the faceplate's second readout: the SV; the new boil kettle's is its hold, read like the HLT's target, or while its target
-   is BOIL, the boil power, and its button */
+   is BOIL, the boil power, and its button. In the new MANUAL that green number is the power the element runs at by hand,
+   so it reads HAND, not BOIL, which is AUTO's */
 function svCell(v) {
   const V = st.v[v], u = `<span class="u">${M.U}</span>`;
   if (!bkNew(v)) return ["SV", V.sv == null ? "– –" : f1(V.sv) + u];
   const ho = bkHoldT();
-  return ho != null ? ["SV", f1(ho) + u] : ["BOIL", boilReadHTML()];
+  return ho != null ? ["SV", f1(ho) + u] : [bkHand() ? "HAND" : "BOIL", boilReadHTML()];
 }
 function plateHTML(v) {
   const V = st.v[v], [svT, svV] = svCell(v);
@@ -2309,8 +2354,9 @@ function send(key, dir, label, apply, cav = "") {
     renderAll();
   }, 700 + Math.random() * 400));
 }
-const actLabel = (id, on) => `${M.ACT[id].name} ${M.ACT[id].kind === "pump" ? (on ? "started" : "stopped") : (on ? "on" : "off")}`;
-function setActor(id, on) { const a = st.a[id]; a.on = on; a.failed = null; a.paused = false; if (id === "bkEl") endPause(); if (M.ACT[id].kind === "heat") a.pct = on ? (a.lvl ?? 100) : 0; }
+/* the new MANUAL: by hand the boil element comes on at the boil power, and its line says at what */
+const actLabel = (id, on) => `${M.ACT[id].name} ${M.ACT[id].kind === "pump" ? (on ? "started" : "stopped") : (on ? "on" : "off")}${on && id === "bkEl" && bkHand() ? ` at ${handLvl()} %` : ""}`;
+function setActor(id, on) { const a = st.a[id]; a.on = on; a.failed = null; a.paused = false; if (id === "bkEl") endPause(); if (M.ACT[id].kind === "heat") a.pct = on ? (id === "bkEl" && M.BKHAND ? st.v.bk.bp : a.lvl ?? 100) : 0; }
 function cmdAct(id) {
   const a = st.a[id], want = a.failed ? a.failed === "on" : !a.on;
   send("a:" + id, want ? "on" : "off", actLabel(id, want), () => {
@@ -2448,40 +2494,44 @@ function cmdBatSet(val) {
    kettle's always sets the boil power. */
 function cmdPwrOpen() {
   const boil = !!M.BKNEW || st.v.bk.mode === "auto";
-  st.edit = {v: "bk", kind: "pwr", what: boil ? "boil" : "hand", val: boil ? st.v.bk.bp : st.a.bkEl.lvl};
+  st.edit = {v: "bk", kind: "pwr", what: boil ? "boil" : "hand", val: boil ? (bkHand() ? handLvl() : st.v.bk.bp) : st.a.bkEl.lvl};
   renderAll(); focusTin();
 }
 function cmdPwrStep(d) { st.edit.val = Math.min(100, Math.max(0, st.edit.val + d)); renderAll(); }
 function cmdPwrSet() {
-  const {what, val} = st.edit, boil = what === "boil", V = st.v.bk, el = st.a.bkEl, was = boil ? V.bp : el.lvl;
+  const {what, val} = st.edit, boil = what === "boil", V = st.v.bk, el = st.a.bkEl, was = boil ? (bkHand() ? handLvl() : V.bp) : el.lvl;
   if (!(Number.isInteger(val) && val >= 0 && val <= 100)) { note("bk", `Enter a ${boil ? "boil power" : "power"} from 0 to 100 %.`); return; }
   st.edit = null; st.notes.bk = "";
   if (val === was) { renderAll(); return; }
-  /* when the new level isn't in use yet, the event says when it will be, so an OUT that doesn't move isn't taken for a failure */
+  /* when the new level isn't in use yet, the event says when it will be, so an OUT that doesn't move isn't taken for a
+     failure. In the new MANUAL the boil power is what the element heats at by hand, so it is in use at once while it heats */
   const ho = bkHoldT();
-  const cav = M.BKNEW ? (V.mode !== "auto" ? "kept for the boil in AUTO" : bkHolding() ? `not used while it holds ${+ho.toFixed(1)} ${M.U}`
+  const cav = M.BKNEW ? (V.mode !== "auto" ? (M.BKHAND ? (el.on ? "" : "used when you heat by hand") : "kept for the boil in AUTO")
+      : bkHolding() ? `not used while it holds ${+ho.toFixed(1)} ${M.U}`
       : el.paused ? "used when the heat carries on" : bkLatched() ? "" : `used once it boils at ${boilTh()} ${M.U}, full power until then`)
     : boil ? (V.mode === "auto" && V.pv >= boilFrom() ? "" : `used from ${boilTh()} ${M.U}, full power until then`)
     : (el.on ? "" : "used when you switch the element on");
   const label = boil ? `Boil power ${val} % (was ${was} %)` : `Boil element by hand ${val} % (was ${was} %)`;
   if (!DEMO_MODE) return livePower(boil, val, was, label, cav);
   send("p:bk", "set", label, () => {
-    if (boil) { V.bp = val; if (V.mode === "auto" && el.on && bkHoldT() == null && (M.BKNEW ? bkLatched() : V.pv >= boilFrom())) el.pct = val; }
+    if (boil) { V.bp = val; if (V.mode === "auto" && el.on && bkHoldT() == null && (M.BKNEW ? bkLatched() : V.pv >= boilFrom())) el.pct = val; if (bkHand() && el.on) el.pct = val; }
     else { el.lvl = val; if (V.mode !== "auto" && el.on) el.pct = val; }
   }, cav);
 }
 /* the boil power's one-tap steps, −5 % −1 % +1 % +5 %: sent at once, no SET. The same set_boil_power as the box; a tap that
    would go past 0 or 100 % stops there (2 % − 5 → 0 %), and only at 0 or 100 % itself is the button refused. The wait is
-   kept under the step ("-5", "-1", "1", "5"), so only the button pressed shows it */
+   kept under the step ("-5", "-1", "1", "5"), so only the button pressed shows it. In the new MANUAL they step from the
+   level shown, the element's own, which set_boil_power keeps in step with the boil power */
 function cmdNudge(d) {
-  const V = st.v.bk, el = st.a.bkEl, was = V.bp, val = Math.min(100, Math.max(0, was + d));
+  const V = st.v.bk, el = st.a.bkEl, hand = bkHand(), was = hand ? handLvl() : V.bp, val = Math.min(100, Math.max(0, was + d));
   if (val === was) return;
-  const cav = el.paused ? "used when the heat carries on" : bkLatched() ? "" : `used once it boils at ${boilTh()} ${M.U}, full power until then`;
+  const cav = hand ? (el.on ? "" : "used when you heat by hand") : el.paused ? "used when the heat carries on" : bkLatched() ? "" : `used once it boils at ${boilTh()} ${M.U}, full power until then`;
   const label = `Boil power ${val} % (was ${was} %)`;
   if (!DEMO_MODE) return livePower(true, val, was, label, cav, String(d));
   send("p:bk", String(d), label, () => {
     V.bp = val;
     if (V.mode === "auto" && el.on && bkLatched()) el.pct = val;
+    if (hand && el.on) el.pct = val;
   }, cav);
 }
 /* KEEP BOILING: set_keep_boiling, kept in the kettle's Keep_Boiling setting, so it can be set in any mode and stays as set.
@@ -2888,7 +2938,8 @@ async function exec(key, dir, label, request, o = {}) {
       say(label + ": confirmed" + (o.cav ? `. ${o.cav[0].toUpperCase()}${o.cav.slice(1)}.` : ""));
     }
   } else {
-    const w = failWhy(res);
+    // o.why: the reason in the command's own words, when it has them for this answer (a timer's UNDO refused)
+    const w = (o.why && o.why(res)) || failWhy(res);
     logEvent(label, "failed: " + w, "bad");
     say(`${label}: failed, ${w}.`, true);
     if (o.fail) o.fail(res, w);
@@ -3203,14 +3254,26 @@ const tTwinWhy = n => `Another timer is already called ${n}. Give this one anoth
 function tDefaultName() { let n = st.tmrs.length + 1; while (tTwin(`Timer ${n}`)) n++; return `Timer ${n}`; }
 function timersHTML() {
   const off = st.link === "lost" ? PAUSED : "", T = st.tmrs, e = st.tedit, full = T.length >= TMAX;
-  const rows = T.map(t => trowHTML(t, off) + (e && e.id === t.id ? teditHTML(off) : "")).join("");
-  /* + TIMER: where a new timer's editor opens; while another timer's editor is open it steps out of the way (one editor
-     at a time, and a press would drop that editor's changes) */
-  const plus = e && e.id == null ? teditHTML(off) : e ? ""
-    : b("cmdbtn tplus", "+ TIMER", full ? "four at most" : T.length ? `up to ${TMAX}` : "counts down on every screen", {cmd: "te:new", why: off || (full ? "Four timers at most. Remove one to add another." : "")});
-  return `<section class="tmrs" id="tmrs" aria-labelledby="tmrs-h"${e ? " data-editing" : ""}><div class="thead"><h3 id="tmrs-h">Timers</h3>${soundHTML()}</div>${rows}${plus}<p class="note">${esc(st.notes.t || "")}</p></section>`;
+  const rows = T.map(t => trowHTML(t, off) + (e && e.id === t.id ? teditHTML(off) : ""));
+  /* a timer just removed keeps its place for 10 s, with UNDO where its buttons were (tgoneHTML). While its REMOVE is on
+     its way, a CraftBeerPi that has already said it's gone still has its row here, REMOVING…, so nothing below moves */
+  const g = st.tgone;
+  if (g && !(g.sending && T.some(t => t.id === g.t.id))) rows.splice(Math.min(g.idx, rows.length), 0, g.sending ? trowHTML(g.t, off) : tgoneHTML(g, off));
+  /* + TIMER in the heading, beside SOUND, rather than a row of its own under the timers: it costs the step list nothing.
+     A new timer's editor still opens at the end of the list, where the timer will be. While an editor is open it is
+     greyed and says why (one editor at a time) */
+  const plus = b("cmdbtn tplus2", "+ TIMER", "", {cmd: "te:new", why: off || (full ? "Four timers at most. Remove one to add another." : e ? "One timer at a time: close the one that's open first." : "")});
+  return `<section class="tmrs" id="tmrs" aria-labelledby="tmrs-h"${e ? " data-editing" : ""}><div class="thead"><h3 id="tmrs-h">Timers</h3><div class="thr">${soundHTML()}${plus}</div></div>${rows.join("")}${e && e.id == null ? teditHTML(off) : ""}<p class="note">${esc(st.notes.t || "")}</p></section>`;
 }
-/* a timer's row: its name and state, its time large, and one button. Its left part opens its editor. run: this countdown's
+/* a timer just removed, for 10 s: its row keeps its place and height, so the timers under it don't move under a reaching
+   hand, and UNDO takes the place of both its buttons, so a second tap on REMOVE puts it back rather than reaching
+   anything else. Then the row goes. Only on the screen where REMOVE was pressed: other screens simply lose the timer */
+function tgoneHTML(g, off) {
+  const p = st.pend["t:" + g.t.id];
+  const undo = b("cmdbtn tundo", p ? "SENDING…" : "UNDO", "put it back", {cmd: `tm2:undo:${g.t.id}`, label: p ? "" : `Undo: put ${g.t.name} back`, why: off || (p ? WAIT : "")});
+  return `<div class="trow tgone" data-state="gone" id="tr-${g.t.id}" role="group" aria-label="${esc(g.t.name)} removed"${g.h ? ` style="min-height:${g.h}px;--tw:${g.w}px"` : ""}><p class="tgn"><span class="tn">${esc(g.t.name)}</span><span class="ts">removed</span></p><div class="tbtn">${undo}</div></div>`;
+}
+/* a timer's row: its name and state, its time large, and its buttons. Its left part opens its editor. run: this countdown's
    length (its own time, or the 5 minutes more after it ran out), for "of" and the bar. "of 20:00" stays whole, so a narrow
    row wraps "PAUSED ·" over "of 20:00". A timer brought back after a restart has its own line across the row, under the
    name and state, saying how long CraftBeerPi was off; the button's label ends with it, so the line is hidden from screen
@@ -3226,6 +3289,14 @@ function trowHTML(t, off) {
   const btn = done ? b("cmdbtn", p === "plus5" ? "ADDING…" : "+5 MIN", "", {cmd: `tm2:plus5:${t.id}`, why}) + b("cmdbtn tok", p === "ok" ? "SENDING…" : "OK", "stops the alarm", {cmd: `tm2:ok:${t.id}`, why})
     : b("cmdbtn", p === "start" ? "STARTING…" : p === "pause" ? "PAUSING…" : run ? "PAUSE" : "START", t.state === "paused" ? "carry on" : "", {cmd: `tm2:go:${t.id}`, why});
   const open = !!(st.tedit && st.tedit.id === t.id);
+  /* two lines, the name and its state over the time and two buttons. REMOVE sits beside START or PAUSE in every state but
+     a run-out one, always in the same place; START or PAUSE keeps the far right, where it was. A run-out timer keeps its
+     +5 MIN and OK across the row. While its editor is open the timer keeps the one-line row, with START or PAUSE only:
+     the editor fits a 1180 × 860 window with nothing to spare, and REMOVE is back when it closes */
+  if (!done && !open) {
+    const rm = b("cmdbtn trm", p === "rm" ? "REMOVING…" : "REMOVE", "", {cmd: `tm2:rm:${t.id}`, label: p === "rm" ? "" : `Remove ${t.name}`, why});
+    return `<div class="trow tr2" data-state="${t.state}" id="tr-${t.id}"><button type="button" class="tsel" data-cmd="te:open:${t.id}" aria-expanded="false" aria-label="${esc(said)}. Change it"${off ? ` aria-disabled="true" data-why="${off}"` : ""}><span class="tn">${esc(t.name)}</span><span class="ts">${sub}</span><span class="tt" id="tt-${t.id}">${time}</span></button>${back ? `<p class="toff" aria-hidden="true">${tOff(t)}</p>` : ""}<div class="tbtn">${rm}${btn}</div>${live ? `<span class="bar"><i id="tb-${t.id}" style="width:${tPct(t)}%"></i></span>` : ""}</div>`;
+  }
   return `<div class="trow${open ? " editing" : ""}" data-state="${t.state}" id="tr-${t.id}"><button type="button" class="tsel" data-cmd="te:open:${t.id}" aria-expanded="${open}" aria-label="${esc(said)}. Change it"${off ? ` aria-disabled="true" data-why="${off}"` : ""}><span class="tn">${esc(t.name)}</span><span class="ts">${sub}</span><span class="tt" id="tt-${t.id}">${time}</span></button>${back ? `<p class="toff" aria-hidden="true">${tOff(t)}</p>` : ""}<div class="tbtn">${btn}</div>${live ? `<span class="bar"><i id="tb-${t.id}" style="width:${tPct(t)}%"></i></span>` : ""}</div>`;
 }
 /* the names to pick, under NAME: the names in BREWDAY_TIMER_NAMES as buttons, in the setting's order, three to a row (two
@@ -3247,7 +3318,6 @@ function namesHTML(e, t) {
 function teditHTML(off) {
   const e = st.tedit, t = e.id != null ? tById(e.id) : null, live = !!t && (t.state === "running" || t.state === "paused");
   const pT = st.pend["t:" + (t ? t.id : "new")], why = off || (pT ? WAIT : "");
-  if (e.confirm && t) return `<div class="confirm tconf" role="group" aria-labelledby="tc-t"><p id="tc-t">Remove <b>${esc(t.name)}</b>? It has ${tfmt(t.left)} left.</p><div>${b("yes", pT ? "REMOVING…" : "REMOVE IT", "", {cmd: "te:rm", why})}${b("", "KEEP IT", "", {cmd: "te:keep"})}</div></div>`;
   const nm = `<div class="tfield"><label for="tnm">Name</label><input id="tnm" type="text" maxlength="${TNLEN}" autocomplete="off" spellcheck="false" value="${esc(e.name)}" placeholder="${esc(e.ph)}"></div>
     ${namesHTML(e, t)}`;
   const time = live
@@ -3255,8 +3325,11 @@ function teditHTML(off) {
     : `<div class="tfield tmin"><label for="tmin">Minutes</label>${b("cmdbtn", "−1", "", {cmd: "te:step:-1", label: "One minute less"})}<input id="tmin" type="text" inputmode="numeric" maxlength="3" autocomplete="off" value="${e.set / 60}">${b("cmdbtn", "+1", "", {cmd: "te:step:1", label: "One minute more"})}</div>
       <div class="tpre" role="group" aria-label="Minutes">${TPRE.map(m => b("cmdbtn", String(m), "", {cmd: `te:min:${m}`, pressed: e.set === m * 60, label: `${m} minutes`})).join("")}</div>`;
   const acts = !t ? [b("cmdbtn", "CANCEL", "", {cmd: "te:x"}), b("cmdbtn", pT === "save" ? "SAVING…" : "SAVE", "start it later", {cmd: "te:save", why}), b("cmdbtn tgo", pT === "start" ? "STARTING…" : "START", "counts down now", {cmd: "te:start", why})]
-    : live ? [b("cmdbtn", "REMOVE", "", {cmd: "te:rm", why}), b("cmdbtn tgo", pT === "name" ? "SAVING…" : "DONE", "", {cmd: "te:done", why})]
-    : [b("cmdbtn", "REMOVE", "", {cmd: "te:rm", why}), b("cmdbtn", "CANCEL", "", {cmd: "te:x"}), b("cmdbtn tgo", pT === "save" ? "SAVING…" : "SET", "", {cmd: "te:save", why})];
+    /* REMOVE is on the row, so the editor doesn't repeat it. A timer counting down or paused can go back to its own
+       time here, stopped, as OK does after its alarm and a kitchen timer's clear does: the editor stays open, now a
+       stopped timer's, so a name typed and not yet saved stays */
+    : live ? [b("cmdbtn", pT === "reset" ? "SENDING…" : `BACK TO ${tfmt(t.set)}`, "ready to start again", {cmd: "te:reset", why}), b("cmdbtn tgo", pT === "name" ? "SAVING…" : "DONE", "", {cmd: "te:done", why})]
+    : [b("cmdbtn", "CANCEL", "", {cmd: "te:x"}), b("cmdbtn tgo", pT === "save" ? "SAVING…" : "SET", "", {cmd: "te:save", why})];
   return `<div class="tedit" role="group" aria-labelledby="te-t"><p class="tet" id="te-t">${t ? `Change ${esc(t.name)}` : "New timer"}</p>${nm}${time}<div class="tact">${acts.join("")}</div></div>`;
 }
 /* SOUND: this screen's own setting, for its timers and CraftBeerPi's alerts. A browser plays sound only after a tap on the
@@ -3292,12 +3365,13 @@ function keepStepInView() {
 function tSend(key, dir, label, apply, request, o = {}) {
   if (DEMO_MODE) return send(key, dir, label, apply);
   return exec(key, dir, label, request, {
+    quiet: o.quiet, why: o.why,
     ok: res => {
       if (res.data && Array.isArray(res.data.timers)) tAns = {...res.data, received: Date.now()};
       if (o.ok) o.ok(res);
     },
     fail: (res, w) => {
-      note("t", res.data && res.data.error ? String(res.data.error) : `That didn't go through: ${w}.`);
+      note("t", (o.why && o.why(res)) || (res.data && res.data.error ? String(res.data.error) : `That didn't go through: ${w}.`));
       if (o.fail) o.fail(res, w);
     }
   });
@@ -3316,16 +3390,18 @@ function cmdTe(x, y) {
   if (x === "pick") { const n = st.names[+y]; if (n != null) e.name = e.name === n ? "" : n; return renderAll(); }
   if (x === "step") { e.set = Math.min(300, Math.max(1, e.set / 60 + parseInt(y, 10))) * 60; return renderAll(); }
   if (x === "min") { e.set = parseInt(y, 10) * 60; return renderAll(); }
-  if (x === "keep") { e.confirm = false; return renderAll(); }
   /* spaces as the server keeps them: trimmed, and one between words */
   const t = e.id != null ? tById(e.id) : null, name = (e.name || "").split(/\s+/).filter(Boolean).join(" ") || e.ph, shut = {ok: () => { st.tedit = null; }};
   if (e.id != null && !t) { st.tedit = null; return renderAll(); } // removed on another screen meanwhile
-  if ((x === "rm" || x === "done") && !t) return;
-  if (x === "rm") {
-    /* a timer with time left on it (running or paused) is asked about once, in place, as NEXT STEP is; a stopped one, or
-       one that has run out, goes at once, and its alarm with it */
-    if ((t.state === "running" || t.state === "paused") && !e.confirm) { e.confirm = true; return renderAll(); }
-    return tSend("t:" + t.id, "rm", `${t.name} removed`, () => { tAnswered(t, "no longer needed"); st.tmrs = st.tmrs.filter(z => z !== t); st.tedit = null; }, () => api.timersRemove(t.id), shut);
+  if ((x === "reset" || x === "done") && !t) return;
+  /* BACK TO: the timer goes back to its own time, stopped; its editor stays open, now a stopped timer's, so a name typed
+     and not yet saved is kept. CraftBeerPi refuses it for one that has run out meanwhile: its sentence, and the editor
+     closes, leaving the row's +5 MIN and OK */
+  if (x === "reset") {
+    return tSend("t:" + t.id, "reset", `${t.name} back to ${tfmt(t.set)}, stopped with ${tfmt(t.left)} to go`,
+      () => { t.state = "stopped"; t.left = t.run = t.set; delete t.interrupted; e.set = t.set; }, () => api.timersReset(t.id),
+      {ok: () => { e.set = t.set; }, fail: res => { if (res.status === 409 && st.tedit === e) st.tedit = null; },
+        why: res => res.status === 409 && res.data && res.data.error ? String(res.data.error) : ""});
   }
   /* a typed name another timer has is refused as its greyed button is, before anything is sent */
   const twin = (!t || name !== t.name) && tTwin(name, t);
@@ -3348,8 +3424,21 @@ function cmdTe(x, y) {
     () => api.timersChange(t.id, name !== t.name ? {name, seconds: set} : {seconds: set}), shut);
 }
 function cmdTm2(x, id, y) {
+  if (x === "undo") return tUndo(+id);
   const t = tById(+id), key = "t:" + id;
   if (!t || st.pend[key]) return;
+  /* REMOVE on the row: one tap, no question, in any state but a run-out one. The row keeps its place for 10 real seconds
+     with UNDO (tgoneHTML), its height and its buttons' width measured as REMOVE is pressed, so nothing under it moves */
+  if (x === "rm") {
+    if (t.state === "done") return;
+    const live = t.state === "running" || t.state === "paused", row = $("#tr-" + t.id), btns = row && row.querySelector(".tbtn");
+    const g = {t: Object.assign({}, t), idx: st.tmrs.indexOf(t), h: row ? row.offsetHeight : 0, w: btns ? btns.offsetWidth : 0, at: st.t};
+    const gone = () => { st.tgone = Object.assign(g, {real: Date.now(), sending: false}); st.tmrs = st.tmrs.filter(z => z.id !== t.id); if (st.tedit && st.tedit.id === t.id) st.tedit = null; };
+    if (DEMO_MODE) return send(key, "rm", `${t.name} removed${live ? `, ${tfmt(t.left)} to go` : ""}`, gone);
+    st.tgone = Object.assign(g, {sending: true});
+    return tSend(key, "rm", `${t.name} removed${live ? `, ${tfmt(t.left)} to go` : ""}`, null, () => api.timersRemove(t.id),
+      {ok: gone, fail: () => { if (st.tgone === g) st.tgone = null; }});
+  }
   if (x === "go") {
     if (t.state === "running") return tSend(key, "pause", `${t.name} paused, ${tfmt(t.left)} to go`, () => { t.state = "paused"; }, () => api.timersPause(t.id));
     return tSend(key, "start", `${t.name} started, ${tfmt(t.left)} to go`, () => { if (t.state === "stopped") t.run = t.left; t.state = "running"; delete t.interrupted; }, () => api.timersStart(t.id));
@@ -3367,6 +3456,36 @@ function cmdTm2(x, id, y) {
   if (heard) answered.add(heard);
   if (x === "ok") return tSend(key, "ok", `${t.name}: alarm answered`, () => { answer(); t.state = "stopped"; t.left = t.run = t.set; }, () => api.timersOk(t.id), o);
   return tSend(key, "plus5", `${t.name}: 5 more minutes`, () => { answer(); t.state = "running"; t.left = t.run = 300; }, () => api.timersPlus5(t.id), o);
+}
+/* UNDO, within 10 s of REMOVE: CraftBeerPi puts the timer back with its id, in its place, as it would be now: one that
+   was counting down has counted on meanwhile. Live, its line says the time left in CraftBeerPi's answer. Refused (409:
+   four timers, or another of its name, both made on another screen meanwhile), CraftBeerPi's sentence, and the row stays
+   for the rest of its 10 s; too late (404, after CraftBeerPi's 12 s), the screen names the timer, as CraftBeerPi has only
+   its number by then, and the row goes */
+function tUndo(id) {
+  const g = st.tgone;
+  if (!g || g.sending || g.t.id !== id || st.pend["t:" + id]) return;
+  const t = g.t, live = t.state === "running" || t.state === "paused", said = `${t.name} put back`;
+  if (DEMO_MODE) {
+    const left = () => Math.max(1, t.state === "running" ? t.left - (st.t - g.at) : t.left);
+    return send("t:" + id, "undo", `${said}${live ? `, ${tfmt(left())} to go` : ""}`, () => {
+      t.left = left();
+      st.tmrs.splice(Math.min(g.idx, st.tmrs.length), 0, t);
+      st.tgone = null;
+    });
+  }
+  return tSend("t:" + id, "undo", said, null, () => api.timersUndo(id), {
+    quiet: true,
+    ok: res => {
+      if (st.tgone === g) st.tgone = null;
+      const back = res.data && Array.isArray(res.data.timers) ? liveTmrs({...res.data, received: Date.now()}).find(z => z.id === id) : null;
+      const line = said + (back && (back.state === "running" || back.state === "paused") ? `, ${tfmt(back.left)} to go` : "");
+      logEvent(line, "confirmed", "ok"); say(line + ": confirmed");
+    },
+    fail: res => { if (res.status === 404 && st.tgone === g) st.tgone = null; },
+    why: res => res.status === 404 ? `${t.name} can't be put back now: a removed timer can be put back for 10 seconds.`
+      : res.status === 409 && res.data && res.data.error ? String(res.data.error) : ""
+  });
 }
 /* the alarm sound: the one chosen in Settings, BREWDAY_ALARM_SOUND (alarm.js). ring() plays its whole burst, ring(2) its
    first two pulses */
@@ -3443,6 +3562,10 @@ function tmTick() {
     } else if (t.state === "done") setText($("#tt-" + t.id), tUpText(t));
   }
   if (!st.banner) { const d = st.tmrs.find(t => t.state === "done"); if (d) { st.banner = DEMO.tBanner(d, st.tmrs); changed = true; } }
+  /* a removed timer's row goes 10 real seconds after REMOVE, at any speed of CraftBeerPi's clock, unless its UNDO is on
+     its way. At 1× CraftBeerPi's seconds are real ones, so they count it, as in a moment set up with no real time */
+  const g0 = st.tgone, gone = g0 && (SC() !== 1 && g0.real != null ? Date.now() - g0.real >= 10000 : st.t - g0.at >= 10);
+  if (gone && !st.pend["t:" + g0.t.id]) { st.tgone = null; changed = true; }
   if (changed) renderAll();
   else { const m = $("#tml-t"); if (m) m.innerHTML = tmlText(); }
   // the beep while a timer's alarm waits is the screen's own: every 3 real seconds, at any speed of the demo's clock
@@ -3489,6 +3612,9 @@ function liveTmTick() {
     else if (t.state === "done") setText($("#tt-" + t.id), tUpText(t));
   }
   const m = $("#tml-t"); if (m) m.innerHTML = tmlText();
+  // a removed timer's row goes 10 real seconds after CraftBeerPi took it, unless its UNDO is on its way
+  const g = st.tgone;
+  if (g && !g.sending && Date.now() - g.real >= 10000 && !st.pend["t:" + g.t.id]) { st.tgone = null; renderAll(); }
   alarmCheck();
 }
 const TAB_PATH = {"Recipe Book": "/recipes", "Brew Steps": "/mashprofile"};
@@ -4429,7 +4555,7 @@ export function createBrewDay(el, o = {}) {
   } else if (DEMO_MODE) {
     const key = DEMO.SCENES[o.demo] || DEMO.EXTRA[o.demo] ? o.demo : "mash";
     M = {RECIPE: DEMO.RECIPE, VNAME: DEMO.VNAME, VACT: DEMO.VACT, ACT: DEMO.ACT, HERMS_DELTA: DEMO.HERMS_DELTA, BOOK: DEMO.BOOK, U: "°F", LIMITS: [32, 230],
-      BOILPOWER: true, BKNEW: true, BOIL_TH: DEMO.BOIL_TH, TIMERS: true};
+      BOILPOWER: true, BKNEW: true, BKHAND: true, BOIL_TH: DEMO.BOIL_TH, TIMERS: true};
     st = (DEMO.SCENES[key] || DEMO.EXTRA[key])();
     // #unload-notinbook: steps built on Brew Steps under a name the Recipe Book doesn't have
     if (st.recipeName) { M.RECIPE = {...M.RECIPE, name: st.recipeName}; delete st.recipeName; }

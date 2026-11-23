@@ -10,8 +10,9 @@
 // check-many, check-noanswer, check-noprobe, check-slow and check-unsure, and the strike water's sw-plan, sw-forecast,
 // sw-volume, sw-grain-edit, sw-grain, sw-hot, sw-used, sw-backhot, sw-working, sw-working-open, sw-reworking, sw-levers,
 // sw-refused, sw-refused-moved, sw-failed, sw-tunprobe, sw-wait, sw-heat, sw-move, sw-late, sw-doughin, sw-hand,
-// sw-novol, sw-missing, sw-noprobe, sw-grain-bad and sw-interval, and the one clock's sim-clock and sim-clock-1x) runs
-// on this, so it can be compared with the mockup pixel for pixel.
+// sw-novol, sw-missing, sw-noprobe, sw-grain-bad and sw-interval, the one clock's sim-clock and sim-clock-1x, the timers'
+// timer-change and timer-removed, and the boil kettle's MANUAL's bk-hand, bk-hand-off and bk-man-boil) runs on this, so
+// it can be compared with the mockup pixel for pixel.
 import { swModel, SW_MORNING, SW_LEVER_S } from "./strike-demo";
 
 const RECIPE = {
@@ -455,6 +456,37 @@ const SCENES = {
   }),
   /* BREWDAY_TIMER_NAMES left blank: no names to pick, and a line saying why; the name box still takes any */
   "timer-nonames": () => Object.assign(SCENES["timer-new"](), {names: [], open: {tedit: {id: null, name: "", ph: "Timer 3", set: 10 * 60}}}),
+  /* Stir's editor while it counts down: its time left changes at once, and BACK TO 15:00 is there, as REMOVE is on the
+     row */
+  "timer-change": () => Object.assign(SCENES.timers(), {open: {tedit: {id: 1, name: "Stir", ph: "Stir", set: 15 * 60}}}),
+  /* Stir removed 3 s ago, at 14:32:28 with 7:15 to go: its row keeps its place for 10 s, with UNDO */
+  "timer-removed": () => {
+    const s = SCENES.timers(), t = s.tmrs[0];
+    s.tmrs = s.tmrs.slice(1);
+    s.tgone = {t: Object.assign({run: t.set}, t, {left: t.left + 3}), idx: 0, h: 0, at: s.t - 3};
+    s.events = [["14:32:28", "Stir removed, 7:15 to go", "confirmed", "ok"], ...s.events];
+    return s;
+  },
+  /* the boil kettle in MANUAL, brewing by hand: the wort just under a boil, the element on by hand, the boil power 45 %.
+     The element runs at that 45 %, which the window reads as HAND 45 %, with the steps beside it, and MODE's MAN is
+     boxed (bkManCue). #bk-hand-off: the same with the element off */
+  "bk-hand": () => {
+    const s = SCENES.manual();
+    Object.assign(s.v.bk, {pv: 207.6, sv: null, mode: "manual", bp: 45});
+    Object.assign(s.a.bkEl, {on: true, pct: 45, lvl: 70});
+    s.events = [["10:04:40", "BOIL ELEMENT on at 45 %", "confirmed", "ok"], ...s.events];
+    return s;
+  },
+  "bk-hand-off": () => { const s = SCENES["bk-hand"](); Object.assign(s.a.bkEl, {on: false, pct: 0}); s.events.shift(); return s; },
+  /* the boil at 15:52:40, as #boiling, with the boil kettle put in MANUAL at 15:51:58 and its element off: the Boil step's
+     90 min still count down, but BoilPower doesn't run the kettle, so MODE's MAN is boxed in Prompt Amber (bkManCue) */
+  "bk-man-boil": () => {
+    const s = SCENES.boiling();
+    Object.assign(s.v.bk, {pv: 211.6, mode: "manual", bp: 45});
+    Object.assign(s.a.bkEl, {on: false, pct: 0});
+    s.events.unshift(["15:51:58", "Boil kettle MANUAL", "confirmed", "ok"]);
+    return Object.assign(s, {base: "boiling"});
+  },
   /* brewing by hand, with three: PBW soak counting down, Yeast paused at 10:01:08, Timer 3 ready */
   "timers-hand": () => Object.assign(SCENES.manual(), {
     base: "manual",

@@ -86,6 +86,10 @@ export const api = {
   timersAdd: (name, seconds, start) => post("/timers/", { name, seconds, start }),
   timersChange: (timerId, change) => call("PUT", `/timers/${id(timerId)}`, change),
   timersRemove: (timerId) => call("DELETE", `/timers/${id(timerId)}`),
+  // a timer removed in the last 10 s back in its place, as it would be now (core 4.7.7.post52)
+  timersUndo: (timerId) => post(`/timers/${id(timerId)}/undo`),
+  // a timer counting down or paused back to its own time, stopped (core 4.7.7.post52)
+  timersReset: (timerId) => post(`/timers/${id(timerId)}/reset`),
   timersStart: (timerId) => post(`/timers/${id(timerId)}/start`),
   timersPause: (timerId) => post(`/timers/${id(timerId)}/pause`),
   timersAddTime: (timerId, seconds) => post(`/timers/${id(timerId)}/add`, { seconds }),
