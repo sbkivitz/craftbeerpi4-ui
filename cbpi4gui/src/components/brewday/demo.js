@@ -10,9 +10,9 @@
 // check-many, check-noanswer, check-noprobe, check-slow and check-unsure, and the strike water's sw-plan, sw-forecast,
 // sw-volume, sw-grain-edit, sw-grain, sw-hot, sw-used, sw-backhot, sw-working, sw-working-open, sw-reworking, sw-levers,
 // sw-refused, sw-refused-moved, sw-failed, sw-tunprobe, sw-wait, sw-heat, sw-move, sw-late, sw-doughin, sw-hand,
-// sw-novol, sw-missing, sw-noprobe, sw-grain-bad and sw-interval, the one clock's sim-clock and sim-clock-1x, the timers'
-// timer-change and timer-removed, and the boil kettle's MANUAL's bk-hand, bk-hand-off and bk-man-boil) runs on this, so
-// it can be compared with the mockup pixel for pixel.
+// sw-novol, sw-missing, sw-missing-steps, sw-noprobe, sw-grain-bad and sw-interval, the one clock's sim-clock and
+// sim-clock-1x, the timers' timer-change and timer-removed, and the boil kettle's MANUAL's bk-hand, bk-hand-off and
+// bk-man-boil) runs on this, so it can be compared with the mockup pixel for pixel.
 import { swModel, SW_MORNING, SW_LEVER_S } from "./strike-demo";
 
 const RECIPE = {
@@ -678,7 +678,9 @@ const SCENES = {
      with USE not pressed the night before; #sw-doughin, the water in the mash tun, BrewStart finished and MashIn on the
      Mash Tun asking for the malt, its probe reading the HLT's water. #sw-hand: the recipe as imported, without the flow,
      and the HLT heating the strike water on its own AUTO. With a number missing: #sw-novol,
-     BrewStart without a water volume; #sw-missing, a recipe built on Brew Steps, with no grain weight or mash water;
+     BrewStart without a water volume; #sw-missing, a recipe imported before CraftBeerPi kept BeerSmith's mash figures
+     (core post55), as every recipe in the rig's book is, its MashIn with a grain weight (swd.stepGrain);
+     #sw-missing-steps, a recipe built on Brew Steps, with no grain weight either;
      #sw-noprobe, the boil kettle's probe giving no reading; #sw-grain-bad, BrewStart's grain temperature saved on Brew
      Steps as 150 °F; #sw-interval, the mash tun's control interval set to 2.5 s. swd: the moment's numbers, which the
      demo's stand-in for CraftBeerPi works the box's state out from (strike-demo.js) */
@@ -752,7 +754,8 @@ const SCENES = {
     return s;
   },
   "sw-novol": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.vol = null; return s; },
-  "sw-missing": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.from = null; return s; },
+  "sw-missing": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); Object.assign(s.swd, {from: null, stepGrain: true}); return s; },
+  "sw-missing-steps": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.from = null; return s; },
   "sw-noprobe": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.v.bk.pv = null; s.pb.none.bk = 300; return Object.assign(s, {pbLast: {bk: 61.4}, gap: {bk: 300}}); },
   "sw-grain-bad": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.grain = 150; return s; },
   /* the strike water step's temperature typed on Brew Steps as 185 °F, and USE pressed at 21:12:31. The model's
@@ -824,6 +827,9 @@ const SW_ASK = "Move the strike water to the Mash Tun, then press Next";
 /* the steps the strike water moments put in front of the recipe (load): BrewStart alone, as the brewer's recipe has it */
 const SW_STEPS = [{n: "BrewStart", type: "BrewStart", k: "hlt", ready: "07:00", campden: true, watts: SW_WATTS}];
 const SW_FROM = {grainLb: 20, forGrain: 7.5, dead: 0.76, tunLb: 33, bs: 134.6, bsGrain: 65, bsTun: 72};
+/* MashIn's grain weight (Grain_Kg) as Test Recipe v5's import set it, 20 lb, before CraftBeerPi kept BeerSmith's other
+   mash figures (core post55) */
+const SW_GRAIN_KG = 9.072;
 /* Test Recipe v5 as the Recipe Book keeps it: its strike water at the rest, and BrewStart's water (swAsSaved) */
 const SW_PLAN0 = 126, SW_VOL0 = 15;
 /* the water a BrewStart added on Brew Day (+ BrewStart) heats: all the strike and sparge water the recipe needs, as
@@ -1241,7 +1247,7 @@ function history(scene, now, x) {
 }
 
 export { RECIPE, SPARGE_STEP, BIG_ADDS, VNAME, KNAME, PROBE, VACT, ACT, HERMS_DELTA, BOIL_TH, BOOK, SCENES, history, noTargetBanner, pauseBanner, spargeBanner, boilHoldBanner, boilStartLine, tfmt, tBanner, byHandBanner, versions,
-  SW_STEPS, SW_ASK, swStartAt, swPlanLine, SW_PLAN0, SW_VOL0, SW_WATTS, SW_NEED, SW_RATE, SW_SPARE };
+  SW_STEPS, SW_ASK, swStartAt, swPlanLine, SW_PLAN0, SW_VOL0, SW_WATTS, SW_NEED, SW_RATE, SW_SPARE, SW_GRAIN_KG };
 
 // Not the mockup's: two moments of the screen's own, for checking how the title bar holds what CraftBeerPi
 // really asks. Not compared with the mockup.

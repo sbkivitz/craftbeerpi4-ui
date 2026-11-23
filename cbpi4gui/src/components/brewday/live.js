@@ -201,7 +201,12 @@ export function stepModel(s, roleOf, U, kname = {}) {
   if (temp != null) m.temp = temp;
   if (t != null && t > 0) m.min = t;
   if (s.type === "BrewStart") Object.assign(m, brewStartModel(p, U, kname));
-  if (s.type === "MashInStep") m.note = temp != null ? `Add the malt when it reaches ${temp} ${U}` : "Add the malt when it is up to temperature";
+  if (s.type === "MashInStep") {
+    m.note = temp != null ? `Add the malt when it reaches ${temp} ${U}` : "Add the malt when it is up to temperature";
+    // its grain weight, by which the strike water box knows the recipe has one where BeerSmith's mash figures are missing
+    const kg = num(p.Grain_Kg);
+    if (kg != null && kg > 0) m.kg = kg;
+  }
   else if (s.type === "NotificationStep" && p.Notification) m.note = unitText(p.Notification, U);
   if (s.type === "BoilStep") {
     m.boil = true;

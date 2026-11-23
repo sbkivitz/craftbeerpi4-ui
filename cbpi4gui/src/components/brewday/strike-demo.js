@@ -130,7 +130,7 @@ function strikeInputs(st, M) {
   const typed = given == null || !Number.isFinite(given) ? null : given;
   const gal = F && F.grainLb && F.forGrain ? swGal(F) : null, interval = d.interval === undefined ? 2 : d.interval;
   let miss = null;
-  if (gal == null) miss = "recipe";
+  if (gal == null || rest == null) miss = "recipe";
   else if (!swIntervalOk(interval)) miss = "sample_time";
   else if (room == null) miss = "probe";
   else if (room < ROOM_LO || room > ROOM_HI) miss = "room";

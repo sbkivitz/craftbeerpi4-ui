@@ -1330,11 +1330,14 @@ const swStillProbe = () => Math.min(1, Math.max(0, num(st.sw && st.sw.rig && st.
    still shown, for the numbers it came from (stale); with none yet (wait), there is nothing to show but that it is
    working. Failed: it couldn't work one out for these numbers, and nothing is coming until a number changes. A forecast
    is found by its strike, to 0.1 (fc); one CraftBeerPi hasn't sent yet is none. A USE over the ceiling is too far even
-   where CraftBeerPi doesn't say so, as with an answer it kept from an older version: it is never offered */
+   where CraftBeerPi doesn't say so, as with an answer it kept from an older version: it is never offered. For the
+   words when the recipe lacks what USE is worked out from: which of BeerSmith's mash figures it lacks (lacks), whether
+   a step of the recipe has a grain weight (stepGrain) and the mash step's name */
 function swNumbers() {
   const S = st.sw, R = S.recipe || {}, I = S.inputs || {}, A = S.answer;
   const N = {plan: I.planned ?? null, rest: I.rest, room: I.room ?? null, typed: I.typed ?? null, grain: I.grain ?? null, vol: I.vol ?? null,
-    left: I.left ?? null, step: S.by === "step", gal: R.strike_vol ?? null, probe: I.probe || "coil", interval: S.sample_time ?? null, R};
+    left: I.left ?? null, step: S.by === "step", gal: R.strike_vol ?? null, probe: I.probe || "coil", interval: S.sample_time ?? null, R,
+    lacks: Array.isArray(R.lacks) ? R.lacks : [], stepGrain: M.RECIPE.steps.some(s => s.kg > 0), mashName: swMashName(S)};
   if (S.miss && S.miss !== "far") return Object.assign(N, {miss: S.miss});
   N.work = S.working || null;
   if (!A) return Object.assign(N, S.failed && !N.work ? {failed: S.failed} : {wait: true});
@@ -1346,6 +1349,12 @@ function swNumbers() {
     mid: L ? L.mid : null, top: L && Array.isArray(L.top) ? L.top : [], lv: (L && L.rise) || {}, fc: T => swFc(A, T)});
 }
 const swFc = (A, T) => T == null ? null : (A.forecasts || []).find(f => f && Math.round(f.strike * 10) === Math.round(T * 10)) || null;
+/* the mash step's name: the step CraftBeerPi takes the rest from (step_ids.mash_in), else the first on the mash tun */
+function swMashName(S) {
+  const id = S.step_ids && S.step_ids.mash_in, steps = M.RECIPE.steps;
+  const s = (id != null && steps.find(x => String(x.id ?? x.n) === String(id))) || steps.find(x => x.k === "mt");
+  return s ? s.n : "The mash step";
+}
 /* how long CraftBeerPi has been working USE out, on its brewing clock: counted on from its state as the timers are */
 function swElapsed() {
   const S = st.sw, w = S && S.working;
@@ -1409,9 +1418,22 @@ function swWords(N, list) {
     : own ? ` With the water heated only to the rest, PID_HERMS by itself takes the mash to ${swT(N.restPeak)}.` : "";
   return list.map((x, i) => say1(x, F[i], i)).join(" ") + tail;
 }
+/* the recipe lacks what USE is worked out from (CraftBeerPi's miss "recipe"): the mash step's temperature, or, from
+   CraftBeerPi's recipe.lacks, BeerSmith's grain weight, mash water or mash tun weight, named in the brewer's words. The
+   grain weight only where no step of the recipe has one: a recipe imported before CraftBeerPi kept BeerSmith's mash
+   figures has MashIn's Grain_Kg and none of them. BeerSmith's own strike temperature and the grain's and the tun's,
+   which only FORECAST's comparison uses, aren't named: the same import brings them. Importing again changes the recipe
+   book's copy only, so the loaded recipe has to be loaded again */
+const swOr = a => a.length < 2 ? a.join("") : `${a.slice(0, -1).join(", ")} or ${a[a.length - 1]}`;
+function swMissRecipe(N) {
+  if (N.rest == null) return `${esc(N.mashName)} has no temperature, so where the mash lands isn't known. Give it one in Brew Steps.`;
+  const L = N.lacks, names = swOr([L.includes("grain") && !N.stepGrain && "grain weight", L.includes("water") && "mash water",
+    L.includes("tun") && "mash tun weight"].filter(Boolean));
+  return `${names ? `This recipe has no ${names} from BeerSmith` : "This recipe lacks BeerSmith's mash figures"}, so where the mash lands isn't known. Import it again and load it.`;
+}
 /* why there's no forecast, in the buttons' place */
 const SW_MISS = {
-  recipe: () => "No grain weight or mash water in this recipe, so where the mash lands isn't known. A recipe imported from BeerSmith has both.",
+  recipe: swMissRecipe,
   probe: N => `The boil kettle's probe gives no reading, so the room's temperature isn't known${N.typed == null ? ", nor the grain's" : ""}. Check its plug and cable.`,
   room: N => `The boil kettle's probe reads ${N.room.toFixed(1)}&nbsp;${M.U}, ${N.room > swRoom()[1] ? "warmer" : "colder"} than any room, so it can't stand for the room${N.typed == null ? " or the grain" : ""}.`,
   /* BrewStart's Grain temperature, saved on Brew Steps, that the forecast can't use: not a number, or one no room has.
@@ -5370,11 +5392,13 @@ export function createBrewDay(el, o = {}) {
        BrewStart. BrewStart is Ready by 07:00 on brew day, the moment's second day,
        and anything else a moment changes is in swd.bs. Where the grain spent the night is answered unless a moment says
        otherwise (swd.where, null for not yet): in the garage with BrewStart's grain temperature blank, so the boil
-       kettle's probe stands for it, and indoors with a figure */
+       kettle's probe stands for it, and indoors with a figure. swd.stepGrain: MashIn has its grain weight, as Test
+       Recipe v5's import gave it (#sw-missing) */
     if (st.swd && !st.swd.hand) {
       const d = st.swd, where = d.where !== undefined ? d.where : d.grain == null ? "garage" : "indoors";
       M.RECIPE = {...M.RECIPE, steps: DEMO.SW_STEPS.filter(s => !(d.noBS && s.type === "BrewStart"))
-        .map(s => ({...s, temp: d.plan, ...(s.type === "BrewStart" ? {vol: d.vol, grain: d.grain, where, date: dateOf(1), ...d.bs} : {})})).concat(M.RECIPE.steps)};
+        .map(s => ({...s, temp: d.plan, ...(s.type === "BrewStart" ? {vol: d.vol, grain: d.grain, where, date: dateOf(1), ...d.bs} : {})}))
+        .concat(M.RECIPE.steps.map((s, i) => i === 0 && d.stepGrain ? {...s, kg: DEMO.SW_GRAIN_KG} : s))};
     }
     // a moment can open an editor (open) and borrow another moment's graph history (base)
     const open = st.open, base = st.base || key;
