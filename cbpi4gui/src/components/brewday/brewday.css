@@ -951,3 +951,24 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page){--graph-h:108px}
 :where(html.bd-page) .gspans span{padding:7px 3px}
 }
+/* The section cues (CUES.md, A): each kind of section on a ground of its own, so the screen's parts read as different
+   things at a glance, with no new colour. From the top:
+   - the frame: the title bar, the last event and the tabs along the top, and the timers beside the drawing, on the title
+     bar's ground: what calls for the brewer, what just happened, and his own countdowns. The tabs' gap in layout B goes
+     into the band under the last event, so on one screen nothing moves;
+   - the recipe, the plan: a faintly cool ground with a 4 px Selection Blue edge, the colour of the current step;
+   - the vessels: the faceplates as they are, now the brightest panels;
+   - the drawing: the plumbing as a picture, on a darker ground with no edge, set back by a soft inner shadow, as the
+     readings' windows are set into their faceplates.
+   A run-out timer keeps its Dark Amber Wash, and + TIMER and SOUND over the drawing's corner, with no timers, stay on
+   the drawing with no ground of their own. Amber, red and green keep their meanings; nothing here uses them */
+:where(html.bd-page){--cue-band:#0a1016;--cue-evt:#111a23;--cue-evt-line:#1e2b38;--cue-plan:#13243b;--cue-plan-line:#25425f;--cue-plan-edge:#3373b8;--cue-pic:#0a1117}
+:where(html.bd-page) .status{background:var(--cue-band);padding-bottom:10px}
+:where(html.bd-page) .event{background:var(--cue-evt);border-color:var(--cue-evt-line)}
+:where(html.bd-page)[data-layout=b] .tabs{margin-top:0}
+:where(html.bd-page) .tabs{background:var(--cue-band)}
+:where(html.bd-page) .recipe{background:var(--cue-plan);border-color:var(--cue-plan-line);box-shadow:inset 4px 0 0 var(--cue-plan-edge)}
+:where(html.bd-page) .rig{background:var(--cue-pic);border-color:transparent;box-shadow:inset 0 2px 10px rgb(0 0 0/.55)}
+:where(html.bd-page) .rig-line .v-shell{fill:#141f29}
+:where(html.bd-page) .tside:not(.empty){background:var(--cue-band);border-color:#223140}
+:where(html.bd-page) .tside .tchip:not([data-state=done]){background:var(--cue-evt)}
