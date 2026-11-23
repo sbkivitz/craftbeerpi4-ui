@@ -13,7 +13,7 @@
   --cond:"Barlow Condensed","Roboto Condensed","Arial Narrow","Segoe UI",sans-serif;
   --r:6px;--gap:12px;--pad:20px;--tabs-h:64px;--mock-h:38px;--row-l:520px;--row-c:400px;
   /* the Recipe Book's columns: the name, then the numbers that tell recipes apart, in the same place on every row */
-  --bkc:minmax(0,1fr) 54px minmax(120px,168px) 74px 98px;--bka:156px
+  --bkc:minmax(0,1fr) 54px minmax(120px,168px) 74px 108px;--bka:156px
 }
 html.bare{--mock-h:0px}
 *{box-sizing:border-box}
@@ -33,6 +33,8 @@ button{cursor:pointer}
 .mock a{color:#1d232a;padding:4px 8px;border-radius:4px}
 .mock a[aria-current=true]{background:#1d232a;color:#f2efe6;text-decoration:none}
 .mock .grp{font-weight:600}
+.mock button{min-height:30px;padding:2px 10px;border:1px solid #1d232a;border-radius:4px;background:#fff;color:#1d232a;font:600 14px/1.2 var(--sans)}
+.mock button[hidden]{display:none}
 html.bare .mock{display:none}
 
 /* ---------- the frame: the brew-day screen's title bar, last event and tabs, layout B (html[data-layout=b]), copied
@@ -54,7 +56,12 @@ html.bare .mock{display:none}
 .alloff{min-height:48px;padding:0 16px;border:2px solid #7d8fa2;border-radius:var(--r);background:var(--panel-2);color:var(--text);font:700 17px/1 var(--cond);letter-spacing:.06em}
 .alloff:not([aria-disabled=true]):hover{border-color:#ff8a80;background:#2b1315}
 .alloff[aria-disabled=true]{opacity:.5;cursor:not-allowed}
-.clock{font:600 clamp(26px,2.4vw,40px)/1 var(--cond);font-variant-numeric:tabular-nums;min-width:3.2ch;text-align:right}
+.clock{font:600 clamp(26px,2.4vw,40px)/1 var(--cond);font-variant-numeric:tabular-nums;min-width:3.2ch;text-align:right;white-space:nowrap}
+/* a simulator's clock: CraftBeerPi's date where it isn't the screen's, and its speed where it isn't 1×, in a tag before
+   the time (brew-day.css) */
+.clock[data-sim]{display:flex;align-items:center;justify-content:flex-end;gap:10px}
+.clock .cd{order:-1;display:inline-block;padding:4px 7px 3px;border:1px solid #3c7fcc;border-radius:4px;background:#0d2b48;font:600 15px/1 var(--cond);letter-spacing:.08em;color:#9bcbff;white-space:nowrap}
+.clock .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 /* on a monitor or laptop only the alarm or prompt gives way to a long message in the title bar (it wraps): ALL OFF keeps
    its shape and the clock its digits. Narrower, both still give way, so the prompt doesn't grow taller still */
 @media (min-width:1180px){.alloff,.clock{flex:none}}
@@ -238,7 +245,8 @@ button.step:hover{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transpa
 .bko .bn{grid-column:1;font:600 20px/1.15 var(--cond);letter-spacing:.02em;overflow-wrap:break-word}
 .bko .bs{grid-column:1;font:500 15px/1.3 var(--cond);letter-spacing:.02em;color:var(--text-2);overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2}
 .bko .c{grid-row:1/4;font:600 18px/1.2 var(--cond);letter-spacing:.02em;color:var(--text);font-variant-numeric:tabular-nums}
-.bko .c.n{grid-column:2}.bko .c.m{grid-column:3}.bko .c.b{grid-column:4}.bko .c.d{grid-column:5;color:var(--text-2);font-weight:500}
+/* Changed: wide enough for the widest time of day, Today 12:59 PM, on one line */
+.bko .c.n{grid-column:2}.bko .c.m{grid-column:3}.bko .c.b{grid-column:4}.bko .c.d{grid-column:5;color:var(--text-2);font-weight:500;white-space:nowrap}
 .bko .sum{display:none}
 .bko mark,.adds mark{padding:0 1px;border-radius:2px;background:#5a4300;color:#fff3d6}
 .bko .hit{grid-column:1;font:500 15px/1.3 var(--cond);color:var(--text-2)}
@@ -294,6 +302,14 @@ button.step:hover{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transpa
 .whenl:empty{display:none}
 .whenl b{font-weight:600;font-variant-numeric:tabular-nums}
 .whenl .late{color:var(--note)}
+/* CraftBeerPi's clock in BrewStart's When settings where it isn't the screen's (a simulator), in the title bar tag's
+   look: Progress Blue on Progress Track Navy, condensed capitals */
+.cbclk{width:fit-content;max-width:calc(100% - 20px);margin:0 10px 10px;padding:6px 9px 5px;border:1px solid #3c7fcc;border-radius:4px;background:#0d2b48;font:600 15px/1.25 var(--cond);letter-spacing:.08em;color:#9bcbff}
+.cbclk .seen{text-transform:uppercase}
+/* a time box, and with 12-hour times its AM and PM beside it */
+.tmf{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;justify-self:start}
+.fld.tmbox{width:112px;padding:0 14px;font:600 22px/1 var(--cond);font-variant-numeric:tabular-nums}
+.tmf .seg{grid-auto-columns:minmax(64px,auto);justify-self:auto}
 
 /* a row: what it is on the left (name, what it does, CraftBeerPi's name), the control on the right */
 .row{display:grid;grid-template-columns:minmax(0,var(--row-l)) minmax(260px,var(--row-c));column-gap:32px;align-items:start;padding:14px 10px;border-top:1px solid var(--line);border-radius:4px}
@@ -448,6 +464,9 @@ select.fld option{background:#101a23;color:var(--text)}
   .app[data-dirty]{padding-bottom:calc(var(--tabs-h) + 66px + env(safe-area-inset-bottom))}
   .topbar{gap:10px;padding:8px var(--pad)}
   .clock{font-size:24px;min-width:0}
+  .clock[data-sim]{flex-direction:column;align-items:flex-end;gap:2px}
+  .clock .cd{order:0;padding:2px 5px 1px;font-size:12px;letter-spacing:.05em}
+  .clock .cd .lg{display:none}
   #link-t{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
   .link{font-size:15px}
   .alloff{flex:0 1 auto;max-width:108px;min-height:46px;padding:4px 10px;font-size:16px;line-height:1.05}
