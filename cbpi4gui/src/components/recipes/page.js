@@ -38,13 +38,13 @@
 //   reloading the browser tab can only get the browser's own question.
 import { GROUPS, KINDS, TYPES, START } from "./catalog";
 import { call, why as callWhy } from "../brewday/api";
-import { stepModel, bookLine as dayBookLine, cfg as cfgOf, parseLeft, recipeWater } from "../brewday/live";
+import { stepModel, bookLine as dayBookLine, cfg as cfgOf, parseLeft, recipeWater, inWords } from "../brewday/live";
 // As text, exactly as written (config-overrides.js): recipes.css for the shadow root; recipes-frame.css, the mockup's
 // .app rules (one screen tall from 620 px, scrolling below 1180 px, room for the phone's save bar), for the document,
 // where they apply only while <html> has data-page=recipes or brewsteps
 import RECIPES_CSS from "./recipes.css";
 import FRAME_CSS from "./recipes-frame.css";
-import { brewNow } from "../brewday/screen";
+import { brewNow, brewScale } from "../brewday/screen";
 
 /* the page's own rules, for a state the mockup doesn't draw: + BrewStart, and BrewStart among + STEP's kinds, greyed
    while CraftBeerPi's clock or the Recipe Book's steps are still coming (bsWhy), as a greyed command is */
@@ -456,8 +456,13 @@ function brewStartProps(ed) {
   return {props, fill: `${from}${water}${temp}`};
 }
 const ymd = t => /^\d{4}-\d{2}-\d{2}$/.test(norm(t)) ? norm(t) : "";
+/* a day and a time of it as seconds on one count, as Brew Day counts its BrewStart box's: the day's number, and the
+   seconds into it */
+const daySecs = (iso, sec) => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 1000 + sec;
 /* when a BrewStart's time comes, as the plugin works it out: Today and Tomorrow count from when START is pressed, by
-   CraftBeerPi's clock, and a time that has passed by then starts nothing by itself. Left out until that clock is known */
+   CraftBeerPi's clock, and a time that has passed by then starts nothing by itself. Then how far off it is from now, by
+   that clock, in the words BrewStart's box on Brew Day uses (inWords): on a simulator, in real time too. Left out until
+   that clock is known */
 function whenHTML(ed, s) {
   const p = s.props || {}, t = hm(p.StartTime), mode = norm(p.Mode) || "Today", ready = readyBy(p), cb = cbNow();
   if (!cb || !t || (mode === "Date" && !ymd(p.StartDate))) return "";
@@ -469,7 +474,8 @@ function whenHTML(ed, s) {
     return `<span class="late">${t} ${mode === "Today" ? "today" : `on ${dw}`} has passed, so nothing would start by itself. For tomorrow morning, choose TOMORROW.</span>`;
   const L = live(ed), nx = L[L.indexOf(s) + 1];
   const what = ready ? `the HLT's water is hot by <b>${t}</b>` : `${esc(nx ? nameIn(nx) : "the next step")} starts at <b>${t}</b>`;
-  return mode === "Date" ? `${what[0].toUpperCase()}${what.slice(1)} on ${dw}.` : `With START pressed today, ${what} ${mode === "Today" ? "today" : "tomorrow"}, ${dw}.`;
+  const away = inWords(daySecs(iso, +t.slice(0, 2) * 3600 + +t.slice(3) * 60) - daySecs(now, cb.getHours() * 3600 + cb.getMinutes() * 60 + cb.getSeconds()), brewScale());
+  return mode === "Date" ? `${what[0].toUpperCase()}${what.slice(1)} on ${dw}: ${away}.` : `With START pressed today, ${what} ${mode === "Today" ? "today" : "tomorrow"}, ${dw}: ${away}.`;
 }
 /* what a BrewStart still needs before it can be saved, for a setting (said under it) or for the whole step (said by
    SAVE): the time always; the vessel and the element's watts for Ready by, which works out from them when to heat */

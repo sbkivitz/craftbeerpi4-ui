@@ -148,6 +148,47 @@ export function additions(p) {
   return out;
 }
 
+/* BrewStart, as Brew Day's row and box read it (design/brewday BREWSTART-EDIT.md):
+   - its time, as "07:00": Ready by's (ready) or Start at's (start); a blank Timing is Start at, as cbpi4_BrewStart reads it;
+   - its day: a date ("2026-11-21") where its Mode is Date, or how it counts one (mode: Today or Tomorrow, from START;
+     Daily, an older form's next time the clock shows it); while it waits, the day it planned for, which it keeps with the
+     step (planned, from _brewstart_planned: "<settings>|<moment>");
+   - the water's temperature, how much there is and its unit; the kettle it heats (Heat_Kettle) by its name in
+     CraftBeerPi, which UNLOAD's reason gives while it waits; its element's power; the grain's temperature, blank for the
+     boil kettle's probe; the Campden reminder;
+   - its settings as read (props), which a change on Brew Day sends back whole */
+const BS_DAY = [/^(\d{4})-(\d{2})-(\d{2})$/, /^(\d{1,2})\.(\d{1,2})\.(\d{4}|\d{2})$/];
+function bsDay(x) {
+  const t = String(x ?? "").trim(), a = BS_DAY[0].exec(t), b = BS_DAY[1].exec(t);
+  const [y, mo, d] = a ? [+a[1], +a[2], +a[3]] : b ? [b[3].length === 2 ? 2000 + +b[3] : +b[3], +b[2], +b[1]] : [];
+  if (!y) return null;
+  const day = new Date(Date.UTC(y, mo - 1, d));
+  return day.getUTCMonth() === mo - 1 && day.getUTCDate() === d ? day.toISOString().slice(0, 10) : null;
+}
+function brewStartModel(p, U, kname) {
+  const m = {kind: String(p.Timing || "").trim() === "Ready by" ? "ready" : "start", props: p};
+  const at = /^\s*(\d{1,2})(?::(\d{2})(?::\d{2})?)?\s*$/.exec(String(p.StartTime ?? "")), h = at ? +at[1] : 99, mi = at && at[2] != null ? +at[2] : 0;
+  if (h < 24 && mi < 60) m[m.kind] = `${String(h).padStart(2, "0")}:${String(mi).padStart(2, "0")}`;
+  m.mode = String(p.Mode || "").trim() || "Today";
+  if (m.mode === "Date" || m.mode === "DateTime") m.date = bsDay(p.StartDate);
+  const kept = String(p._brewstart_planned || ""), moment = kept.slice(kept.lastIndexOf("|") + 1);
+  if (kept.includes("|")) m.planned = bsDay(moment.slice(0, 10));
+  /* the water as its settings have it, whichever the Timing (the box says what BrewStart heats); the row gives it, as
+     BrewStart's form does, only for Ready by, which heats it */
+  const ready = num(p.Ready_Temp), vol = num(p.Volume), watts = num(p.Heater_Watts);
+  const W = {temp: ready, vol: vol != null && vol > 0 ? vol : null, volU: p.Volume_Unit === "L" || p.Volume_Unit === "gal" ? p.Volume_Unit : U === "°C" ? "L" : "gal",
+    watts: watts != null && watts > 0 ? watts : null, kn: kname[p.Heat_Kettle] || null};
+  m.water = W;
+  if (m.kind === "ready") {
+    if (W.temp != null) m.temp = W.temp;
+    if (W.vol != null) { m.vol = W.vol; m.volU = W.volU; }
+    if (W.kn) m.kn = W.kn;
+  }
+  m.grain = num(p.Grain_Temp);
+  m.campden = p.Campden_Reminder === "Yes";
+  return m;
+}
+
 export function stepModel(s, roleOf, U, kname = {}) {
   const p = (s && s.props) || {};
   const temp = num(p.Temp), t = num(p.Timer);
@@ -158,15 +199,7 @@ export function stepModel(s, roleOf, U, kname = {}) {
   };
   if (temp != null) m.temp = temp;
   if (t != null && t > 0) m.min = t;
-  /* BrewStart planning Ready by: its row says the water's temperature, when it's ready by and how much there is; the
-     kettle it heats (Heat_Kettle) by its name in CraftBeerPi, which UNLOAD's reason gives while it waits */
-  if (s.type === "BrewStart" && String(p.Timing || "").trim() === "Ready by") {
-    const ready = num(p.Ready_Temp), vol = num(p.Volume), at = /^\s*(\d{1,2}):(\d{2})/.exec(String(p.StartTime || ""));
-    if (ready != null) m.temp = ready;
-    if (at) m.ready = `${at[1].padStart(2, "0")}:${at[2]}`;
-    if (vol != null && vol > 0) { m.vol = vol; m.volU = p.Volume_Unit === "L" || p.Volume_Unit === "gal" ? p.Volume_Unit : U === "°C" ? "L" : "gal"; }
-    if (kname[p.Heat_Kettle]) m.kn = kname[p.Heat_Kettle];
-  }
+  if (s.type === "BrewStart") Object.assign(m, brewStartModel(p, U, kname));
   if (s.type === "MashInStep") m.note = temp != null ? `Add the malt when it reaches ${temp} ${U}` : "Add the malt when it is up to temperature";
   else if (s.type === "NotificationStep" && p.Notification) m.note = unitText(p.Notification, U);
   if (s.type === "BoilStep") {
@@ -196,6 +229,22 @@ export function recipeWater(mn, absorption, C) {
   const before = boil - (num(mn.top_up_kettle_l) || 0), kept = grain * perKg, lost = num(mn.lauter_dead_l) || 0;
   return { total: toU(before + kept + lost), before: toU(before), kept: toU(kept), lost: toU(lost), unit: F ? "gal" : "L",
     rate: `${a} ${F ? "gal/lb" : "L/kg"}` };
+}
+
+// A length of time in words: "under a minute", "20 min", "9 h 35 min".
+export const durWords = (sec) => {
+  const m = Math.round(sec / 60);
+  return sec < 60 ? "under a minute" : m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ""}`;
+};
+
+// How far off a time is, counted from now by CraftBeerPi's clock, in the same words in BrewStart's box on Brew Day and
+// under a BrewStart's time on the recipe pages: "in 9 h 35 min". On a simulator, whose clock runs `scale` times as fast
+// as the real one, the real time too: "in 9 h 35 min, about 19 real minutes at 30×".
+export function inWords(sec, scale = 1) {
+  const says = `in ${durWords(sec)}`;
+  if (!(scale > 0) || scale === 1) return says;
+  const real = sec / scale, rm = Math.round(real / 60);
+  return `${says}, ${real < 60 ? "under a real minute" : rm < 90 ? `about ${rm} real minute${rm === 1 ? "" : "s"}` : `about ${Math.round(real / 3600)} real hours`} at ${scale}×`;
 }
 
 export function model(snap) {
@@ -229,6 +278,9 @@ export function model(snap) {
     // An older one heats by hand at the element's own level, so MANUAL stays as before there
     BKHAND: BKNEW && declares(snap.logic, K.bk.type, "heat_by_hand_at_boil_power"),
     BOIL_TH: boilThreshold(K.bk, C, BKNEW),
+    // a waiting BrewStart takes a new day and time: one that declares change_time (1.2.0.post10), read from the step
+    // types as BoilPower's markers are from the logic types. An older one can't, so its time is greyed while it waits
+    BSRETIME: declares(snap.stepTypes, "BrewStart", "change_time"),
     // the recipe's name as CraftBeerPi has it, blank for steps that have none (given); name stands in for it on screen
     RECIPE: { name: (snap.basic && snap.basic.name) || "Brew steps", given: String((snap.basic && snap.basic.name) || ""), steps },
     BOOK: snap.book || [],

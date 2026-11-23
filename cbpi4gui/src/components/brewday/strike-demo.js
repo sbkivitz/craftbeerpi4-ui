@@ -103,7 +103,8 @@ export const SW_MORNING = SW_MODEL.morning;
 
 /* ---------- the state, as CraftBeerPi's GET /step2/strike sends it ---------- */
 /* d, the moment's numbers as the mockup keeps them (its st.sw): the recipe's numbers (from), the HLT's water and the
-   grain's temperature given by hand (vol, grain; with BrewStart they are its step's), where the mash probe sits (probe),
+   grain's temperature given by hand (vol, grain; with BrewStart they are its step's, as is where the grain spent the
+   night, where), where the mash probe sits (probe),
    the mash tun's control interval (interval: the rig's 2 s unless the moment sets one), the strike water before the
    first USE (was), the numbers the last answer was worked out from (has), and CraftBeerPi working one out (work: since,
    why) */
@@ -136,17 +137,19 @@ function strikeInputs(st, M) {
   /* BrewStart's Campden dose for its water, while its Campden reminder is on */
   const campden = bi >= 0 && S[bi].campden && vol != null && vol > 0 ? campdenTablets(vol) : null;
   const inputs = {rest, planned: planned ?? null, vol, vol_from: bi >= 0 ? "brewstart" : "brewday", left: vol != null && gal != null ? +(vol - gal).toFixed(2) : null,
-    campden, room, room_why: room == null ? "stale" : null, typed, grain: typed ?? room, grain_from: typed != null ? "you" : "probe", probe: d.probe || "coil"};
+    campden, room, room_why: room == null ? "stale" : null, typed, grain: typed ?? room, grain_from: typed != null ? "you" : "probe",
+    grain_place: bi >= 0 && (S[bi].where === "garage" || S[bi].where === "indoors") ? S[bi].where : null, probe: d.probe || "coil"};
   return {S, bi, si, mi, F, gal, miss, inputs, sample: swRuns(interval)};
 }
 /* the recipe's place: "plan" before the strike water is heated, "heat" while the strike water step runs, "moved" once the
    water is in the mash tun; brewing by hand (no strike water step) "moved" once MashIn on the mash tun has started. None
-   once the malt is in. By hand the screen adds its own rule (swShown) */
+   once the malt is in. A recipe whose first step is the strike water step (no BrewStart in front) is still planning
+   until it begins. By hand the screen adds its own rule (swShown) */
 function strikePhase(st, si, mi) {
   const r = st.recipe;
   if (!r || r.held || r.cur > mi) return null;
   if (si < 0) return r.cur === mi && r.state !== "ready" ? "moved" : "plan";
-  return r.cur === mi ? "moved" : r.cur === si ? "heat" : "plan";
+  return r.cur === mi ? "moved" : r.cur === si && !(r.state === "ready" && r.cur === 0) ? "heat" : "plan";
 }
 export function strikeState(st, M) {
   const s = strikeInputs(st, M);

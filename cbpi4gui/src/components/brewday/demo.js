@@ -662,7 +662,8 @@ const SCENES = {
   /* the strike water helper (swDay, swMorning): the brewer's own flow (the rig page, 9b) in front of Test Recipe v5.
      The night before: #sw-plan, the recipe loaded and not begun, its strike water at the rest, as under Kal's way,
      and USE offered; #sw-forecast, the box opened out with FORECAST; #sw-volume, the HLT's water being changed there;
-     #sw-grain-edit, the grain's temperature being given there, for grain kept indoors; #sw-grain, given on BrewStart;
+     #sw-grain-edit, the grain's temperature being given there, for grain kept indoors; #sw-grain, given on BrewStart,
+     which answers where the grain spent the night (indoors);
      #sw-hot, the strike water typed in too hot, so the mash would go over its rest; #sw-used, USE pressed; #sw-backhot,
      USE pressed on a plan typed on Brew Steps as 185 °F, so BACK TO would pass the ceiling and is greyed. CraftBeerPi
      working USE out: #sw-working, the recipe just loaded and nothing worked out yet, and #sw-working-open with FORECAST
@@ -684,7 +685,7 @@ const SCENES = {
   "sw-forecast": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {open: {swOpen: true}}),
   "sw-volume": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {open: {swOpen: true, swVol: {val: 13.5}}}),
   "sw-grain-edit": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {open: {swOpen: true, swGrain: {val: 70}}}),
-  "sw-grain": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.grain = 70; return Object.assign(s, {open: {swOpen: true}}); },
+  "sw-grain": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.grain = 70; s.swd.where = "indoors"; return Object.assign(s, {open: {swOpen: true}}); },
   "sw-hot": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.plan = 145; return s; },
   "sw-used": () => swDay(21 * 3600 + 12 * 60 + 40, {used: true}),
   "sw-working": () => swWorking(21 * 3600 + 8 * 60 + 50),
@@ -712,7 +713,7 @@ const SCENES = {
      screen, a phone woken from sleep, still showed the figure for the probe's 60.4 °F when USE was pressed at 21:12:31 */
   "sw-refused": () => {
     const s = swDay(21 * 3600 + 12 * 60 + 32, {});
-    s.swd.grain = 70;
+    s.swd.grain = 70; s.swd.where = "indoors";
     s.events.unshift(["21:11:40", "Grain temperature set to 70.0 °F, was the boil kettle's probe", "confirmed", "ok"]);
     return Object.assign(s, {open: {notes: {r: `USE ${swHot().toFixed(1)} °F wasn't applied: BrewStart's grain temperature is now 70.0 °F, so USE is ${swModel(70, 15, "coil").use.toFixed(1)} °F.`}}});
   },
@@ -761,7 +762,45 @@ const SCENES = {
     s.events[0] = ["21:12:31", `Strike water set to ${s.swd.plan.toFixed(1)} °F, was 185.0 °F`, "confirmed", "ok"];
     return s;
   },
-  "sw-interval": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.interval = 2.5; return s; }
+  "sw-interval": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.interval = 2.5; return s; },
+  /* BrewStart's box (screen.js bsHTML), the #sw-plan night before at 21:12. #bs-edit: opened from BrewStart's row, whose
+     hint asks where the grain is: Ready by 07:00, TOMORROW pressed, the grain not answered yet, focus on IN THE GARAGE
+     with the two answers in view. #bs-indoors: the same with INDOORS pressed, at 68 °F, the box scrolled to it.
+     #bs-past: TODAY pressed, so 07:00 has passed and SET is greyed. #bs-startat: START AT chosen, 05:30 tomorrow.
+     #bs-set: SET pressed at 21:12:31 for Ready by 06:30 with the grain indoors at 68 °F: the box closed, the row and LOG
+     saying so, and CraftBeerPi working USE out again for the grain. #bs-wait: #sw-wait, BrewStart waiting for its time,
+     with the box opened from its row as #bs-edit's is. #bs-new: a recipe with the strike water step but no BrewStart,
+     so + BrewStart above its first step; the strike water box works from the HLT's water CraftBeerPi keeps for brewing
+     by hand. #bs-new-open: its box, for a new BrewStart. #bs-sim: #bs-edit on a simulator at 60×, its own clock on the
+     same Friday night, so the time in words also says how long that is in real minutes. #bs-novol: #bs-edit with
+     BrewStart's water blank. #bs-soon: #sw-wait, BrewStart waiting at 05:40 to have the water hot by 07:00, the box
+     opened from its row with 06:00 typed: sooner than BrewStart plans for heating the water, so the time in words says
+     the heating starts at once and SET reads HEAT NOW. #bs-past, #bs-startat, #bs-sim, #bs-novol and #bs-soon show the
+     box from its top, focus in the time box */
+  "bs-edit": () => Object.assign(swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})), {base: "sw-plan", open: {bsAt: {focus: "garage"}}}),
+  "bs-indoors": () => Object.assign(swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})), {base: "sw-plan", open: {bsAt: {where: "indoors", at: "#bs-box .bsin"}}}),
+  "bs-past": () => Object.assign(swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})), {base: "sw-plan", open: {bsAt: {rel: 0}}}),
+  "bs-startat": () => Object.assign(swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})), {base: "sw-plan", open: {bsAt: {kind: "start", txt: "05:30"}}}),
+  "bs-set": () => {
+    const s = swDay(21 * 3600 + 12 * 60 + 40, {});
+    s.swd.grain = 68; s.swd.where = "indoors"; s.swd.bs = {ready: "06:30"};
+    s.swd.has = {grain: 60.4, vol: 15, probe: "coil", room: 60.4};
+    s.swd.work = {since: 21 * 3600 + 12 * 60 + 31, why: "grain"};
+    s.events.unshift(["21:12:31", "BrewStart: ready by 06:30 Sat 21 Nov, was 07:00 Sat · grain indoors at 68.0 °F", "confirmed", "ok"]);
+    return Object.assign(s, {base: "sw-plan"});
+  },
+  "bs-wait": () => Object.assign(swUnsaid(SCENES["sw-wait"]()), {base: "sw-wait", open: {bsAt: {focus: "garage"}}}),
+  "bs-new": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.noBS = true; return Object.assign(s, {base: "sw-plan"}); },
+  "bs-new-open": () => Object.assign(SCENES["bs-new"](), {open: {bsAt: {neu: true}}}),
+  "bs-sim": () => Object.assign(swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})), {base: "sw-plan", sim: {scale: 60, day0: "2026-11-20", pc: "2026-11-22"}, open: {bsAt: {}}}),
+  "bs-novol": () => { const s = swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})); s.swd.vol = null; return Object.assign(s, {base: "sw-plan", open: {bsAt: {}}}); },
+  "bs-soon": () => Object.assign(SCENES["sw-wait"](), {base: "sw-wait", open: {bsAt: {txt: "06:00"}}}),
+  /* USE waiting for where the grain spent the night (screen.js swHTML). #sw-where: the #sw-plan night before,
+     BrewStart's time set and the grain not answered yet, so BrewStart's row asks "where's the grain?" and USE's place
+     says so too, leading to BrewStart's box. #sw-where-am: brew morning (#sw-late), BrewStart finished and the grain
+     still not answered, so USE leads to the strike water box's own grain box */
+  "sw-where": () => Object.assign(swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})), {base: "sw-plan"}),
+  "sw-where-am": () => Object.assign(swUnsaid(swMorning(DAY2 + 6 * 3600 + 51 * 60 + 10, 126)), {base: "sw-late"})
 };
 /* ---------- the strike water's moments ----------
    The brewer's own flow (the rig page, 9b) in front of the recipe: BrewStart waits for Ready by on the HLT, then a
@@ -774,14 +813,18 @@ const SCENES = {
    (DISPLAY_INFUSE_AMT 33.04 qt), so it is never added again; the mash tun, 33 lb of steel (TUN_WEIGHT, TUN_SPECIFIC_HEAT
    0.12); and BeerSmith's own strike temperature, INFUSE_TEMP 134.6 °F, worked out for grain at 65 °F (GRAIN_TEMP). The
    export doesn't say how much water is in the HLT: that is BrewStart's water volume (vol, from the moment: swDay), which
-   also sets its Campden dose */
+   also sets its Campden dose. BrewStart's element power (Heater_Watts) is the HLT element's, SW_WATTS */
+const SW_WATTS = 6500;
 const SW_STEPS = [
-  {n: "BrewStart", type: "BrewStart", k: "hlt", ready: "07:00", campden: true},
+  {n: "BrewStart", type: "BrewStart", k: "hlt", ready: "07:00", campden: true, watts: SW_WATTS},
   {n: "Strike water", type: "MashInStep", k: "hlt", note: "Move the strike water to the Mash Tun, then press Next"}
 ];
 const SW_FROM = {grainLb: 20, forGrain: 7.5, dead: 0.76, tunLb: 33, bs: 134.6, bsGrain: 65, bsTun: 72};
 /* Test Recipe v5 as the Recipe Book keeps it: its strike water at the rest, and BrewStart's water (swAsSaved) */
 const SW_PLAN0 = 126, SW_VOL0 = 15;
+/* the water a BrewStart added on Brew Day (+ BrewStart) heats: all the strike and sparge water the recipe needs, as
+   CraftBeerPi works it out from the recipe's mash numbers */
+const SW_NEED = 25.4;
 /* BrewStart's Ready by plan, from the rig's measured heat-up (rig page 9b: 15 gal from 60 to 152 °F in 42 min, so
    2.19 °F a minute, plus 10 spare minutes) */
 const SW_RATE = 2.19, SW_SPARE = 10;
@@ -800,12 +843,15 @@ function swWorking(t) {
   s.swd.work = {since: 21 * 3600 + 8 * 60 + 30, why: "load"};
   return s;
 }
+/* a moment with where the grain spent the night not answered yet for this load (BrewStart's where) */
+function swUnsaid(s) { s.swd.where = null; return s; }
 /* brew day, as cbpi4_BrewStart writes it (format_start), and the moment the strike water has been moved and Next
    pressed */
 const SW_DAY = "Sat Nov 21";
 const SW_MOVED = DAY2 + 6 * 3600 + 55 * 60 + 40;
-/* when BrewStart starts heating for 07:00, water at pv heated to t: its heat-up at the rig's rate plus its spare minutes */
-const swStartAt = (t, pv) => DAY2 + 7 * 3600 - Math.ceil(((t - pv) / SW_RATE + SW_SPARE) * 60);
+/* when BrewStart starts heating for its Ready by time (at, on the demo's clock: 07:00 on brew day unless given), water
+   at pv heated to t: its heat-up at the rig's rate plus its spare minutes */
+const swStartAt = (t, pv, at = DAY2 + 7 * 3600) => at - Math.ceil(((t - pv) / SW_RATE + SW_SPARE) * 60);
 /* BrewStart's notification as the recipe starts (notify_ready_scheduled), in its words */
 const swPlanLine = (t, pv) => `BrewStart: Ready by ${SW_DAY}, 07:00: heating starts about ${SW_DAY}, ${hhmm(swStartAt(t, pv))}. ${pv.toFixed(1)} °F to ${t.toFixed(1)} °F takes about ${Math.round((t - pv) / SW_RATE)} min, plus ${SW_SPARE} min spare.`;
 /* the night before, Friday 21:12: all the strike and sparge water in the HLT, 15 gal at the garage's temperature, every
@@ -1187,7 +1233,7 @@ function history(scene, now, x) {
 }
 
 export { RECIPE, SPARGE_STEP, BIG_ADDS, VNAME, KNAME, PROBE, VACT, ACT, HERMS_DELTA, BOIL_TH, BOOK, SCENES, history, noTargetBanner, pauseBanner, spargeBanner, boilHoldBanner, boilStartLine, tfmt, tBanner, byHandBanner, versions,
-  SW_STEPS, swStartAt, swPlanLine, SW_PLAN0, SW_VOL0 };
+  SW_STEPS, swStartAt, swPlanLine, SW_PLAN0, SW_VOL0, SW_WATTS, SW_NEED, SW_RATE, SW_SPARE };
 
 // Not the mockup's: two moments of the screen's own, for checking how the title bar holds what CraftBeerPi
 // really asks. Not compared with the mockup.

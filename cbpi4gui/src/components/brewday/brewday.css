@@ -129,7 +129,7 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .seg small,:where(html.bd-page) .tgtbtn small,:where(html.bd-page) .cmdbtn small{position:relative;display:block;margin-top:5px;font:500 clamp(12px,calc(3.9 * var(--pu)),14px)/1.1 var(--cond);letter-spacing:.04em;color:var(--text-3)}
 :where(html.bd-page) .seg button[aria-pressed=true] small{color:#c9d6e2}
 :where(html.bd-page) .seg button:not([aria-pressed=true]):not([aria-disabled=true]):hover,:where(html.bd-page) .tgtbtn:not([aria-disabled=true]):hover,:where(html.bd-page) .cmdbtn:not([aria-disabled=true]):hover{background:#253545}
-:where(html.bd-page) .seg button:not([aria-pressed=true]):not([aria-disabled=true]):hover small,:where(html.bd-page) .tgtbtn:not(.notgt):not([aria-disabled=true]):hover small,:where(html.bd-page) .cmdbtn:not([aria-pressed=true]):not([aria-disabled=true]):not(.tgo):not(.tok):not(.swuse):hover small,:where(html.bd-page) .trow:not([data-state=done]) .tsel:not([aria-disabled=true]):hover .ts{color:var(--text-2)}
+:where(html.bd-page) .seg button:not([aria-pressed=true]):not([aria-disabled=true]):hover small,:where(html.bd-page) .tgtbtn:not(.notgt):not([aria-disabled=true]):hover small,:where(html.bd-page) .cmdbtn:not([aria-pressed=true]):not([aria-disabled=true]):not(.tgo):not(.tok):not(.swuse):not(.bsgo):hover small,:where(html.bd-page) .trow:not([data-state=done]) .tsel:not([aria-disabled=true]):hover .ts{color:var(--text-2)}
 :where(html.bd-page) .tgtbtn,:where(html.bd-page) .cmdbtn{border:1px solid var(--edge);border-radius:var(--r)}
 :where(html.bd-page) .seg button[aria-disabled=true],:where(html.bd-page) .tgtbtn[aria-disabled=true],:where(html.bd-page) .cmdbtn[aria-disabled=true]{color:var(--text-3)}
 :where(html.bd-page) .note{margin:0;font:500 15px/1.35 var(--sans);color:#ffd9a0}
@@ -262,6 +262,13 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .sw .swuse:not([aria-disabled=true]):hover{background:#3477c8}
 :where(html.bd-page) .sw .swuse[aria-disabled=true]{background:var(--panel-2);border-color:var(--edge);color:var(--text-3)}
 :where(html.bd-page) .sw .swuse[aria-disabled=true] small{color:var(--text-3)}
+/* USE while it waits for where the grain spent the night: the look CraftBeerPi's questions have in the title bar, as it
+   waits on the brewer. The edge is .cmdbtn's own 1 px border with a second pixel drawn inside it, so the button keeps
+   USE's size */
+:where(html.bd-page) .sw .swuse.swask small{font-weight:600}
+:where(html.bd-page) .sw .swuse.swask:not([aria-disabled=true]){background:var(--prompt-bg);border-color:var(--prompt);box-shadow:inset 0 0 0 1px var(--prompt);color:#fff1d2}
+:where(html.bd-page) .sw .swuse.swask:not([aria-disabled=true]) small{color:var(--prompt)}
+:where(html.bd-page) .sw .swuse.swask:not([aria-disabled=true]):hover{background:linear-gradient(rgb(255 178 30/.14),rgb(255 178 30/.14)) var(--prompt-bg)}
 :where(html.bd-page) .swl{display:grid;font:500 16px/1.4 var(--sans)}
 :where(html.bd-page) .sw-miss .swl{font-size:15px;line-height:1.35}
 :where(html.bd-page) .swl>span{grid-area:1/1}
@@ -334,6 +341,69 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .step[aria-current=step] .adds{color:#dce9f7}
 :where(html.bd-page) .step[aria-current=step] .adds .gone{color:#c9d6e2}
 :where(html.bd-page) .step[aria-current=step] .adds .due{color:#ffd27a}
+/* BrewStart's row as the way to its box (screen.js, bsRowHTML): the row as it is, now a button, with a small hint under
+   its state; the hint wraps inside the state word's width where it would take a line from the name and the details
+   (data-wrap, bsFit) */
+:where(html.bd-page) .stepb,:where(html.bd-page) .bsnew{display:block}
+:where(html.bd-page) button.step{width:100%;margin:0;color:inherit;text-align:left;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+:where(html.bd-page) .step.bs:not([aria-disabled=true]):hover{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),#253545}
+:where(html.bd-page) .step.bs[aria-current=step]:not([aria-disabled=true]):hover{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),#23629f}
+:where(html.bd-page) .step.bs[aria-disabled=true],:where(html.bd-page) .bsadd[aria-disabled=true]{cursor:not-allowed}
+:where(html.bd-page) .steps :is(.step.bs,:where(html.bd-page) .bsadd):focus-visible{outline-offset:-3px}
+:where(html.bd-page) .step .bsh{display:block;margin-top:3px;font:500 clamp(12px,calc(3.9 * var(--pu)),14px)/1 var(--cond);letter-spacing:.04em;color:var(--text-3)}
+:where(html.bd-page) .step.bs .s{min-width:64px;margin:-8px 0}
+:where(html.bd-page) .step.bs[data-wrap] .bsh{width:0;min-width:100%;white-space:normal}
+:where(html.bd-page) .step[aria-current=step] .bsh{color:#dce9f7}
+:where(html.bd-page) .step.bs:not([aria-current=step]):not([aria-disabled=true]):hover .bsh:not(.amb){color:var(--text-2)}
+:where(html.bd-page) .step .amb{font-weight:600;color:var(--prompt)}
+:where(html.bd-page) .step[aria-current=step] .amb{color:#ffd27a}
+/* + BrewStart (bsAddHTML): above the first step of a recipe without BrewStart, dashed, as it isn't a step yet */
+:where(html.bd-page) .bsadd{display:grid;grid-template-columns:36px minmax(0,1fr);column-gap:12px;row-gap:2px;align-content:center;align-items:center;width:100%;height:58px;margin:0;padding:6px 4px 6px 6px;border:1px dashed var(--line);border-radius:var(--r);background:var(--panel);color:inherit;text-align:left;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+:where(html.bd-page) .bsadd .pl{grid-row:1/3;font:600 30px/1 var(--cond);text-align:center;color:var(--text-2)}
+:where(html.bd-page) .bsadd .t{grid-column:2;font:600 20px/1.1 var(--cond);letter-spacing:.02em}
+:where(html.bd-page) .bsadd .p{grid-column:2;font:500 16px/1.25 var(--cond);letter-spacing:.02em;color:var(--text-2)}
+:where(html.bd-page) .bsadd:not([aria-disabled=true]):hover{background:#253545}
+/* BrewStart's box (bsHTML), in the column where the step list is, in the timer editor's look */
+:where(html.bd-page) .bsbox{display:flex;flex-direction:column;gap:10px;margin-top:8px;padding:14px 12px 12px;border:2px solid var(--select);border-radius:var(--r);background:var(--panel)}
+:where(html.bd-page) .bsbox .bst{align-self:flex-start;margin:-26px 0 -2px -4px;padding:0 6px;background:var(--panel);font:700 17px/1.2 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+:where(html.bd-page) .bsbox p{margin:0}
+:where(html.bd-page) .bsmid{display:grid;gap:10px;margin:-5px;padding:5px}
+:where(html.bd-page) .bsw{flex:none;font:500 15px/1.35 var(--sans);color:var(--text-2)}
+:where(html.bd-page) .bskind{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px}
+:where(html.bd-page) .bsl{font:600 17px/1.2 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+:where(html.bd-page) .bsq{min-height:44px;padding:0 12px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);font:600 15px/1 var(--cond);letter-spacing:.08em;touch-action:manipulation}
+:where(html.bd-page) .bsq .lb{color:var(--text-2)}
+:where(html.bd-page) .bsq:not([aria-disabled=true]):hover{background:#253545}
+:where(html.bd-page) .bsq:not([aria-disabled=true]):hover .lb{color:var(--text)}
+:where(html.bd-page) .bsq[aria-disabled=true]{cursor:not-allowed}
+:where(html.bd-page) .bsq[aria-disabled=true] .lb{color:var(--text-3)}
+:where(html.bd-page) .bstime input{color:var(--text)}
+:where(html.bd-page) .bstime input::placeholder{color:#8a9bad;opacity:1}
+:where(html.bd-page) .bsday,:where(html.bd-page) .bswhere{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+:where(html.bd-page) .bsday .cmdbtn,:where(html.bd-page) .bsin .cmdbtn{min-height:52px;font-size:17px}
+:where(html.bd-page) .bswhere .cmdbtn{min-height:56px;padding:6px;font-size:17px}
+:where(html.bd-page) .bswhere{scroll-margin:5px}
+:where(html.bd-page) .bsbox .cmdbtn[aria-pressed=true]{background:#070c11;color:#fff;box-shadow:inset 0 0 0 2px #a9bfd4}
+:where(html.bd-page) .bsbox .cmdbtn[aria-pressed=true] small{color:#c9d6e2}
+:where(html.bd-page) .bssay{font:500 16px/1.4 var(--sans)}
+:where(html.bd-page) .bssay:empty{display:none}
+:where(html.bd-page) .bssay.past{color:#ffd9a0}
+:where(html.bd-page) .bswat{font:500 15px/1.35 var(--sans);color:var(--text-2)}
+:where(html.bd-page) .bswat b{font-weight:600;color:var(--prompt)}
+:where(html.bd-page) .bsgrain{display:grid;gap:8px}
+:where(html.bd-page) .bsgrain .bsgh{margin-top:-4px;font:500 14px/1.35 var(--sans);color:var(--text-3)}
+:where(html.bd-page) .bsin{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+:where(html.bd-page) .bsin .bschip{flex:1 1 48px;min-height:48px;padding:0 2px;font-size:16px}
+:where(html.bd-page) .bsor{display:flex;align-items:center;gap:6px;font:600 15px/1 var(--cond);letter-spacing:.04em;color:var(--text-2)}
+:where(html.bd-page) .bsor input{width:76px;min-height:48px;padding:0 6px;border:2px solid #3d7fd0;border-radius:var(--r);background:var(--face);color:var(--text);font:600 22px/1 var(--cond);text-align:center;font-variant-numeric:tabular-nums}
+:where(html.bd-page) .bsfoot{display:grid;gap:8px;flex:none}
+:where(html.bd-page) .bsact{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+:where(html.bd-page) .bsact .cmdbtn{min-height:54px;font-size:17px}
+:where(html.bd-page) .bsgo{background:var(--select);border-color:var(--select);color:#fff}
+:where(html.bd-page) .bsgo small{color:#fff}
+:where(html.bd-page) .bsgo:not([aria-disabled=true]):hover{background:#3477c8}
+:where(html.bd-page) .bsgo[aria-disabled=true]{background:var(--panel-2);border-color:var(--edge);color:var(--text-3)}
+:where(html.bd-page) .bsgo[aria-disabled=true] small{color:var(--text-3)}
 :where(html.bd-page) .timer{display:grid;gap:10px;padding:12px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel-2)}
 :where(html.bd-page) .timer h3{margin:0;font:700 20px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase}
 :where(html.bd-page) .timer output{font:600 clamp(52px,calc(22 * var(--pu)),88px)/1 var(--cond);font-variant-numeric:tabular-nums}
@@ -580,8 +650,15 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .recipe[data-pb] .sw.open .swhead{flex:none}
 :where(html.bd-page) .recipe[data-pb] .swdet{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}
 }
+/* BrewStart's box: its middle scrolls inside it where the column is short, and its foot, with SET and CANCEL, stays at
+   the bottom of the box. COMPARE PROBES makes way for it as the step list does, and is back when the box closes */
 @media (min-width:1180px){
-:where(html.bd-page) .recipe[data-pb]>:not(.cmp):not(.sw){flex-shrink:0}
+:where(html.bd-page) .recipe[data-pb] .bsbox{flex:0 1 auto;min-height:0}
+:where(html.bd-page) .recipe[data-pb] .bsmid{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}
+:where(html.bd-page) .recipe[data-bs]>.cpbtn{display:none}
+}
+@media (min-width:1180px){
+:where(html.bd-page) .recipe[data-pb]>:not(.cmp):not(.sw):not(.bsbox){flex-shrink:0}
 }
 @media (max-width:1179.98px){
 :where(html.bd-page) .sw.open .swhead{position:sticky;top:0;z-index:2}
@@ -599,6 +676,7 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .steps{overflow:visible}
 :where(html.bd-page) .book ul{overflow:visible}
 :where(html.bd-page)[data-timers=new] .recipe .steps,:where(html.bd-page)[data-timers=new] .recipe .book,:where(html.bd-page)[data-timers=new] .recipe .handlinks,:where(html.bd-page)[data-timers=new] .recipe .cmp.byh{order:2}
+:where(html.bd-page)[data-timers=new] .recipe .bsbox{order:2}
 :where(html.bd-page)[data-timers=new] .recipe .tmrs{order:1}
 :where(html.bd-page)[data-layout=b] .recipe{order:2}
 :where(html.bd-page)[data-layout=b] .main{grid-template-columns:minmax(0,1fr)}

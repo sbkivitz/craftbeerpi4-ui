@@ -100,11 +100,22 @@ export const api = {
   logWindow: (names, since, points) => call("POST", "/log/window", { names, since, points }, 20000),
   // The strike water helper (its contract, version 1): USE and BACK TO, the HLT's water and the grain's temperature
   // (null: back to the boil kettle's probe). Each carries the recipe's step ids, as START does: CraftBeerPi changes
-  // nothing for another recipe (409 recipe_changed). Each answers with what it applied and its whole state.
+  // nothing for another recipe (409 recipe_changed). Each answers with what it applied and its whole state. The grain's
+  // place (core post59): where the grain spent the night, "garage" with null; a figure is indoors. An older CraftBeerPi
+  // ignores it.
   strikeUse: (temp, plan, steps) => post("/step2/strike", { do: "use", temp, plan, steps }),
   strikeBack: (temp, steps) => post("/step2/strike", { do: "back", temp, steps }),
   strikeWater: (vol, steps) => post("/step2/strike/water", { vol, steps }),
-  strikeGrain: (grain, steps) => post("/step2/strike/grain", { grain, steps }),
+  strikeGrain: (grain, steps, place) => post("/step2/strike/grain", place ? { grain, place, steps } : { grain, steps }),
   // Its whole state, as the websocket's topic "strike" sends it: asked for where a refusal brings none (recipe_changed).
   strikeState: () => get("/step2/strike"),
+  // A step's settings, all of them ({name, type, props}): refused with 409 while the step runs, {error} CraftBeerPi's
+  // sentence. A step added at its place ({name, type, props, index}, core 4.7.7.post58: 0 is first): refused with 409
+  // {error: "begun", detail, step} at or above a step that has begun.
+  stepUpdate: (stepId, step) => call("PUT", `/step2/${id(stepId)}`, step),
+  stepAdd: (step) => post("/step2/", step),
+  // An action a step declares, run on it also while it runs, e.g. BrewStart's change_time {Mode, StartDate, StartTime}
+  // (1.2.0.post10). Not run, 400 {error: "action not run", detail}, CraftBeerPi's sentence; the step may say why in a
+  // notice of its own, titled with its name.
+  stepAction: (stepId, action, parameter) => post(`/step2/action/${id(stepId)}`, { action, parameter }),
 };
