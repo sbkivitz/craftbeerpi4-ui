@@ -6843,6 +6843,28 @@ blue is three CSS values.
 - "×" put back where my notes of 23 Nov had "x" between sizes, a copying slip: the readings section and the four
   points above, READINGS-ENTRY.md's checks, DESIGN.md's phone line.
 
+### Built (24 Nov, web UI post43)
+
+Option A and the softer blue, as above; the old tag and the other options aren't in the build. Where the notes left
+it open:
+
+- **No SPEED, but a clock at another speed:** where the screen isn't sure it is a simulator, the quiet line also says
+  the speed, as the tag did, since no button says it: "TUE 24 NOV · 10× SPEED", or "10× SPEED" alone on the screen's
+  date, read as "CraftBeerPi's clock, …, running 10 times as fast".
+- **When the plugin list is asked:** once a page has loaded, as it first connects, and again whenever the connection
+  comes back, as a plugin comes or goes with a restart. A list that fails or takes more than 5 s counts as no answer:
+  no SPEED until the next ask. On 8000 and 8012 it answers in 0.1 to 0.2 s with nine plugins, "cbpi4-simvessel"
+  0.0.13 among them; the name is matched with a hyphen or an underscore, in any case.
+- **The `clock` topic** sets the title bar's clock at once, whichever screen changed the speed, not only a speed
+  chosen here; a box left open meanwhile stays open. A CraftBeerPi that saves the speed without sending the topic
+  (core before post63, or cbpi4-simvessel before 0.0.13) gets the box closed 5 s after the save, LOG's own line
+  "Simulator speed 10× · confirmed", and the clock asked for again.
+- **The chooser's sentence** follows CLOCK_FORMAT, so it reads as the core's notice will; the title bar's time stays
+  24-hour until the 12-hour build.
+- **Escape** closes the box first whenever focus is in it or on SPEED.
+- The core's notice in LOG can be longer than the mockup's: it adds what it archived ("The sensor logs written ahead
+  of it, up to …, were archived so the graphs start again from now - zipped (…) and moved to …").
+
 ## Open questions about the drawing
 
 Both were answered on 10 Nov. The valves have been in the drawing since then; the path after the boil was
