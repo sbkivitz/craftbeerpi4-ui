@@ -726,8 +726,8 @@ function patient() {
 }
 /* the brews shown while CraftBeerPi works them out again: the last it worked out, and when */
 function workingWords() {
-  const at = D && fin(D.as_of) ? `These are as they were at ${hm(D.as_of)} on ${dayShort(D.as_of)}; c` : "C";
-  return `${at}raftBeerPi is looking through its logs for newer brews.`;
+  const at = D && fin(D.as_of) ? `These are as they were at ${hm(D.as_of)} on ${dayShort(D.as_of)}; ` : "";
+  return `${at}CraftBeerPi is looking through its logs for newer brews.`;
 }
 async function readEv(id, fid) {
   const key = `${id}|${fid}`, b = brewOf(id);
