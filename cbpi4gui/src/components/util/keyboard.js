@@ -9,14 +9,15 @@ export function keyboardUp(vv = typeof window !== "undefined" ? window.visualVie
 }
 
 /* while the keyboard is up, the page scrolled so el's foot is gap px above the visual viewport's foot, by the
-   difference, and no further than keeps keep (the box being typed in) gap px below the visual viewport's top.
+   difference, and no further than keeps keep (the box being typed in) top px below the visual viewport's top (gap
+   unless given: what is pinned above it, where something is).
    -> the pixels scrolled (0 with no keyboard, or nothing to do) */
-export function clearKeyboard(el, {keep = null, gap = 8} = {}) {
+export function clearKeyboard(el, {keep = null, gap = 8, top = gap} = {}) {
   const vv = typeof window !== "undefined" ? window.visualViewport : null;
   if (!el || !keyboardUp(vv)) return 0;
   const foot = vv.offsetTop + vv.height - gap, bottom = el.getBoundingClientRect().bottom;
   if (bottom <= foot) return 0;
-  const room = keep ? Math.max(0, keep.getBoundingClientRect().top - vv.offsetTop - gap) : Infinity;
+  const room = keep ? Math.max(0, keep.getBoundingClientRect().top - vv.offsetTop - top) : Infinity;
   const by = Math.ceil(Math.min(bottom - foot, room));
   if (by > 0) window.scrollBy(0, by);
   return by > 0 ? by : 0;

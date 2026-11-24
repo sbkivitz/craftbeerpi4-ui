@@ -566,7 +566,7 @@ function whenHTML(ed, s) {
    or a speed other than 1×), as the title bar's tag decides it, in the words of Brew Day's BrewStart box: TODAY,
    TOMORROW and the time in words are all by that clock, and the brewer is looking here, not at the title bar, while he
    sets the time. The screen's own date only decides whether it shows. A screen reader hears it as a sentence. Its band
-   (.cbbar) is pinned at the top of When, under the tool row where that sticks (--tool-h, fitTool) or at the top of the
+   (.cbbar) is pinned at the top of When, under the tool row where that sticks (--tool-h, fitPinned) or at the top of the
    pane, so it stays in view while When's rows scroll under it, as Brew Day's box pins its tag */
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -995,7 +995,8 @@ function timeCtl(s, label, v, locked) {
   const k = esc(s._k), id = `i-${k}-${label}`, t = hm(v), half = t ? halfOfDay(t) : s._half || "am", tw = twelve();
   const shown = (t && formatTimeOfDay(t, {format: clockFmt(), ampm: false})) || norm(s._tt ?? v);
   const box = `<input class="fld tmbox" id="${id}" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="${tw ? "7:00" : "07:00"}" value="${esc(shown)}" data-s="${k}" data-p="${label}" aria-describedby="wh-${k}-${label}"${locked ? " disabled" : ""}>`;
-  if (!tw) return box;
+  // the same box in a .tmf either way, so a change of CLOCK_FORMAT while it has the focus keeps it, and what's typed
+  if (!tw) return `<div class="tmf" role="group" aria-labelledby="n-${k}-${label}">${box}</div>`;
   const why = locked ? ' aria-disabled="true" data-why="Running now: CraftBeerPi doesn\'t change a step while it runs."' : "";
   const b = h => `<button type="button" role="radio" aria-checked="${String(half === h)}" data-half="${h}" data-s="${k}" data-p="${label}"${why}>${h.toUpperCase()}</button>`;
   return `<div class="tmf" role="group" aria-labelledby="n-${k}-${label}">${box}<div class="seg ampm" role="radiogroup" aria-label="AM or PM" id="${id}-half">${b("am")}${b("pm")}</div></div>`;
@@ -1181,12 +1182,16 @@ function render() {
   m.toggleAttribute("data-dirty", !bar.hidden);
   applyView();
   grow();
-  fitTool();
+  fitPinned();
 }
-/* the tool row's height where it sticks to the top of the window (701 to 1179 px), else 0: When's clock band sticks
-   under it and the time in words keeps clear of it (--tool-h) */
+// the tool row's height where it sticks to the top of the window (701 to 1179 px), else 0
 const stickTop = () => { const t = $("#tool"); return t && getComputedStyle(t).position === "sticky" ? t.offsetHeight : 0; };
-const fitTool = () => { if (host) host.style.setProperty("--tool-h", stickTop() + "px"); };
+/* what is pinned over the settings, for what is kept in view under it (recipes.css scroll margins): the tool row where
+   it sticks (--tool-h, which When's clock band sticks under too), and a BrewStart's clock band (--band-h, on its part) */
+function fitPinned() {
+  if (host) host.style.setProperty("--tool-h", stickTop() + "px");
+  $$(".cbbar").forEach(b => { if (b.parentElement) b.parentElement.style.setProperty("--band-h", b.offsetHeight + "px"); });
+}
 function applyView() { const m = $("#main"); if (m) m.dataset.view = narrow() ? st.view : "split"; }
 function grow() { $$("textarea.fld").forEach(t => { if (!t.getClientRects().length) return; t.style.height = "auto"; t.style.height = t.scrollHeight + 2 + "px"; }); }
 /* CraftBeerPi's word on things arrives many times a second: drawn once a frame */
@@ -1231,17 +1236,30 @@ function showWhen(k) {
   if (f) { f.focus({preventScroll: true}); put(); }
   keepWhenInView(k);
 }
-/* the time in words is what shows a slip of twelve hours, so while BrewStart's time is being set it stays in view: the
-   page scrolls as little as it can, clear of the sticky tool row and of a phone's save bar and tabs (the sentence's
-   scroll margins, recipes.css). Called after a key or a tap, never as a box is left: a scroll between a finger going
-   down and coming up can put the tap on another control. A phone's on-screen keyboard covers the page without making it
-   shorter, so while it is up the page scrolls on by what it covers, the time box kept in view above it
-   (util/keyboard.js, as Brew Day's BrewStart box does), and again as it comes up while the time box has focus */
+// the top of the part of the screen BrewStart's settings scroll in: the pane's from 1180 px; else under the tool row
+// where it sticks, or the window's
+const coverTop = () => wide() ? $("#pane").getBoundingClientRect().top : stickTop() ? $("#tool").getBoundingClientRect().bottom : 0;
+/* while BrewStart's time is set, its time box (with AM and PM) stays in view, and so does what is said under it: the
+   time in words, which shows a slip of twelve hours, or with no time yet what it needs. Where both don't fit, the box
+   wins: it has the focus, and it's where the brewer types. The page scrolls as little as it can, clear of the sticky tool
+   row and the pinned clock band above, and of a phone's save bar and tabs below (their scroll margins, recipes.css), and
+   doesn't leave When's heading cut in two. Called as When opens, with or without a time, and after a key or a tap; never
+   as a box is left: a scroll between a finger going down and coming up can put the tap on another control. A phone's
+   on-screen keyboard covers the page without making it shorter, so while it is up the page scrolls on by what it
+   covers, no further than keeps the box clear of the top (util/keyboard.js, as Brew Day's BrewStart box does), and again
+   as it comes up while the time box has focus */
 function keepWhenInView(k) {
-  const w = $(`#when-${CSS.escape(k)}`);
-  if (!w || !w.textContent.trim()) return;
-  w.scrollIntoView({block: "nearest"});
-  clearKeyboard(w, {keep: $(`#i-${CSS.escape(k)}-StartTime`), gap: 12});
+  const box = $(`#i-${CSS.escape(k)}-StartTime`);
+  if (!box) return;
+  const ctl = box.closest(".tmf") || box, sc = wide() ? $("#pane") : document.scrollingElement, was = sc ? sc.scrollTop : 0;
+  const said = [$(`#when-${CSS.escape(k)}`), $(`#need-${CSS.escape(k)}-StartTime`)].find(e => e && e.textContent.trim());
+  if (said) said.scrollIntoView({block: "nearest"});
+  ctl.scrollIntoView({block: "nearest"});
+  if (!wide()) clearKeyboard(said || ctl, {keep: ctl, gap: 12, top: parseFloat(getComputedStyle(ctl).scrollMarginTop) || 12});
+  if (!sc || sc.scrollTop === was) return;
+  // When's heading goes out of view whole rather than cut in two; the box is well below it, so stays in view
+  const part = ctl.closest(".part"), h = part && part.querySelector(":scope > h3"), top = coverTop(), r = h && h.getBoundingClientRect();
+  if (r && r.top < top - 1 && r.bottom > top + 1) sc.scrollTop += r.bottom - top;
 }
 const onKeyboard = () => { const f = sr && sr.activeElement; if (st && f && f.classList && f.classList.contains("tmbox") && f.dataset.s) keepWhenInView(f.dataset.s); };
 function jump(k) {
@@ -2073,7 +2091,7 @@ function onDragOver(e) { const d = dropOf(e); if (!d) return; e.preventDefault()
 function onDragLeave(e) { const d = dropOf(e); if (d) d.classList.remove("over"); }
 function onDrop(e) { const d = dropOf(e); if (!d) return; e.preventDefault(); d.classList.remove("over"); const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) sendFile(f); }
 let lastNarrow = null;
-function onResize() { if (!st) return; const n = narrow(); if (n !== lastNarrow) { lastNarrow = n; render(); } else { applyView(); grow(); fitTool(); } }
+function onResize() { if (!st) return; const n = narrow(); if (n !== lastNarrow) { lastNarrow = n; render(); } else { applyView(); grow(); fitPinned(); } }
 const onScroll = () => requestAnimationFrame(spy);
 
 /* ---------- the page ---------- */
