@@ -2538,7 +2538,7 @@ function bsHTML() {
   const head = wait ? `<p class="bsw">BrewStart is waiting: ${bsKind(s) === "start" ? `${nx ? esc(nx.n) : "the next step"} starts at ${todS(bsTime(s))}` : `heating starts about ${st.recipe.wait.slice(7)}`}.${held ? "" : " A change here plans it again at once."}</p>` : "";
   const kind = `<div class="bskind"><p class="bsl" id="bs-kl">${B.kind === "start" ? "Start at" : "Ready by"}</p>${b("bsq", B.kind === "start" ? "READY BY INSTEAD" : "START AT INSTEAD", "", {cmd: "bs:kind", why: off || (wait ? held || "Not while BrewStart waits: STOP it first." : "")})}</div>`;
   const as = is12() ? "7:00" : "07:00";
-  const time = `<div class="editor bstime" role="group" aria-labelledby="bs-kl">${key(-60, "−1 H", "An hour earlier")}${key(-15, "−15", "15 minutes earlier")}<input id="bstin" inputmode="numeric" autocomplete="off" maxlength="${is12() ? 8 : 5}" placeholder="${as}" value="${esc(B.txt)}" aria-label="Time, as ${as}"${busy || held ? " readonly" : ""}${held ? ` data-cmd="noop"${hdis}` : ""}>${key(15, "+15", "15 minutes later")}${key(60, "+1 H", "An hour later")}</div>`;
+  const time = `<div class="editor bstime" role="group" aria-labelledby="bs-kl">${key(-60, "−1 H", "An hour earlier")}${key(-15, "−15", "15 minutes earlier")}<input id="bstin" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="${as}" value="${esc(B.txt)}" aria-label="Time, as ${as}"${busy || held ? " readonly" : ""}${held ? ` data-cmd="noop"${hdis}` : ""}>${key(15, "+15", "15 minutes later")}${key(60, "+1 H", "An hour later")}</div>`;
   /* the half of the day the time is in, pressed; a tap moves the same time to the other half. A compact pair, without
      hints: the time in words below says which half it is */
   const half = !is12() ? "" : `<div class="bsday bsap" role="group" aria-label="AM or PM">${b("cmdbtn", "AM", "", {cmd: "bs:ap:AM", pressed: B.ap === "AM", why: hoff})}${b("cmdbtn", "PM", "", {cmd: "bs:ap:PM", pressed: B.ap === "PM", why: hoff})}</div>`;
@@ -2655,13 +2655,16 @@ function bsOpen(o = {}) {
 /* focus goes to the time box, or to IN THE GARAGE with the grain's two answers scrolled into view in the box's middle
    (for USE waiting for the grain, and for the row while its hint asks where the grain is); a moment can show the
    middle scrolled to a part of it (at). Opened at the time, the time in words is brought into view where it must be
-   read before SET (bsSayInView). Once the press that opened the box is done; for a moment opening it as it loads
-   (now), once the fonts are in, as the mockup's moments have it, so what is scrolled into view is where it ends up */
+   read before SET (bsSayInView). On a phone the page first brings the box itself into view (boxInView), the focus
+   moving in without the browser's own scrolling, which only looks for the box focused. Once the press that opened the
+   box is done; for a moment opening it as it loads (now), once the fonts are in, as the mockup's moments have it, so
+   what is scrolled into view is where it ends up */
 const bsFocus = (at, on, now = false) => {
   const go = () => {
     if (!root) return;
     const gar = on === "garage" ? $('#bs-box [data-cmd="bs:where:garage"]') : null, i = gar || $("#bstin"), keep = !!at || !!gar;
-    if (i && document.activeElement !== i) { i.focus({preventScroll: keep}); if (i.select) i.select(); }
+    if (i && document.activeElement !== i) { i.focus({preventScroll: keep || PHONE.matches}); if (i.select) i.select(); }
+    boxInView($("#bs-box"));
     if (keep) $(at || "#bs-box .bswhere")?.scrollIntoView({block: "nearest"});
     else bsSayInView();
   };
@@ -2671,6 +2674,17 @@ const bsFocus = (at, on, now = false) => {
   if (root) void root.offsetHeight;
   (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => { if (g === gen) go(); });
 };
+/* on a phone a box opening in the page (BrewStart's) comes into view by the least scrolling: all of it, from the title
+   set into its top edge to its foot, between the window's top and the tabs, 8 px clear of each. A box taller than that
+   goes to the window's top, so its title and first figure show and its main button is a scroll away. A box already in
+   view doesn't move the page */
+function boxInView(box) {
+  if (!box || box.hidden || !PHONE.matches) return;
+  const tabs = $(".tabs"), foot = (tabs ? tabs.getBoundingClientRect().top : window.innerHeight) - 8, R = box.getBoundingClientRect();
+  const t = box.querySelector(":scope > .bst"), top = Math.min(R.top, t ? t.getBoundingClientRect().top : R.top);
+  const d = R.bottom - top > foot - 8 ? top - 8 : R.bottom > foot ? R.bottom - foot : top < 8 ? top - 8 : 0;
+  if (d) window.scrollBy(0, d > 0 ? Math.ceil(d) : Math.floor(d));
+}
 /* focus goes back to where the box was opened from: BrewStart's row, + BrewStart, or the strike water box's USE */
 const bsBack = from => timers.push(setTimeout(() => { if (root) root.querySelector(from === "use" ? "#recipe .sw .swuse" : `[data-cmd="bs:${from === "new" ? "new" : "open"}"]`)?.focus({preventScroll: true}); }, 0));
 /* CANCEL and Escape close it, changing nothing; not while its command waits, which can't be called back. A failed SET's
