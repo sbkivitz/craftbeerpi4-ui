@@ -577,7 +577,7 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .tside .tshr{display:flex;align-items:center;gap:8px}
 :where(html.bd-page) .tside .tsl{flex:0 1 auto;min-height:0;display:flex;flex-direction:column;gap:4px;overflow-y:auto;overscroll-behavior:contain}
 :where(html.bd-page) .tside .tsl>.tchip{flex:none}
-:where(html.bd-page) .tside .tchip{height:38px;border:0;box-shadow:inset 0 0 0 1px var(--line)}
+:where(html.bd-page) .tside .tchip{height:48px;border:0;box-shadow:inset 0 0 0 1px var(--line)}
 :where(html.bd-page) .tside .tchip[data-state=done]{border:0;box-shadow:inset 0 0 0 2px var(--prompt)}
 :where(html.bd-page) .tside .tcsel{grid-template-columns:minmax(0,max-content) auto auto;grid-template-rows:auto;column-gap:0;align-items:baseline;justify-content:start;padding:0 6px}
 :where(html.bd-page) .tside .tchip .tn{grid-column:1;grid-row:1}
@@ -586,15 +586,15 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .tside .tchip .tt{grid-column:3;grid-row:1;margin-left:6px;font-size:20px}
 :where(html.bd-page) .tside .tchip[data-soon] .tt{font-size:26px}
 :where(html.bd-page) .tside .tchip .tcx{margin-right:0}
-:where(html.bd-page) .tside .tchip .cmdbtn{min-height:0;height:38px;padding:0 6px;font-size:16px}
+:where(html.bd-page) .tside .tchip .cmdbtn{min-height:0;height:48px;padding:0 6px;font-size:16px}
 :where(html.bd-page) .tside .tchip .bar{height:2px}
 :where(html.bd-page) .tside .tcg{display:flex;align-items:baseline;gap:5px}
 /* a timer brought back after a restart: under its line, the row's line across it, saying how long CraftBeerPi was off,
    in the same words, type and colours as on the row (Prompt Amber while paused, Prompt Cream on one that has run out),
-   so its tile is about 61 px tall until it is started or answered. Its first line stays one line, as on every tile:
+   so its tile is about 71 px tall until it is started or answered. Its first line stays one line, as on every tile:
    a long name gives way with its ellipsis, and REMOVE and START or PAUSE keep their place at the right */
 :where(html.bd-page) .tside .tchip[data-back]{height:auto;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:stretch;gap:0}
-:where(html.bd-page) .tside .tchip[data-back]>.tcsel{grid-column:1;grid-row:1;min-height:38px}
+:where(html.bd-page) .tside .tchip[data-back]>.tcsel{grid-column:1;grid-row:1;min-height:48px}
 :where(html.bd-page) .tside .tchip[data-back]>.tcx{grid-column:2;grid-row:1;margin-left:4px}
 :where(html.bd-page) .tside .tchip[data-back] .toff{grid-column:1/-1;grid-row:2;margin:-2px 0 0;padding:0 6px 5px;font:500 15px/1.3 var(--sans);color:var(--prompt);text-wrap:pretty}
 :where(html.bd-page) .tside .tchip[data-back][data-state=done] .toff{color:var(--prompt-ink)}

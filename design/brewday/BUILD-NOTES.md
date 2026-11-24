@@ -6033,12 +6033,17 @@ drawing), Recipe Column (OTHER RECIPE), Layout and The Under Its Plate Rule. The
 3. **The column** (`tsideHTML`, `.tside`): Panel Slate, a 1 px Hairline Slate edge, 6 px corners, padding 3 px 8 px.
    - Its head, 44 px: TIMERS with the count, "TIMERS · 2" (the "·" hidden from screen readers), in Dim Steel 600
      18 px condensed capitals; + TIMER (`tplus3`) and SOUND at its right.
-   - The timers, one row each, 38 px tall, 4 px apart (`tchipHTML` with the column's mode): the name, giving way first
+   - The timers, one row each, 48 px tall, 4 px apart (`tchipHTML` with the column's mode): the name, giving way first
      with its ellipsis, the state word (paused, ready; none while counting) and the time, 20 px (26 px in its last
-     3:00), on one line at the left; REMOVE and START or PAUSE at the right, each 38 px tall, its outline drawn inside
+     3:00), on one line at the left; REMOVE and START or PAUSE at the right, each 48 px tall, its outline drawn inside
      (`box-shadow: inset 0 0 0 1px`) so they reach the row's edges; the bar a 2 px line along the foot. What a row
      holds comes from the column's width (`tMode`, `--tcw-full` 250 px, `--tcw-go` 200 px): at 300 px it is always
      REMOVE and START or PAUSE.
+   - 48 px is the floor for a row and its buttons, as TIMER-PLACE.md has the smaller rows and DESIGN.md keeps every
+     tap target at 44 px or more. Fewer rows are whole at once than at 38 px, and the rest scroll inside the column as
+     below: with four timers, three are whole at 1920 × 950 and one at 1180 × 860; with two, both are whole from
+     1366 × 768 up, and one at 1280 × 800 and 1180 × 860. Every button's word and every time stays whole from 1180 to
+     1920 px wide.
    - A timer that has run out: its row Dark Amber Wash with a 2 px Prompt Amber edge drawn inside, TIME'S UP and the
      time counting up in Prompt Amber, OK; it pulses, and its alarm is in the title bar as now. A timer just removed:
      its row for 10 s with its name, "removed" and UNDO.
@@ -6469,8 +6474,8 @@ DESIGN.md (Timers, After a restart) gives it a line across its row. Now the tile
   "CraftBeerPi was off for 12 min", "CraftBeerPi was off; how long isn't known yet". The same words, Barlow 500 15px,
   Prompt Amber on a paused timer, Prompt Cream on a run-out one on its wash; `aria-hidden`, as the button's label
   already says it (`tSaid`). It goes when the timer is started or answered, as on the row (`tBack`).
-- The tile is then about 61 px tall (80 px where the line takes two, at 300 px wide only the "isn't known yet" one);
-  its first line keeps its 38 px. Mockup: `tchipHTML`'s `back` (beside the drawing only, `tHere() === "side"`),
+- The tile is then about 71 px tall (90 px where the line takes two, at 300 px wide only the "isn't known yet" one);
+  its first line keeps its 48 px. Mockup: `tchipHTML`'s `back` (beside the drawing only, `tHere() === "side"`),
   `data-back`, and `.tside .tchip[data-back]` in `brew-day.css`.
 - The column's cut-off reads each tile's own top and height (`tsideFit`), so a taller tile is still cut at half
   where the next one would show all but its last 12 px.

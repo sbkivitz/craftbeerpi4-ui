@@ -752,10 +752,10 @@ button.step{width:100%;margin:0;color:inherit;text-align:left;touch-action:manip
 .tside .tshr{display:flex;align-items:center;gap:8px}
 .tside .tsl{flex:0 1 auto;min-height:0;display:flex;flex-direction:column;gap:4px;overflow-y:auto;overscroll-behavior:contain}
 .tside .tsl>.tchip{flex:none}
-/* the column is narrow, not short, so each timer is one row 38 px tall: its name, its state word and its time on one
+/* the column is narrow, not short, so each timer is one row 48 px tall: its name, its state word and its time on one
    line at the left, the name giving way first, with its ellipsis; REMOVE and START or PAUSE at the right, as tall as
    the row, its outline drawn inside so they reach its edges; the bar a thin line along its foot */
-.tside .tchip{height:38px;border:0;box-shadow:inset 0 0 0 1px var(--line)}
+.tside .tchip{height:48px;border:0;box-shadow:inset 0 0 0 1px var(--line)}
 .tside .tchip[data-state=done]{border:0;box-shadow:inset 0 0 0 2px var(--prompt)}
 .tside .tcsel{grid-template-columns:minmax(0,max-content) auto auto;grid-template-rows:auto;column-gap:0;align-items:baseline;justify-content:start;padding:0 6px}
 .tside .tchip .tn{grid-column:1;grid-row:1}
@@ -764,15 +764,15 @@ button.step{width:100%;margin:0;color:inherit;text-align:left;touch-action:manip
 .tside .tchip .tt{grid-column:3;grid-row:1;margin-left:6px;font-size:20px}
 .tside .tchip[data-soon] .tt{font-size:26px}
 .tside .tchip .tcx{margin-right:0}
-.tside .tchip .cmdbtn{min-height:0;height:38px;padding:0 6px;font-size:16px}
+.tside .tchip .cmdbtn{min-height:0;height:48px;padding:0 6px;font-size:16px}
 .tside .tchip .bar{height:2px}
 .tside .tcg{display:flex;align-items:baseline;gap:5px}
 /* a timer brought back after a restart: under its line, the row's line across it, saying how long CraftBeerPi was off,
    in the same words, type and colours as on the row (Prompt Amber while paused, Prompt Cream on one that has run out),
-   so its tile is about 61 px tall until it is started or answered. Its first line stays one line, as on every tile:
+   so its tile is about 71 px tall until it is started or answered. Its first line stays one line, as on every tile:
    a long name gives way with its ellipsis, and REMOVE and START or PAUSE keep their place at the right */
 .tside .tchip[data-back]{height:auto;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:stretch;gap:0}
-.tside .tchip[data-back]>.tcsel{grid-column:1;grid-row:1;min-height:38px}
+.tside .tchip[data-back]>.tcsel{grid-column:1;grid-row:1;min-height:48px}
 .tside .tchip[data-back]>.tcx{grid-column:2;grid-row:1;margin-left:4px}
 .tside .tchip[data-back] .toff{grid-column:1/-1;grid-row:2;margin:-2px 0 0;padding:0 6px 5px;font:500 15px/1.3 var(--sans);color:var(--prompt);text-wrap:pretty}
 .tside .tchip[data-back][data-state=done] .toff{color:var(--prompt-ink)}
