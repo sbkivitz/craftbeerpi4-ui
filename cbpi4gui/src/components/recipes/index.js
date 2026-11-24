@@ -92,6 +92,7 @@ const Recipes = () => {
         version: state.version,
         config: state.config,
         kettles: state.kettle,
+        logic: state.logic,
         sensors: state.sensors,
         actors: state.actors,
         steps: state.mashProfile,

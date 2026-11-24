@@ -4927,6 +4927,9 @@ const tpnoteHTML = () => !st.tedit && st.notes.t ? `<p class="tpnote">${esc(st.n
    corner (tsideCorner). A timer's editor opens in a box beside its timer, a new one's beside the end of the timers, kept
    on screen (tsidePop) */
 let tsideTop = 0, placeBusy = false;
+/* the step list as keepStepInView last left it: the list, the current step (its recipe and number), the list's height,
+   where it was scrolled to, and whether it has been scrolled by hand since the step or the height last changed */
+let stepSeen = null;
 function tsideHTML(off, n) {
   const e = st.tedit, pop = tpopHTML(off), plus = tplusHTML(off, "tplus3"), m = st.tmrs.length;
   if (!n) return `<div class="tcorner">${plus}${soundHTML()}</div>${pop}${tpnoteHTML()}`;
@@ -5034,17 +5037,26 @@ function tPlaceFit() { if (tHere() === "side") tsideFit(); }
    Where the current step is taller than the list has room for even at its top (a box above it, a long note), the
    versions' line steps aside, as it does while something in the column waits for you (brewday.css). + BrewStart, right
    above the first step, is kept in view with it as one: the versions' line steps aside for the two where it would for
-   the step alone, and only where they still don't fit does the list keep the step whole without it */
-function keepStepInView() {
+   the step alone, and only where they still don't fit does the list keep the step whole without it.
+   A list scrolled by hand stays where it was left, through every update from CraftBeerPi, until the current step
+   changes or the list's height does (a question opening or closing): then it follows the step again. `again`: the
+   sizes have changed (the window, the fonts), which counts as the list's height changing */
+function keepStepInView(again = false) {
   const rc = $("#recipe"), l = $("#recipe .steps"), c = l && l.querySelector('[aria-current="step"]'), add = c && l.querySelector(".bsnew");
   if (!rc) return;
   const need = c ? (add ? c.getBoundingClientRect().bottom - add.getBoundingClientRect().top : c.offsetHeight) : 0;
   if (rc.hasAttribute("data-short")) rc.removeAttribute("data-short");
   if (c && ONE_SCREEN.matches && c.offsetHeight && need > l.clientHeight - 6) rc.setAttribute("data-short", "");
-  if (!c || l.scrollHeight <= l.clientHeight + 1) return;
+  if (!l) { stepSeen = null; return; }
+  const key = `${(M.RECIPE && M.RECIPE.name) || ""}|${st.recipe ? st.recipe.cur : -1}`, was = stepSeen;
+  const same = !again && !!was && was.el === l && was.key === key && was.h === l.clientHeight;
+  const byHand = same && (was.byHand || Math.abs(l.scrollTop - was.top) > 1);
+  stepSeen = {el: l, key, h: l.clientHeight, top: l.scrollTop, byHand};
+  if (byHand || !c || l.scrollHeight <= l.clientHeight + 1) return;
   const top = add && need <= l.clientHeight - 6 ? add : c, h = top === add ? need : c.offsetHeight;
   const d = top.getBoundingClientRect().top - l.getBoundingClientRect().top;
   if (d < 0 || d + h > l.clientHeight) l.scrollTop += d - 6;
+  stepSeen.top = l.scrollTop;
 }
 /* a timer's command: the demo answers it itself, as the mockup does; live it goes to CraftBeerPi, whose answer carries every
    timer, shown at once rather than when the websocket's word follows. A refusal says why under the timers */
@@ -6324,7 +6336,7 @@ export function createBrewDay(el, o = {}) {
   if (!DEMO_MODE) { try { window.name = "craftbeerpi"; } catch (_) { /* a sandboxed frame: no name */ } }
   timers = []; noteTimers = {}; hold = null; afterHold = null; heldOn = null; pbKeep = null; rigW = 0; tcornerKeep = null; last = null; everConnected = false; book = []; bookBusy = false; bookAgain = false; bookShown = false;
   bookNames = null; bookFor = null;
-  tAns = null; tMsg = null; lastBannerKey = null; rangAt = 0; newIds = new Set(); openIds = null; sAns = null; swFailedAt = null; swFcGap = null; bsOff = null; clockSeen = null;
+  tAns = null; tMsg = null; lastBannerKey = null; rangAt = 0; newIds = new Set(); openIds = null; sAns = null; swFailedAt = null; swFcGap = null; bsOff = null; clockSeen = null; stepSeen = null;
   answered.clear(); Object.keys(own).forEach(k => delete own[k]);
   const html = document.documentElement;
   // The stylesheets go in once and stay: every rule is scoped to html.bd-page, so they rest while it is off.
@@ -6500,11 +6512,11 @@ export function createBrewDay(el, o = {}) {
      next frame, as on a phone fitting it can change the column's height again */
   const rro = PAGE ? null : new ResizeObserver(() => {
     if (gen !== myGen || !st) return;
-    keepStepInView(); drawSw();
+    keepStepInView(true); drawSw();
     requestAnimationFrame(() => { if (gen === myGen && st && root && bsFit()) keepStepInView(); });
   });
   if (rro) rro.observe($("#recipe"));
-  const onFontsStep = () => { if (gen === myGen && st && !PAGE) { bsFit(); keepStepInView(); } };
+  const onFontsStep = () => { if (gen === myGen && st && !PAGE) { bsFit(); keepStepInView(true); } };
   if (document.fonts) document.fonts.addEventListener("loadingdone", onFontsStep);
   /* the timers move between the recipe column and their column beside the drawing as the window crosses one screen's
      width; the rows hold what fits as it changes size; + TIMER and SOUND over the drawing's corner, and the rows, are

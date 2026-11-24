@@ -41,7 +41,7 @@
 //   reloading the browser tab can only get the browser's own question.
 import { GROUPS, KINDS, TYPES, START } from "./catalog";
 import { call, why as callWhy } from "../brewday/api";
-import { stepModel, bookLine as dayBookLine, cfg as cfgOf, parseLeft, recipeWater, inWords } from "../brewday/live";
+import { stepModel, bookLine as dayBookLine, cfg as cfgOf, parseLeft, recipeWater, inWords, kettleRoles, hermsLogics, ROLES } from "../brewday/live";
 // As text, exactly as written (config-overrides.js): recipes.css for the shadow root; recipes-frame.css, the mockup's
 // .app rules (one screen tall from 620 px, scrolling below 1180 px, room for the phone's save bar), for the document,
 // where they apply only while <html> has data-page=recipes or brewsteps
@@ -148,7 +148,7 @@ function atWords(ep) {
 /* a step as Brew Day's recipe column lists it (live.js stepModel): its name, its temperature and minutes, a note, the
    boil's additions; a BrewStart on Ready by gives the water's temperature, when it's ready by and how much there is */
 function stepView(s) {
-  const p = s.props || {}, m = stepModel({...s, props: p}, {}, U()), v = {n: s.name || kindName(s.type)};
+  const p = s.props || {}, m = stepModel({...s, props: p}, D.roles, U()), v = {n: s.name || kindName(s.type)};
   if (s.type === "BrewStart" && readyBy(p)) v.p = [m.temp != null ? `${fmt(m.temp)} ${U()}` : "", m.ready ? `ready by ${m.ready}` : "", m.vol ? `${fmt(m.vol)} ${m.volU}` : ""].filter(Boolean).join(" · ");
   else v.p = [m.temp != null ? `${s.type === "SpargeStep" ? "water " : ""}${fmt(m.temp)} ${U()}` : "", m.min ? `${fmt(m.min)} min` : ""].filter(Boolean).join(" · ");
   if (m.note) v.note = m.note;
@@ -203,7 +203,7 @@ function fresh() {
     dragOver: false,
     stepsSig: ""
   };
-  D = {unit: "C", kettles: [], sensors: [], actors: [], config: {}, types: {}, version: "", connected: false, loaded: false, steps: [], basic: {}, bf: []};
+  D = {unit: "C", kettles: [], sensors: [], actors: [], config: {}, types: {}, version: "", connected: false, loaded: false, steps: [], basic: {}, bf: [], roles: {}};
 }
 const book = file => st.book.find(r => r.file === file);
 const sorted = () => [...st.book].sort((p, q) => (q.modified || 0) - (p.modified || 0) || String(p.name).localeCompare(String(q.name), undefined, {sensitivity: "base"}));
@@ -630,7 +630,8 @@ function stepsListHTML(steps, o = {}) {
     return `<li id="c-${esc(go)}"><button type="button" class="${cls}" data-go="${esc(go)}"${cur} aria-label="Step ${i + 1}, ${esc(v.n)}${v.p ? ", " + esc(v.p) : ""}. Open its settings">${inner}</button></li>`;
   }).join("") + slot(L.length);
   const offers = o.bsadd && !mv && hasKind("BrewStart"), bw = offers ? bsWhy() : "", bsWait = bw ? ` aria-disabled="true" data-why="${esc(bw)}"` : "";
-  const offer = offers ? `<li class="bsrow"><button type="button" class="bsadd" data-bsadd${bsWait}><span class="n" aria-hidden="true">+</span><b>BrewStart</b><span class="d">Hot water by a set time · goes in as step ${(ed ? firstFree(ed) : 0) + 1}</span></button></li>` : "";
+  const at = (ed ? firstFree(ed) : 0) + 1;
+  const offer = offers ? `<li class="bsrow"><button type="button" class="bsadd" data-bsadd aria-label="Add BrewStart: hot water by a set time, goes in as step ${at}"${bsWait}><span class="n" aria-hidden="true">+</span><b>BrewStart</b><span class="d">Hot water by a set time · goes in as step ${at}</span></button></li>` : "";
   return `<ol class="steps${mv ? " moving" : ""}" id="steps" aria-label="Steps">${offer}${rows}</ol>`;
 }
 /* MOVE's bar, over the steps while one is moved: what moves, FIRST and LAST for the far moves that are the usual ones
@@ -844,15 +845,16 @@ function recipePlateHTML() {
   const row = (k, n, h) => {
     const ch = norm(d[k]) !== norm(ed.orig[k]);
     return `<div class="row${ch ? " chg" : ""}" id="r-r-${k}" data-s="r" data-p="${k}"><div class="lb"><label class="nm" for="i-r-${k}" id="n-r-${k}">${n}</label>${h ? `<p class="wh">${h}</p>` : ""}<p class="ky">${k}</p></div>
-      <div class="ct"><textarea class="fld" id="i-r-${k}" rows="1" data-s="r" data-p="${k}">${esc(d[k])}</textarea>${stHTML(ch, ed.orig[k], "r", k)}</div></div>`;
+      <div class="ct"><textarea class="fld" id="i-r-${k}" rows="1" data-s="r" data-p="${k}">${esc(d[k])}</textarea>${stHTML(ch, ed.orig[k], "r", k, null, n)}</div></div>`;
   };
   return `<section class="plate${pickCls("r")}${landCls("r")}" id="p-r" data-k="r" aria-labelledby="h-r"><div class="phd"><h2 id="h-r">Name and notes</h2><p class="sum">${d.steps.length} ${d.steps.length === 1 ? "step" : "steps"} · ${esc(bookLine(d.steps.filter(s => !s._removed)).split(" · ").slice(1).join(" · ") || "no mash or boil yet")}</p></div>
     <div class="part">${row("name", "Name", "As the Recipe Book, Brew Day and BrewScribe show it.")}${row("author", "Author", "Put on recipes you write or import: Settings, Recipe author.")}${row("desc", "Description", "A line or two of your own. Shown under the name in the book.")}</div></section>`;
 }
-// a changed row's status line: what it was, and UNDO
-function stHTML(changed, was, k, label, wasShown) {
+// a changed row's status line: what it was, and UNDO, named for the setting (named) and what it goes back to
+function stHTML(changed, was, k, label, wasShown, named) {
   if (!changed) return `<p class="st" id="st-${esc(k)}-${label}"></p>`;
-  return `<p class="st" id="st-${esc(k)}-${label}"><span class="was">was ${esc(wasShown != null ? wasShown : norm(was) === "" ? "blank" : was)}</span><button type="button" class="lnk" data-undo="${esc(k)}" data-p="${label}">UNDO</button></p>`;
+  const w = esc(wasShown != null ? wasShown : norm(was) === "" ? "blank" : was);
+  return `<p class="st" id="st-${esc(k)}-${label}"><span class="was">was ${w}</span><button type="button" class="lnk" data-undo="${esc(k)}" data-p="${label}" aria-label="Undo ${esc(named || label)}, back to ${w}">UNDO</button></p>`;
 }
 /* a kind's settings in its parts: the catalogue's, then any CraftBeerPi declares that the catalogue doesn't place; a kind
    the catalogue doesn't know shows CraftBeerPi's settings for it, under its own words */
@@ -873,10 +875,11 @@ function stepPlateHTML(ed, s, i) {
   const moveWhy = lastOnly() ? "Needs CraftBeerPi 4.7.7.post58 or later." : st.page === "steps" && orders() == null ? WAIT
     : begun ? "It has begun, so it stays where it ran." : held ? `${nameIn(L[free - 1])} has begun, so the steps above it stay where they are.`
     : L.length - free < 2 ? (free ? "It is the only step still to come." : "It is the only step.") : "";
-  const k = esc(s._k);
-  const tools = ch.tag === "removed" ? `<button type="button" class="lnk" data-unremove="${k}">UNDO</button>`
-    : run ? "" : ed.mv === s._k ? `<button type="button" class="lnk" data-mvcancel>Cancel move</button>`
-    : `<button type="button" class="lnk" data-move="${k}"${moveWhy ? ` aria-disabled="true" data-why="${esc(moveWhy)}"` : ""}>Move</button><button type="button" class="lnk" data-remove="${k}">${ch.tag === "new" ? "Drop it" : "Remove step"}</button>`;
+  const k = esc(s._k), sn = `step ${i + 1}, ${esc(nameIn(s))}`;
+  // each named for its step, as a screen reader lists the buttons of every plate together
+  const tools = ch.tag === "removed" ? `<button type="button" class="lnk" data-unremove="${k}" aria-label="Undo removing ${sn}">UNDO</button>`
+    : run ? "" : ed.mv === s._k ? `<button type="button" class="lnk" data-mvcancel aria-label="Cancel move of ${sn}">Cancel move</button>`
+    : `<button type="button" class="lnk" data-move="${k}" aria-label="Move ${sn}"${moveWhy ? ` aria-disabled="true" data-why="${esc(moveWhy)}"` : ""}>Move</button><button type="button" class="lnk" data-remove="${k}" aria-label="${ch.tag === "new" ? `Drop it: new ${sn}` : `Remove ${sn}`}">${ch.tag === "new" ? "Drop it" : "Remove step"}</button>`;
   const head = `<div class="phd"><h2 id="h-${k}"><span class="n">${i + 1}</span>${esc(s.name || kindName(s.type))}</h2><div class="stools">${tools}</div>
     <p class="sum"><b>${esc(kindName(s.type))}</b>${kc ? ` · ${esc(kc.h)}` : " · A kind of step from a plugin."}${ch.moved && origOf(ed, s) ? ` Moved: it was step ${ed.orig.steps.indexOf(origOf(ed, s)) + 1}.` : ""}</p></div>`;
   if (ch.tag === "removed") return `<section class="plate removed${pickCls(s._k)}" id="p-${k}" data-k="${k}" aria-labelledby="h-${k}">${head}<p class="lead">Removed. It goes when you SAVE; UNDO keeps it.</p></section>`;
@@ -902,7 +905,7 @@ function rowHTML(ed, s, label, locked) {
   const key = isName ? "name" : isType ? `type · ${s.type}` : label;
   const was = !changed ? null : isType ? kindName(ov) : isName ? ov : shownValue(s, label, ov);
   return `<div class="row${changed ? " chg" : ""}" id="r-${k}-${label}" data-s="${k}" data-p="${label}"><div class="lb"><label class="nm" for="i-${k}-${label}" id="n-${k}-${label}">${esc(m.n)}</label>${m.h ? `<p class="wh">${esc(m.h)}</p>` : ""}<p class="ky">${esc(key)}</p></div>
-    <div class="ct">${ctlHTML(s, label, v, locked)}${stHTML(changed, ov, s._k, label, was)}<p class="why" id="need-${k}-${label}" role="status">${esc(needOf(s, label))}</p></div></div>`;
+    <div class="ct">${ctlHTML(s, label, v, locked)}${stHTML(changed, ov, s._k, label, was, m.n)}<p class="why" id="need-${k}-${label}" role="status">${esc(needOf(s, label))}</p></div></div>`;
 }
 /* the kinds the page offers: the catalogue's that CraftBeerPi has, in its order, then any a plugin adds */
 function kindsOffered() {
@@ -943,7 +946,7 @@ function addsHTML(ed, s, locked) {
   const dis = locked ? " disabled" : "";
   const line = i => {
     const ch = !!o && (!same(p[`Hop_${i}`], (o.props || {})[`Hop_${i}`]) || !same(p[`Hop_${i}_text`], (o.props || {})[`Hop_${i}_text`]));
-    return `<li id="r-${k}-Hop_${i}" class="${ch ? "chg" : ""}"><span class="numf"><input id="i-${k}-Hop_${i}" inputmode="decimal" autocomplete="off" value="${esc(norm(p[`Hop_${i}`]))}" data-s="${k}" data-p="Hop_${i}" aria-label="Addition ${i}, minutes left in the boil"${dis}><span>min</span></span><textarea class="fld" rows="1" id="i-${k}-Hop_${i}_text" data-s="${k}" data-p="Hop_${i}_text" aria-label="Addition ${i}, what to add"${dis}>${esc(norm(p[`Hop_${i}_text`]))}</textarea><button type="button" class="lnk" data-rmadd="${i}" data-s="${k}"${locked ? ' aria-disabled="true" data-why="Running now: CraftBeerPi doesn\'t change a step while it runs."' : ""}>Remove</button></li>`;
+    return `<li id="r-${k}-Hop_${i}" class="${ch ? "chg" : ""}"><span class="numf"><input id="i-${k}-Hop_${i}" inputmode="decimal" autocomplete="off" value="${esc(norm(p[`Hop_${i}`]))}" data-s="${k}" data-p="Hop_${i}" aria-label="Addition ${i}, minutes left in the boil"${dis}><span>min</span></span><textarea class="fld" rows="1" id="i-${k}-Hop_${i}_text" data-s="${k}" data-p="Hop_${i}_text" aria-label="Addition ${i}, what to add"${dis}>${esc(norm(p[`Hop_${i}_text`]))}</textarea><button type="button" class="lnk" data-rmadd="${i}" data-s="${k}" aria-label="Remove addition ${i}"${locked ? ' aria-disabled="true" data-why="Running now: CraftBeerPi doesn\'t change a step while it runs."' : ""}>Remove</button></li>`;
   };
   const full = used.length >= 6;
   return `${used.length ? `<div class="addh" aria-hidden="true"><span>Minutes left</span><span>What to add</span><span></span></div><ul class="addl">${used.map(line).join("")}</ul>` : `<p class="foot">No additions yet.</p>`}
@@ -957,7 +960,7 @@ function kindsHTML() {
     if (!ks.length) return "";
     return `<section aria-labelledby="kg-${g}"><h3 id="kg-${g}">${esc(name)}</h3><div class="kl">${ks.map(k => {
       const pl = ed ? naturalPlace(ed, k) : null, kc = CAT.KINDS[k], wait = k === "BrewStart" ? bsWhy() : "";
-      return `<button type="button" class="kind" data-kind="${esc(k)}"${wait ? ` aria-disabled="true" data-why="${esc(wait)}"` : ""}><b>${esc(kindName(k))}</b><span>${esc(kc ? kc.h : "A kind of step from a plugin.")}</span>${pl ? `<em>${wait ? esc(wait) : `Goes in as step ${pl.at + 1}, ${esc(pl.where)}`}</em>` : ""}<small>${esc(k)}</small></button>`;
+      return `<button type="button" class="kind" data-kind="${esc(k)}"${wait ? ` aria-disabled="true" data-why="${esc(wait)}"` : ""}><b><span class="sr">Add </span>${esc(kindName(k))}</b><span>${esc(kc ? kc.h : "A kind of step from a plugin.")}</span>${pl ? `<em>${wait ? esc(wait) : `Goes in as step ${pl.at + 1}, ${esc(pl.where)}`}</em>` : ""}<small>${esc(k)}</small></button>`;
     }).join("")}</div></section>`;
   }).join("");
   return `<section class="plate pick${ed && ed.landKinds ? " land" : ""}" id="p-kinds" data-k="kinds" aria-labelledby="h-kinds"><div class="phd"><h2 id="h-kinds">Add a step</h2><p class="sum">Choose what kind. It goes in where that kind belongs in a brew and opens for its settings; MOVE puts it elsewhere. Nothing is saved until SAVE.</p></div>
@@ -1317,14 +1320,18 @@ const listOf = xs => (xs || []).filter(x => x && x.id).map(x => ({id: x.id, name
 function intake(d) {
   const c = {};
   for (const k of Object.keys(d.config || {})) c[k] = cfgOf(d.config, k);
+  // which kettle is the HLT, the mash tun and the boil kettle, as Brew Day works it out: a step's line can depend on it
+  const K = kettleRoles(d.kettles, d.config, hermsLogics(d.logic)), roles = {};
+  for (const v of ROLES) if (K[v]) roles[K[v].id] = v;
   const steps = (Array.isArray(d.steps) ? d.steps : []).filter(x => x && typeof x === "object");
   const basic = d.basic && typeof d.basic === "object" && !Array.isArray(d.basic) ? d.basic : {};
   const bf = Array.isArray(d.bf) && Array.isArray(d.bf[0]) ? d.bf[0] : [];
-  const sig = JSON.stringify([c, listOf(d.kettles), listOf(d.sensors), listOf(d.actors), Object.keys(typesOf(d.stepTypes)), d.version, !!d.connected, !!d.loaded, steps, basic, bf]);
+  const sig = JSON.stringify([c, listOf(d.kettles), listOf(d.sensors), listOf(d.actors), Object.keys(typesOf(d.stepTypes)), d.version, !!d.connected, !!d.loaded, steps, basic, bf, roles]);
   if (sig === st.sig) return;
   st.sig = sig;
   const wasLink = st.link;
   D.config = c;
+  D.roles = roles;
   D.unit = String(c.TEMP_UNIT || "C").toUpperCase().startsWith("F") ? "F" : "C";
   D.kettles = listOf(d.kettles); D.sensors = listOf(d.sensors); D.actors = listOf(d.actors);
   D.types = typesOf(d.stepTypes);

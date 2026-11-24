@@ -202,7 +202,11 @@ export function stepModel(s, roleOf, U, kname = {}) {
   if (t != null && t > 0) m.min = t;
   if (s.type === "BrewStart") Object.assign(m, brewStartModel(p, U, kname));
   if (s.type === "MashInStep") {
-    m.note = temp != null ? `Add the malt when it reaches ${temp} ${U}` : "Add the malt when it is up to temperature";
+    /* the malt goes in where a MashInStep runs on the mash tun (or a kettle not known to be another); on the HLT it heats
+       the strike water, and its line is its own question, as CraftBeerPi will ask it, else what it does */
+    const onHlt = roleOf[p.Kettle] === "hlt", ask = onHlt ? unitText(p.Notification, U).trim() : "";
+    m.note = onHlt ? ask || (temp != null ? `Heats the water to ${temp} ${U}` : "Heats the water")
+      : temp != null ? `Add the malt when it reaches ${temp} ${U}` : "Add the malt when it is up to temperature";
     // its grain weight, by which the strike water box knows the recipe has one where BeerSmith's mash figures are missing
     const kg = num(p.Grain_Kg);
     if (kg != null && kg > 0) m.kg = kg;
