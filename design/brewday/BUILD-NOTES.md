@@ -6584,6 +6584,88 @@ second, and the "was off" line across both under them. Short names look exactly 
 - Changed: `proposal\brew-day.css` (`.tside .tchip[data-back]`); `DESIGN.md` (Timers, beside the drawing: 61 and 80 px,
   the one first line); this section and the 61 and 80 above.
 
+## BrewScribe readings from every reminder that asks for one: ready to build (23 Nov)
+
+The brewer: "what about entering brewscribe data in the reminder prompts from brewday screen?", and "Every BrewScribe
+reminder that asks for a reading". You decided, on my recommendation, that a reminder stays up until everything it
+asks for is recorded. The design is `proposal\READINGS-ENTRY.md` and DESIGN.md's Alarm Banner bullet "BrewScribe
+readings…"; the calls are BrewScribe's contract, draft 5 (Porter, BrewScribe 0.1.0.dev56, running on 8100; his
+session folder's `files\brewday-entry\contract.md`, with a real answer through a whole brew in
+`sample-answer-d56.txt`).
+
+### What to build (screen.js, brewday.css)
+
+The pH box (post39) made general, not five new boxes. Mockup: the `rd*` functions beside the `ph*` ones, which call
+them for any reminder that isn't pH-only; `RD_Q` (every reminder's words); the stand-in BrewScribe's `scribeDay`,
+`rdChosen`, `rdTake`.
+
+1. **Which reminders:** every title in the GET's `reminders` with a reading Brew Day can show. Kinds `ph`, `gravity`,
+   `volume`, `level`, `sparge_water`; others ignored. Volume kinds only with `volume_unit`. pH reminders keep the pH
+   box exactly as built, and its draft 4 body.
+2. **RECORD**'s word and small line, greyed and absent as RECORD pH (READINGS-ENTRY.md, "On the reminder").
+3. **The box** (READINGS-ENTRY.md, "The box"): its title (`stage_name` in capitals), the vessel line, what BrewScribe
+   has, a part per reading still to come, "Also: + …" for offered and recorded ones, "Saves … ." with more than one,
+   the error line, SAVE, CANCEL, ON BREWSCRIBE'S PAGE. On a phone, in the page under the reminder, as the pH box.
+4. **The parts:** gravity (three paired choices from `choices`, starting at `chosen`, a choice emptying the figure;
+   SG keys −.01 −.001 +.001 +.01, °Bx and °P −1 −.1 +.1 +1; the refractometer lines; "About 1.048 SG." with draft 5's
+   section 5, the factor for °Bx only; the looks-like-SG line; the sample's temperature where the pair's
+   `sample_temperature` is "asked"); volume; the HLT's levels and the sparge water (`level_before`, the live "Sparge
+   water: 5.40 gal." by BrewScribe's `spargeWater` rule, the volume typed instead); pH. A pH `target` is a number, any
+   other kind's an object whose `text` shows as it is. Keys start from the target in the figure's own scale or unit,
+   else `usual.start`; every figure starts empty.
+5. **SAVE:** its word and small line; the refusals; draft 5's POST, one call, all or nothing, an `entry_id` per reading
+   kept for the same content; BrewScribe's 201 `text` in LOG; then close the reminder as OK does when everything
+   asked is recorded, else close the box, keep the reminder ("gravity to come") and focus RECORD. Failures as the pH
+   box. The 15 s GET keeps the small line and the box's "has" line current.
+6. **Words** are READINGS-ENTRY.md's and BrewScribe's (its 400 and 409 `error` sentences as they come).
+
+### In CraftBeerPi
+
+Nothing. BrewScribe dev56 (Porter) has the calls and the two new HLT level reminders; dev57 raises Record strike
+water while the water heats.
+
+### Known, accepted
+
+- At 1180 × 860, the before-boil and after-boil reminders, whose words are long, with OK and RECORD READINGS make the
+  title bar 148 to 169 px tall while they wait (102 to 124 px before); the page then scrolls 15 to 19 px. The box
+  still fits.
+- In windows about 1160 to 1270 px wide and up to about 900 px tall (1180 x 860 among the checked sizes), RECORD
+  wraps the longer reminders onto one more line. The drawing's strip then drops to 64 px, under the 72 px it needs, so
+  the drawing is left out while first runnings, before the boil or the final readings wait. With OK alone the strip is
+  79 to 84 px and the drawing shows. It comes back once the reminder is answered, and the pumps' state stays on the
+  vessels' buttons meanwhile. `#boilpower` already loses the drawing at this size. Windows 1024, 1280, 1440 and 1920 px
+  wide keep it. If this size matters to the brewer, the fix is letting a reminder's words run on under OK and RECORD
+  in the title bar, which changes every reminder.
+- The HLT level after the sparge and the before-boil reminder go up together, with the boil's own question: the title
+  bar shows one, and LOG has the others, as for any reminders that come together.
+- "Record strike water" goes up while BrewStart heats the HLT from BrewScribe dev57 (dev56 raised it at MashIn, after
+  the water had moved), and stays up through MashIn until answered.
+
+### Checked
+
+- All 15 Brew Day suites pass, with no page errors: presses 285; the strike water 28 and 37; UNLOAD 61; the timers 72
+  and 40; the clock 17, and its measure; the boil kettle 23; the review page 36; the timers' places 149 and 262; the
+  pH box 128 and 134; 12-hour 175.
+- The readings box: `rd_presses` 186 checks and `rd_measure` 798, all passing, with no page errors. `rd_measure` uses
+  seven sizes: 1920 x 950, 1440 x 900, 1180 x 860, 1024 x 768, 820 x 1180, 390 x 844 and 360 x 740. Between them they
+  cover every press above, dev56's sample answer replayed through the stand-in BrewScribe, the box inside the window,
+  44 px keys, no word broken mid-word, and every text at least 4.5:1 on its ground.
+- The chosen gravity pair matches AUTO | MANUAL's pressed half: the same fill, ring and white words. Contrast of its two
+  lines (the scale, then the instrument): pressed 19.6:1 and 13.3:1; not pressed 12.3:1 and 8.0:1; under the pointer
+  10.7:1 and 7.0:1; while SAVE waits, the chosen pair as when pressed
+  and the others 5.1:1.
+- Pictures against the proposal before the readings box, at 1440 x 900, 390 x 844 and 1180 x 860: 462 pictures, and
+  only the 20 new `rd-*` moments differ.
+- Every `rd-*` moment at 1920 x 950, 1440 x 900, 1280 x 800, 1180 x 860 and 1024 x 768, with RECORD and with OK alone
+  (`?brewscribe=none`), for whether the drawing is still drawn: see "Known, accepted".
+
+### Changed
+
+- `proposal\brew-day.js`, `proposal\brew-day.css`, `proposal\brew-day.html` (moments and notes);
+  `proposal\READINGS-ENTRY.md` (new); this section.
+- `DESIGN.md` (the Alarm Banner's BrewScribe readings bullet), `.impeccable\decisions\direction-log.md`,
+  `.impeccable\design.json`.
+
 ## Open questions about the drawing
 
 Both were answered on 10 Nov. The valves have been in the drawing since then; the path after the boil was

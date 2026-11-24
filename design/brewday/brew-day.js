@@ -975,8 +975,135 @@ const SCENES = {
     s.events.unshift(["13:42:36", "pH 5.42 saved in BrewScribe (Early mash, Mash Tun)", "confirmed", "ok"], ["13:42:36", `${PH_Q[0].title} answered: OK`, "failed: no answer in 5 s", "bad"]);
     return s;
   },
-  "ph-other": () => Object.assign(phMash(), {open: {phAt: {txt: "5.42"}, phElse: 1200}})
+  "ph-other": () => Object.assign(phMash(), {open: {phAt: {txt: "5.42"}, phElse: 1200}}),
+  /* BrewScribe's readings from every reminder that asks for one (READINGS-ENTRY.md), each on the moment for its time of
+     the brew, BrewScribe's log open (scribeDay). #rd-strike: brew morning (#sw-heat), BrewStart heating the HLT since
+     its heating start. BrewScribe raises "Record strike water" with the first step that prepares the strike water
+     before the first rest, here BrewStart, once per brew; it stays up, through MashIn too, until answered. The box open
+     for the HLT's volume */
+  "rd-strike": () => { const s = SCENES["sw-heat"](); return Object.assign(rdUp(s, 0, hhmmss(s.sw.g.heat)), {base: "sw-heat", open: {phAt: {}}}); },
+  /* the sparge, on the SpargeStep's day (#sparge-heat, #sparge-run). As the sparge step started at 14:56:21, "HLT level
+     before the sparge" went up, then "Check first runnings". #rd-level: 14:59:40, the sparge water heating, both
+     waiting, the box open for the level. #rd-first: 15:12:40, the fly sparge running, the level saved at 14:58:12 and
+     kept, the box open for the first runnings' gravity in SG, the brew's last pair. #rd-first-bx: the brew's last pair
+     the refractometer's °Bx, 12.4 typed, its SG worked out with the wort correction factor 1.04. #rd-first-nofactor:
+     the same with no refractometer setup in BrewScribe. #rd-first-noatc: a refractometer without temperature
+     compensation, so °Bx asks for the sample's temperature. #rd-looks-sg: 1.048 typed with °Bx chosen. #rd-nounit:
+     BrewScribe with no volume unit for the brew: the first runnings still offer their gravity, and "Record strike
+     water" would have no RECORD */
+  "rd-level": () => Object.assign(rdLevel(), {open: {phAt: {}}}),
+  "rd-first": () => Object.assign(rdFirst(), {open: {phAt: {}}}),
+  "rd-first-bx": () => Object.assign(rdRefr(rdFirst()), {open: {phAt: {f: {g: "12.4"}}}}),
+  "rd-first-nofactor": () => Object.assign(rdRefr(rdFirst(), null), {open: {phAt: {f: {g: "12.4"}}}}),
+  "rd-first-noatc": () => Object.assign(rdRefr(rdFirst(), Object.assign({}, SCRIBE_REFR, {temperature_compensation: "no"})), {open: {phAt: {f: {g: "12.4"}}}}),
+  "rd-looks-sg": () => Object.assign(rdRefr(rdFirst()), {open: {phAt: {f: {g: "1.048"}}}}),
+  "rd-nounit": () => { const s = rdFirst(); Object.assign(s.bscribe, {volume_unit: null, volume_label: null}); return Object.assign(s, {open: {phAt: {}}}); },
+  /* #rd-last: 15:40:20, "Check last runnings" up since 15:40:02, 5 minutes before the sparge's 40 minutes end, the
+     first runnings' 1.072 SG saved at 15:07:31; the box open for the gravity, pH and volume a "+" away. #rd-last-all:
+     both added, and 1.012 SG, pH 5.62 and 6.95 gal typed */
+  "rd-last": () => Object.assign(rdLast(), {open: {phAt: {}}}),
+  "rd-last-all": () => Object.assign(rdLast(), {open: {phAt: {add: ["ph", "volume"], f: {g: "1.012", vol: "6.95"}, txt: "5.62"}}}),
+  /* the sparge done at 15:45:02 (#boil-hold's day, at 15:45:40): "HLT level after the sparge" up, then "Record
+     before-boil readings", with the boil waiting for the brewer. #rd-sparge: BrewScribe keeping the level before, 10.00
+     gal, and 4.60 typed: the sparge water 5.40 gal. #rd-sparge-nolevel: no level BrewScribe can work from (none kept;
+     one kept in another unit than its volume_unit gives the same box), so both levels asked. #rd-sparge-volume: the
+     sparge water typed instead, 5.40 gal. #rd-sparge-bad: 10.20 typed, not lower than the level before, and SAVE
+     tapped */
+  "rd-sparge": () => Object.assign(rdAfter(), {open: {phAt: {f: {aft: "4.60"}}}}),
+  "rd-sparge-nolevel": () => Object.assign(rdAfter(false), {open: {phAt: {}}}),
+  "rd-sparge-volume": () => Object.assign(rdAfter(), {open: {phAt: {way: "volume", f: {spv: "5.40"}}}}),
+  "rd-sparge-bad": () => Object.assign(rdAfter(), {open: {phAt: {f: {aft: "10.20"}, go: true}}}),
+  /* the boil: #rd-preboil: the boil heating at 15:12 (#heatup), "Record before-boil readings" up since the boil step
+     started at 14:58:30, the box open for the volume and gravity. #rd-postboil: the whirlpool at 17:18:40 (#whirlpool),
+     "Record after-boil readings" up since the step after the boil started at 17:00:04, the box open, the pH a "+" away.
+     #rd-partial: the volume saved at 17:18:22, 6.40 gal, the reminder still up for the gravity, focus on RECORD.
+     #rd-saved: both saved at 17:18:34, 6.40 gal and 1.048 SG, and the reminder closed, focus on LOG. #rd-fail: SAVE
+     refused by BrewScribe (503) at 17:18:31, the box open with both figures. #rd-final: the wort chilling at 17:41:30
+     (#finished), "Record final volume and OG" up since every step was done at 17:28:10, the box open with 6.10 gal,
+     1.052 SG and the sample at 68.0 °F */
+  "rd-preboil": () => Object.assign(rdUp(SCENES.heatup(), 5, "14:58:30"), {open: {phAt: {}}}),
+  "rd-postboil": () => Object.assign(rdUp(SCENES.whirlpool(), 6, "17:00:04"), {open: {phAt: {}}}),
+  "rd-partial": () => {
+    const s = rdUp(SCENES.whirlpool(), 6, "17:00:04"), rem = s.bscribe.reminders.find(r => r.title === RD_Q[6].title);
+    rdLine(s, ["17:18:22", rdSaid(rem, "volume", [rdApply(s.bscribe, rem.title, {entry_id: RD_SENT[0], kind: "volume", value: 6.4, unit: "us_gal"})]), "confirmed", "ok"]);
+    return Object.assign(s, {open: {phRec: true}});
+  },
+  "rd-saved": () => {
+    const s = SCENES.whirlpool();
+    s.bscribe = scribeDay();
+    rdAnswered(s, 6, "17:00:04", "17:18:34", [{kind: "volume", value: 6.4, unit: "us_gal"}, {kind: "gravity", value: 1.048, instrument: "hydrometer", scale: "sg"}]);
+    return Object.assign(s, {open: {phLog: true}});
+  },
+  "rd-fail": () => {
+    const s = rdUp(SCENES.whirlpool(), 6, "17:00:04");
+    rdLine(s, ["17:18:31", "6.40 gal and 1.048 SG not saved in BrewScribe", "failed", "bad"]);
+    return Object.assign(s, {open: {phAt: {f: {vol: "6.40", g: "1.048"}, err: "BrewScribe storage is unavailable; retry the operation", sent: {volume: RD_SENT[0], gravity: RD_SENT[1]}}}});
+  },
+  "rd-final": () => Object.assign(rdUp(SCENES.finished(), 7, "17:28:10"), {open: {phAt: {f: {vol: "6.10", g: "1.052", gt: "68.0"}}}})
 };
+/* BrewScribe's readings moments (READINGS-ENTRY.md): a moment with BrewScribe's reminder i (RD_Q) up since `at`, in the
+   title bar, its line waiting in LOG */
+function rdUp(s, i, at) {
+  if (!s.bscribe) s.bscribe = scribeDay();
+  s.banner = rdBanner(i);
+  rdLine(s, [at, `${RD_Q[i].title}: ${RD_Q[i].text}`, "waiting for you", "wait"]);
+  return s;
+}
+/* lines put into a moment's LOG by their times, newest first, each above the lines of the same second already there */
+function rdLine(s, ...L) { L.forEach(l => { const i = s.events.findIndex(e => e[0] <= l[0]); s.events.splice(i < 0 ? s.events.length : i, 0, l); }); }
+/* an earlier BrewScribe reminder i, up at `at` and answered with SAVE at `done`: the readings it saved (rs) in the
+   moment's BrewScribe, and LOG's lines for it, as SAVE logs them */
+function rdAnswered(s, i, at, done, rs) {
+  const rem = s.bscribe.reminders.find(r => r.title === RD_Q[i].title), texts = rs.map((r, k) => rdApply(s.bscribe, rem.title, Object.assign({entry_id: RD_SENT[k]}, r)));
+  rdLine(s, [at, `${RD_Q[i].title}: ${RD_Q[i].text}`, "answered", ""], [done, `${RD_Q[i].title} answered: OK`, "confirmed", "ok"], [done, rdSaid(rem, rs[0].kind, texts), "confirmed", "ok"]);
+  return s;
+}
+/* the entries Brew Day sends in the readings moments */
+const RD_SENT = ["5e1b7c2a-8d34-4f6e-a1b9-3c7d2e8f4a10", "a3f9d6e1-2b47-4c8d-9e5f-6a1b0c7d2e43", "c8e2a4f6-1d3b-4e5c-8f7a-9b0d1e2f3a54"];
+/* the HLT's level before the sparge saved at 14:58:12, 10.00 gal, which BrewScribe keeps for the sparge water */
+function rdKept(s) {
+  if (!s.bscribe) s.bscribe = scribeDay();
+  return rdAnswered(s, 1, "14:56:21", "14:58:12", [{kind: "level", value: 10, unit: "us_gal"}]);
+}
+/* 14:59:40, the sparge water heating (#sparge-heat): "HLT level before the sparge" and "Check first runnings" both
+   waiting since the sparge step started at 14:56:21 */
+function rdLevel() {
+  const s = rdUp(SCENES["sparge-heat"](), 1, "14:56:21");
+  rdLine(s, ["14:56:21", `${RD_Q[2].title}: ${RD_Q[2].text}`, "waiting for you", "wait"]);
+  return Object.assign(s, {base: "sparge-heat"});
+}
+/* 15:12:40, the fly sparge running (#sparge-run): the level kept, "Check first runnings" up since 14:56:21 */
+function rdFirst() { return Object.assign(rdUp(rdKept(SCENES["sparge-run"]()), 2, "14:56:21"), {base: "sparge-run"}); }
+/* 15:40:20 on the same day: "Check last runnings" up since 15:40:02, 5 minutes before the sparge's 40 minutes end at
+   15:45:02; the first runnings' gravity saved at 15:07:31 */
+function rdLast() {
+  const s = rdKept(SCENES["sparge-run"]());
+  rdAnswered(s, 2, "14:56:21", "15:07:31", [{kind: "gravity", value: 1.072, instrument: "hydrometer", scale: "sg"}]);
+  s.t = 15 * 3600 + 40 * 60 + 20; s.recipe.left = 15 * 3600 + 45 * 60 + 2 - s.t;
+  return Object.assign(rdUp(s, 3, "15:40:02"), {base: "sparge-run"});
+}
+/* 15:45:40, the sparge done at 15:45:02 and the boil waiting for the brewer (#boil-hold's day): "HLT level after the
+   sparge" up, then "Record before-boil readings"; the level before kept, unless kept is false */
+function rdAfter(kept = true) {
+  const s = SCENES["boil-hold"]();
+  s.bscribe = scribeDay();
+  if (kept) rdKept(s);
+  s.t = 15 * 3600 + 45 * 60 + 40; s.v.hlt.pv = 165.2; s.v.mt.pv = 166.2; s.v.bk.pv = 150.2;
+  rdUp(s, 4, "15:45:02");
+  rdLine(s, ["15:45:02", `${RD_Q[5].title}: ${RD_Q[5].text}`, "waiting for you", "wait"]);
+  return Object.assign(s, {base: "boil-hold"});
+}
+/* the brew's last gravity read with the refractometer in °Bx, so the box starts there, and the brewer's refractometer
+   setup as BrewScribe has it (refr; null for none), which asks for the sample's temperature where it has no
+   temperature compensation */
+function rdRefr(s, refr = SCRIBE_REFR) {
+  s.bscribe.reminders.forEach(r => r.readings.filter(x => x.kind === "gravity").forEach(g => {
+    g.refractometer = refr && Object.assign({}, refr);
+    g.choices.find(c => c.scale === "brix").sample_temperature = refr && refr.temperature_compensation === "no" ? "asked" : "optional";
+    rdChosen(g, {instrument: "refractometer", scale: "brix"});
+  }));
+  return s;
+}
 /* the mash pH moments (PH-ENTRY.md), the #mash day. MashIn was confirmed at 13:27:05, so "Check mash pH" went up at
    13:42:05, in Protein Rest, with the mash still coming back to 126 °F after the malt went in (its 20 minutes start at
    13:49:38), its pump recirculating through the coil and the HLT holding 131.4 °F for it */
@@ -1179,17 +1306,66 @@ const PH_Q = [
   {title: "BrewScribe: Check mash pH before mash-out", text: "Check mash pH again before mash-out or transfer. Cool a separate sample and record its actual temperature."}
 ];
 const phBanner = i => ({tone: "prompt", title: PH_Q[i].title, text: PH_Q[i].text, act: "OK", cmd: "b:ack"});
-/* BrewScribe's answer to GET /brewscribe/api/brew-day/readings on the #mash day, in its shape: Test Recipe v5's brew log
-   open, both reminders for the Mash Tun, nothing saved yet. With no log open (log false) the reminders are still
-   listed, with no vessel and nothing saved, and why_not says why, in BrewScribe's words */
+/* BrewScribe's other reminders that ask for a reading (READINGS-ENTRY.md), in their own words, in the order they go up:
+   the strike water with the first step that prepares it before the first rest (BrewStart, a heating step or MashIn;
+   here BrewStart, as it heats the HLT), once per brew and up until answered; the HLT's level as the sparge step
+   starts, then the first runnings; the last runnings 5 minutes before the sparge's timer ends; the HLT's level as the
+   sparge step is done, then the boil's start; the step after the boil; and once every step is done, the last, which
+   names the recipe's planned OG (Test Recipe v5 adds no top-up water). CraftBeerPi shows each titled "BrewScribe: …",
+   with its own OK (b:ack, phAck) */
+const RD_Q = [
+  {title: "BrewScribe: Record strike water", text: "Record the measured strike-water total and any treatments you actually added. This does not confirm that grain has been mixed in."},
+  {title: "BrewScribe: HLT level before the sparge", text: "Read the HLT's level before the sparge pump starts. BrewScribe keeps it until the level after the sparge, then saves the difference as the sparge water."},
+  {title: "BrewScribe: Check first runnings", text: "Once wort is flowing into the boil kettle, sample the incoming stream for first runnings. Check last runnings before collection ends. A timed later alert needs a running sparge timer."},
+  {title: "BrewScribe: Check last runnings", text: "Check the last incoming runnings before finishing collection, while you can still decide whether to continue. Sample the stream, not the mixed kettle."},
+  {title: "BrewScribe: HLT level after the sparge", text: "Read the HLT's level now the sparge is done. BrewScribe saves the sparge water: the level before the sparge less this one."},
+  {title: "BrewScribe: Record before-boil readings", text: "Before a rolling boil, record the actual kettle volume and gravity. If boiling has already begun, record the actual sample now; do not backdate it. Record actual additions as you make them."},
+  {title: "BrewScribe: Record after-boil readings", text: "Record the actual after-boil volume, gravity and any pH sample you take. Keep each sample's own temperature."},
+  {title: "BrewScribe: Record final volume and OG", text: "Before the wort leaves the kettle, read its volume. Take the OG from the cooled wort going into the fermenter; the recipe plans 1.053. Then finish your BrewScribe log."}
+];
+const rdBanner = i => ({tone: "prompt", title: RD_Q[i].title, text: RD_Q[i].text, act: "OK", cmd: "b:ack"});
+/* BrewScribe's answer to GET /brewscribe/api/brew-day/readings, in its shape (draft 5, as BrewScribe 0.1.0.dev56 gives
+   it): Test Recipe v5's brew log open, in US gallons, every reminder that asks for a reading with its stage, vessel and
+   readings, asked first, and nothing saved yet. The two mash pH reminders come first, for the Mash Tun; the strike
+   water and the sparge water are the HLT's, the only kettle named HLT; the runnings and the boil are the Boil
+   Kettle's. The recipe's targets: a pH's is a plain number, as in draft 4, and this recipe has none (#ph-target gives
+   5.3); every other kind's is {value, unit or scale, text}: OG 1.053 (After boil and Final), boil volume 7.00 gal
+   (Before boil and Last runnings), sparge 5.00 gal. The brewer's refractometer, from his last Brix reading: wort
+   correction factor 1.04, with temperature compensation. His last gravity: the hydrometer's SG, whose usual range and
+   sample temperature the gravity reading gives too (rdChosen). The last reminder's older title is listed as well, as
+   BrewScribe answers it for a reminder CraftBeerPi kept up across an update. With no log open (log false) the
+   reminders are still listed, with no vessel and nothing saved, and why_not says why, in BrewScribe's words */
 const SCRIBE_DAY = "4c1d2e0a-7b1f-4c55-9a8e-2f6d1b0c9e31";
 const PH_NOLOG = "No BrewScribe log is open, so there's nowhere to save it. Start one on BrewScribe's page.";
+const SCRIBE_REFR = {wort_correction_factor: 1.04, temperature_compensation: "yes", calibration_temperature: 68, calibration_temperature_unit: "f"};
 function scribeDay(log = true) {
-  const rd = asks => ({kind: "ph", label: "pH", min: 0, max: 14, decimals: 2, target: null, sample_temperature: asks, sample_usual: {min: 50, max: 95}, saved: null});
-  const rem = (i, stage, name) => ({title: PH_Q[i].title, stage, stage_name: name, vessel: log ? KNAME.mt : null, vessel_problem: null,
-    page: `/brewscribe/#stage=${stage}&focus=ph`, readings: [rd(i ? "asked" : "optional")]});
-  return {log: log ? {day_id: SCRIBE_DAY, name: RECIPE_NAME} : null, why_not: log ? null : PH_NOLOG, temperature_unit: "f",
-    reminders: [rem(0, "mash_start", "Early mash"), rem(1, "mash_end", "End of mash")]};
+  const usual = {min: 50, max: 95}, boilV = {value: 7.0, unit: "us_gal", text: "recipe boil volume 7.00 gal"};
+  const rd = (asks, asked = true) => ({kind: "ph", label: "pH", min: 0, max: 14, decimals: 2, usual: {min: 4, max: 7, start: 5.4}, asked, sample_temperature: asks, sample_usual: usual, target: null, saved: null});
+  const grav = og => rdChosen({kind: "gravity", label: "Gravity", asked: true, usual: null, sample_temperature: null, sample_usual: usual,
+    choices: [{instrument: "hydrometer", scale: "sg", label: "SG", min: 0.9, max: 1.5, decimals: 3, usual: {min: 1, max: 1.12, start: 1.05}, sample_temperature: "asked"},
+      {instrument: "refractometer", scale: "brix", label: "°Bx", min: 0, max: 100, decimals: 1, usual: {min: 0, max: 25, start: 12}, sample_temperature: "optional"},
+      {instrument: "hydrometer", scale: "plato", label: "°P", min: 0, max: 100, decimals: 1, usual: {min: 0, max: 25, start: 12}, sample_temperature: "asked"}],
+    chosen: null, refractometer: Object.assign({}, SCRIBE_REFR), target: og ? {value: 1.053, scale: "sg", text: "recipe OG 1.053"} : null, saved: null}, {instrument: "hydrometer", scale: "sg"});
+  const vol = (kind, label, asked, target, more) => Object.assign({kind, label, asked, unit: "us_gal", min: 0, max: null, decimals: 2, usual: {min: 0, max: 20, start: 5}, sample_temperature: "none", sample_usual: null}, more, {target, saved: null});
+  const rem = (title, stage, name, v, readings, focus = readings[0].kind) => ({title, stage, stage_name: name, vessel: log ? v : null, vessel_problem: null,
+    page: `/brewscribe/#stage=${stage}&focus=${focus}`, readings});
+  const last = title => rem(title, "transfer", "Final volume / transfer", KNAME.bk, [vol("volume", "Volume", true, null), grav(true)]);
+  return {log: log ? {day_id: SCRIBE_DAY, name: RECIPE_NAME} : null, why_not: log ? null : PH_NOLOG, temperature_unit: "f", volume_unit: "us_gal", volume_label: "gal",
+    reminders: [rem(PH_Q[0].title, "mash_start", "Early mash", KNAME.mt, [rd("optional")]), rem(PH_Q[1].title, "mash_end", "End of mash", KNAME.mt, [rd("asked")]),
+      rem(RD_Q[0].title, "strike_water", "HLT water prep", KNAME.hlt, [vol("volume", "Volume", true, null)]),
+      rem(RD_Q[1].title, "sparge_water", "Sparge water", KNAME.hlt, [vol("level", "HLT level before the sparge", true, null)], "level-before"),
+      rem(RD_Q[2].title, "first_runnings", "First runnings", KNAME.bk, [grav(false), rd("optional", false)]),
+      rem(RD_Q[3].title, "last_runnings", "Last runnings", KNAME.bk, [grav(false), rd("optional", false), vol("volume", "Volume", false, boilV)]),
+      rem(RD_Q[4].title, "sparge_water", "Sparge water", KNAME.hlt, [vol("sparge_water", "Sparge water", true, {value: 5.0, unit: "us_gal", text: "recipe sparge 5.00 gal"}, {level_before: null})], "level-after"),
+      rem(RD_Q[5].title, "pre_boil", "Before boil", KNAME.bk, [vol("volume", "Volume", true, boilV), grav(false)]),
+      rem(RD_Q[6].title, "post_boil", "After boil", KNAME.bk, [vol("volume", "Volume", true, null), grav(true), rd("asked", false)]),
+      last(RD_Q[7].title), last("BrewScribe: Review the finished brew")]};
+}
+/* a gravity reading's pair to start in, with that pair's usual range and sample temperature, as BrewScribe gives them
+   beside its choices */
+function rdChosen(g, pair) {
+  const c = g.choices.find(x => x.instrument === pair.instrument && x.scale === pair.scale) || g.choices[0];
+  return Object.assign(g, {chosen: {instrument: c.instrument, scale: c.scale}, usual: Object.assign({}, c.usual), sample_temperature: c.sample_temperature});
 }
 /* ---------- the boil kettle: the default faceplate (?bk=power), the faceplate the screen shows with an older BoilPower
    (?bk=today), which boil-kettle.html compares with it, or ?bk=words, a words-only alternative kept for comparison. The
@@ -4128,15 +4304,17 @@ function phLoad() {
   st.scribeMock = Object.assign({post: [], ack: [], get: null, page: null, ids: {}}, st.scribeMock);
   const seen = st.bscribe && st.bscribeSeen !== undefined ? st.bscribeSeen : st.bscribe;
   delete st.bscribeSeen;
-  Object.assign(st, {scribe: phCopy(seen), scribeSeen: st.banner, scribeTried: st.banner, scribeAsking: null, scribeAt: Date.now(), scribeT0: Date.now(), scribePosts: [], ph: null, phSent: null});
+  Object.assign(st, {scribe: phCopy(seen), scribeSeen: st.banner, scribeTried: st.banner, scribeAsking: null, scribeAt: Date.now(), scribeT0: Date.now(), scribePosts: [], ph: null, phSent: null, rdSent: null});
 }
-/* the reminder in the title bar, if BrewScribe takes a pH for it: BrewScribe's answer since it showed, its entry for the
-   reminder, and the pH reading's. Other kinds of reading aren't offered yet */
+/* the reminder in the title bar, if BrewScribe takes a reading for it that Brew Day can show: BrewScribe's answer since
+   it showed, its entry for the reminder, and the readings. A reminder whose readings are only the pH has the pH box
+   (ph, rd its pH reading); any other has the readings box (rdHTML), with the readings it can show (rds) */
 function phOffer(x = st.banner) {
   const A = st.scribe;
   if (!x || !A || st.scribeSeen !== x) return null;
-  const rem = A.reminders.find(r => r.title === x.title), rd = rem && rem.readings.find(r => r.kind === "ph");
-  return rd ? {A, rem, rd} : null;
+  const rem = A.reminders.find(r => r.title === x.title), rds = rem ? rem.readings.filter(r => rdKnown(A, r)) : [];
+  if (!rds.length) return null;
+  return rds.every(r => r.kind === "ph") ? {A, rem, rd: rds[0], ph: true} : {A, rem, rd: rds[0], rds, ph: false};
 }
 /* why BrewScribe can't take a reading, in its words, and the small line under RECORD pH that says so */
 const phCant = o => !o.A.log ? {why: o.A.why_not || PH_NOLOG, small: "no BrewScribe log"}
@@ -4154,21 +4332,23 @@ function phNum(txt, dec) {
   const f = 10 ** dec;
   return Math.round(parseFloat(s) * f) / f;
 }
-/* the reminder's two answers (bannerHTML): OK, the lesser one, then RECORD pH at the right end, its small line saying
-   what BrewScribe has for that stage. Both wait while SAVE does, and with no connection, as every command does. Greyed
-   while BrewScribe can't take a reading, RECORD pH says why when tapped, unless its box is open, which it then closes.
-   An OK that got no answer shows it failed, as a failed command's button does, until it is pressed again */
+/* the reminder's two answers (bannerHTML): OK, the lesser one, then RECORD at the right end (RECORD pH for the pH box,
+   else its word for the readings box, rdRecWord), its small line saying what BrewScribe has for that stage. Both wait
+   while SAVE does, and with no connection, as every command does. Greyed while BrewScribe can't take a reading, RECORD
+   says why when tapped, unless its box is open, which it then closes. An OK that got no answer shows it failed, as a
+   failed command's button does, until it is pressed again */
 function phActsHTML(x, o) {
   const P = st.ph, open = !!(P && P.open), cant = phCant(o), sending = st.pend.b;
   const wait = st.link === "lost" ? PAUSED : st.pend.ph === "post" ? PH_WAIT : st.pend.ph || sending ? WAIT : "";
   const failed = !!x.ackFailed && !sending;
   const ok = b(`act sec${failed ? " failed" : ""}`, sending ? "SENDING…" : "OK", failed ? "tap to try again" : "", {cmd: x.cmd, why: wait, label: failed ? `OK: ${x.title} didn't close. Tap to try again` : ""});
-  const small = cant ? cant.small : o.rd.saved ? `${o.rd.saved.text} recorded` : "for BrewScribe";
-  return ok + b("act phrec", "RECORD pH", small, {cmd: "ph:open", why: wait || (open || !cant ? "" : cant.why), expanded: open, controls: "ph-box"});
+  const small = cant ? cant.small : !o.ph ? rdRecSmall(o) : o.rd.saved ? `${o.rd.saved.text} recorded` : "for BrewScribe";
+  return ok + b("act phrec", o.ph ? "RECORD pH" : rdRecWord(o), small, {cmd: "ph:open", why: wait || (open || !cant ? "" : cant.why), expanded: open, controls: "ph-box"});
 }
 /* why SAVE waits or is greyed: no connection, a command on its way, BrewScribe unable to take a reading, no reading yet,
-   a figure outside what BrewScribe accepts, or a sample's temperature that isn't a figure */
+   a figure outside what BrewScribe accepts, or a sample's temperature that isn't a figure (the readings box: rdSaveWhy) */
 function phSaveWhy(o) {
+  if (!o.ph) return rdSaveWhy(o);
   const P = st.ph, rd = o.rd, dec = rd.decimals ?? 2, v = phNum(P.txt, dec), cant = phCant(o);
   if (st.link === "lost") return PAUSED;
   if (st.pend.ph) return st.pend.ph === "post" ? PH_WAIT : WAIT;
@@ -4182,6 +4362,7 @@ function phSaveWhy(o) {
 /* SAVE names the figure it sends, "SAVE pH 5.42", or "SAVE pH – –" while there is none */
 let phGoLast = "";
 function phGoHTML(o) {
+  if (!o.ph) return rdGoHTML(o);
   const dec = o.rd.decimals ?? 2, v = phNum(st.ph.txt, dec);
   return b("cmdbtn phgo", st.pend.ph ? "SAVING…" : `SAVE pH ${v == null ? "– –" : v.toFixed(dec)}`, "closes the reminder too", {cmd: "ph:save", why: phSaveWhy(o)});
 }
@@ -4195,9 +4376,12 @@ function phWarm(o) {
 /* the pH box: MASH pH set into its top edge; for BrewScribe's log, the stage and vessel; what BrewScribe has for the
    stage already; the pH's keys round its figure, as TARGET's are, with the recipe's target at the right; the sample's
    temperature where the reminder asks for it; the line for what went wrong; SAVE and CANCEL; and a quiet way to
-   BrewScribe's page instead. While SAVE waits, everything in it waits too */
+   BrewScribe's page instead. While SAVE waits, everything in it waits too. Any other reminder has the readings box
+   (rdHTML) */
 function phHTML() {
-  const P = st.ph, o = phOffer() || P.o, {A, rem, rd} = o, dec = rd.decimals ?? 2, U = phUnit(A), tg = rd.target != null;
+  const P = st.ph, o = phOffer() || P.o;
+  if (!o.ph) return rdHTML(o);
+  const {A, rem, rd} = o, dec = rd.decimals ?? 2, U = phUnit(A), tg = rd.target != null;
   const why = st.pend.ph ? (st.pend.ph === "post" ? PH_WAIT : WAIT) : "", dis = why ? ` aria-disabled="true" data-why="${esc(why)}"` : "", ro = why ? " readonly" : "";
   const key = (k, d, l, a) => `<button type="button" data-cmd="ph:step:${k}:${d}" aria-label="${a}"${dis}>${l}</button>`;
   const pH = `<div class="phsec"><p class="phlab"><label for="phin" id="ph-l">pH</label>${tg ? `<span class="phtgt" id="ph-tg">recipe target ${+rd.target}</span>` : ""}</p>`
@@ -4272,7 +4456,7 @@ function phAsk() {
   }, none ? 5000 : 600));
 }
 /* what the screen shows from BrewScribe for the reminder in the title bar */
-function phView() { const o = phOffer(); return o ? JSON.stringify([o.A.log, o.A.why_not, o.A.temperature_unit, o.rem]) : ""; }
+function phView() { const o = phOffer(); return o ? JSON.stringify([o.A.log, o.A.why_not, o.A.temperature_unit, o.A.volume_unit, o.A.volume_label, o.rem]) : ""; }
 /* every real second: a reading typed on BrewScribe's own page reaches BrewScribe at the moment's time (page), and while a
    reminder BrewScribe names is up, or one it hasn't answered for, Brew Day asks again every 15 s */
 function phPoll() {
@@ -4282,9 +4466,12 @@ function phPoll() {
   if (!x || x.tone !== "prompt" || st.scribeAsking || st.link === "lost" || (st.scribeSeen === x && !phOffer(x))) return;
   if (Date.now() - st.scribeAt >= PH_ASK * 1000) phAsk();
 }
-/* a reading saved on BrewScribe's page for reminder i's stage, which becomes the one standing there */
+/* a reading saved on BrewScribe's page for reminder i's stage, which becomes the one standing there: the pH, or another
+   kind's (kind, with what else it needs in r) */
 function scribePage(p) {
-  const S = st.bscribe, rd = S && S.log && S.reminders[p.i] && S.reminders[p.i].readings[0];
+  const S = st.bscribe, rem = S && S.log && S.reminders[p.i];
+  if (rem && p.kind && p.kind !== "ph") return rdApply(S, rem.title, Object.assign({entry_id: phUUID(), kind: p.kind, value: p.value, unit: S.volume_unit}, p.r));
+  const rd = rem && rem.readings[0];
   if (rd) rd.saved = {entry_id: phUUID(), value: p.value, text: `pH ${p.value.toFixed(rd.decimals)}`, occurred_at: new Date().toISOString()};
 }
 /* CraftBeerPi raising reminder i in its own time: its line in LOG, said aloud; RECORD pH comes with BrewScribe's answer
@@ -4297,16 +4484,21 @@ function phRaise(i) {
 }
 /* RECORD pH: the box opens under the reminder, LOG's list closing (one at a time), the pH empty and focus in it with its
    text selected; pressed again, it closes. A moment can open it with figures typed, BrewScribe's sentence from a SAVE
-   that didn't go, and the entry that SAVE sent (o) */
+   that didn't go, and the entry that SAVE sent (o). The readings box opens the same way, focus in its first figure,
+   with the gravity's pair BrewScribe starts it in and the sparge water from the HLT's levels; a moment can give it its
+   figures (f), pair (pick), readings added with "+" (add), way, the entries an earlier SAVE sent (sent, by kind), a
+   figure to focus, and SAVE tapped while greyed (go) */
 function phOpen(o = {}) {
   const x = st.banner, f = phOffer(x);
   if (!f || st.pend.ph) return;
   if (st.ph && st.ph.open && !o.moment) return phClose();
   st.logOpen = false; st.notes.ph = "";
   st.ph = {title: x.title, open: true, txt: o.txt || "", ttxt: o.ttxt || "", err: o.err || "", o: f};
-  if (o.sent) st.phSent = {key: phBody(f).key, id: o.sent};
+  if (!f.ph) { const g = rdOf(f, "gravity"); Object.assign(st.ph, {f: Object.assign({}, o.f), add: (o.add || []).slice(), way: o.way || "levels", pick: o.pick || (g ? rdPair(rdPick(g, null)) : "")}); }
+  if (o.sent) { if (f.ph) st.phSent = {key: phBody(f).key, id: o.sent}; else st.rdSent = rdSentFor(f, o.sent); }
   renderAll();
-  setTimeout(() => { const i = $("#phin"); if (i) { i.focus(); i.select(); } }, 0);
+  setTimeout(() => { const i = f.ph ? $("#phin") : $(o.focus ? "#" + o.focus : "#ph-box .phmid input"); if (i) { i.focus(); i.select(); } }, 0);
+  if (o.go) setTimeout(() => { const g = $("#ph-box .phgo"); if (g && g.getAttribute("aria-disabled") === "true") explain(g); }, 0);
 }
 /* CANCEL, Escape and RECORD pH pressed again close the box and keep nothing, focus back on RECORD pH; not while SAVE
    waits, which can't be called back */
@@ -4319,10 +4511,12 @@ function phClose() {
    steps out of sight, and comes back if BrewScribe doesn't take the reading */
 function phLogOpened() { if (st.ph) { if (st.pend.ph) st.ph.open = false; else st.ph = null; } }
 /* the keys: −.1 −.01 +.01 +.1 from the pH typed, or from the recipe's target, else 5.40, while there is none, kept within
-   what BrewScribe accepts; −1 −.1 +.1 +1 for the sample, from 68 °F. The new figure is said aloud */
+   what BrewScribe accepts; −1 −.1 +.1 +1 for the sample, from 68 °F. The new figure is said aloud. In the readings box,
+   each figure's own keys (rdStep) */
 function phStep(k, d) {
   const P = st.ph, o = P && (phOffer() || P.o);
   if (!o || st.pend.ph) return;
+  if (!o.ph) return rdStep(o, k, d);
   const rd = o.rd, dec = rd.decimals ?? 2;
   if (k === "v") {
     const f = 10 ** dec;
@@ -4335,10 +4529,12 @@ function phStep(k, d) {
   }
   renderAll();
 }
-/* typing in the box: SAVE and the sample's range line follow the figures in place, so the caret stays where it is */
+/* typing in the box: SAVE and the sample's range line follow the figures in place, so the caret stays where it is (the
+   readings box: rdPatch) */
 function phPatch() {
   const o = st.ph && (phOffer() || st.ph.o), go = $("#ph-box .phgo"), w = $("#phw");
   if (!o) return;
+  if (!o.ph) return rdPatch(o);
   const h = phGoHTML(o);
   if (go && h !== phGoLast) { go.outerHTML = h; phGoLast = h; }
   if (w) { const t = phWarm(o); if (w.textContent !== t) w.textContent = t; }
@@ -4354,18 +4550,22 @@ function phBody(o) {
 }
 /* SAVE: SAVING… at once, everything in the box and both of the reminder's answers waiting. BrewScribe saves it, then the
    reminder closes as OK closes it (phAck). The same reading sent again keeps its entry_id, so BrewScribe never saves it
-   twice; a changed one is a new reading, with a new one */
+   twice; a changed one is a new reading, with a new one. The readings box sends draft 5's body (rdBody), each reading
+   with its own entry_id */
 function phSave() {
   const P = st.ph, x = st.banner, o = phOffer(x);
   if (!P || !o || st.pend.ph || st.pend.b) return;
   const why = phSaveWhy(o);
   if (why) return note("ph", why);
-  const {body, key} = phBody(o);
-  if (!st.phSent || st.phSent.key !== key) st.phSent = {key, id: phUUID()};
-  body.entry_id = st.phSent.id;
+  let body, what;
+  if (o.ph) {
+    const r = phBody(o);
+    if (!st.phSent || st.phSent.key !== r.key) st.phSent = {key: r.key, id: phUUID()};
+    body = r.body; body.entry_id = st.phSent.id;
+  } else ({body, what} = rdBody(o));
   P.err = ""; st.notes.ph = ""; st.pend.ph = "post";
   renderAll();
-  phPost(body, (code, res) => phAnswer(code, res, body, x));
+  phPost(body, (code, res) => phAnswer(code, res, body, x, what));
 }
 /* POST /brewscribe/api/brew-day/readings, simulated: BrewScribe's answer about half a second on (scribeTake), unless the
    moment has it refuse ({status, error, reason}), not answer ("none"), or save it and lose the answer ("lost"). Brew
@@ -4381,8 +4581,10 @@ function phPost(body, done) {
 }
 /* BrewScribe taking a reading, as its call does: the same entry again answers 200 and saves nothing; no log open, a log
    that isn't the open one any more, a vessel it can't tell, or an entry_id saved with other figures are refused (409);
-   a value outside its range is a bad request (400). Saved, it is the reading standing in that stage */
+   a value outside its range is a bad request (400). Saved, it is the reading standing in that stage. Draft 5's body,
+   with its readings, is rdTake's */
 function scribeTake(b) {
+  if (b.readings) return rdTake(b);
   const S = st.bscribe, M = st.scribeMock;
   if (!S) return [404, null];
   const rem = S.reminders.find(r => r.title === b.title), rd = rem && rem.readings.find(r => r.kind === b.kind);
@@ -4398,15 +4600,17 @@ function scribeTake(b) {
   rd.saved = {entry_id: b.entry_id, value: b.value, text, occurred_at: new Date().toISOString()};
   return [201, ok()];
 }
-/* BrewScribe's answer to SAVE. Saved (201, or 200 for the same entry again): Brew Day's copy has it at once, so RECORD pH
-   says so, and the reminder closes as OK closes it, unless it went on another screen meanwhile. Refused, or no answer
-   in 5 s: nothing closes, the box says why above SAVE, LOG says it failed, and after a 409 Brew Day asks BrewScribe
-   again */
-function phAnswer(code, res, body, x) {
-  const P = st.ph, v = `pH ${body.value.toFixed(2)}`;
+/* BrewScribe's answer to SAVE. Saved (201, or 200 for the same entry again): Brew Day's copy has it at once, so RECORD
+   says so, and the reminder closes as OK closes it, unless it went on another screen meanwhile, or, from the readings
+   box, something it asks for is still to come (rdStays). Refused, or no answer in 5 s: nothing closes, the box says why
+   above SAVE, LOG says it failed (what: the readings box's words for what it sent), and after a 409 Brew Day asks
+   BrewScribe again */
+function phAnswer(code, res, body, x, what) {
+  const P = st.ph, v = body.readings ? what : `pH ${body.value.toFixed(2)}`;
   if (code === 200 || code === 201) {
     phHad(body);
-    st.phSent = null;
+    st.phSent = null; st.rdSent = null;
+    if (body.readings && st.banner === x && !rdDone(x)) return rdStays(res.text);
     if (st.banner === x) { st.pend.ph = "close"; renderAll(); return phAck(closed => phDone(res.text, x, closed)); }
     return phDone(res.text, x, null);
   }
@@ -4420,8 +4624,9 @@ function phAnswer(code, res, body, x) {
   say(why, true);
   renderAll();
 }
-/* the reading BrewScribe now has, in Brew Day's copy */
+/* the reading BrewScribe now has, in Brew Day's copy; from the readings box, each of them */
 function phHad(b) {
+  if (b.readings) { if (st.scribe) b.readings.forEach(r => rdApply(st.scribe, b.title, r)); return; }
   const rem = st.scribe && st.scribe.reminders.find(r => r.title === b.title), rd = rem && rem.readings.find(r => r.kind === b.kind);
   if (rd) rd.saved = {entry_id: b.entry_id, value: b.value, text: `pH ${b.value.toFixed(rd.decimals)}`, occurred_at: new Date().toISOString()};
 }
@@ -4478,10 +4683,448 @@ function phCmd(cmd) {
   if (x === "x") return phClose();
   if (x === "save") return phSave();
   if (x === "step") return phStep(k, parseFloat(d));
+  if (x === "pick") return rdChoose(+k);
+  if (x === "add") return rdAdd(k);
+  if (x === "way") return rdWay();
   if (x === "page") {
-    const o = phOffer() || (st.ph && st.ph.o);
-    return toast(`Mockup: this opens ${o ? `${o.rem.stage_name} on BrewScribe's page` : "BrewScribe's page"} in BrewScribe's own tab, with the cursor in its pH box${o ? ` (${o.rem.page})` : ""}.`);
+    const o = phOffer() || (st.ph && st.ph.o), what = !o || o.ph ? "pH" : RD_NAME[(rdParts(o).parts[0] || o.rds[0]).kind];
+    return toast(`Mockup: this opens ${o ? `${o.rem.stage_name} on BrewScribe's page` : "BrewScribe's page"} in BrewScribe's own tab, with the cursor in its ${what} box${o ? ` (${o.rem.page})` : ""}.`);
   }
+}
+/* ---------- every BrewScribe reminder that asks for a reading (READINGS-ENTRY.md) ----------
+   The pH box made general. A reminder BrewScribe names with readings other than the mash pH gets RECORD with a word for
+   what its box takes (RECORD VOLUME, LEVEL or GRAVITY, or READINGS where two are asked), and the same box under it,
+   titled with the stage: a part for each asked reading still to come, the others a "+" away, and one SAVE for them all
+   (draft 5's POST, all or nothing, each reading with its own entry_id). Where something asked is still to come after
+   SAVE, the reminder stays, its RECORD saying what. Volumes, levels and the sparge water are in BrewScribe's unit
+   (volume_unit), never converted, and shown only with one. st.ph holds the pH's figures as the pH box does (txt, ttxt),
+   the others' as typed (f: g and gt for the gravity and its sample, vol, lvl, bef and aft for the HLT's levels before
+   and after the sparge, spv for the sparge water typed), the gravity's pair (pick), the readings added with "+" (add)
+   and the sparge water's way (way: "levels" or "volume"); st.rdSent the entry_id each reading went with */
+const RD_VOLS = ["volume", "level", "sparge_water"];
+/* the readings Brew Day can show: the kinds it knows, a gravity with its choices, and volumes only in a unit BrewScribe
+   gives */
+const rdKnown = (A, r) => r.kind === "ph" || (r.kind === "gravity" && !!(r.choices && r.choices.length)) || (RD_VOLS.includes(r.kind) && (A.volume_unit === "us_gal" || A.volume_unit === "l"));
+/* each kind in the box's words: "the reminder stays for the gravity", "gravity to come" */
+const RD_NAME = {ph: "pH", gravity: "gravity", volume: "volume", level: "level", sparge_water: "sparge water"};
+const RD_PLUS = {ph: "+ pH", gravity: "+ GRAVITY", volume: "+ VOLUME", level: "+ LEVEL", sparge_water: "+ SPARGE WATER"};
+/* a list in words: "a", "a and b", "a, b and c" */
+const rdJoin = L => L.length < 2 ? L.join("") : `${L.slice(0, -1).join(", ")} and ${L[L.length - 1]}`;
+/* the gravity's pair as one key; a reading in the box by its kind; a reading's content, which keeps its entry_id while
+   it's unchanged; and a figure as typed, by its key (v and t the pH's, as the pH box keeps them) */
+const rdPair = c => `${c.instrument}:${c.scale}`;
+const rdOf = (o, kind) => o.rds.find(r => r.kind === kind);
+const rdKey = (day, title, r) => JSON.stringify([day, title, r]);
+const rdTxt = (P, k) => k === "v" ? P.txt : k === "t" ? P.ttxt : (P.f[k] || "");
+function rdPut(P, k, s) { if (k === "v") P.txt = s; else if (k === "t") P.ttxt = s; else P.f[k] = s; }
+/* the gravity's pair: the one chosen in the box, else BrewScribe's chosen (the brew's last), else its first */
+function rdPick(rd, P) {
+  const want = P && P.pick ? P.pick : rd.chosen ? rdPair(rd.chosen) : "";
+  return rd.choices.find(c => rdPair(c) === want) || rd.choices[0];
+}
+/* the sample's temperature, where the reading's own words ask for it (for a gravity, its pair's), with a unit to give
+   it in */
+const rdTempOn = (o, rd) => !!phUnit(o.A) && (rd.kind === "gravity" ? rdPick(rd, st.ph).sample_temperature : rd.sample_temperature) === "asked";
+/* something typed in a reading's part, so a part the brewer has started on stays in the box */
+const rdTyped = (P, kind) => !!P && (kind === "ph" ? !!P.txt.trim() : kind === "gravity" ? !!(P.f.g || "").trim() : kind === "volume" ? !!(P.f.vol || "").trim()
+  : kind === "level" ? !!(P.f.lvl || "").trim() : ["bef", "aft", "spv"].some(k => (P.f[k] || "").trim()));
+/* the box's parts: the asked readings still to come, in BrewScribe's order (every asked one once all are recorded, so
+   it never opens empty), then those added with "+" in the order added, and any other with something typed in it; the
+   rest wait behind "+" (more) */
+function rdParts(o, P = st.ph) {
+  const due = o.rds.filter(r => r.asked && !r.saved), first = due.length ? due : o.rds.filter(r => r.asked);
+  const added = [...((P && P.add) || []).map(k => rdOf(o, k)), ...o.rds.filter(r => rdTyped(P, r.kind))].filter((r, i, L) => r && !first.includes(r) && L.indexOf(r) === i);
+  const parts = [...first, ...added];
+  return {parts, more: o.rds.filter(r => !parts.includes(r))};
+}
+/* the figures in a reading's part, in the box's order */
+function rdKeys(o, rd) {
+  if (rd.kind === "ph") return rdTempOn(o, rd) ? ["v", "t"] : ["v"];
+  if (rd.kind === "gravity") return rdTempOn(o, rd) ? ["g", "gt"] : ["g"];
+  if (rd.kind === "volume") return ["vol"];
+  if (rd.kind === "level") return ["lvl"];
+  return st.ph.way === "volume" ? ["spv"] : rd.level_before ? ["aft"] : ["bef", "aft"];
+}
+/* the HLT's level before the sparge: the one BrewScribe keeps, else the one typed in the box */
+function rdBefore(o, rd = rdOf(o, "sparge_water")) {
+  return rd.level_before ? rd.level_before.value : phNum(rdTxt(st.ph, "bef"), rd.decimals ?? 2);
+}
+/* a figure: its decimals, what BrewScribe accepts, its keys and where they start. The pH (v) as in the pH box; a
+   gravity (g) from the recipe's OG where it's in the chosen scale, else BrewScribe's usual start; a volume, level or
+   sparge water from the recipe's figure in BrewScribe's unit, else its usual start; the level after the sparge (aft)
+   from the level before less the recipe's sparge, else the level before; the samples' temperatures (t, gt) from a
+   cooled sample's 68 °F (20 °C). name: what a refusal calls it */
+function rdField(o, k) {
+  const A = o.A, vu = A.volume_unit, ves = o.rem.vessel || "HLT";
+  const T = rd => ({rd, dec: 1, min: -Infinity, max: Infinity, from: phTFrom(A), keys: [-1, -0.1, 0.1, 1], unit: phUnit(A), temp: true});
+  const V = (rd, from, name = rd.label) => ({rd, dec: rd.decimals ?? (vu === "l" ? 1 : 2), min: rd.min ?? 0, max: rd.max ?? Infinity, from: Math.max(rd.min ?? 0, from), keys: [-1, -0.1, 0.1, 1], unit: A.volume_label, name});
+  const own = rd => rd.target && rd.target.unit === vu ? rd.target.value : null;
+  if (k === "v") { const rd = rdOf(o, "ph"); return {rd, dec: rd.decimals ?? 2, min: rd.min, max: rd.max, from: phFrom(rd), keys: [-0.1, -0.01, 0.01, 0.1], unit: "pH", name: "pH"}; }
+  if (k === "t") return T(rdOf(o, "ph"));
+  if (k === "gt") return T(rdOf(o, "gravity"));
+  if (k === "g") {
+    const rd = rdOf(o, "gravity"), c = rdPick(rd, st.ph), t = rd.target;
+    return {rd, c, dec: c.decimals, min: c.min, max: c.max, from: t && t.scale === c.scale ? t.value : c.usual.start, keys: c.decimals > 2 ? [-0.01, -0.001, 0.001, 0.01] : [-1, -0.1, 0.1, 1], unit: c.label, name: c.label};
+  }
+  const rd = rdOf(o, k === "vol" ? "volume" : k === "lvl" ? "level" : "sparge_water");
+  if (k === "aft") { const f = rdBefore(o, rd), t = own(rd); return V(rd, f == null ? rd.usual.start : t != null && f - t >= (rd.min ?? 0) ? f - t : f, `${ves} level`); }
+  return k === "bef" ? V(rd, rd.usual.start, `${ves} level`) : V(rd, own(rd) ?? rd.usual.start, k === "lvl" ? `${ves} level` : rd.label);
+}
+/* the Note Amber line under a figure, empty until there's something to check: a sample's temperature outside a cooled
+   sample's usual range, as the pH box says it, and a °Bx or °P figure that looks like an SG ("1.048"), as BrewScribe's
+   page says it. Neither stops SAVE */
+function rdCheckLine(o, k) {
+  const P = st.ph;
+  if (k === "t" || k === "gt") {
+    const rd = rdOf(o, k === "t" ? "ph" : "gravity"), U = phUnit(o.A), u = rd.sample_usual, t = phNum(rdTxt(P, k), 1);
+    if (!rdTempOn(o, rd) || !u || t == null || (t >= u.min && t <= u.max)) return "";
+    return `${t.toFixed(1)} ${U} is ${t > u.max ? "warmer" : "colder"} than a cooled sample (${u.min} to ${u.max} ${U}): check it.`;
+  }
+  if (k !== "g") return "";
+  const c = rdPick(rdOf(o, "gravity"), P), s = String(P.f.g || "").trim().replace(",", ".");
+  if (c.scale === "sg" || !/^1\.\d{3,}$/.test(s) || +s < 1.001 || +s > 1.15) return "";
+  return `${s} looks like an SG reading, but ${c.label} is chosen: choose SG, or check the figure.`;
+}
+/* a °Bx or °P figure as an SG, to read against the recipe's OG: BrewScribe's page's formula (draft 5, section 5), for
+   wort from 0 to 40, with the refractometer's wort correction factor for °Bx only. Shown, never sent */
+function rdAbout(o) {
+  const rd = rdOf(o, "gravity"), c = rdPick(rd, st.ph), v = phNum(st.ph.f.g, c.decimals), f = rd.refractometer && rd.refractometer.wort_correction_factor;
+  if (c.scale === "sg" || v == null || v < 0 || v > 40) return "";
+  const x = c.scale === "brix" && f ? v / f : v;
+  return `About ${(1 + x / (258.6 - (x / 258.2) * 227.1)).toFixed(3)} SG.`;
+}
+/* the sparge water from the HLT's levels: before less after, to the levels' decimals, as BrewScribe works it out (10.00
+   and 4.60 give 5.40); null until both are given and the level after is lower */
+function rdSparge(o) {
+  const rd = rdOf(o, "sparge_water"), dec = rd.decimals ?? 2, a = phNum(rdTxt(st.ph, "aft"), dec), b = rdBefore(o, rd);
+  return a == null || b == null || a < 0 || a >= b ? null : Number((b - a).toFixed(dec));
+}
+const rdSpargeLine = o => { const v = rdSparge(o); return v == null ? "" : `Sparge water: ${v.toFixed(rdOf(o, "sparge_water").decimals ?? 2)} ${o.A.volume_label}.`; };
+/* the gravity's help line: the instrument, the decimals and where the keys start; for °Bx, whether BrewScribe has the
+   refractometer's wort correction factor, which it applies itself. It asks for nothing */
+function rdGHelp(rd, F) {
+  const c = F.c, f = rd.refractometer && rd.refractometer.wort_correction_factor;
+  const h = `From the ${c.instrument}, to ${c.decimals === 1 ? "1 decimal" : `${c.decimals} decimals`}: type it, or step from ${F.from.toFixed(F.dec)}.`;
+  return c.scale !== "brix" ? h : `${h} ${f != null ? `BrewScribe applies your wort correction factor, ${f}.` : "BrewScribe has no wort correction factor for it yet, so its SG is an estimate."}`;
+}
+/* what SAVE sends, in BrewScribe's order: each part with a figure, its body (draft 5), its words ("6.40 gal",
+   "1.048 SG", "pH 5.42") and, where those don't say what it is, its words for LOG; and the first thing that stops SAVE:
+   a figure outside what BrewScribe accepts, a sample's temperature that isn't a figure, or the HLT's levels incomplete
+   or the wrong way round, in BrewScribe's words where it has them */
+function rdReads(o) {
+  const P = st.ph, A = o.A, vl = A.volume_label, list = [], bad = [], {parts} = rdParts(o, P);
+  const fig = (k, F) => {
+    const v = phNum(rdTxt(P, k), F.dec);
+    if (v != null && (v < F.min || v > F.max)) bad.push(F.max === Infinity ? `${F.name} is ${F.min} or more: check the figure.` : `${F.name} is between ${F.min} and ${F.max}: check the figure.`);
+    return v;
+  };
+  const temp = (k, rd, r) => {
+    const s = rdTxt(P, k).trim(), t = phNum(s, 1);
+    if (!rdTempOn(o, rd) || !s) return;
+    if (t == null) bad.push("The sample temperature isn't a figure: check it, or leave it empty.");
+    else Object.assign(r, {temperature: t, temperature_unit: A.temperature_unit});
+  };
+  o.rds.filter(rd => parts.includes(rd)).forEach(rd => {
+    if (rd.kind === "ph" || rd.kind === "gravity") {
+      const g = rd.kind === "gravity", F = rdField(o, g ? "g" : "v"), v = fig(g ? "g" : "v", F);
+      if (v == null) return;
+      const r = g ? {kind: "gravity", value: v, instrument: F.c.instrument, scale: F.c.scale} : {kind: "ph", value: v};
+      temp(g ? "gt" : "t", rd, r);
+      return list.push({rd, send: r, text: g ? `${v.toFixed(F.dec)} ${F.c.label}` : `pH ${v.toFixed(F.dec)}`});
+    }
+    if (rd.kind !== "sparge_water" || P.way === "volume") {
+      const F = rdField(o, rd.kind === "volume" ? "vol" : rd.kind === "level" ? "lvl" : "spv"), v = fig(rd.kind === "volume" ? "vol" : rd.kind === "level" ? "lvl" : "spv", F);
+      if (v == null) return;
+      const text = `${v.toFixed(F.dec)} ${vl}`;
+      return list.push({rd, send: {kind: rd.kind, value: v, unit: A.volume_unit}, text, log: rd.kind === "level" ? `${F.name} ${text}` : rd.kind === "sparge_water" ? `Sparge water ${text}` : ""});
+    }
+    const Fa = rdField(o, "aft"), a = fig("aft", Fa), kept = rd.level_before, b = kept ? kept.value : fig("bef", rdField(o, "bef"));
+    if (a == null && (kept || b == null)) return;
+    if (a == null) return bad.push("Give the HLT's level after the sparge too.");
+    if (b == null) return bad.push("Give the HLT's level before the sparge too.");
+    if (a >= b) return bad.push("The HLT's level after the sparge should be lower than before it.");
+    const r = {kind: "sparge_water", unit: A.volume_unit, level_after: a}, text = `${Number((b - a).toFixed(Fa.dec)).toFixed(Fa.dec)} ${vl}`;
+    if (!kept) r.level_before = b;
+    list.push({rd, send: r, text, log: `Sparge water ${text}`});
+  });
+  return {list, bad: bad[0] || ""};
+}
+/* where the first part's keys start, for SAVE's reason while nothing is given */
+function rdStart(o) {
+  const rd = rdParts(o).parts[0] || o.rds[0], F = rdField(o, rdKeys(o, rd)[0]);
+  return F.from.toFixed(F.dec);
+}
+/* why SAVE waits or is greyed, as in the pH box: no connection, a command on its way, BrewScribe unable to take a
+   reading, a figure it wouldn't take, or nothing given yet */
+function rdSaveWhy(o) {
+  const cant = phCant(o);
+  if (st.link === "lost") return PAUSED;
+  if (st.pend.ph) return st.pend.ph === "post" ? PH_WAIT : WAIT;
+  if (st.pend.b) return WAIT;
+  if (cant) return cant.why;
+  const R = rdReads(o);
+  if (R.bad) return R.bad;
+  return R.list.length ? "" : `Give a reading first: type it, or step from ${rdStart(o)}.`;
+}
+/* SAVE's small line: what happens to the reminder. It closes once every asked reading is recorded; else it stays for
+   what's still to come. With nothing given yet, as if every part shown were */
+function rdGoSmall(o, R) {
+  const given = new Set((R.list.length ? R.list.map(r => r.rd) : rdParts(o).parts).map(r => r.kind));
+  const left = o.rds.filter(r => r.asked && !r.saved && !given.has(r.kind));
+  return left.length ? `the reminder stays for the ${rdJoin(left.map(r => RD_NAME[r.kind]))}` : "closes the reminder too";
+}
+/* SAVE names what it sends: "SAVE 1.048 SG", "SAVE 6.40 gal", "SAVE pH 5.42", "SAVE 2 READINGS"; "SAVE – –" while
+   nothing is given */
+function rdGoHTML(o) {
+  const R = rdReads(o), n = R.list.length;
+  return b("cmdbtn phgo", st.pend.ph ? "SAVING…" : n === 0 ? "SAVE – –" : n === 1 ? `SAVE ${R.list[0].text}` : `SAVE ${n} READINGS`, rdGoSmall(o, R), {cmd: "ph:save", why: rdSaveWhy(o)});
+}
+/* RECORD's word says what the box takes, and its small line what BrewScribe has: "for BrewScribe"; once some of what
+   the reminder asks for is recorded, what's still to come ("gravity to come"); once all of it is, the figure ("6.40
+   gal recorded"), or "both recorded" */
+function rdRecWord(o) {
+  const asked = o.rds.filter(r => r.asked), k = (asked[0] || o.rds[0]).kind;
+  return asked.length > 1 ? "RECORD READINGS" : k === "ph" ? "RECORD pH" : k === "gravity" ? "RECORD GRAVITY" : k === "volume" ? "RECORD VOLUME" : "RECORD LEVEL";
+}
+function rdRecSmall(o) {
+  const asked = o.rds.filter(r => r.asked), left = asked.filter(r => !r.saved), r = asked[0];
+  if (!asked.length || left.length === asked.length) return "for BrewScribe";
+  if (left.length) return `${rdJoin(left.map(x => RD_NAME[x.kind]))} to come`;
+  if (asked.length > 1) return asked.length === 2 ? "both recorded" : "all recorded";
+  return `${RD_VOLS.includes(r.kind) ? rdAmt(r.saved, o.A) : r.saved.text} recorded`;
+}
+/* what BrewScribe has for the stage already, in its words; for the level before the sparge, the level it keeps */
+function rdHad(o) {
+  const lv = rdOf(o, "level"), has = o.rds.filter(r => r.saved);
+  if (lv && lv.saved) return `BrewScribe is keeping the ${o.rem.vessel || "HLT"}'s level before the sparge, ${rdAmt(lv.saved, o.A)}. A new one here replaces it.`;
+  if (!has.length) return "";
+  return `BrewScribe has ${rdJoin(has.map(r => r.saved.text))} for ${o.rem.stage_name}. ${has.length > 1 ? "New readings here are kept as well, as the latest." : "A new reading here is kept as well, as the latest."}`;
+}
+/* the readings box: the pH box's anatomy, titled with the stage's name in capitals; for BrewScribe's log, the stage and
+   vessel; what BrewScribe has for it; a part for each reading still to come, each figure with its label (the recipe's
+   target at the right), its keys round it, a help line saying where they start, and a Note Amber line for what to
+   check; the gravity's three pairs over its figure; the others a "+" away; what SAVE sends where it's more than one;
+   the line for what went wrong; SAVE and CANCEL; and the way to BrewScribe's page. While SAVE waits, everything in it
+   waits too. Lines that follow what's typed are data-live (rdPatch) */
+function rdHTML(o) {
+  const P = st.ph, {A, rem} = o, U = phUnit(A), vl = esc(A.volume_label || ""), ves = rem.vessel || "HLT";
+  const why = st.pend.ph ? (st.pend.ph === "post" ? PH_WAIT : WAIT) : "", dis = why ? ` aria-disabled="true" data-why="${esc(why)}"` : "", ro = why ? " readonly" : "";
+  const key = (k, d, deg) => `<button type="button" data-cmd="ph:step:${k}:${d}" aria-label="${d < 0 ? "Down" : "Up"} ${Math.abs(d)}${deg ? " degree" : ""}"${dis}>${d < 0 ? "−" : "+"}${String(Math.abs(d)).replace(/^0\./, ".")}</button>`;
+  const fig = (k, q) => {
+    const F = rdField(o, k), id = k === "v" ? ["phin", "ph-l", "ph-tg", "ph-h"] : k === "t" ? ["phtin", "pht-l", "pht-tg", "pht-h"] : [`rd${k}`, `rd${k}-l`, `rd${k}-tg`, `rd${k}-h`];
+    const w = k === "v" ? null : k === "t" ? "phw" : `rd${k}-w`, L = q.lines || [];
+    const by = [q.tgt ? id[2] : "", id[3], ...L.map(l => l[1]), w || ""].filter(Boolean).join(" ");
+    return `<div class="phsec"><p class="phlab"><label for="${id[0]}" id="${id[1]}">${q.lab}</label>${q.tgt ? `<span class="phtgt" id="${id[2]}">${esc(q.tgt)}</span>` : ""}</p>${q.top || ""}`
+      + `<div class="editor phkeys" role="group" aria-labelledby="${id[1]}">${key(k, F.keys[0], F.temp)}${key(k, F.keys[1], F.temp)}`
+      + `<input id="${id[0]}"${k === "v" || k === "t" ? "" : ` data-k="${k}"`} inputmode="decimal" autocomplete="off" maxlength="${F.unit === A.volume_label ? 7 : 6}" value="${esc(rdTxt(P, k))}" aria-describedby="${by}"${ro}>`
+      + `${key(k, F.keys[2], F.temp)}${key(k, F.keys[3], F.temp)}</div><p class="phhelp" id="${id[3]}" data-live>${esc(q.help(F))}</p>`
+      + L.map(l => `<p class="${l[0]}" id="${l[1]}" data-live>${esc(l[2])}</p>`).join("") + (w ? `<p class="phwarm" id="${w}" data-live>${esc(rdCheckLine(o, k))}</p>` : "") + "</div>";
+  };
+  const from = F => F.from.toFixed(F.dec), temp = k => fig(k, {lab: `Sample temperature, ${U}`, help: F => `If you took it: type it, or step from ${F.from} ${U}.`});
+  /* each reading's part. Its target: a pH's is a plain number, shown as "recipe target 5.4", as in the pH box; every
+     other kind's is an object whose text is shown as it is ("recipe OG 1.053") */
+  const part = rd => {
+    const k = rd.kind, tg = rd.target != null && typeof rd.target === "object" ? rd.target.text : "";
+    let h;
+    if (k === "ph") h = fig("v", {lab: "pH", tgt: typeof rd.target === "number" ? `recipe target ${+rd.target}` : tg, help: F => `From the meter, to ${F.dec} decimals: type it, or step from ${from(F)}.`}) + (rdTempOn(o, rd) ? temp("t") : "");
+    else if (k === "gravity") {
+      const c = rdPick(rd, P), C = rd.choices.map((x, i) => `<button type="button" role="radio" aria-checked="${x === c}" tabindex="${x === c ? 0 : -1}" data-cmd="ph:pick:${i}"${dis}><span class="lb">${esc(x.label)}</span><small>${esc(x.instrument)}</small></button>`).join("");
+      h = fig("g", {lab: esc(rd.label), tgt: tg, top: `<div class="rdpick" role="radiogroup" aria-labelledby="rdg-l">${C}</div>`, help: F => rdGHelp(rd, F), lines: [["rdeq", "rdg-eq", rdAbout(o)]]}) + (rdTempOn(o, rd) ? temp("gt") : "");
+    }
+    else if (k === "volume") h = fig("vol", {lab: `${esc(rd.label)}, ${vl}`, tgt: tg, help: F => `In the ${rem.vessel || "kettle"}, as you read it: type it, or step from ${from(F)}.`});
+    else if (k === "level") h = fig("lvl", {lab: `${esc(ves)} level, ${vl}`, tgt: tg, help: F => `Read it before the sparge pump starts: type it, or step from ${from(F)}.`});
+    else if (P.way === "volume") h = fig("spv", {lab: `${esc(rd.label)}, ${vl}`, tgt: tg, help: F => `The water the sparge used: type it, or step from ${from(F)}.`})
+      + b("rdq rdway", `USE THE ${esc(ves.toUpperCase())}'S LEVELS INSTEAD`, "", {cmd: "ph:way", why});
+    else h = (rd.level_before ? `<p class="rdkept">Before the sparge: ${esc(ves)} ${esc(rd.level_before.text)}, kept in BrewScribe.</p>`
+        : fig("bef", {lab: `${esc(ves)} level before, ${vl}`, help: F => `As you read it before the sparge: type it, or step from ${from(F)}.`}))
+      + fig("aft", {lab: `${esc(ves)} level after, ${vl}`, tgt: tg, help: F => `Read it now the sparge is done: type it, or step from ${from(F)}.`, lines: [["rdeq", "rdaft-eq", rdSpargeLine(o)]]})
+      + b("rdq rdway", "TYPE THE SPARGE VOLUME INSTEAD", "", {cmd: "ph:way", why});
+    return `<div class="rdpart" data-part="${k}">${h}</div>`;
+  };
+  const {parts, more} = rdParts(o, P), R = rdReads(o), had = rdHad(o);
+  const also = !more.length ? "" : `<div class="rdalso" role="group" aria-labelledby="rd-also"><span id="rd-also">Also:</span>${more.map(r => b("rdq", RD_PLUS[r.kind], "", {cmd: `ph:add:${r.kind}`, why})).join("")}</div>`;
+  phGoLast = rdGoHTML(o);
+  return `<h2 class="pht" id="ph-t">${esc(rem.stage_name.toUpperCase())}</h2><p class="phfor">For BrewScribe's log: ${esc(rem.stage_name)}${rem.vessel ? `, ${esc(rem.vessel)}` : ""}.</p>`
+    + (had ? `<p class="phhad">${esc(had)}</p>` : "")
+    + `<div class="phmid">${parts.map(part).join("")}${also}</div>`
+    + `<p class="rdsaves" id="rd-saves" data-live>${esc(R.list.length > 1 ? `Saves ${rdJoin(R.list.map(r => r.text))}.` : "")}</p>`
+    + `<p class="note" id="ph-note">${esc(st.notes.ph || P.err || "")}</p>`
+    + `<div class="phact">${phGoLast}${b("cmdbtn", "CANCEL", "", {cmd: "ph:x", why})}</div>`
+    + b("phpage", `ON BREWSCRIBE'S PAGE${EXT_ICON}<span class="sr"> (opens ${esc(rem.stage_name)} in BrewScribe's tab)</span>`, "", {cmd: "ph:page", why});
+}
+/* typing in the box: SAVE and the lines that follow the figures (data-live) change in place, so the caret stays where
+   it is */
+function rdPatch(o) {
+  const box = $("#ph-box"), T = document.createElement("div");
+  T.innerHTML = rdHTML(o);
+  box.querySelectorAll("[data-live]").forEach(n => { const m = T.querySelector("#" + n.id); if (m && n.textContent !== m.textContent) n.textContent = m.textContent; });
+  const go = box.querySelector(".phgo"), g = T.querySelector(".phgo");
+  if (go && g && go.outerHTML !== g.outerHTML) go.replaceWith(g);
+  phFit();
+}
+/* a key pressed: from the figure typed, or where the keys start while there is none, kept within what BrewScribe
+   accepts; the new figure is said aloud, with what it questions or works out */
+function rdStep(o, k, d) {
+  const P = st.ph, F = rdField(o, k), f = 10 ** F.dec;
+  rdPut(P, k, Math.min(F.max, Math.max(F.min, Math.round(((phNum(rdTxt(P, k), F.dec) ?? F.from) + d) * f) / f)).toFixed(F.dec));
+  const more = [rdCheckLine(o, k), k === "aft" || k === "bef" ? rdSpargeLine(o) : k === "g" ? rdAbout(o) : ""].filter(Boolean).join(" ");
+  say(`${k === "v" ? `pH ${P.txt}` : `${rdTxt(P, k)} ${F.unit}`}${more ? `. ${more}` : ""}`);
+  renderAll();
+}
+/* a gravity pair chosen: its figure empties, as a figure in one scale means something else in another; the sample's
+   temperature stays. Said aloud */
+function rdChoose(i) {
+  const P = st.ph, o = P && (phOffer() || P.o), rd = o && !o.ph ? rdOf(o, "gravity") : null, c = rd && rd.choices[i];
+  if (!c || st.pend.ph) return;
+  if (rdPair(c) !== P.pick) { P.pick = rdPair(c); P.f.g = ""; }
+  say(`${c.label}, ${c.instrument}`);
+  renderAll();
+}
+/* the arrow keys move the gravity's choice, as in any group of radio buttons, focus going with it */
+function rdPickStep(dir) {
+  const P = st.ph, o = P && (phOffer() || P.o), rd = o && !o.ph ? rdOf(o, "gravity") : null;
+  if (!rd || st.pend.ph) return;
+  const n = rd.choices.length, j = (rd.choices.indexOf(rdPick(rd, P)) + dir + n) % n;
+  rdChoose(j);
+  $(`#ph-box [data-cmd="ph:pick:${j}"]`)?.focus();
+}
+/* "+ pH", "+ VOLUME": that reading's part in the button's place, focus in its figure */
+function rdAdd(kind) {
+  const P = st.ph;
+  if (!P || !P.add || st.pend.ph || P.add.includes(kind)) return;
+  P.add.push(kind); renderAll();
+  setTimeout(() => { const i = $(`#ph-box [data-part="${kind}"] input`); if (i) i.focus(); }, 0);
+}
+/* TYPE THE SPARGE VOLUME INSTEAD, and back: one way or the other is sent, never both. What was typed the other way
+   stays, for a change of mind. Focus goes to the way's first figure */
+function rdWay() {
+  const P = st.ph;
+  if (!P || !P.f || st.pend.ph) return;
+  P.way = P.way === "volume" ? "levels" : "volume"; renderAll();
+  setTimeout(() => { const i = $('#ph-box [data-part="sparge_water"] input'); if (i) i.focus(); }, 0);
+}
+/* what SAVE sends for these reminders (draft 5): the readings SAVE names, each with an entry_id. A reading sent again
+   as it was keeps its entry_id, so a SAVE again after no answer saves nothing twice; a changed one gets a new one.
+   what: its words for LOG, should it not be saved */
+function rdBody(o) {
+  const P = st.ph, R = rdReads(o), day = o.A.log ? o.A.log.day_id : null, sent = st.rdSent || {};
+  const readings = R.list.map(r => {
+    const key = rdKey(day, P.title, r.send), k = r.send.kind, id = sent[k] && sent[k].key === key ? sent[k].id : phUUID();
+    sent[k] = {key, id};
+    return Object.assign({entry_id: id}, r.send);
+  });
+  st.rdSent = sent;
+  return {body: {day_id: day, title: P.title, readings}, what: rdJoin(R.list.map(r => r.log || r.text))};
+}
+/* the entry_ids a moment's earlier SAVE sent (ids, by kind), for the readings as the box now has them */
+function rdSentFor(o, ids) {
+  const day = o.A.log ? o.A.log.day_id : null, sent = {};
+  rdReads(o).list.forEach(r => { if (ids[r.send.kind]) sent[r.send.kind] = {key: rdKey(day, st.ph.title, r.send), id: ids[r.send.kind]}; });
+  return sent;
+}
+/* SAVE done with something asked still to come: the box closes and the reminder stays, its RECORD saying what's to
+   come; BrewScribe's sentence goes in LOG and is said aloud; focus back on RECORD. OK still closes it at any time */
+function rdStays(text) {
+  delete st.pend.ph; st.ph = null;
+  logEvent(text, "confirmed", "ok");
+  say(`${text}: confirmed`);
+  renderAll();
+  setTimeout(() => $('#banner [data-cmd="ph:open"]')?.focus({preventScroll: true}), 0);
+}
+/* every reading the reminder asks for recorded, in Brew Day's copy of BrewScribe's answer */
+function rdDone(x) { const o = phOffer(x); return !o || o.ph || o.rds.filter(r => r.asked).every(r => r.saved); }
+/* BrewScribe's sentence for a SAVE: a level kept until the level after, the sparge water saved, or the readings saved,
+   with the stage and vessel */
+function rdSaid(rem, kind, texts) {
+  const where = `(${rem.stage_name}, ${rem.vessel})`;
+  return kind === "level" ? `${texts[0]} kept in BrewScribe until the level after ${where}` : kind === "sparge_water" ? `Sparge water ${texts[0]} saved in BrewScribe ${where}` : `${rdJoin(texts)} saved in BrewScribe ${where}`;
+}
+/* a reading BrewScribe has taken, in an answer's shape (BrewScribe's own, or Brew Day's copy of it): it becomes the one
+   standing in its stage, on every reminder for that stage (the last reminder's older title too). A level is kept, not
+   saved: the sparge water reminder works from it until the sparge water is saved, which takes it, and is then that
+   reading's level before. A level kept in another unit than BrewScribe's volume_unit isn't offered to work from, as
+   nothing is converted. A gravity's pair becomes the one to start in. Returns the reading's words */
+function rdApply(S, title, r) {
+  const rem = S.reminders.find(x => x.title === title), rd = rem && rem.readings.find(x => x.kind === r.kind);
+  if (!rd) return "";
+  const at = new Date().toISOString(), ves = rem.vessel || "HLT", all = k => S.reminders.flatMap(x => x.readings).filter(x => x.kind === k);
+  const amt = v => rdAmt({value: v, unit: r.unit}, S);
+  let saved;
+  if (r.kind === "ph") saved = {entry_id: r.entry_id, value: r.value, text: `pH ${r.value.toFixed(rd.decimals ?? 2)}`, occurred_at: at};
+  else if (r.kind === "gravity") {
+    const c = rd.choices.find(x => x.instrument === r.instrument && x.scale === r.scale);
+    saved = {entry_id: r.entry_id, value: r.value, instrument: r.instrument, scale: r.scale, text: `${r.value.toFixed(c.decimals)} ${c.label}`, occurred_at: at};
+    all("gravity").forEach(x => rdChosen(x, r));
+  } else if (r.kind === "volume") saved = {entry_id: r.entry_id, value: r.value, unit: r.unit, text: amt(r.value), occurred_at: at};
+  else if (r.kind === "level") {
+    saved = {value: r.value, unit: r.unit, text: `${ves} ${amt(r.value)} before the sparge`};
+    all("sparge_water").forEach(x => { x.level_before = r.unit === S.volume_unit ? {value: r.value, text: amt(r.value)} : null; });
+  } else {
+    const levels = r.level_after != null, before = levels ? r.level_before ?? rd.level_before.value : null, dec = (r.unit || S.volume_unit) === "l" ? 1 : 2;
+    const value = levels ? Number((before - r.level_after).toFixed(dec)) : r.value;
+    saved = {entry_id: r.entry_id, value, unit: r.unit, level_before: before, level_after: levels ? r.level_after : null,
+      text: levels ? `${amt(value)} (${ves} ${before.toFixed(dec)} → ${r.level_after.toFixed(dec)})` : amt(value), occurred_at: at};
+    all("sparge_water").forEach(x => { x.level_before = null; });
+    all("level").forEach(x => { x.saved = levels ? {value: before, unit: r.unit, text: `${ves} ${amt(before)} before the sparge`} : null; });
+  }
+  S.reminders.filter(x => x.stage === rem.stage).forEach(x => x.readings.filter(y => y.kind === r.kind).forEach(y => { y.saved = Object.assign({}, saved); }));
+  return saved.text;
+}
+/* a volume, level or sparge water in the unit it's in, to that unit's decimals: "6.40 gal", "37.9 L" (BrewScribe's own
+   label for its volume_unit) */
+function rdAmt(s, A) {
+  const l = (s.unit || A.volume_unit) === "l";
+  return `${s.value.toFixed(l ? 1 : 2)} ${(s.unit || A.volume_unit) === A.volume_unit && A.volume_label ? A.volume_label : l ? "L" : "gal"}`;
+}
+/* why BrewScribe refuses one reading of draft 5's body (400), in its words; "" when it takes it */
+function rdRefuse(S, rem, r) {
+  const rd = rem.readings.find(x => x.kind === r.kind), num = x => typeof x === "number" && Number.isFinite(x);
+  if (!rd) return `BrewScribe takes no ${r.kind} reading for ${rem.title}`;
+  if ((r.temperature != null) !== (r.temperature_unit != null)) return "Send the sample's temperature with its unit, or neither.";
+  if (r.kind === "ph") return num(r.value) && r.value >= rd.min && r.value <= rd.max ? "" : `pH must be between ${rd.min} and ${rd.max}`;
+  if (r.kind === "gravity") {
+    const c = rd.choices.find(x => x.instrument === r.instrument && x.scale === r.scale);
+    if (!c) return "Choose SG, °Bx or °P.";
+    return num(r.value) && r.value >= c.min && r.value <= c.max ? "" : `${c.label} must be between ${c.min} and ${c.max}`;
+  }
+  if (!S.volume_unit) return "BrewScribe has no volume unit for this brew yet.";
+  if (r.unit !== S.volume_unit) return `Send it in ${S.volume_label}, BrewScribe's unit for this brew.`;
+  if (r.kind !== "sparge_water") return num(r.value) && r.value >= 0 ? "" : `${rd.label} must be 0 or more`;
+  if (r.value != null && r.level_after != null) return "Send the HLT's level after the sparge or the sparge volume, not both.";
+  if (r.level_after == null) return num(r.value) && r.value >= 0 ? "" : "Send the HLT's level after the sparge or the sparge volume.";
+  const before = r.level_before ?? (rd.level_before ? rd.level_before.value : null);
+  if (before == null) return "Give the HLT's level before the sparge too.";
+  if (!num(r.level_after) || !num(before) || r.level_after < 0) return "The HLT's levels must be figures of 0 or more.";
+  return r.level_after < before ? "" : "The HLT's level after the sparge should be lower than before it.";
+}
+/* BrewScribe taking draft 5's body, as its call does: all or nothing. A reading that reminder doesn't take, two of one
+   kind, a pair it doesn't offer, a figure outside its range or levels it can't work from are a bad request (400), in its
+   words; an entry_id saved with other figures, no log open, a log that isn't the open one any more or a vessel it can't
+   tell are refused (409). The same readings again answer 200 and save nothing. Saved (201), each is the one standing in
+   its stage */
+function rdTake(b) {
+  const S = st.bscribe, M = st.scribeMock;
+  if (!S) return [404, null];
+  const rem = S.reminders.find(r => r.title === b.title), L = Array.isArray(b.readings) ? b.readings : [];
+  if (!rem) return [400, {error: `BrewScribe takes no readings for ${b.title}`}];
+  if (!L.length) return [400, {error: "Send at least one reading."}];
+  if (new Set(L.map(r => r.kind)).size < L.length) return [400, {error: "Send one reading of each kind at most."}];
+  for (const r of L) { const why = rdRefuse(S, rem, r); if (why) return [400, {error: why}]; }
+  const keys = L.map(r => rdKey(b.day_id, b.title, Object.fromEntries(Object.entries(r).filter(([k]) => k !== "entry_id")))), said = M.said || (M.said = {});
+  if (L.some((r, i) => M.ids[r.entry_id] != null && M.ids[r.entry_id] !== keys[i])) return [409, {error: "BrewScribe already has a different reading saved under this one's ID, so this one wasn't saved.", reason: "entry_id_reused"}];
+  const ok = texts => ({day_id: b.day_id, stage: rem.stage, vessel: rem.vessel, saved: L.map((r, i) => ({entry_id: r.entry_id, kind: r.kind, text: texts[i]})), text: rdSaid(rem, L[0].kind, texts)});
+  if (L.every(r => M.ids[r.entry_id] != null)) return [200, ok(L.map(r => said[r.entry_id]))];
+  if (!S.log) return [409, {error: S.why_not, reason: "no_open_log"}];
+  if (S.log.day_id !== b.day_id) return [409, {error: "BrewScribe's open log has changed, so this reading wasn't saved. Check BrewScribe's page, then try again.", reason: "log_changed"}];
+  if (rem.vessel_problem) return [409, {error: `${rem.vessel_problem} This reading wasn't saved: record it on BrewScribe's page.`, reason: "vessel_unknown"}];
+  return [201, ok(L.map((r, i) => { if (M.ids[r.entry_id] == null) { M.ids[r.entry_id] = keys[i]; said[r.entry_id] = rdApply(S, b.title, r); } return said[r.entry_id]; }))];
+}
+/* CraftBeerPi raising BrewScribe's reminder i in its own time, as phRaise does the pH reminders */
+function rdRaise(i) {
+  st.banner = rdBanner(i);
+  logEvent(`${RD_Q[i].title}: ${RD_Q[i].text}`, "waiting for you", "wait");
+  say(`${RD_Q[i].title}. ${RD_Q[i].text}`, true);
+  renderAll();
 }
 function cmdLoad(i, asked) {
   /* over a recipe the Recipe Book doesn't have, LOAD asks first (loadAskHTML); LOAD INSTEAD comes back here */
@@ -5272,12 +5915,18 @@ document.addEventListener("keydown", e => {
   }
   if (e.target.id === "swvin" && e.key === "Enter") { e.preventDefault(); swVol("set"); return; }
   if (e.target.id === "swgin" && e.key === "Enter") { e.preventDefault(); swGrain("set"); return; }
-  /* Enter in the pH box's figures is SAVE; a greyed SAVE says why, in the box's line for what went wrong */
-  if ((e.target.id === "phin" || e.target.id === "phtin") && e.key === "Enter" && st.ph) {
+  /* Enter in the pH box's figures is SAVE, as in the readings box's; a greyed SAVE says why, in the box's line for what
+     went wrong */
+  const rdIn = !!(e.target.dataset && e.target.dataset.k && e.target.closest && e.target.closest("#ph-box"));
+  if ((e.target.id === "phin" || e.target.id === "phtin" || rdIn) && e.key === "Enter" && st.ph) {
     e.preventDefault();
     const go = $("#ph-box .phgo");
     if (go && go.getAttribute("aria-disabled") === "true") explain(go); else phSave();
     return;
+  }
+  /* the gravity's three pairs: the arrow keys move the choice, as in any group of radio buttons */
+  if (["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"].includes(e.key) && e.target.closest && e.target.closest("#ph-box .rdpick") && st.ph) {
+    e.preventDefault(); rdPickStep(e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : -1); return;
   }
   /* Enter in BrewStart's time box, or its grain figure, is SET; a greyed SET says why. The box drawn again keeps the
      caret, at its end */
@@ -5313,6 +5962,8 @@ document.addEventListener("focusout", e => { if (e.target.id === "bstin" && st &
 document.addEventListener("input", e => {
   /* the pH box's figures: kept as typed, SAVE and the sample's range line following them in place (phPatch) */
   if ((e.target.id === "phin" || e.target.id === "phtin") && st.ph) { st.ph[e.target.id === "phin" ? "txt" : "ttxt"] = e.target.value; phPatch(); return; }
+  /* the readings box's other figures, the same way */
+  if (st.ph && st.ph.f && e.target.dataset && e.target.dataset.k && e.target.closest("#ph-box")) { rdPut(st.ph, e.target.dataset.k, e.target.value); phPatch(); return; }
   /* BrewStart's time box: kept as typed and read (bsTyped), its words, AM and PM, and SET following it in place
      (bsPatch), and said aloud once the brewer stops typing; its grain figure, kept as typed, un-presses the chips */
   if (e.target.id === "bstin" && st.bs) { bsTyped(e.target.value); return; }
@@ -5544,9 +6195,11 @@ function load(name) {
   /* a moment can show FORECAST's details scrolled to a part of them (swAt) */
   if (st.swAt) { const at = st.swAt; delete st.swAt; requestAnimationFrame(() => { const el = $(at); if (el) el.scrollIntoView({block: "center"}); }); }
   /* a moment can open the pH box, as RECORD pH does (phAt: what it opens it with), put focus on LOG, as SAVE does once
-     it is done (phLog), and have the reminder answered on another screen some real milliseconds on (phElse) */
+     it is done (phLog), or on RECORD, as a SAVE that leaves the reminder up does (phRec), and have the reminder
+     answered on another screen some real milliseconds on (phElse) */
   if (st.phAt) { const o = st.phAt; delete st.phAt; phOpen(Object.assign({moment: true}, o)); }
   if (st.phLog) { delete st.phLog; setTimeout(() => $("#event .logbtn")?.focus(), 0); }
+  if (st.phRec) { delete st.phRec; setTimeout(() => $('#banner [data-cmd="ph:open"]')?.focus(), 0); }
   if (st.phElse) { const ms = st.phElse; delete st.phElse; timers.push(setTimeout(phElsewhere, ms)); }
   document.querySelectorAll(".mock a[href^='#']").forEach(a => a.setAttribute("aria-current", a.getAttribute("href") === "#" + key ? "true" : "false"));
   document.querySelectorAll(".mock a[data-layout]").forEach(a => {

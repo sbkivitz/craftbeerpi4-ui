@@ -1,5 +1,13 @@
 # Direction decision log
 
+## BrewScribe readings from every reminder that asks for one (23 Nov 2026)
+- The brewer: "what about entering brewscribe data in the reminder prompts from brewday screen?", every reminder that
+  asks for a reading. Contract with Porter (draft 5, dev56) first, then the pH box made general.
+- Chosen: one box showing only what its reminder asks for, offered readings behind "+"; gravity as BrewScribe's three
+  paired choices in one row; the refractometer's setup never asked; the reminder staying up until everything asked is
+  recorded (Brett decided it on this recommendation while the brewer was away). Not chosen: a box per kind; questioning
+  figures outside BrewScribe's slider ranges.
+
 ## A vessel's own figures: capacity, empty weight and material (23 Nov 2026)
 - The brewer asked for vessel sizes, then weights and materials, on the kettles; Brett put them on the Hardware page.
   His rule: "They should only improve - not hinder". Written as The Only Improves Rule.
