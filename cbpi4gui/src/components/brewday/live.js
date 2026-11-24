@@ -292,6 +292,9 @@ export function model(snap) {
     // a waiting BrewStart takes a new day and time: one that declares change_time (1.2.0.post10), read from the step
     // types as BoilPower's markers are from the logic types. An older one can't, so its time is greyed while it waits
     BSRETIME: declares(snap.stepTypes, "BrewStart", "change_time"),
+    // Brew Steps changes a running BrewStart's settings through its change_settings (1.3.0.post6); BrewStart's box says
+    // so where it can't swap Ready by and Start at itself
+    BSSETS: declares(snap.stepTypes, "BrewStart", "change_settings"),
     // the recipe's name as CraftBeerPi has it, blank for steps that have none (given); name stands in for it on screen
     RECIPE: { name: (snap.basic && snap.basic.name) || "Brew steps", given: String((snap.basic && snap.basic.name) || ""), steps },
     BOOK: snap.book || [],

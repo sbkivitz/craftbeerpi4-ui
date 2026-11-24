@@ -76,7 +76,7 @@ const BrewDay = () => {
       ver: qs.get("ver"),
       // with ?demo=, ?clock=24 shows the screen with CraftBeerPi's CLOCK_FORMAT 24-hour, as the mockup's does
       clock: qs.get("clock"),
-      navigate: (path) => go.current(path),
+      navigate: (path, options) => go.current(path, options),
       removeAlert: (id) => remove(id),
     });
     return () => {
