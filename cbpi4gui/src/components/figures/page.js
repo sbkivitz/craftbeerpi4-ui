@@ -21,6 +21,7 @@
 // - An older CraftBeerPi, without /figures (404), gets the head and the words saying it needs an update.
 // - Every time is on CraftBeerPi's clock, as the logs are stamped, and times of day follow CLOCK_FORMAT.
 import { call } from "../brewday/api";
+import { formatTimeOfDay, NBSP, settingsClockFormat, timeParts } from "../util/timefmt";
 // As text, exactly as written (config-overrides.js): figures.css for the shadow root; figures-frame.css, the mockup's .app
 // rules (one screen tall from 1280 × 860, scrolling below it, room for the phone's tabs), for the document, where they
 // apply only while <html> has data-page=figures
@@ -59,7 +60,7 @@ let host = null, sr = null, env = {}, gen = 0, timers = [], off = [];
    those callers, told when it's done */
 let D = null, load = {s: "reading", why: ""}, reading = false, again = false, afterAgain = [];
 /* CFG: what the page takes from CraftBeerPi's settings and state */
-let CFG = {connected: null, h24: false, brewery: "", unit: "F", kettles: [], strike: null, topicN: null};
+let CFG = {connected: null, clock: settingsClockFormat(null), brewery: "", unit: "F", kettles: [], strike: null, topicN: null};
 let st = null;
 /* an opened brew's graph, by brew and figure: {s: "reading" | "ok" | "failed", data, why, end}; the last few kept */
 let EV = new Map();
@@ -81,19 +82,13 @@ function fresh() {
 const DAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 const MON = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 const Mon = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const NB = "\u00a0";
-const pad2 = n => String(n).padStart(2, "0");
 const DT = t => new Date(t * 1000);
 /* a time of day on CraftBeerPi's clock, by CLOCK_FORMAT: "9:59 PM" (AM or PM kept with its time) or "21:59" */
-const hm = t => {
-  const d = DT(t), h = d.getHours(), m = pad2(d.getMinutes());
-  return CFG.h24 ? `${pad2(h)}:${m}` : `${h % 12 || 12}:${m}${NB}${h < 12 ? "AM" : "PM"}`;
-};
+const hm = t => formatTimeOfDay(DT(t), {format: CFG.clock});
 /* a graph's clock label: "10 PM" on the hour, "10:15" between, or "22:00" */
 const tick = t => {
-  const d = DT(t), h = d.getHours(), m = d.getMinutes();
-  if (CFG.h24) return `${pad2(h)}:${pad2(m)}`;
-  return m === 0 ? `${h % 12 || 12}${NB}${h < 12 ? "AM" : "PM"}` : `${h % 12 || 12}:${pad2(m)}`;
+  const d = DT(t), p = timeParts(d, {format: CFG.clock});
+  return p.half && d.getMinutes() === 0 ? `${p.digits.slice(0, -3)}${NBSP}${p.half}` : p.digits;
 };
 const day = t => { const d = DT(t); return `${DAYS[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`; };
 const dayShort = t => { const d = DT(t); return `${d.getDate()} ${Mon[d.getMonth()]}`; };
@@ -934,13 +929,13 @@ function onResize() {
 /* ---------- CraftBeerPi's state, from the app's data ---------- */
 const setting = (config, k) => { const x = config && config[k]; return x && typeof x === "object" ? x.value : x; };
 function live(d) {
-  // only exactly "12-hour" gives 12-hour times; a core without the setting, or any other value, keeps 24-hour. Until
-  // the configuration has come, the times stay as they are (12-hour at first, the core's default).
-  const h24 = d.config && Object.keys(d.config).length ? setting(d.config, "CLOCK_FORMAT") !== "12-hour" : CFG.h24;
+  // CLOCK_FORMAT as every page reads it (util/timefmt.js): only exactly "12-hour" gives 12-hour times; until the
+  // configuration has come, the format last read on this browser
+  const clock = settingsClockFormat(d.config);
   const name = String(setting(d.config, "BREWERY_NAME") ?? "").trim(), unit = String(setting(d.config, "TEMP_UNIT") || "F");
   const was = CFG.strike, wasConnected = CFG.connected;
-  let redraw = h24 !== CFG.h24 || name !== CFG.brewery || unit !== CFG.unit;
-  Object.assign(CFG, {h24, brewery: name, unit, kettles: d.kettles || [], strike: d.strike || null, connected: !!d.connected});
+  let redraw = clock !== CFG.clock || name !== CFG.brewery || unit !== CFG.unit;
+  Object.assign(CFG, {clock, brewery: name, unit, kettles: d.kettles || [], strike: d.strike || null, connected: !!d.connected});
   // the strike water box's state comes often while it works; only its forecast with the tun's steel in use is said here
   if (d.strike !== was) { const now = JSON.stringify(strikeLands()); if (now !== CFG.lands) { CFG.lands = now; redraw = true; } }
   const link = d.connected ? "ok" : "lost";
@@ -976,7 +971,7 @@ export function createFigures(el, o = {}) {
   }
   fresh();
   D = null; load = {s: "reading", why: ""}; reading = false; again = false; afterAgain = []; EV = new Map();
-  CFG = {connected: null, h24: false, brewery: "", unit: "F", kettles: [], strike: null, topicN: null};
+  CFG = {connected: null, clock: settingsClockFormat(null), brewery: "", unit: "F", kettles: [], strike: null, topicN: null};
   sr = host.shadowRoot || host.attachShadow({mode: "open"});
   sr.innerHTML = `<style>${FIGURES_CSS}${EXTRA_CSS}</style><main class="main" id="main" data-link="ok"></main>`;
   const on = (t, k, f, x) => { t.addEventListener(k, f, x); off.push(() => t.removeEventListener(k, f, x)); };
