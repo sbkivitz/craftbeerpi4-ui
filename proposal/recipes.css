@@ -301,8 +301,9 @@ button.step:hover{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transpa
 .whenl{margin:2px 10px 12px;max-width:66ch;font:500 16px/1.4 var(--sans);color:var(--text)}
 .whenl:empty{display:none}
 .whenl b{font-weight:600;font-variant-numeric:tabular-nums}
-/* kept in view while the time is set (keepWhenInView): clear of the sticky tool row above */
-.whenl{scroll-margin:calc(var(--tool-h,0px) + 12px) 0 12px}
+/* the time box and what is said under it, kept in view while the time is set (keepWhenInView): clear of the sticky
+   tool row and the pinned clock band above */
+.whenl,.tmf,.tmbox,.row .why{scroll-margin:calc(var(--tool-h,0px) + var(--band-h,0px) + 12px) 0 12px}
 .whenl .late{color:var(--note)}
 /* CraftBeerPi's clock in BrewStart's When settings where it isn't the screen's (a simulator), in the title bar tag's
    look: Progress Blue on Progress Track Navy, condensed capitals */
@@ -521,6 +522,6 @@ select.fld option{background:#101a23;color:var(--text)}
   .tool .sv{display:none}
   .toast{bottom:calc(var(--tabs-h) + 18px)}
   /* and clear of the tabs, and the save bar while there are changes */
-  .whenl{scroll-margin-bottom:calc(var(--tabs-h) + env(safe-area-inset-bottom) + 12px)}
-  .app[data-dirty] .whenl{scroll-margin-bottom:calc(var(--tabs-h) + 66px + env(safe-area-inset-bottom) + 12px)}
+  .whenl,.tmf,.tmbox,.row .why{scroll-margin-bottom:calc(var(--tabs-h) + env(safe-area-inset-bottom) + 12px)}
+  .app[data-dirty] :is(.whenl,.tmf,.tmbox,.row .why){scroll-margin-bottom:calc(var(--tabs-h) + 66px + env(safe-area-inset-bottom) + 12px)}
 }

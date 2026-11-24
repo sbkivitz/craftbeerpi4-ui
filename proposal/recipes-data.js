@@ -84,7 +84,7 @@ window.CBPI_RECIPES = (() => {
     CONFIG: {MASH_TUN: MT, BoilKettle: BK, steps_boil_temp: 210.2, steps_whirlpool_temp: 170, steps_sparge: "SpargeStep", AddMashInStep: "Yes", AddMashOutStep: "Yes", AutoMode: "Yes", AUTHOR: "John Doe", brewfather_user_id: "", brewfather_api_key: "", steps_boil_lid_alert: "Turn on the Steam Slayer mister", CONFIRM_BEFORE_BOIL: "Yes",
       /* the new setting for server change 7, in the brewery's units: gal per lb with °F (L per kg with °C) */
       GRAIN_ABSORPTION: 0.12,
-      /* the new setting for times of day: "12-hour", the default, or "24-hour" */
+      /* the new setting for times of day: "12-hour", as CraftBeerPi adds it, or "24-hour". Missing means 24-hour */
       CLOCK_FORMAT: "12-hour"},
     BOOK, FILES, BREWFATHER,
     /* today, in the mockup: brew day's morning, as on the brew-day mockup's pre-brew check */
