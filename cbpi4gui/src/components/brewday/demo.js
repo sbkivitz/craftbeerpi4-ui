@@ -14,8 +14,10 @@
 // sw-over, the one clock's sim-clock and
 // sim-clock-1x, the timers' timer-change and timer-removed, the boil kettle's MANUAL's bk-hand, bk-hand-off and
 // bk-man-boil, the mash pH's ph, ph-open, ph-set, ph-target, ph-had, ph-end, ph-warm, ph-nolog, ph-vessel, ph-saved,
-// ph-fail, ph-slow, ph-noclose and ph-other, and other-recipe) runs on this, so it can be compared with the mockup
-// pixel for pixel.
+// ph-fail, ph-slow, ph-noclose and ph-other, other-recipe, and BrewScribe's readings' rd-strike, rd-level, rd-first,
+// rd-first-bx, rd-first-nofactor, rd-first-noatc, rd-looks-sg, rd-nounit, rd-last, rd-last-all, rd-sparge,
+// rd-sparge-nolevel, rd-sparge-volume, rd-sparge-bad, rd-preboil, rd-postboil, rd-partial, rd-saved, rd-fail and
+// rd-final) runs on this, so it can be compared with the mockup pixel for pixel.
 import { swModel, SW_MORNING, SW_LEVER_S } from "./strike-demo";
 import { formatTimeOfDay, TWELVE_HOUR } from "../util/timefmt";
 
@@ -121,19 +123,112 @@ const PH_Q = [
   {title: "BrewScribe: Check mash pH before mash-out", text: "Check mash pH again before mash-out or transfer. Cool a separate sample and record its actual temperature."}
 ];
 const phBanner = i => ({tone: "prompt", title: PH_Q[i].title, text: PH_Q[i].text, act: "OK", cmd: "b:ack"});
-/* BrewScribe's answer to GET /brewscribe/api/brew-day/readings on the #mash day, in its shape: Test Recipe v5's brew log
-   open, both reminders for the Mash Tun, nothing saved yet. With no log open (log false) the reminders are still
-   listed, with no vessel and nothing saved, and why_not says why, in BrewScribe's words */
+/* BrewScribe's other reminders that ask for a reading (design/brewday/READINGS-ENTRY.md), in their own words, in the
+   order they go up: the strike water with the first step that prepares it before the first rest (here BrewStart, as it
+   heats the HLT), once per brew and up until answered; the HLT's level as the sparge step starts, then the first
+   runnings; the last runnings 5 minutes before the sparge's timer ends; the HLT's level as the sparge step is done, then
+   the boil's start; the step after the boil; and once every step is done, the last, which names the recipe's planned
+   OG. CraftBeerPi shows each titled "BrewScribe: …", with its own OK (b:ack, the screen's phAck) */
+const RD_Q = [
+  {title: "BrewScribe: Record strike water", text: "Record the measured strike-water total and any treatments you actually added. This does not confirm that grain has been mixed in."},
+  {title: "BrewScribe: HLT level before the sparge", text: "Read the HLT's level before the sparge pump starts. BrewScribe keeps it until the level after the sparge, then saves the difference as the sparge water."},
+  {title: "BrewScribe: Check first runnings", text: "Once wort is flowing into the boil kettle, sample the incoming stream for first runnings. Check last runnings before collection ends. A timed later alert needs a running sparge timer."},
+  {title: "BrewScribe: Check last runnings", text: "Check the last incoming runnings before finishing collection, while you can still decide whether to continue. Sample the stream, not the mixed kettle."},
+  {title: "BrewScribe: HLT level after the sparge", text: "Read the HLT's level now the sparge is done. BrewScribe saves the sparge water: the level before the sparge less this one."},
+  {title: "BrewScribe: Record before-boil readings", text: "Before a rolling boil, record the actual kettle volume and gravity. If boiling has already begun, record the actual sample now; do not backdate it. Record actual additions as you make them."},
+  {title: "BrewScribe: Record after-boil readings", text: "Record the actual after-boil volume, gravity and any pH sample you take. Keep each sample's own temperature."},
+  {title: "BrewScribe: Record final volume and OG", text: "Before the wort leaves the kettle, read its volume. Take the OG from the cooled wort going into the fermenter; the recipe plans 1.053. Then finish your BrewScribe log."}
+];
+const rdBanner = i => ({tone: "prompt", title: RD_Q[i].title, text: RD_Q[i].text, act: "OK", cmd: "b:ack"});
+/* BrewScribe's answer to GET /brewscribe/api/brew-day/readings, in its shape (its contract's draft 5, as BrewScribe
+   0.1.0.dev56 gives it): Test Recipe v5's brew log open, in US gallons, every reminder that asks for a reading with its
+   stage, vessel and readings, asked first, and nothing saved yet. The two mash pH reminders come first, for the Mash
+   Tun; the strike water and the sparge water are the HLT's, the only kettle named HLT; the runnings and the boil are
+   the Boil Kettle's. The recipe's targets: a pH's is a plain number, and this recipe has none (#ph-target gives 5.3);
+   every other kind's is {value, unit or scale, text}: OG 1.053 (After boil and Final), boil volume 7.00 gal (Before
+   boil and Last runnings), sparge 5.00 gal. The brewer's refractometer, from his last Brix reading: wort correction
+   factor 1.04, with temperature compensation. His last gravity: the hydrometer's SG, whose usual range and sample
+   temperature the gravity reading gives too (rdChosen). The last reminder's older title is listed as well, as
+   BrewScribe answers it for a reminder CraftBeerPi kept up across an update. With no log open (log false) the
+   reminders are still listed, with no vessel and nothing saved, and why_not says why, in BrewScribe's words */
 const SCRIBE_DAY = "4c1d2e0a-7b1f-4c55-9a8e-2f6d1b0c9e31";
 const PH_NOLOG = "No BrewScribe log is open, so there's nowhere to save it. Start one on BrewScribe's page.";
 /* what the screen says when BrewScribe doesn't answer a SAVE in 5 s */
 const PH_SLOW = "BrewScribe didn't answer, so it may not have saved it. SAVE again: it won't be saved twice.";
+const SCRIBE_REFR = {wort_correction_factor: 1.04, temperature_compensation: "yes", calibration_temperature: 68, calibration_temperature_unit: "f"};
 function scribeDay(log = true) {
-  const rd = asks => ({kind: "ph", label: "pH", min: 0, max: 14, decimals: 2, target: null, sample_temperature: asks, sample_usual: {min: 50, max: 95}, saved: null});
-  const rem = (i, stage, name) => ({title: PH_Q[i].title, stage, stage_name: name, vessel: log ? KNAME.mt : null, vessel_problem: null,
-    page: `/brewscribe/#stage=${stage}&focus=ph`, readings: [rd(i ? "asked" : "optional")]});
-  return {log: log ? {day_id: SCRIBE_DAY, name: RECIPE.name} : null, why_not: log ? null : PH_NOLOG, temperature_unit: "f",
-    reminders: [rem(0, "mash_start", "Early mash"), rem(1, "mash_end", "End of mash")]};
+  const usual = {min: 50, max: 95}, boilV = {value: 7.0, unit: "us_gal", text: "recipe boil volume 7.00 gal"};
+  const rd = (asks, asked = true) => ({kind: "ph", label: "pH", min: 0, max: 14, decimals: 2, usual: {min: 4, max: 7, start: 5.4}, asked, sample_temperature: asks, sample_usual: usual, target: null, saved: null});
+  const grav = og => rdChosen({kind: "gravity", label: "Gravity", asked: true, usual: null, sample_temperature: null, sample_usual: usual,
+    choices: [{instrument: "hydrometer", scale: "sg", label: "SG", min: 0.9, max: 1.5, decimals: 3, usual: {min: 1, max: 1.12, start: 1.05}, sample_temperature: "asked"},
+      {instrument: "refractometer", scale: "brix", label: "°Bx", min: 0, max: 100, decimals: 1, usual: {min: 0, max: 25, start: 12}, sample_temperature: "optional"},
+      {instrument: "hydrometer", scale: "plato", label: "°P", min: 0, max: 100, decimals: 1, usual: {min: 0, max: 25, start: 12}, sample_temperature: "asked"}],
+    chosen: null, refractometer: Object.assign({}, SCRIBE_REFR), target: og ? {value: 1.053, scale: "sg", text: "recipe OG 1.053"} : null, saved: null}, {instrument: "hydrometer", scale: "sg"});
+  const vol = (kind, label, asked, target, more) => Object.assign({kind, label, asked, unit: "us_gal", min: 0, max: null, decimals: 2, usual: {min: 0, max: 20, start: 5}, sample_temperature: "none", sample_usual: null}, more, {target, saved: null});
+  const rem = (title, stage, name, v, readings, focus = readings[0].kind) => ({title, stage, stage_name: name, vessel: log ? v : null, vessel_problem: null,
+    page: `/brewscribe/#stage=${stage}&focus=${focus}`, readings});
+  const last = title => rem(title, "transfer", "Final volume / transfer", KNAME.bk, [vol("volume", "Volume", true, null), grav(true)]);
+  return {log: log ? {day_id: SCRIBE_DAY, name: RECIPE.name} : null, why_not: log ? null : PH_NOLOG, temperature_unit: "f", volume_unit: "us_gal", volume_label: "gal",
+    reminders: [rem(PH_Q[0].title, "mash_start", "Early mash", KNAME.mt, [rd("optional")]), rem(PH_Q[1].title, "mash_end", "End of mash", KNAME.mt, [rd("asked")]),
+      rem(RD_Q[0].title, "strike_water", "HLT water prep", KNAME.hlt, [vol("volume", "Volume", true, null)]),
+      rem(RD_Q[1].title, "sparge_water", "Sparge water", KNAME.hlt, [vol("level", "HLT level before the sparge", true, null)], "level-before"),
+      rem(RD_Q[2].title, "first_runnings", "First runnings", KNAME.bk, [grav(false), rd("optional", false)]),
+      rem(RD_Q[3].title, "last_runnings", "Last runnings", KNAME.bk, [grav(false), rd("optional", false), vol("volume", "Volume", false, boilV)]),
+      rem(RD_Q[4].title, "sparge_water", "Sparge water", KNAME.hlt, [vol("sparge_water", "Sparge water", true, {value: 5.0, unit: "us_gal", text: "recipe sparge 5.00 gal"}, {level_before: null})], "level-after"),
+      rem(RD_Q[5].title, "pre_boil", "Before boil", KNAME.bk, [vol("volume", "Volume", true, boilV), grav(false)]),
+      rem(RD_Q[6].title, "post_boil", "After boil", KNAME.bk, [vol("volume", "Volume", true, null), grav(true), rd("asked", false)]),
+      last(RD_Q[7].title), last("BrewScribe: Review the finished brew")]};
+}
+/* a gravity reading's pair to start in, with that pair's usual range and sample temperature, as BrewScribe gives them
+   beside its choices */
+function rdChosen(g, pair) {
+  const c = g.choices.find(x => x.instrument === pair.instrument && x.scale === pair.scale) || g.choices[0];
+  return Object.assign(g, {chosen: {instrument: c.instrument, scale: c.scale}, usual: Object.assign({}, c.usual), sample_temperature: c.sample_temperature});
+}
+/* a list in words: "a", "a and b", "a, b and c" */
+const rdJoin = L => L.length < 2 ? L.join("") : `${L.slice(0, -1).join(", ")} and ${L[L.length - 1]}`;
+/* a volume, level or sparge water in the unit it's in, to that unit's decimals: "6.40 gal", "37.9 L" (BrewScribe's own
+   label for its volume_unit) */
+function rdAmt(s, A) {
+  const l = (s.unit || A.volume_unit) === "l";
+  return `${s.value.toFixed(l ? 1 : 2)} ${(s.unit || A.volume_unit) === A.volume_unit && A.volume_label ? A.volume_label : l ? "L" : "gal"}`;
+}
+/* BrewScribe's sentence for a SAVE: a level kept until the level after, the sparge water saved, or the readings saved,
+   with the stage and vessel */
+function rdSaid(rem, kind, texts) {
+  const where = `(${rem.stage_name}, ${rem.vessel})`;
+  return kind === "level" ? `${texts[0]} kept in BrewScribe until the level after ${where}` : kind === "sparge_water" ? `Sparge water ${texts[0]} saved in BrewScribe ${where}` : `${rdJoin(texts)} saved in BrewScribe ${where}`;
+}
+/* a reading BrewScribe has taken, in an answer's shape (the demo's BrewScribe, or Brew Day's copy of an answer): it
+   becomes the one standing in its stage, on every reminder for that stage (the last reminder's older title too). A
+   level is kept, not saved: the sparge water reminder works from it until the sparge water is saved, which takes it,
+   and is then that reading's level before. A level kept in another unit than BrewScribe's volume_unit isn't offered to
+   work from, as nothing is converted. A gravity's pair becomes the one to start in. Returns the reading's words */
+function rdApply(S, title, r) {
+  const rem = S.reminders.find(x => x.title === title), rd = rem && rem.readings.find(x => x.kind === r.kind);
+  if (!rd) return "";
+  const at = new Date().toISOString(), ves = rem.vessel || "HLT", all = k => S.reminders.flatMap(x => x.readings).filter(x => x.kind === k);
+  const amt = v => rdAmt({value: v, unit: r.unit}, S);
+  let saved;
+  if (r.kind === "ph") saved = {entry_id: r.entry_id, value: r.value, text: `pH ${r.value.toFixed(rd.decimals ?? 2)}`, occurred_at: at};
+  else if (r.kind === "gravity") {
+    const c = rd.choices.find(x => x.instrument === r.instrument && x.scale === r.scale);
+    saved = {entry_id: r.entry_id, value: r.value, instrument: r.instrument, scale: r.scale, text: `${r.value.toFixed(c.decimals)} ${c.label}`, occurred_at: at};
+    all("gravity").forEach(x => rdChosen(x, r));
+  } else if (r.kind === "volume") saved = {entry_id: r.entry_id, value: r.value, unit: r.unit, text: amt(r.value), occurred_at: at};
+  else if (r.kind === "level") {
+    saved = {value: r.value, unit: r.unit, text: `${ves} ${amt(r.value)} before the sparge`};
+    all("sparge_water").forEach(x => { x.level_before = r.unit === S.volume_unit ? {value: r.value, text: amt(r.value)} : null; });
+  } else {
+    const levels = r.level_after != null, before = levels ? r.level_before ?? rd.level_before.value : null, dec = (r.unit || S.volume_unit) === "l" ? 1 : 2;
+    const value = levels ? Number((before - r.level_after).toFixed(dec)) : r.value;
+    saved = {entry_id: r.entry_id, value, unit: r.unit, level_before: before, level_after: levels ? r.level_after : null,
+      text: levels ? `${amt(value)} (${ves} ${before.toFixed(dec)} → ${r.level_after.toFixed(dec)})` : amt(value), occurred_at: at};
+    all("sparge_water").forEach(x => { x.level_before = null; });
+    all("level").forEach(x => { x.saved = levels ? {value: before, unit: r.unit, text: `${ves} ${amt(before)} before the sparge`} : null; });
+  }
+  S.reminders.filter(x => x.stage === rem.stage).forEach(x => x.readings.filter(y => y.kind === r.kind).forEach(y => { y.saved = Object.assign({}, saved); }));
+  return saved.text;
 }
 /* a reading's content, so the same reading sent again keeps its entry_id */
 const phKey = (day, title, v, t, u) => JSON.stringify([day, title, v, t, u]);
@@ -171,7 +266,78 @@ function scribeHas(s, i, v, id = "9f0c3b7e-5d21-4a8c-b6e4-1f2a3c4d5e6f") {
   const rd = s.bscribe.reminders[i].readings[0];
   rd.saved = {entry_id: id, value: v, text: `pH ${v.toFixed(rd.decimals)}`, occurred_at: "2026-11-22T18:41:07Z"};
 }
-export { PH_Q, phBanner, scribeDay, phKey, PH_NOLOG, PH_SLOW };
+/* BrewScribe's readings moments (READINGS-ENTRY.md): a moment with BrewScribe's reminder i (RD_Q) up since `at`, in the
+   title bar, its line waiting in LOG */
+function rdUp(s, i, at) {
+  if (!s.bscribe) s.bscribe = scribeDay();
+  s.banner = rdBanner(i);
+  rdLine(s, [at, `${RD_Q[i].title}: ${RD_Q[i].text}`, "waiting for you", "wait"]);
+  return s;
+}
+/* lines put into a moment's LOG by their times, newest first, each above the lines of the same second already there */
+function rdLine(s, ...L) { L.forEach(l => { const i = s.events.findIndex(e => e[0] <= l[0]); s.events.splice(i < 0 ? s.events.length : i, 0, l); }); }
+/* an earlier BrewScribe reminder i, up at `at` and answered with SAVE at `done`: the readings it saved (rs) in the
+   moment's BrewScribe, and LOG's lines for it, as SAVE logs them */
+function rdAnswered(s, i, at, done, rs) {
+  const rem = s.bscribe.reminders.find(r => r.title === RD_Q[i].title), texts = rs.map((r, k) => rdApply(s.bscribe, rem.title, Object.assign({entry_id: RD_SENT[k]}, r)));
+  rdLine(s, [at, `${RD_Q[i].title}: ${RD_Q[i].text}`, "answered", ""], [done, `${RD_Q[i].title} answered: OK`, "confirmed", "ok"], [done, rdSaid(rem, rs[0].kind, texts), "confirmed", "ok"]);
+  return s;
+}
+/* the entries Brew Day sends in the readings moments */
+const RD_SENT = ["5e1b7c2a-8d34-4f6e-a1b9-3c7d2e8f4a10", "a3f9d6e1-2b47-4c8d-9e5f-6a1b0c7d2e43", "c8e2a4f6-1d3b-4e5c-8f7a-9b0d1e2f3a54"];
+/* the HLT's level before the sparge saved at 14:58:12, 10.00 gal, which BrewScribe keeps for the sparge water */
+function rdKept(s) {
+  if (!s.bscribe) s.bscribe = scribeDay();
+  return rdAnswered(s, 1, "14:56:21", "14:58:12", [{kind: "level", value: 10, unit: "us_gal"}]);
+}
+/* 14:59:40, the sparge water heating (#sparge-heat): "HLT level before the sparge" and "Check first runnings" both
+   waiting since the sparge step started at 14:56:21 */
+function rdLevel() {
+  const s = rdUp(SCENES["sparge-heat"](), 1, "14:56:21");
+  rdLine(s, ["14:56:21", `${RD_Q[2].title}: ${RD_Q[2].text}`, "waiting for you", "wait"]);
+  return Object.assign(s, {base: "sparge-heat"});
+}
+/* 15:12:40, the fly sparge running (#sparge-run): the level kept, "Check first runnings" up since 14:56:21 */
+function rdFirst() { return Object.assign(rdUp(rdKept(SCENES["sparge-run"]()), 2, "14:56:21"), {base: "sparge-run"}); }
+/* 15:40:20 on the same day: "Check last runnings" up since 15:40:02, 5 minutes before the sparge's 40 minutes end at
+   15:45:02; the first runnings' gravity saved at 15:07:31 */
+function rdLast() {
+  const s = rdKept(SCENES["sparge-run"]());
+  rdAnswered(s, 2, "14:56:21", "15:07:31", [{kind: "gravity", value: 1.072, instrument: "hydrometer", scale: "sg"}]);
+  s.t = 15 * 3600 + 40 * 60 + 20; s.recipe.left = 15 * 3600 + 45 * 60 + 2 - s.t;
+  return Object.assign(rdUp(s, 3, "15:40:02"), {base: "sparge-run"});
+}
+/* 15:45:40 on #boil-hold's day: the sparge done at 15:45:02, when CraftBeerPi asked "Ready to boil?" and BrewScribe
+   put up "HLT level after the sparge", then "Record before-boil readings". The title bar shows prompts in the order
+   they came, so the boil's question came first; START THE BOIL answered it at 15:45:31, which switched the wort pump off
+   and the boil kettle's AUTO on, and the level is up now. The level before kept, unless kept is false */
+function rdAfter(kept = true) {
+  const s = SCENES["boil-hold"](), b = RECIPE.steps[4], q = s.events.find(e => e[3] === "wait" && e[1].startsWith(`${b.n}: Ready to boil?`));
+  s.bscribe = scribeDay();
+  if (kept) rdKept(s);
+  s.t = 15 * 3600 + 45 * 60 + 40; s.v.hlt.pv = 165.2; s.v.mt.pv = 166.2;
+  s.v.bk = {pv: 150.2, sv: b.temp, mode: "auto"};
+  Object.assign(s.a, {wortPump: {on: false}, bkEl: {on: true, pct: 100}});
+  s.recipe = {state: "running", cur: 4, left: 90 * 60, adds: [], wait: true};
+  q[2] = "answered"; q[3] = "";
+  rdLine(s, ["15:45:31", `${b.n} answered: Start the boil`, "confirmed", "ok"], ["15:45:33", boilStartLine(b), "by recipe", ""],
+    ["15:45:33", `${b.n}: The wort pump is off, so you can move its hoses.`, "from CraftBeerPi", ""]);
+  rdUp(s, 4, "15:45:02");
+  rdLine(s, ["15:45:02", `${RD_Q[5].title}: ${RD_Q[5].text}`, "waiting for you", "wait"]);
+  return Object.assign(s, {base: "boil-hold"});
+}
+/* the brew's last gravity read with the refractometer in °Bx, so the box starts there, and the brewer's refractometer
+   setup as BrewScribe has it (refr; null for none), which asks for the sample's temperature where it has no
+   temperature compensation */
+function rdRefr(s, refr = SCRIBE_REFR) {
+  s.bscribe.reminders.forEach(r => r.readings.filter(x => x.kind === "gravity").forEach(g => {
+    g.refractometer = refr && Object.assign({}, refr);
+    g.choices.find(c => c.scale === "brix").sample_temperature = refr && refr.temperature_compensation === "no" ? "asked" : "optional";
+    rdChosen(g, {instrument: "refractometer", scale: "brix"});
+  }));
+  return s;
+}
+export { PH_Q, phBanner, scribeDay, phKey, PH_NOLOG, PH_SLOW, RD_Q, rdBanner, rdChosen, rdJoin, rdAmt, rdSaid, rdApply };
 const SCENES = {
   mash,
   hop: () => Object.assign(mash(), {
@@ -761,6 +927,70 @@ const SCENES = {
     return s;
   },
   "ph-other": () => Object.assign(phMash(), {open: {phAt: {txt: "5.42"}, phElse: 1200}}),
+  /* BrewScribe's readings from every reminder that asks for one (design/brewday/READINGS-ENTRY.md), each on the moment
+     for its time of the brew, BrewScribe's log open (scribeDay). #rd-strike: brew morning (#sw-heat), BrewStart heating
+     the HLT since its heating start. BrewScribe raises "Record strike water" with the first step that prepares the
+     strike water before the first rest, here BrewStart, once per brew; it stays up, through MashIn too, until answered.
+     The box open for the HLT's volume */
+  "rd-strike": () => { const s = SCENES["sw-heat"](); return Object.assign(rdUp(s, 0, hhmmss(s.swd.g.heat)), {base: "sw-heat", open: {phAt: {}}}); },
+  /* the sparge, on the SpargeStep's day (#sparge-heat, #sparge-run). As the sparge step started at 14:56:21, "HLT level
+     before the sparge" went up, then "Check first runnings". #rd-level: 14:59:40, the sparge water heating, both
+     waiting, the box open for the level. #rd-first: 15:12:40, the fly sparge running, the level saved at 14:58:12 and
+     kept, the box open for the first runnings' gravity in SG, the brew's last pair. #rd-first-bx: the brew's last pair
+     the refractometer's °Bx, 12.4 typed, its SG worked out with the wort correction factor 1.04. #rd-first-nofactor:
+     the same with no refractometer setup in BrewScribe. #rd-first-noatc: a refractometer without temperature
+     compensation, so °Bx asks for the sample's temperature. #rd-looks-sg: 1.048 typed with °Bx chosen. #rd-nounit:
+     BrewScribe with no volume unit for the brew: the first runnings still offer their gravity, and "Record strike
+     water" would have no RECORD */
+  "rd-level": () => Object.assign(rdLevel(), {open: {phAt: {}}}),
+  "rd-first": () => Object.assign(rdFirst(), {open: {phAt: {}}}),
+  "rd-first-bx": () => Object.assign(rdRefr(rdFirst()), {open: {phAt: {f: {g: "12.4"}}}}),
+  "rd-first-nofactor": () => Object.assign(rdRefr(rdFirst(), null), {open: {phAt: {f: {g: "12.4"}}}}),
+  "rd-first-noatc": () => Object.assign(rdRefr(rdFirst(), Object.assign({}, SCRIBE_REFR, {temperature_compensation: "no"})), {open: {phAt: {f: {g: "12.4"}}}}),
+  "rd-looks-sg": () => Object.assign(rdRefr(rdFirst()), {open: {phAt: {f: {g: "1.048"}}}}),
+  "rd-nounit": () => { const s = rdFirst(); Object.assign(s.bscribe, {volume_unit: null, volume_label: null}); return Object.assign(s, {open: {phAt: {}}}); },
+  /* #rd-last: 15:40:20, "Check last runnings" up since 15:40:02, 5 minutes before the sparge's 40 minutes end, the
+     first runnings' 1.072 SG saved at 15:07:31; the box open for the gravity, pH and volume a "+" away. #rd-last-all:
+     both added, and 1.012 SG, pH 5.62 and 6.95 gal typed */
+  "rd-last": () => Object.assign(rdLast(), {open: {phAt: {}}}),
+  "rd-last-all": () => Object.assign(rdLast(), {open: {phAt: {add: ["ph", "volume"], f: {g: "1.012", vol: "6.95"}, txt: "5.62"}}}),
+  /* the sparge done at 15:45:02 (#boil-hold's day, at 15:45:40) and the boil started at 15:45:31: "HLT level after the
+     sparge" up, then "Record before-boil readings". #rd-sparge: BrewScribe keeping the level before, 10.00
+     gal, and 4.60 typed: the sparge water 5.40 gal. #rd-sparge-nolevel: no level BrewScribe can work from (none kept;
+     one kept in another unit than its volume_unit gives the same box), so both levels asked. #rd-sparge-volume: the
+     sparge water typed instead, 5.40 gal. #rd-sparge-bad: 10.20 typed, not lower than the level before, and SAVE
+     tapped */
+  "rd-sparge": () => Object.assign(rdAfter(), {open: {phAt: {f: {aft: "4.60"}}}}),
+  "rd-sparge-nolevel": () => Object.assign(rdAfter(false), {open: {phAt: {}}}),
+  "rd-sparge-volume": () => Object.assign(rdAfter(), {open: {phAt: {way: "volume", f: {spv: "5.40"}}}}),
+  "rd-sparge-bad": () => Object.assign(rdAfter(), {open: {phAt: {f: {aft: "10.20"}, go: true}}}),
+  /* the boil: #rd-preboil: the boil heating at 15:12 (#heatup), "Record before-boil readings" up since the boil step
+     started at 14:58:30, the box open for the volume and gravity. #rd-postboil: the whirlpool at 17:18:40 (#whirlpool),
+     "Record after-boil readings" up since the step after the boil started at 17:00:04, the box open, the pH a "+" away.
+     #rd-partial: the volume saved at 17:18:22, 6.40 gal, the reminder still up for the gravity, focus on RECORD.
+     #rd-saved: both saved at 17:18:34, 6.40 gal and 1.048 SG, and the reminder closed, focus on LOG. #rd-fail: SAVE
+     refused by BrewScribe (503) at 17:18:31, the box open with both figures. #rd-final: the wort chilling at 17:41:30
+     (#finished), "Record final volume and OG" up since every step was done at 17:28:10, the box open with 6.10 gal,
+     1.052 SG and the sample at 68.0 °F */
+  "rd-preboil": () => Object.assign(rdUp(SCENES.heatup(), 5, "14:58:30"), {open: {phAt: {}}}),
+  "rd-postboil": () => Object.assign(rdUp(SCENES.whirlpool(), 6, "17:00:04"), {open: {phAt: {}}}),
+  "rd-partial": () => {
+    const s = rdUp(SCENES.whirlpool(), 6, "17:00:04"), rem = s.bscribe.reminders.find(r => r.title === RD_Q[6].title);
+    rdLine(s, ["17:18:22", rdSaid(rem, "volume", [rdApply(s.bscribe, rem.title, {entry_id: RD_SENT[0], kind: "volume", value: 6.4, unit: "us_gal"})]), "confirmed", "ok"]);
+    return Object.assign(s, {open: {phRec: true}});
+  },
+  "rd-saved": () => {
+    const s = SCENES.whirlpool();
+    s.bscribe = scribeDay();
+    rdAnswered(s, 6, "17:00:04", "17:18:34", [{kind: "volume", value: 6.4, unit: "us_gal"}, {kind: "gravity", value: 1.048, instrument: "hydrometer", scale: "sg"}]);
+    return Object.assign(s, {open: {phLog: true}});
+  },
+  "rd-fail": () => {
+    const s = rdUp(SCENES.whirlpool(), 6, "17:00:04");
+    rdLine(s, ["17:18:31", "6.40 gal and 1.048 SG not saved in BrewScribe", "failed", "bad"]);
+    return Object.assign(s, {open: {phAt: {f: {vol: "6.40", g: "1.048"}, err: "BrewScribe storage is unavailable; retry the operation", sent: {volume: RD_SENT[0], gravity: RD_SENT[1]}}}});
+  },
+  "rd-final": () => Object.assign(rdUp(SCENES.finished(), 7, "17:28:10"), {open: {phAt: {f: {vol: "6.10", g: "1.052", gt: "68.0"}}}}),
   /* the pre-brew check (pbMorning). #prebrew: COMPARE PROBES under START. #probes, #probes-apart, #probes-off,
      #probes-none: the probes side by side, agreeing; the boil kettle 3.8 °F cooler than the others, as one by a door
      can be; the boil kettle's 17.5 °F low, more than its spot explains; the mash tun's giving no reading for 4 min.

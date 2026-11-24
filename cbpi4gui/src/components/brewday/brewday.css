@@ -682,6 +682,25 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .phpage[aria-disabled=true]{cursor:not-allowed}
 :where(html.bd-page) .phpage[aria-disabled=true] .lb{color:var(--text-3)}
 :where(html.bd-page) .phbox [aria-disabled=true]{cursor:not-allowed}
+:where(html.bd-page) .rdpart{display:grid;gap:12px}
+:where(html.bd-page) .rdpick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+:where(html.bd-page) .rdpick button{min-width:0;min-height:54px;padding:4px 2px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);font:700 20px/1 var(--cond);letter-spacing:.04em;touch-action:manipulation}
+:where(html.bd-page) .rdpick small{display:block;margin-top:4px;font:500 13px/1.1 var(--cond);letter-spacing:.04em;color:var(--text-2)}
+:where(html.bd-page) .rdpick button[aria-checked=true]{background:#070c11;color:#fff;box-shadow:inset 0 0 0 2px #a9bfd4}
+:where(html.bd-page) .rdpick button[aria-checked=true] small{color:#c9d6e2}
+:where(html.bd-page) .rdpick button:not([aria-checked=true]):not([aria-disabled=true]):hover{background:#253545}
+:where(html.bd-page) .rdpick button[aria-disabled=true]:not([aria-checked=true]),:where(html.bd-page) .rdpick button[aria-disabled=true]:not([aria-checked=true]) small{color:var(--text-3)}
+:where(html.bd-page) .rdeq{font:500 14px/1.35 var(--sans);color:var(--text-2)}
+:where(html.bd-page) .rdkept,:where(html.bd-page) .rdsaves{font:500 15px/1.35 var(--sans);color:var(--text-2)}
+:where(html.bd-page) .rdeq:empty,:where(html.bd-page) .rdsaves:empty{display:none}
+:where(html.bd-page) .rdalso{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px}
+:where(html.bd-page) .rdalso>span{font:500 15px/1.35 var(--sans);color:var(--text-2)}
+:where(html.bd-page) .rdq{position:relative;min-height:44px;padding:0 12px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel-2);font:600 15px/1.1 var(--cond);letter-spacing:.08em;touch-action:manipulation}
+:where(html.bd-page) .rdq .lb{color:var(--text-2)}
+:where(html.bd-page) .rdq:not([aria-disabled=true]):hover{background:#253545}
+:where(html.bd-page) .rdq:not([aria-disabled=true]):hover .lb{color:var(--text)}
+:where(html.bd-page) .rdq[aria-disabled=true] .lb{color:var(--text-3)}
+:where(html.bd-page) .rdway{justify-self:start}
 @media (min-width:701px){
 :where(html.bd-page)[data-layout=b] .topbar,:where(html.bd-page)[data-layout=a] .status{position:relative}
 :where(html.bd-page) .phbox{position:absolute;z-index:45;width:min(460px,calc(100vw - 16px))}

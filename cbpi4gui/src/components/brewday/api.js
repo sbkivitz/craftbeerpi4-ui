@@ -78,7 +78,9 @@ export const api = {
   seen: (notificationId) => post(`/notification/${id(notificationId)}/seen`),
   // BrewScribe's readings from Brew Day (BrewScribe 0.1.0.dev51 and later): which reminders take a reading, with its open
   // log and what it would save each as; and a reading saved in that log. CraftBeerPi answers 404 without BrewScribe.
-  brewDayReadings: () => get("/brewscribe/api/brew-day/readings"),
+  // The question waits up to 12 s, short of the 15 s between askings, so a page or a server slow to answer still gets
+  // its RECORD; nothing on the screen waits on it meanwhile.
+  brewDayReadings: () => call("GET", "/brewscribe/api/brew-day/readings", undefined, 12000),
   brewDayReading: (reading) => post("/brewscribe/api/brew-day/readings", reading),
   recipes: () => get("/recipe/"),
   recipe: (file) => get(`/recipe/${id(file)}`),
