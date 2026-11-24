@@ -55,8 +55,9 @@ const EXTRA_CSS = `
 /* ---------- the page: one at a time, as the brew-day screen ---------- */
 let host = null, sr = null, env = {}, gen = 0, timers = [], off = [];
 /* D: CraftBeerPi's last answer to GET /figures; load: where reading it stands ("reading", "ok", "failed" with why, "old"
-   for a CraftBeerPi without it) */
-let D = null, load = {s: "reading", why: ""}, reading = false, again = false;
+   for a CraftBeerPi without it). A read asked for while one is under way is one more read after it (again); afterAgain:
+   those callers, told when it's done */
+let D = null, load = {s: "reading", why: ""}, reading = false, again = false, afterAgain = [];
 /* CFG: what the page takes from CraftBeerPi's settings and state */
 let CFG = {connected: null, h24: false, brewery: "", unit: "F", kettles: [], strike: null, topicN: null};
 let st = null;
@@ -685,7 +686,9 @@ function take(data) {
   if (st.open) wantEv(st.open, st.focus || st.pick);
 }
 async function readFigures() {
-  if (reading) { again = true; return; }
+  // under way already: what's asked for now may have changed after it began, so one more read after it, and this
+  // caller is told when that one is done (a topic's LOG line compares the figures before and after)
+  if (reading) { again = true; return new Promise(done => afterAgain.push(done)); }
   reading = true;
   const g = gen;
   if (!waitSince && !brews().length) waitSince = Date.now();
@@ -699,7 +702,12 @@ async function readFigures() {
   else if (!D) load = {s: "failed", why: whyNot(res, READ_MS)};
   if (!firstWait()) waitSince = 0;
   render();
-  if (again) { again = false; readFigures(); }
+  if (again) {
+    again = false;
+    const waiting = afterAgain;
+    afterAgain = [];
+    readFigures().then(() => waiting.forEach(done => done()));
+  }
   // still working the brews out: asked again every few seconds, as well as on the topic that says they're ready
   else if (working()) { clearTimeout(pollT); pollT = later(readFigures, POLL_MS); }
 }
@@ -967,7 +975,7 @@ export function createFigures(el, o = {}) {
     document.head.appendChild(s);
   }
   fresh();
-  D = null; load = {s: "reading", why: ""}; reading = false; again = false; EV = new Map();
+  D = null; load = {s: "reading", why: ""}; reading = false; again = false; afterAgain = []; EV = new Map();
   CFG = {connected: null, h24: false, brewery: "", unit: "F", kettles: [], strike: null, topicN: null};
   sr = host.shadowRoot || host.attachShadow({mode: "open"});
   sr.innerHTML = `<style>${FIGURES_CSS}${EXTRA_CSS}</style><main class="main" id="main" data-link="ok"></main>`;
