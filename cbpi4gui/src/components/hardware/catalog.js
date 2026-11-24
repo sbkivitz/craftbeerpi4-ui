@@ -25,6 +25,21 @@ export const HW_OWN = {
   ]
 };
 
+/* a kettle's vessel: how much it holds, what it weighs empty and what it's made of, kept with the kettle (CraftBeerPi's
+   kettle fields capacity, empty_weight, material and specific_heat). Each is optional, and empty is usual: nothing
+   needs them, and what uses them does without. So they have no "Empty:" line and aren't among the empty settings asked
+   about before SAVE. Units: "vol" is the brewery's volume (gal on a °F brewery, L on a °C one), "mass" its weight (lb
+   or kg). Specific heat shows only for another material */
+export const HW_VESSEL_INTRO = "Each is optional: leave it empty if you don't know it. Saving these leaves the kettle's AUTO as it is.";
+export const HW_VESSEL = [
+  ["capacity", "Capacity", "How much it holds, full. Brew Day checks BrewStart's water against the HLT's.", "vol"],
+  ["empty_weight", "Empty weight", "What it weighs empty, with what's fixed in it, such as a coil or a false bottom. The strike water forecast uses it.", "mass"],
+  ["material", "Material", "What it's made of. The forecast uses it with the empty weight; without it, it takes stainless steel.", ""],
+  ["specific_heat", "Specific heat", "How much heat the material holds, as BeerSmith's equipment profile gives it: copper 0.09, stainless steel 0.12, aluminum 0.22.", "cal/g·°C"]
+];
+/* the materials, as CraftBeerPi keeps them and as this page says them; "Not set" first, for empty */
+export const HW_MATERIALS = [["stainless_steel", "Stainless steel"], ["aluminium", "Aluminum"], ["other", "Other"]];
+
 /* each type: what it is in a line (shown under the type's choice), and its settings in parts */
 export const HW_TYPES = {
   kettle: {

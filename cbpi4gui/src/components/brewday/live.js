@@ -227,7 +227,8 @@ export function stepModel(s, roleOf, U, kname = {}) {
 // Grain absorption setting's (GRAIN_ABSORPTION, gal/lb for a °F brewery, L/kg for °C), as a BeerXML file has no figure for
 // it. In the brewery's volume unit (gal for °F, L for °C), with the parts the sum is made of; null when the recipe or the
 // setting doesn't give the figures. For a new BrewStart's water, on the Recipe Book, Brew Steps and Brew Day alike.
-const GAL_L = 3.785411784, LB_KG = 0.45359237;
+export const GAL_L = 3.785411784;
+const LB_KG = 0.45359237;
 export function recipeWater(mn, absorption, C) {
   const a = num(absorption), boil = mn ? num(mn.boil_l) : null, grain = mn ? num(mn.grain_kg) : null;
   if (boil == null || grain == null || a == null) return null;

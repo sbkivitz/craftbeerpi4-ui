@@ -286,6 +286,8 @@ mark{padding:0 1px;border-radius:2px;background:var(--mark);color:var(--mark-ink
 .part h3 .pl{margin-left:10px;letter-spacing:.04em;text-transform:none;color:var(--text-2)}
 .row{display:grid;grid-template-columns:minmax(0,var(--row-l)) minmax(280px,var(--row-c));column-gap:32px;align-items:start;padding:14px 10px;border-top:1px solid var(--line);border-radius:4px}
 .part h3+.row{border-top-color:transparent}
+.part .pi{margin:0;padding:0 10px 8px;max-width:62ch;font:500 15px/1.4 var(--sans);color:var(--text-2)}
+.part .pi+.row{border-top-color:transparent}
 .row .nm{display:block;margin:0;font:600 20px/1.15 var(--cond);letter-spacing:.02em;color:var(--text)}
 .row .wh{margin:5px 0 0;max-width:62ch;font:500 15px/1.4 var(--sans);color:var(--text-2)}
 .row .ky{margin:7px 0 0;font:500 14px/1.2 var(--cond);letter-spacing:.06em;color:var(--text-3);overflow-wrap:anywhere}

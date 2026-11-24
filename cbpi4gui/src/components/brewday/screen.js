@@ -65,7 +65,7 @@ import { rigSVG, RIG_H } from "./rig";
 import * as DEMO from "./demo";
 import * as SWD from "./strike-demo";
 import { api, why as failWhy } from "./api";
-import { model, num, parseLeft, bookLine, isHerms, unitText, ROLES, cfg, timerNames, recipeWater, inWords, durWords } from "./live";
+import { model, num, parseLeft, bookLine, isHerms, unitText, ROLES, cfg, timerNames, recipeWater, inWords, durWords, GAL_L } from "./live";
 import { play as playSound, soundOf, DEFAULT_SOUND, SOUNDS } from "./alarm";
 import { GSPANS, GSAY, graphHTML, graphSVG, graphETA } from "./graphs";
 import { createHistory } from "./history";
@@ -1562,7 +1562,7 @@ function swList(N) {
   const R = N.R, VU = swVU(), gal = x => `${(+x).toFixed(2)}&nbsp;${VU}`, left = N.left ?? N.vol - N.gal, by = swBrewStart(), U = M.U;
   const g = (h, rows) => `<h4 class="swg">${h}</h4><dl class="swd">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>`;
   const cd = swCampden();
-  const water = st.swVol ? swVolHTML(N) : `<div class="swyou"><p>${+N.vol.toFixed(2)}&nbsp;${VU} in the HLT, strike and sparge${by ? ": BrewStart's water volume" : ""}.${cd != null ? ` Campden for it: ${swCampdenText(cd)}.` : ""} The ${gal(left)} that stays there warms the mash through the coil.</p>${b("cmdbtn", "CHANGE", "", {cmd: "swv:open", label: "Change the water in the HLT", expanded: false})}</div>`;
+  const water = st.swVol ? swVolHTML(N) : `<div class="swyou"><div><p>${+N.vol.toFixed(2)}&nbsp;${VU} in the HLT, strike and sparge${by ? ": BrewStart's water volume" : ""}.${cd != null ? ` Campden for it: ${swCampdenText(cd)}.` : ""} The ${gal(left)} that stays there warms the mash through the coil.</p>${hltOverHTML(N.vol, VU)}</div>${b("cmdbtn", "CHANGE", "", {cmd: "swv:open", label: "Change the water in the HLT", expanded: false})}</div>`;
   const grainSays = N.typed != null
     ? `Grain at ${swT(N.grain)}${by ? ": BrewStart's grain temperature. Left blank" : ", given for today's brew. Without it"}, the boil kettle's probe would stand for it, at ${swT(N.room)}.`
     : `Grain at ${swT(N.grain)}: the boil kettle's probe${by ? ", as BrewStart's grain temperature is blank" : ""}. Grain that spent the night somewhere warmer lands the mash higher: give its temperature.`;
@@ -1606,7 +1606,8 @@ function swVolHTML(N) {
   const key = (d, l) => `<button type="button" data-cmd="swv:step:${d}" aria-label="${l}">${d < 0 ? "−" : "+"}${Math.abs(d) === 1 ? "1" : ".1"}</button>`;
   return `<div class="editor swvol" role="group" aria-labelledby="swv-l"><label class="swvl" id="swv-l" for="swvin">HLT water, in ${many}</label>`
     + `<p class="swvh" id="swv-h">All the water in the HLT now, strike and sparge${swBrewStart() ? ". It is BrewStart's water volume, which also sets the Campden dose" : ""}.</p>`
-    + `${key(-1, `1 ${one} less`)}${key(-0.1, `0.1 ${one} less`)}<input id="swvin" inputmode="decimal" autocomplete="off" value="${x}" aria-describedby="swv-h">${key(0.1, `0.1 ${one} more`)}${key(1, `1 ${one} more`)}`
+    + `${key(-1, `1 ${one} less`)}${key(-0.1, `0.1 ${one} less`)}<input id="swvin" inputmode="decimal" autocomplete="off" value="${x}" aria-describedby="swv-h swv-over">${key(0.1, `0.1 ${one} more`)}${key(1, `1 ${one} more`)}`
+    + `<p class="vover" id="swv-over" aria-live="polite">${hltOver(v, swVU())}</p>`
     + `<button type="button" class="ok" data-cmd="swv:set"${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}>${pend ? "SETTING…" : `SET <span id="swvok">${x || "– –"}</span> ${swVU()}`}</button><button type="button" class="no" data-cmd="swv:x">CANCEL</button></div>`;
 }
 /* a small box opening in FORECAST's details: they are drawn from their top, as the box opens in its place, and the
@@ -2220,13 +2221,30 @@ function bsSays(B) {
   return {past: false, text: B.kind === "start" ? `${nx ? nx.n : "The next step"} starts at ${when}` : `The ${bsWaterOf(B).kn}'s water is hot by ${when}`};
 }
 /* the water, last in the box: what BrewStart heats, a fact here; a new one's worked out from the recipe, or the last
-   brew's where the recipe doesn't give it */
+   brew's where the recipe doesn't give it. Under it, where the HLT's capacity is known and the water is more (hltOver) */
 function bsWater(B) {
   const w = bsWaterOf(B), U = M.U, el = `The ${esc(w.kn)}'s ${w.watts ? `${w.watts} W ` : ""}element heats`, to = w.temp == null ? "" : ` to ${w.temp.toFixed(1)} ${U}`;
-  if (w.vol == null) return `${el} the water${to}. <b>How much water isn't known yet</b>: give it with HLT WATER in the strike water box before you START.`;
-  if (B.neu) return `${el} ${+w.vol.toFixed(2)} ${w.volU}${to}, ${w.from === "last" ? "the last brew's water" : "worked out from the recipe"}.`;
-  return `${el} ${+w.vol.toFixed(2)} ${w.volU}${to}. USE and HLT WATER in the strike water box change them.`;
+  if (w.vol == null) return `<p class="bswat">${el} the water${to}. <b>How much water isn't known yet</b>: give it with HLT WATER in the strike water box before you START.</p>`;
+  if (B.neu) return `<p class="bswat">${el} ${+w.vol.toFixed(2)} ${w.volU}${to}, ${w.from === "last" ? "the last brew's water" : "worked out from the recipe"}.</p>${hltOverHTML(w.vol, w.volU)}`;
+  return `<p class="bswat">${el} ${+w.vol.toFixed(2)} ${w.volU}${to}. USE and HLT WATER in the strike water box change them.</p>${hltOverHTML(w.vol, w.volU)}`;
 }
+/* how much the HLT holds, in the volume unit vu ("gal" or "L"), where the Hardware page gives it (CraftBeerPi's kettle
+   field capacity, kept in the brewery's own unit); null where it isn't given or can't be right, which changes nothing
+   (The Only Improves Rule). The demo's moments give it in st.vessels, in gallons */
+function hltHolds(vu) {
+  const c = DEMO_MODE ? num(((st.vessels || {}).hlt || {}).capacity) : num(M.K && M.K.hlt && M.K.hlt.capacity);
+  if (c == null || !(c > 0)) return null;
+  const kept = DEMO_MODE || M.C === "F" ? "gal" : "L";
+  return kept === vu ? c : vu === "L" ? c * GAL_L : c / GAL_L;
+}
+/* BrewStart's water, or the HLT's water typed in the strike water box, more than the HLT holds: one line in Note Amber
+   under the figure, saying both figures and where the capacity comes from, so either can be put right. It greys and
+   refuses nothing, and with no capacity given there is no line */
+function hltOver(vol, vu) {
+  const c = hltHolds(vu);
+  return c != null && vol != null && vol > c + 0.005 ? `${+vol.toFixed(2)} ${vu} is more than the HLT holds: ${+c.toFixed(2)} ${vu}, on the Hardware page.` : "";
+}
+const hltOverHTML = (vol, vu) => { const t = hltOver(vol, vu); return t ? `<p class="vover">${t}</p>` : ""; };
 const bsHint = B => { const m = bsParse(B.txt); return `${B.kind === "start" ? "start at" : "ready by"} ${m == null ? "– –" : hhmm(m * 60)} ${dShort(B.day)}`; };
 /* SET, or ADD BREWSTART for a new one, in Selection Blue as the editors' main action; greyed with no connection, while
    a command waits, while a new one's settings are still being read from the Recipe Book (bsFillLoad), and for a time
@@ -2260,7 +2278,7 @@ function bsHTML() {
     + `<div class="bswhere" role="group" aria-labelledby="bs-gl">${b("cmdbtn", "IN THE GARAGE", `the boil kettle's probe, ${f1(st.v.bk.pv)} ${U}`, {cmd: "bs:where:garage", pressed: B.where === "garage", why: off})}${b("cmdbtn", "INDOORS", "give its temperature", {cmd: "bs:where:indoors", pressed: B.where === "indoors", why: off})}</div>${chips}</div>`;
   bsGoLast = bsGoHTML(B, ws);
   return `<section class="bsbox" id="bs-box" aria-labelledby="bs-t"><h3 class="bst" id="bs-t">BrewStart</h3>${head}<div class="bsmid">${kind}${time}${day}`
-    + `<p class="bssay${ws && ws.past ? " past" : ""}" id="bs-say">${ws ? esc(ws.text) : ""}</p>${grain}<p class="bswat">${bsWater(B)}</p></div>`
+    + `<p class="bssay${ws && ws.past ? " past" : ""}" id="bs-say">${ws ? esc(ws.text) : ""}</p>${grain}${bsWater(B)}</div>`
     + `<div class="bsfoot"><p class="note">${esc(st.notes.r || "")}</p><div class="bsact">${bsGoLast}${b("cmdbtn", "CANCEL", "", {cmd: "bs:x", why: off})}</div></div></section>`;
 }
 /* the box as the brewer types, or as the clock moves on: its words and SET, in place, so the time box keeps its caret.
@@ -5855,9 +5873,11 @@ const handlers = {
       return;
     }
     if (e.target.id === "swvin" && st.swVol) {
-      const x = parseFloat(e.target.value), ok = $("#swvok");
+      const x = parseFloat(e.target.value), ok = $("#swvok"), ov = $("#swv-over");
       st.swVol.val = Number.isFinite(x) ? Math.round(x * 10) / 10 : null;
       if (ok) ok.textContent = st.swVol.val == null ? "– –" : st.swVol.val.toFixed(1);
+      // the line saying it is more than the HLT holds follows the figure as it is typed
+      if (ov) ov.textContent = hltOver(st.swVol.val, swVU());
       return;
     }
     /* the timer editor's boxes: kept as typed, without redrawing, so the caret stays put */

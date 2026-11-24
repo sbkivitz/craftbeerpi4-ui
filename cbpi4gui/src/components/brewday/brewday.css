@@ -391,6 +391,12 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .bssay.past{color:#ffd9a0}
 :where(html.bd-page) .bswat{font:500 15px/1.35 var(--sans);color:var(--text-2)}
 :where(html.bd-page) .bswat b{font-weight:600;color:var(--prompt)}
+/* BrewStart's water more than the HLT holds, where the Hardware page gives its capacity: a line in Note Amber under the
+   water's figure, in the BrewStart box, in FORECAST and in the HLT water box (hltOver). It refuses nothing */
+:where(html.bd-page) .vover{margin:2px 0 0;font:500 15px/1.35 var(--sans);color:#ffd9a0}
+:where(html.bd-page) .vover:empty{display:none}
+:where(html.bd-page) .swvol .vover{grid-column:1/-1;margin:0 0 2px;font-size:14px}
+:where(html.bd-page) .bsmid>.vover{margin-top:-8px}
 :where(html.bd-page) .bsgrain{display:grid;gap:8px}
 :where(html.bd-page) .bsgrain .bsgh{margin-top:-4px;font:500 14px/1.35 var(--sans);color:var(--text-3)}
 :where(html.bd-page) .bsin{display:flex;flex-wrap:wrap;align-items:center;gap:6px}

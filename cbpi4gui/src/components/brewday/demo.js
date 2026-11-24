@@ -926,6 +926,13 @@ const SCENES = {
   "bs-sim": () => Object.assign(swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})), {base: "sw-plan", sim: {scale: 60, day0: "2026-11-20", pc: "2026-11-22"}, open: {bsAt: {}}}),
   "bs-novol": () => { const s = swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})); s.swd.vol = null; return Object.assign(s, {base: "sw-plan", open: {bsAt: {}}}); },
   "bs-soon": () => Object.assign(SCENES["sw-wait"](), {base: "sw-wait", open: {bsAt: {txt: "06:00"}}}),
+  /* the vessels' own figures from the Hardware page (design/brewday VESSELS.md), none of which anything needs.
+     #bs-over: the HLT holds 20 gal, given on the Hardware page, and BrewStart's water is 25.4 gal, as Test Recipe v5
+     fills it in: a line under the water in BrewStart's box says so. #sw-over: FORECAST with BrewStart's water more than
+     the HLT holds, the line under From you's water. With no figures given, every moment is as before. The mockup's
+     #sw-hw, FORECAST naming the figures from Hardware it used, waits for CraftBeerPi's forecast to use them and say so */
+  "bs-over": () => { const s = swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})); s.swd.vol = 25.4; s.vessels = {hlt: {capacity: 20}}; return Object.assign(s, {base: "sw-plan", open: {bsAt: {at: "#bs-box .vover"}}}); },
+  "sw-over": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.vol = 25.4; return Object.assign(s, {vessels: {hlt: {capacity: 20}}, open: {swOpen: true}}); },
   /* USE waiting for where the grain spent the night (screen.js swHTML). #sw-where: the #sw-plan night before,
      BrewStart's time set and the grain not answered yet, so BrewStart's row asks "where's the grain?" and USE's place
      says so too, leading to BrewStart's box. #sw-where-am: brew morning (#sw-late), BrewStart holding the strike water,

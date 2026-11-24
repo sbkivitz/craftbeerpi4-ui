@@ -5,6 +5,7 @@
 // It writes, under cbpi4gui/src/components/hardware:
 //
 // - catalog.js: hardware-catalog.js as a module, exporting HW_OWN (the rows every kettle, probe and switch has),
+//   HW_VESSEL_INTRO, HW_VESSEL and HW_MATERIALS (a kettle's Vessel group: its line, its rows and the materials' names),
 //   HW_TYPES (each control's and part's plain names, lines, units and parts), HW_EMPTY (what the settings that mean
 //   something when empty do then) and HW_SYN (extra words for FIND).
 // - hardware.css: the page's own rules, for its shadow root. The page draws inside a shadow root so the brew-day
@@ -44,14 +45,14 @@ const write = (name, text) => { writeFileSync(join(OUT, name), text); console.lo
 /* ---------- catalog.js ---------- */
 {
   let js = read("hardware-catalog.js");
-  const NAMES = ["HW_OWN", "HW_TYPES", "HW_EMPTY", "HW_SYN"];
+  const NAMES = ["HW_OWN", "HW_VESSEL_INTRO", "HW_VESSEL", "HW_MATERIALS", "HW_TYPES", "HW_EMPTY", "HW_SYN"];
   js = js.replace(/^"use strict";\n/, "");
   for (const n of NAMES) {
     const re = new RegExp(`^const ${n} = `, "m");
     if (!re.test(js)) fail(`no const ${n}`);
     js = js.replace(re, `export const ${n} = `);
   }
-  if (/^(const|let|var|function) /m.test(js)) fail("hardware-catalog.js has more than HW_OWN, HW_TYPES, HW_EMPTY and HW_SYN");
+  if (/^(const|let|var|function) /m.test(js)) fail(`hardware-catalog.js has more than ${NAMES.join(", ")}`);
   write("catalog.js", `${HEAD}${js.endsWith("\n") ? js : js + "\n"}`);
 }
 
