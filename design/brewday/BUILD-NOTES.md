@@ -6746,8 +6746,11 @@ his pick is a small change.
      speed, 60×, running 60 times as fast. Change it" ("Simulator speed, 1×. Change it" at 1×). Greyed with no
      connection, with the screen's reason.
    - Both on any simulator, at 1× on the screen's own date too, where SPEED shows alone, so the speed can always be
-     changed. A simulator is a CraftBeerPi whose /config has SIM_TIME_SCALE (cbpi4-simvessel's setting). If the rig's
-     /config has it too, please tell me: the rig must keep showing the time alone.
+     changed. A simulator is a CraftBeerPi whose GET /plugin/list includes cbpi4-simvessel and whose /config has
+     SIM_TIME_SCALE; SIM_TIME_SCALE alone isn't enough, as the rig once ran the simulator plugin and its saved settings
+     may still hold the setting. Where /plugin/list fails or doesn't list the plugin, there is no SPEED; the title bar
+     shows the time alone, except that a clock on another date than the screen's, or running at a speed other than 1×,
+     still shows the date line, as the tag did.
    - On a phone (700 px wide or less): under the time, the date at 13px, then SPEED 44px tall, "60×" (its word left
      out).
    - Draw the two only when they change, keeping the focus in them, as the time changes every second.

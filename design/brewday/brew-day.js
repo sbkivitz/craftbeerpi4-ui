@@ -1529,7 +1529,8 @@ const clockHTML = () => { const p = todParts(st.t); return p.ap ? `${p.hm}\u2009
    ?simtag=c a two-line SPEED button as tall as ALL OFF under the date; ?simtag=today the tag as built before, the date
    and speed in one blue box, only where either isn't the screen's. A, b and c show on any simulator, at 1× on the
    screen's date too, so its speed can always be changed; on a phone each is the date and a compact SPEED button under
-   the time. The rig has no SIM_TIME_SCALE, and shows the time alone */
+   the time. A simulator (st.sim) is a CraftBeerPi running the cbpi4-simvessel plugin (/plugin/list) with SIM_TIME_SCALE
+   in /config; anywhere else, the rig included, the title bar shows the time alone */
 const SIMTAG = (v => ["a", "b", "c", "today"].includes(v) ? v : "a")(new URLSearchParams(location.search).get("simtag"));
 /* the speeds offered: SIM_TIME_SCALE's usual ones, with the one it has where that is another */
 const SPEEDS = [1, 10, 30, 60];
