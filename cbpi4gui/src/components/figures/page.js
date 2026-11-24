@@ -926,7 +926,9 @@ function onResize() {
 /* ---------- CraftBeerPi's state, from the app's data ---------- */
 const setting = (config, k) => { const x = config && config[k]; return x && typeof x === "object" ? x.value : x; };
 function live(d) {
-  const h24 = String(setting(d.config, "CLOCK_FORMAT") ?? "").trim() === "24-hour";
+  // only exactly "12-hour" gives 12-hour times; a core without the setting, or any other value, keeps 24-hour. Until
+  // the configuration has come, the times stay as they are (12-hour at first, the core's default).
+  const h24 = d.config && Object.keys(d.config).length ? setting(d.config, "CLOCK_FORMAT") !== "12-hour" : CFG.h24;
   const name = String(setting(d.config, "BREWERY_NAME") ?? "").trim(), unit = String(setting(d.config, "TEMP_UNIT") || "F");
   const was = CFG.strike, wasConnected = CFG.connected;
   let redraw = h24 !== CFG.h24 || name !== CFG.brewery || unit !== CFG.unit;
