@@ -456,8 +456,8 @@ function clockNow() {
   const d = new Date(e * 1000), ymd = ymdOf(d);
   return {t: daySeconds(d), day: {w: d.getDay(), d: d.getDate(), m: d.getMonth()}, ymd, other: ymd !== ymdOf(new Date()), scale: bclk.scale};
 }
-/* the clock with what the title bar adds to the time, or null for the time alone: a clock on another date than the
-   screen's, or at another speed than 1×. LOG's lines say their date only then (logDate) */
+/* the clock where it isn't the screen's, or null: on another date than the screen's, or at another speed than 1×.
+   LOG's lines say their date only then (logDate), and BrewStart's box has its tag only then (bsClockHTML) */
 function clockTag() {
   const c = clockNow();
   return c && (c.other || c.scale !== 1) ? c : null;

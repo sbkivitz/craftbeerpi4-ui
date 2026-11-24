@@ -54,7 +54,7 @@ html.bare .mock{display:none}
 /* on a monitor or laptop only the alarm or prompt gives way to a long message in the title bar (it wraps): ALL OFF keeps
    its shape and the clock its digits. Narrower, both still give way, so the prompt doesn't grow taller still */
 @media (min-width:1180px){.alloff,.clock{flex:none}}
-/* a simulator's clock (SIMTAG a, b, c): its date, where it isn't the screen's, as a quiet line in Soft Steel capitals
+/* a simulator's clock (SIMTAG a, b, c): its date, always, as a quiet line in Soft Steel capitals
    with no box, so nothing about it looks pressable, over SPEED, a button in the title bar's button look (ALL OFF's
    steel edge, at 1px), left of the time; the date at 16px and SPEED 34px tall make 52px, so on a simulator the bar is
    4px taller than ALL OFF's 48px makes it. SPEED opens the chooser below (.spdbox); ?simtag=b puts the speeds there in

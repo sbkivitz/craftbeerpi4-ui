@@ -715,7 +715,7 @@ const SCENES = {
      while it is Sunday 22 Nov on the screen's own. Everything on CraftBeerPi's clock runs 60 times as fast, the title
      bar's clock included, which says the date and the speed under the time; past its midnight the date moves on, and
      LOG's lines from the day before say theirs. #sim-clock-1x: the same evening on a simulator at 1×, its clock the
-     screen's, so the title bar shows the time alone, as on the rig */
+     screen's, so the title bar shows its date over SPEED, with no speed beside the date */
   "sim-clock": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {base: "sw-plan", sim: {scale: 60, day0: "2026-11-26", pc: "2026-11-22"}}),
   "sim-clock-1x": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {base: "sw-plan", sim: {scale: 1, day0: "2026-11-22", pc: "2026-11-22"}}),
   /* #sim-speed: #sim-clock with SPEED pressed, its chooser open (with ?simtag=b the row has no chooser) */
@@ -1492,8 +1492,8 @@ const todS = x => { const [h, m, s] = String(x).split(":").map(Number); return t
 const nb = s => s.replace(/ /g, "\u00a0");
 /* CraftBeerPi's clock, which every brewing time on the screen is on (The One Clock Rule): st.t, its seconds from the
    moment's midnight. A simulator's (st.sim) runs SIM_TIME_SCALE times as fast and has a date of its own, day0 being
-   its date at st.t 0; the screen's own date is pc. The title bar adds CraftBeerPi's date where it isn't the screen's,
-   and its speed where it isn't 1× */
+   its date at st.t 0; the screen's own date is pc. The title bar always shows CraftBeerPi's date, and on a simulator
+   SPEED */
 const DOW = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"], MON3 = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 const DOW_SAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"], MON_SAY = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const dayOf = t => Math.floor(t / 86400);
@@ -1514,7 +1514,8 @@ const dShort = i => tcase(DOW[clockDay(i * 86400).getUTCDay()]);
 const dMid = i => { const d = clockDay(i * 86400); return `${tcase(DOW[d.getUTCDay()])} ${d.getUTCDate()} ${tcase(MON3[d.getUTCMonth()])}`; };
 const dLong = i => { const d = clockDay(i * 86400); return `${DOW_SAY[d.getUTCDay()]} ${d.getUTCDate()} ${MON_SAY[d.getUTCMonth()]}`; };
 const dKey = i => { const d = clockDay(i * 86400); return `${DOW[d.getUTCDay()]} ${d.getUTCDate()}`; };
-/* what the title bar adds to the time, or null for the time alone */
+/* CraftBeerPi's clock where it isn't the screen's (another date, or a speed other than 1×), or null: the tag
+   ?simtag=today draws, LOG's dates and BrewStart's clock tag */
 function clockTag() {
   const sim = st.sim;
   if (!sim) return null;

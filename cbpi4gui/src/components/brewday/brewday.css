@@ -35,7 +35,7 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 /* AM or PM after the digits (The Twelve-Hour Rule): half their size, in their weight and colour, on their baseline */
 :where(html.bd-page) .clock .ap{font-size:.5em;letter-spacing:.04em}
 /* the title bar's clock: CraftBeerPi's (The One Clock Rule). Left of the time, one over the other: CraftBeerPi's date,
-   where it isn't the screen's own, as a quiet line in Soft Steel capitals with no box, so nothing about it looks
+   always (its own, where it isn't the screen's), as a quiet line in Soft Steel capitals with no box, so nothing about it looks
    pressable; and on a simulator SPEED, a button in the title bar's button look (ALL OFF's steel edge, at 1px), which
    opens the chooser below (.spdbox). The date at 16px and SPEED 34px tall make 52px, so on a simulator the bar is 4px
    taller than ALL OFF's 48px makes it. On a phone, under the time */
