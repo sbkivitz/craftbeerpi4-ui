@@ -6630,7 +6630,7 @@ water while the water heats.
 - At 1180 × 860, the before-boil and after-boil reminders, whose words are long, with OK and RECORD READINGS make the
   title bar 148 to 169 px tall while they wait (102 to 124 px before); the page then scrolls 15 to 19 px. The box
   still fits.
-- In windows about 1160 to 1270 px wide and up to about 900 px tall (1180 x 860 among the checked sizes), RECORD
+- In windows about 1160 to 1270 px wide and up to about 900 px tall (1180 × 860 among the checked sizes), RECORD
   wraps the longer reminders onto one more line. The drawing's strip then drops to 64 px, under the 72 px it needs, so
   the drawing is left out while first runnings, before the boil or the final readings wait. With OK alone the strip is
   79 to 84 px and the drawing shows. It comes back once the reminder is answered, and the pumps' state stays on the
@@ -6650,16 +6650,16 @@ water while the water heats.
   and 40; the clock 17, and its measure; the boil kettle 23; the review page 36; the timers' places 149 and 262; the
   pH box 128 and 134; 12-hour 175.
 - The readings box: `rd_presses` 186 checks and `rd_measure` 798, all passing, with no page errors. `rd_measure` uses
-  seven sizes: 1920 x 950, 1440 x 900, 1180 x 860, 1024 x 768, 820 x 1180, 390 x 844 and 360 x 740. Between them they
+  seven sizes: 1920 × 950, 1440 × 900, 1180 × 860, 1024 × 768, 820 × 1180, 390 × 844 and 360 × 740. Between them they
   cover every press above, dev56's sample answer replayed through the stand-in BrewScribe, the box inside the window,
   44 px keys, no word broken mid-word, and every text at least 4.5:1 on its ground.
 - The chosen gravity pair matches AUTO | MANUAL's pressed half: the same fill, ring and white words. Contrast of its two
   lines (the scale, then the instrument): pressed 19.6:1 and 13.3:1; not pressed 12.3:1 and 8.0:1; under the pointer
   10.7:1 and 7.0:1; while SAVE waits, the chosen pair as when pressed
   and the others 5.1:1.
-- Pictures against the proposal before the readings box, at 1440 x 900, 390 x 844 and 1180 x 860: 462 pictures, and
+- Pictures against the proposal before the readings box, at 1440 × 900, 390 × 844 and 1180 × 860: 462 pictures, and
   only the 20 new `rd-*` moments differ.
-- Every `rd-*` moment at 1920 x 950, 1440 x 900, 1280 x 800, 1180 x 860 and 1024 x 768, with RECORD and with OK alone
+- Every `rd-*` moment at 1920 × 950, 1440 × 900, 1280 × 800, 1180 × 860 and 1024 × 768, with RECORD and with OK alone
   (`?brewscribe=none`), for whether the drawing is still drawn: see "Known, accepted".
 
 ### Changed
@@ -6690,9 +6690,9 @@ from Robin:
    in LOG. Before, they showed the level over a boil still waiting, which the build never shows.
 
 4. **A box opening on a phone, under the tab bar** (Robin's finding on the recipe pages, measured here too): BrewStart's
-   box opened with SET under the fixed tab bar at every phone height, 390 x 844 included (SET at 777 to 831 px, the
+   box opened with SET under the fixed tab bar at every phone height, 390 × 844 included (SET at 777 to 831 px, the
    tabs from 747), and the readings box with SAVE under it (727 to 781 px). Robin measured his at the heights a phone
-   browser leaves once its own bars are drawn: 390 x 664, 375 x 553 and 360 x 640. Now, on a phone (700 px wide or
+   browser leaves once its own bars are drawn: 390 × 664, 375 × 553 and 360 × 640. Now, on a phone (700 px wide or
    less):
    - The page keeps the tab bar's height clear when it scrolls something into view: `html{scroll-padding-bottom:
      calc(var(--tabs-h) + env(safe-area-inset-bottom) + 8px)}`.
@@ -6700,7 +6700,7 @@ from Robin:
      all of it, from the title set into its top edge, between the window's top and the tabs, 8 px clear of each. A
      box taller than that goes to the window's top: its title and first figure show, and SET or SAVE is a scroll
      away. Focus goes into the first figure without the browser's own scrolling, which only looks for the figure.
-   - At 390 x 844 both boxes now open wholly in view, SET and SAVE included. At the shorter heights BrewStart's box
+   - At 390 × 844 both boxes now open wholly in view, SET and SAVE included. At the shorter heights BrewStart's box
      (623 px) and the readings box (about 600 px) are taller than the room, so they open at the top; the pH box fits.
 
 ### Checked
@@ -6708,14 +6708,14 @@ from Robin:
 - All 15 Brew Day suites pass, with no page errors. 12-hour is 188 checks (175 before): on a 24-hour clock "7p", "7 pm",
   "7:30 pm", "7a", "12a" and "12p" are read as they say; "7.30", "19" and "0" as before; "13p", "0a", "24", "7:60" and
   "7x" are refused; the box takes 8 characters. Presses are 289 (285 before): BrewStart's box opened from its row at
-  390 x 844, 390 x 664, 375 x 553 and 360 x 640, whole between the window's top and the tabs where it fits, else its
+  390 × 844, 390 × 664, 375 × 553 and 360 × 640, whole between the window's top and the tabs where it fits, else its
   title at the top, with focus in the time box in view.
 - The readings suites: 194 presses (186 before; the pH box and the readings box opened at the same four phone heights)
   and 798 measurements, all passing. The Hardware page's 85 presses pass.
-- Pictures against UI main 033a838 at 1440 x 900, 390 x 844 and 1180 x 860, and with `?clock=24` at 1440 x 900 and
-  390 x 844: only `#rd-sparge` and the three like it differ. Pages that hadn't finished drawing under load were taken
+- Pictures against UI main 033a838 at 1440 × 900, 390 × 844 and 1180 × 860, and with `?clock=24` at 1440 × 900 and
+  390 × 844: only `#rd-sparge` and the three like it differ. Pages that hadn't finished drawing under load were taken
   again on their own and match (`#bs-sim`, `#notarget-hlt`, `#sw-forecast`, `#ph`, `#ph-open`, and BrewStart's and the
-  pH box's moments at 360 x 640 too).
+  pH box's moments at 360 × 640 too).
 
 ### Changed
 
@@ -6725,6 +6725,120 @@ from Robin:
   (`boxInView`, called from `bsFocus` and `phOpen`) and `proposal\brew-day.css` (the phone's `scroll-padding-bottom`).
 - `DESIGN.md` (The Twelve-Hour Rule; the phone's layout, 700px and narrower); step 1 of the 12-hour section; the
   readings section's "Known, accepted"; this section.
+
+## The simulator's clock and the recipe column's blue: ready to build (24 Nov)
+
+The brewer, on post40 at about 1234 and 2000 px wide: "I don't like the blue box around the date and the sim_time
+speed. Date should be on a line above the speed and in a different visual style. The box makes it look like a button -
+which it should be for the sim_time speed." And: "The blue box around the recipe is slightly too distinct." He went to
+bed and asked you to choose the best option meanwhile and build it; he picks in the morning. These are my
+recommendations, A and the softer blue, as the mockup's defaults. The others stay behind URL flags (below), so moving to
+his pick is a small change.
+
+### What to build (screen.js, brewday.css)
+
+1. **The date line and SPEED** (mockup: `spdClock`). On a simulator, left of the time, one over the other:
+   - The date, where CraftBeerPi's isn't the screen's: "THU 26 NOV", Barlow Condensed 600 at 16px, capitals,
+     .08em apart, Soft Steel, with no ground and no edge. Hidden from screen readers, which hear "CraftBeerPi's clock,
+     Thursday 26 November" instead.
+   - SPEED, a `<button>`: "60× SPEED" and a 12px chevron; 34px tall; Raised Slate with a 1px #7d8fa2 edge and the 6px
+     radius; 700 16px. `aria-haspopup="dialog"`, `aria-expanded`, `aria-controls="spd-box"`, and the name "Simulator
+     speed, 60×, running 60 times as fast. Change it" ("Simulator speed, 1×. Change it" at 1×). Greyed with no
+     connection, with the screen's reason.
+   - Both on any simulator, at 1× on the screen's own date too, where SPEED shows alone, so the speed can always be
+     changed. A simulator is a CraftBeerPi whose /config has SIM_TIME_SCALE (cbpi4-simvessel's setting). If the rig's
+     /config has it too, please tell me: the rig must keep showing the time alone.
+   - On a phone (700 px wide or less): under the time, the date at 13px, then SPEED 44px tall, "60×" (its word left
+     out).
+   - Draw the two only when they change, keeping the focus in them, as the time changes every second.
+2. **The chooser** (`spdDraw`): a section, `role="dialog"`, `aria-labelledby` its title, under the title bar at its
+   right (`position:absolute; right: var(--pad); top: calc(100% + 10px)`, 360px wide at most, `z-index:45`). The
+   title bar is its anchor only while it is open (`.topbar:has(>.spdbox:not([hidden])){position:relative}`): on a
+   phone the bar holds the reminder and the pH box, and a bar that is always `position:relative` makes the browser
+   paint their words a little differently, so every picture of them would change. A 2px
+   Selection Blue border with SIMULATOR SPEED set into its top edge, as the editors' titles are. Then:
+   - the speeds in one `.seg` row: 1×, 10×, 30×, 60×, and the one SIM_TIME_SCALE has where it is another; 48px or
+     taller; the one CraftBeerPi runs at pressed, and focused as the box opens;
+   - in Soft Steel: "A new speed starts CraftBeerPi's clock again from this computer's time, Sun 22 Nov 9:02 PM.":
+     the computer's date and time now, as the core's `clock_time` writes them, by CLOCK_FORMAT;
+   - CANCEL.
+3. **A speed pressed** (`spdCmd`):
+   - Save SIM_TIME_SCALE as Settings saves it. The speed is pressed at once, the line reads "Setting 30×: waiting for
+     CraftBeerPi.", and the other speeds and CANCEL are greyed.
+   - When the `clock` topic comes (core post63 sets the clock back to the computer's and tells every screen): the box
+     closes, focus goes back to SPEED, and LOG shows the core's notification as any other: "Clock: CraftBeerPi's clock
+     is back to this computer's time, Sun 22 Nov 9:02 PM, now running 30× (was 60×)."
+   - No answer in 5 s: as any command that gets none; the box stays.
+   - The speed it has already closes the box, with no call.
+   - CANCEL, Escape, a press outside the box and LOG opening close it; it closes LOG's list as it opens.
+4. **The recipe column's blue:** Plan Slate #152233, Plan Line #233a51, and Plan Edge `inset 3px 0 0 #2b5f97` (as
+   built: #13243b, #25425f and a 4px #3373b8). Nothing else in the column changes; the current step keeps its Current
+   Step Blue.
+
+### In CraftBeerPi
+
+Nothing new. SIM_TIME_SCALE is cbpi4-simvessel's setting, and from core post63 a new speed sets the clock back to the
+computer's time and says so.
+
+### The other options, in the mockup only
+
+- `?simtag=b`: the date over the four speeds in a row, 34px, the one it runs at pressed. A speed applies at once;
+  what it does to the clock is only in each speed's tooltip. On a phone it falls back to A's SPEED.
+- `?simtag=c`: the date over a two-line SPEED as tall as ALL OFF ("60× SPEED", "change") with the same chooser; the
+  bar 16px taller on a simulator.
+- `?simtag=today`: the tag as built.
+- `?plan=edge`: the panel's own slate and line with the 4px #3373b8 edge. `?plan=ground`: the ground as built, with
+  no edge. `?plan=today`: as built.
+
+If he picks C, it is A with SPEED's two-line look. If he picks B, the row replaces SPEED and the chooser goes. Each
+blue is three CSS values.
+
+### Known, accepted
+
+- On a simulator the title bar is 2px taller on a monitor (73 px against the rig's 71). On a phone it is 41px taller
+  (162 px against 121, as built 121), for a SPEED a finger can press: there is no room for it beside the time at 360
+  px wide. The rig's bar doesn't change.
+- While the chooser is open it covers LOG's button; LOG opening would close it anyway.
+- BrewStart's box keeps its own clock line in the old tag's look ("CRAFTBEERPI'S CLOCK · FRI 20 NOV, 9:12 PM · 60×
+  SPEED"), as you asked that nothing else change. It isn't pressable either; if the brewer wants it to follow, it
+  takes the date line's look.
+
+### Checked
+
+- `files\simspeed_presses.py` (new, in the suites' list): 58 checks, all passing, no page errors. Among them:
+  - the date line: "THU 26 NOV", no ground, no edge, 16px, Soft Steel at 4.5:1 or more, above SPEED, both left of the
+    time;
+  - SPEED: a button, "60× SPEED", 34px, its edge 3:1 or more on the bar, its words 4.5:1 or more, its name and
+    dialog role;
+  - the chooser: its title and dialog name, in the window, 1× 10× 30× 60× each 48px or more, 60× pressed and focused,
+    the sentence word for word; closed by Escape, a press outside, LOG and CANCEL, focus back on SPEED; 60× closing it
+    with nothing logged;
+  - 30× pressed: "Setting 30×…", the others and CANCEL greyed, then closed, the core's words in LOG, 30× SPEED, the
+    date line gone, LOG's earlier lines keeping their dates;
+  - SPEED alone at 1×; the rig's time alone; SPEED greyed with no connection; `#sim-speed`;
+  - A, B and C at 1234 × 860, 1440 × 900 and 1920 × 950: nothing in the title bar overlapping, the bar 73, 75 and 87
+    px against the rig's 71; B's row and C's two lines; B applying a speed and its tooltips; C's chooser;
+  - phones, 390 × 844 and 360 × 740, A, B and C: the time, the date, SPEED 44px, nothing overlapping, the chooser in
+    the window with 44px speeds; the bar 162 px against 121;
+  - the recipe column's four ways, with Dim Steel at 5.7:1 on the default's ground.
+- All 15 Brew Day suites pass, with no page errors. `clock_presses`, `clock_measure` and the title bar parts of
+  `twelve_presses` now load `?simtag=today`, so they still guard the tag as built; `bs_presses` checks the new date
+  line and SPEED on `#bs-sim`.
+- The readings suites: 194 presses and 798 measurements, all passing.
+- Pictures against UI main cacfed0 with `?simtag=today&plan=today`, at 1440 × 900, 390 × 844 and 1180 × 860, and with
+  `?clock=24` at 1440 × 900 and 390 × 844: 775 pictures, and only the new `#sim-speed` moment differs. So with the
+  old look chosen nothing else changes.
+
+### Changed
+
+- `proposal\brew-day.js` (`SIMTAG`, `spdClock`, `spdDraw`, `spdCmd`, `spdClose`, `clockSet`, `#sim-speed`, the
+  mockup strip's links); `proposal\brew-day.css` (the date line, SPEED, the chooser, the phone's; the old tag as
+  `.clock[data-sim=tag]`; the plan's values); `proposal\brew-day.html` (`#spd-box`, the strip's two rows, the
+  notes).
+- `DESIGN.md` (Plan Slate, Plan Line, Plan Edge, Plan edge, Progress Blue, Title bar, Speed chooser, the recipe
+  column); `.impeccable\design.json`; `.impeccable\decisions\direction-log.md`; this section.
+- "×" put back where my notes of 23 Nov had "x" between sizes, a copying slip: the readings section and the four
+  points above, READINGS-ENTRY.md's checks, DESIGN.md's phone line.
 
 ## Open questions about the drawing
 

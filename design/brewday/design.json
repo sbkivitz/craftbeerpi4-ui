@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-24T05:50:00.500Z",
+  "generatedAt": "2026-11-24T10:11:57.457Z",
   "title": "Design System: CraftBeerPi Brew Day",
   "extensions": {
     "colorMeta": {
@@ -757,7 +757,7 @@
       "plan": {
         "role": "neutral",
         "displayName": "Plan Slate",
-        "canonical": "#13243b",
+        "canonical": "#152233",
         "tonalRamp": [
           "#040c15",
           "#1c2630",
@@ -772,7 +772,7 @@
       "plan-line": {
         "role": "neutral",
         "displayName": "Plan Line",
-        "canonical": "#25425f",
+        "canonical": "#233a51",
         "tonalRamp": [
           "#010c19",
           "#162736",
@@ -787,7 +787,7 @@
       "plan-edge": {
         "role": "tertiary",
         "displayName": "Plan Edge",
-        "canonical": "#3373b8",
+        "canonical": "#2b5f97",
         "tonalRamp": [
           "#000b1f",
           "#00244d",
@@ -937,8 +937,8 @@
       },
       {
         "name": "plan-edge",
-        "value": "inset 4px 0 0 #3373b8",
-        "purpose": "The recipe column's 4px blue edge, drawn inside its left side, so it takes no room."
+        "value": "inset 3px 0 0 #2b5f97",
+        "purpose": "The recipe column's 3px blue edge, drawn inside its left side, so it takes no room."
       }
     ],
     "motion": [

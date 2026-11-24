@@ -718,6 +718,8 @@ const SCENES = {
      screen's, so the title bar shows the time alone, as on the rig */
   "sim-clock": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {base: "sw-plan", sim: {scale: 60, day0: "2026-11-26", pc: "2026-11-22"}}),
   "sim-clock-1x": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {base: "sw-plan", sim: {scale: 1, day0: "2026-11-22", pc: "2026-11-22"}}),
+  /* #sim-speed: #sim-clock with SPEED pressed, its chooser open (with ?simtag=b the row has no chooser) */
+  "sim-speed": () => Object.assign(SCENES["sim-clock"](), {open: {spdOpen: true}}),
   /* LOAD in the by-hand list over a finished recipe the Recipe Book doesn't have (Rye Pale Ale, built on Brew Steps):
      it asks first, as its steps would be gone */
   "load-notinbook": () => { RECIPE.name = "Rye Pale Ale"; return Object.assign(SCENES.finished(), {base: "finished", open: {confirmLoad: 0}}); },
@@ -1522,8 +1524,98 @@ function clockTag() {
 /* the title bar's time: the digits, then AM or PM at about half their size after a thin space (brew-day.css .ap); in
    24-hour the digits alone */
 const clockHTML = () => { const p = todParts(st.t); return p.ap ? `${p.hm}\u2009<span class="ap">${p.ap}</span>` : p.hm; };
+/* a simulator's clock in the title bar (SIMTAG). By default (a) its date, where it isn't the screen's, on a quiet line
+   above a SPEED button, which opens a chooser of speeds (spdDraw); ?simtag=b the speeds in a row in the button's place;
+   ?simtag=c a two-line SPEED button as tall as ALL OFF under the date; ?simtag=today the tag as built before, the date
+   and speed in one blue box, only where either isn't the screen's. A, b and c show on any simulator, at 1× on the
+   screen's date too, so its speed can always be changed; on a phone each is the date and a compact SPEED button under
+   the time. The rig has no SIM_TIME_SCALE, and shows the time alone */
+const SIMTAG = (v => ["a", "b", "c", "today"].includes(v) ? v : "a")(new URLSearchParams(location.search).get("simtag"));
+/* the speeds offered: SIM_TIME_SCALE's usual ones, with the one it has where that is another */
+const SPEEDS = [1, 10, 30, 60];
+const spdList = () => SPEEDS.includes(st.sim.scale) ? SPEEDS : [...SPEEDS, st.sim.scale].sort((x, y) => x - y);
+/* this computer's time of day (a moment's sim.pcT, else 9:02:40 PM) and, in the core's words for a moment on its clock
+   (clock_controller.clock_time), its date and time, "Sun 22 Nov 9:02 PM": where a new speed starts CraftBeerPi's clock
+   again (cbpi.api.clock.reset, core post63) */
+const spdPcT = () => st.sim.pcT != null ? st.sim.pcT : 21 * 3600 + 2 * 60 + 40;
+function spdPc() { const d = new Date(st.sim.pc + "T00:00:00Z"); return `${tcase(DOW[d.getUTCDay()])} ${d.getUTCDate()} ${tcase(MON3[d.getUTCMonth()])} ${tod(spdPcT())}`; }
+const spdSay = () => `A new speed starts CraftBeerPi's clock again from this computer's time, ${spdPc()}.`;
+const CHEV = '<svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg>';
+/* the date line and SPEED (a, c) or the speeds' row (b), left of the time; drawn again only where they change, keeping
+   the focus in them, as the time changes every second */
+function spdClock(el, ct) {
+  const n = st.sim.scale, d = clockDay(st.t), other = ymd(d) !== st.sim.pc, phone = matchMedia("(max-width:700px)").matches;
+  const lost = st.link === "lost", P = st.spdPend, fast = n === 1 ? "" : `, running ${n} times as fast`;
+  const date = other ? `<span class="cdl" aria-hidden="true">${DOW[d.getUTCDay()]} ${d.getUTCDate()} ${MON3[d.getUTCMonth()]}</span><span class="sr">CraftBeerPi's clock, ${DOW_SAY[d.getUTCDay()]} ${d.getUTCDate()} ${MON_SAY[d.getUTCMonth()]}</span>` : "";
+  const big = SIMTAG === "c" && !phone;
+  const sp = SIMTAG === "b" && !phone
+    ? `<span class="spdrow" role="group" aria-label="Simulator speed${fast}">${spdList().map(v => `<button type="button" data-cmd="spd:set:${v}" aria-pressed="${v === (P || n)}" title="${esc(spdSay())}"${lost || (P && v !== P) ? ` aria-disabled="true" data-why="${lost ? PAUSED : WAIT}"` : ""}>${v}×</button>`).join("")}</span>`
+    : b(`spd${big ? " spdc" : ""}`, `${n}×<span class="lg"> SPEED</span>${big ? "" : CHEV}`, big ? "change" : "", {cmd: "spd:open", expanded: !!st.spdOpen, controls: "spd-box", label: `Simulator speed, ${n}×${fast}. Change it`, why: lost ? PAUSED : ""}).replace("<button ", '<button aria-haspopup="dialog" ');
+  const cs = date + sp;
+  if (el.dataset.sim !== "spd") { el.innerHTML = '<span class="ct"></span><span class="cs"></span>'; el.dataset.sim = "spd"; el._ct = el._cs = null; }
+  if (el._ct !== ct) { el.querySelector(".ct").innerHTML = ct; el._ct = ct; }
+  if (el._cs !== cs) {
+    const w = el.querySelector(".cs"), a = document.activeElement, f = w.contains(a) ? a.dataset.cmd : null;
+    w.innerHTML = cs; el._cs = cs;
+    if (f) w.querySelector(`[data-cmd="${f}"]`)?.focus({preventScroll: true});
+  }
+}
+/* the chooser SPEED opens (a, c): SIMULATOR SPEED set into its top edge, the speeds in the pressed look's row, the one
+   CraftBeerPi runs at pressed, what a new one does to its clock, and CANCEL; under the title bar at its right, on a
+   phone as wide as the window allows */
+function spdDraw() {
+  const box = $("#spd-box");
+  if (!box) return;
+  if (!(st.spdOpen && st.sim && SIMTAG !== "today")) { if (!box.hidden) { box.hidden = true; box.innerHTML = ""; box._h = null; } return; }
+  const n = st.sim.scale, P = st.spdPend, why = st.link === "lost" ? PAUSED : P ? WAIT : "";
+  const html = '<h3 class="spdt" id="spd-t">SIMULATOR SPEED</h3>'
+    + `<div class="seg spdsel" role="group" aria-label="Speeds">${spdList().map(v => b("", `${v}×`, "", {cmd: `spd:set:${v}`, pressed: v === (P || n), why: v === P ? "" : why})).join("")}</div>`
+    + `<p class="spdsay">${P ? `Setting ${P}×: waiting for CraftBeerPi.` : esc(spdSay())}</p>`
+    + `<div class="spdact">${b("cmdbtn", "CANCEL", "", {cmd: "spd:x", why: P ? WAIT : ""})}</div>`;
+  if (box._h === html) return;
+  const a = document.activeElement, f = box.contains(a) ? a.dataset.cmd : null;
+  box.innerHTML = html; box._h = html; box.hidden = false;
+  if (f) box.querySelector(`[data-cmd="${f}"]`)?.focus({preventScroll: true});
+}
+/* SPEED opens and closes the chooser, LOG's list closing (one at a time), focus on the speed pressed; CANCEL, Escape
+   and a press outside close it, focus back on SPEED. A speed pressed is saved as SIM_TIME_SCALE at once, its button
+   pressed while it goes; once CraftBeerPi has it, its clock starts again from this computer's time (core post63): LOG
+   gets the core's own words, the box closes, and the date line goes where the clock is now on the screen's date. The
+   speed it runs at already changes nothing, and closes the box. In the row (b) a speed applies the same way */
+function spdCmd(x, y) {
+  if (!st.sim) return;
+  if (x === "open") { st.spdOpen = !st.spdOpen; if (st.spdOpen) st.logOpen = false; renderAll(); setTimeout(() => (st.spdOpen ? $('#spd-box [aria-pressed="true"]') : $('#clock [data-cmd="spd:open"]'))?.focus({preventScroll: true}), 0); return; }
+  if (x === "x") return spdClose();
+  if (x !== "set" || st.spdPend || st.link === "lost") return;
+  const v = +y;
+  if (v === st.sim.scale) return spdClose();
+  st.spdPend = v; renderAll();
+  timers.push(setTimeout(() => {
+    const was = st.sim.scale, shift = Math.round((Date.parse(day0() + "T00:00:00Z") - Date.parse(st.sim.pc + "T00:00:00Z")) / 86400000);
+    st.spdPend = null;
+    st.events.forEach(e => { e[5] = (e[5] || 0) + shift; });
+    st.sim = Object.assign({}, st.sim, {scale: v, day0: st.sim.pc});
+    st.t = spdPcT();
+    /* the core archives the sensor logs written ahead of the clock, so the graphs start again from now */
+    if (st.hist) { ["hlt", "mt", "bk"].forEach(k => { const r = st.hist.v[k], l = r[r.length - 1]; st.hist.v[k] = l ? [[st.t - 10, ...l.slice(1)], [st.t, ...l.slice(1)]] : []; }); st.hist.start = st.t - 10; st.hist.steps = []; }
+    const said = `CraftBeerPi's clock is back to this computer's time, ${spdPc()}, now running ${v}× (was ${was}×).`;
+    logEvent(`Clock: ${said}`, "from CraftBeerPi", "");
+    say(said);
+    const wasOpen = st.spdOpen;
+    st.spdOpen = false; renderAll(); startTick();
+    if (wasOpen) setTimeout(() => $('#clock [data-cmd="spd:open"]')?.focus({preventScroll: true}), 0);
+  }, 700));
+}
+function spdClose() {
+  if (st.spdPend || !st.spdOpen) return;
+  st.spdOpen = false; renderAll();
+  setTimeout(() => $('#clock [data-cmd="spd:open"]')?.focus({preventScroll: true}), 0);
+}
 function clockSet() {
-  const el = $("#clock"), g = clockTag(), ct = clockHTML();
+  const el = $("#clock"), ct = clockHTML();
+  if (SIMTAG !== "today" && st.sim) return spdClock(el, ct);
+  if (el.dataset.sim === "spd") { el.innerHTML = ""; el._ct = el._cs = null; }
+  const g = clockTag();
   /* the rig, and a simulator on the screen's date at 1×: the time alone, as ever */
   if (!g) { el.removeAttribute("data-sim"); if (el.innerHTML !== ct) el.innerHTML = ct; return; }
   const {d, other, fast, scale} = g;
@@ -1532,7 +1624,7 @@ function clockSet() {
   const said = `CraftBeerPi's clock${other ? `, ${DOW_SAY[d.getUTCDay()]} ${d.getUTCDate()} ${MON_SAY[d.getUTCMonth()]}` : ""}${fast ? `, running ${scale} times as fast` : ""}`;
   const html = `<span class="ct">${ct}</span><span class="cd" aria-hidden="true">${line}</span><span class="sr">${said}</span>`;
   if (el.innerHTML !== html) el.innerHTML = html;
-  el.setAttribute("data-sim", "");
+  el.setAttribute("data-sim", "tag");
 }
 /* BrewStart's box on a simulator whose clock isn't the screen's (clockTag): where that clock is, in the title bar tag's
    look, always with its date and with its speed where it isn't 1×: "CRAFTBEERPI'S CLOCK · MON 23 NOV, 1:16 PM · 30×
@@ -3689,7 +3781,7 @@ function renderAll() {
   $("#app").toggleAttribute("data-editing", !!st.edit);
   $("#link").dataset.link = st.link;
   $("#link-t").textContent = lost ? "No connection" : "Connected";
-  clockSet();
+  clockSet(); spdDraw();
   const ho = $("#alloff");
   ho.textContent = st.pend.alloff ? "SWITCHING OFF…" : "ALL OFF";
   if (lost || st.pend.alloff) { ho.setAttribute("aria-disabled", "true"); ho.dataset.why = lost ? PAUSED : WAIT; } else { ho.removeAttribute("aria-disabled"); delete ho.dataset.why; }
@@ -5865,7 +5957,8 @@ function run(cmd) {
     case "swg": return swGrain(x, y);
     case "bs": return bsCmd(x, y);
     case "alloff": return cmdAllOff();
-    case "log": st.logOpen = !st.logOpen; if (st.logOpen) phLogOpened(); return renderAll();
+    case "log": st.logOpen = !st.logOpen; if (st.logOpen) { phLogOpened(); st.spdOpen = false; } return renderAll();
+    case "spd": return spdCmd(x, y);
     case "ph": return phCmd(cmd);
     case "tm": return cmdTimer(x);
     case "te": return cmdTe(x, y);
@@ -5967,6 +6060,7 @@ document.addEventListener("keydown", e => {
   const inColBox = !!(e.target.closest && e.target.closest("#recipe")) && !!(st.bsOpen || st.pbOpen || st.cmpOpen || st.swOpen || st.rbOpen || st.confirmLoad != null);
   if (e.key === "Escape" && st.tedit && (tHere() !== "col" ? !inColBox : !(ONE_SCREEN.matches && (st.pbOpen || st.cmpOpen || st.swOpen || st.rbOpen || st.bsOpen)))) { st.tedit = null; renderAll(); return; }
   if (e.key === "Escape" && st.bsOpen) { bsClose(); return; }
+  if (e.key === "Escape" && st.spdOpen) { spdClose(); return; }
   if (e.key === "Escape" && st.confirmLoad != null) { st.confirmLoad = null; renderAll(); return; }
   /* the proposal's boxes (?col=new): the recipe book, and the timers opened from their folded line */
   if (e.key === "Escape" && (st.rbOpen || st.tfOpen)) { st.rbOpen = false; st.tfOpen = false; renderAll(); return; }
@@ -6039,7 +6133,11 @@ document.addEventListener("click", e => {
     return;
   }
   const el = e.target.closest("[data-cmd]");
-  if (!el) { if (st.logOpen && !e.target.closest(".log")) { st.logOpen = false; renderAll(); } return; }
+  if (!el) {
+    if (st.logOpen && !e.target.closest(".log")) { st.logOpen = false; renderAll(); }
+    if (st.spdOpen && !e.target.closest("#spd-box")) spdClose();
+    return;
+  }
   if (el.hasAttribute("data-hold")) return;
   if (el.getAttribute("aria-disabled") === "true") { explain(el); return; }
   const cmd = el.dataset.cmd;
@@ -6178,7 +6276,7 @@ function load(name) {
   /* a moment can open an editor (open) and borrow another moment's graph history (base) */
   const open = st.open, base = st.base || key;
   delete st.open; delete st.base;
-  Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, logOpen: false, pbOpen: false, cmpOpen: false, swOpen: false, bsOpen: false, bs: null}, open);
+  Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, logOpen: false, pbOpen: false, cmpOpen: false, swOpen: false, bsOpen: false, bs: null, spdOpen: false, spdPend: null}, open);
   /* BrewScribe as the moment has it, and Brew Day's copy of its answer (phLoad) */
   phLoad();
   /* the strike water box: CraftBeerPi's answer for the moment's numbers, worked out already, unless the moment has it
@@ -6242,6 +6340,12 @@ function load(name) {
     a.href = `?${q}#${key}`;
     a.setAttribute("aria-current", (a.dataset.cue === "today") === (QS.get("cues") === "today") ? "true" : "false");
   });
+  [["simtag", "a"], ["plan", "soft"]].forEach(([p, def]) => document.querySelectorAll(`.mock a[data-${p}]`).forEach(a => {
+    const q = new URLSearchParams(location.search), v = a.dataset[p];
+    if (v === def) q.delete(p); else q.set(p, v);
+    a.href = `?${q}#${key}`;
+    a.setAttribute("aria-current", v === document.documentElement.dataset[p] ? "true" : "false");
+  }));
   document.querySelectorAll(".mock a[data-tm]").forEach(a => {
     const q = new URLSearchParams(location.search);
     if (a.dataset.tm === "today") q.set("timers", "today"); else q.delete("timers");
@@ -6321,6 +6425,11 @@ document.documentElement.dataset.timers = TIMERS;
 /* the section cues: by default (CUES.md, A, approved on 22 Nov) each kind of section on a ground of its own, in
    brew-day.css; ?cues=today is every section on the same panel ground, as built before */
 if (QS.get("cues") === "today") document.documentElement.dataset.cues = "today";
+/* the simulator's clock in the title bar: SIMTAG (clockSet). The recipe column's blue (brew-day.css): by default (soft)
+   a quieter Plan Slate ground and a 3px, darker Plan Edge; ?plan=edge the panel's own slate with the 4px edge as built;
+   ?plan=ground the ground as built without the edge; ?plan=today as built before */
+document.documentElement.dataset.simtag = SIMTAG;
+document.documentElement.dataset.plan = ["soft", "edge", "ground", "today"].includes(QS.get("plan")) ? QS.get("plan") : "soft";
 /* the recipe column: by default a recipe not begun has OTHER RECIPE beside COMPARE PROBES, in the row COMPARE PROBES
    had to itself, which opens the recipe book in that place (RECIPE-COLUMN.md; the brewer kept it on 22 Nov, and it comes
    with the timers' column beside the drawing). ?col=today is the column as built before. ?col=new is the rest of

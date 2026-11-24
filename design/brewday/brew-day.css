@@ -48,12 +48,46 @@ html.bare .mock{display:none}
 /* the title bar's clock: CraftBeerPi's (The One Clock Rule). On a simulator a tag beside the time gives its date, where
    it isn't the screen's own, and its speed, Progress Blue on Progress Track Navy: the brew's time, not the room's. It
    sits in the time's row, so the bar keeps its height; on a phone, under the time */
-.clock[data-sim]{display:flex;align-items:center;justify-content:flex-end;gap:10px}
+.clock[data-sim=tag]{display:flex;align-items:center;justify-content:flex-end;gap:10px}
 .clock .cd{order:-1;display:inline-block;padding:4px 7px 3px;border:1px solid #3c7fcc;border-radius:4px;background:#0d2b48;font:600 15px/1 var(--cond);letter-spacing:.08em;color:#9bcbff;white-space:nowrap}
 .clock .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 /* on a monitor or laptop only the alarm or prompt gives way to a long message in the title bar (it wraps): ALL OFF keeps
    its shape and the clock its digits. Narrower, both still give way, so the prompt doesn't grow taller still */
 @media (min-width:1180px){.alloff,.clock{flex:none}}
+/* a simulator's clock (SIMTAG a, b, c): its date, where it isn't the screen's, as a quiet line in Soft Steel capitals
+   with no box, so nothing about it looks pressable, over SPEED, a button in the title bar's button look (ALL OFF's
+   steel edge, at 1px), left of the time; the date at 16px and SPEED 34px tall make 52px, so on a simulator the bar is
+   4px taller than ALL OFF's 48px makes it. SPEED opens the chooser below (.spdbox); ?simtag=b puts the speeds there in
+   a row, the one it runs at pressed; ?simtag=c makes SPEED two lines as tall as ALL OFF, the bar 20px taller */
+/* the chooser's place: under the title bar at its right; the bar is its anchor only while it is open, so nothing else
+   in the bar is painted differently */
+.topbar:has(>.spdbox:not([hidden])){position:relative}
+.clock[data-sim=spd]{display:flex;align-items:center;justify-content:flex-end;gap:12px}
+.clock[data-sim=spd] .cs{order:-1;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:2px}
+.clock .cdl{font:600 16px/1 var(--cond);letter-spacing:.08em;color:var(--text-2);white-space:nowrap}
+.clock .spd{display:inline-flex;align-items:center;min-height:34px;padding:0 10px;border:1px solid #7d8fa2;border-radius:var(--r);background:var(--panel-2);color:var(--text);font:700 16px/1 var(--cond);letter-spacing:.06em;white-space:nowrap}
+.clock .spd .lb{display:inline-flex;align-items:center;gap:6px}
+.clock .spd .chev{width:12px;height:12px;fill:none;stroke:var(--text-2);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.clock .spd:not([aria-disabled=true]):hover{background:#253545}
+.clock .spd[aria-expanded=true]{background:#070c11;box-shadow:inset 0 0 0 2px #a9bfd4}
+.clock .spd[aria-disabled=true]{color:var(--text-3);cursor:not-allowed}
+.clock .spdc{flex-direction:column;justify-content:center;min-height:48px;padding:0 14px;font-size:17px}
+.clock .spdc small{display:block;margin-top:4px;font:500 13px/1 var(--cond);letter-spacing:.04em;color:var(--text-3)}
+.clock .spdc:not([aria-disabled=true]):hover small{color:var(--text-2)}
+.clock .spdrow{display:flex;border:1px solid #7d8fa2;border-radius:var(--r);overflow:hidden}
+.clock .spdrow button{min-width:42px;min-height:34px;padding:0 8px;border:0;background:var(--panel-2);color:var(--text);font:700 16px/1 var(--cond);letter-spacing:.04em}
+.clock .spdrow button+button{border-left:1px solid var(--edge)}
+.clock .spdrow button[aria-pressed=true]{background:#070c11;color:#fff;box-shadow:inset 0 0 0 2px #a9bfd4}
+.clock .spdrow button:not([aria-pressed=true]):not([aria-disabled=true]):hover{background:#253545}
+.clock .spdrow button[aria-disabled=true]{color:var(--text-3);cursor:not-allowed}
+.spdbox{position:absolute;right:var(--pad);top:calc(100% + 10px);z-index:45;display:flex;flex-direction:column;gap:12px;width:min(360px,calc(100% - 2 * var(--pad)));padding:14px 12px 12px;border:2px solid var(--select);border-radius:var(--r);background:var(--panel);box-shadow:0 18px 40px rgb(0 0 0/.5);font:400 16px/1.35 var(--sans);color:var(--text)}
+.spdbox[hidden]{display:none}
+.spdbox .spdt{align-self:flex-start;margin:-26px 0 -2px -4px;padding:0 6px;background:var(--panel);font:700 17px/1.2 var(--cond);letter-spacing:.06em}
+.spdbox .seg{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
+.spdbox .seg button{min-height:48px;font:700 19px/1 var(--cond);letter-spacing:.04em}
+.spdbox .spdsay{margin:0;color:var(--text-2)}
+.spdbox .spdact{display:flex;justify-content:flex-end}
+.spdbox .spdact .cmdbtn{min-height:48px;min-width:120px;padding:0 16px;font:700 17px/1 var(--cond)}
 
 /* alarms and the last event */
 .status{display:grid;grid-template-columns:minmax(280px,34%) minmax(0,1fr);gap:var(--gap);padding:10px var(--pad) 0}
@@ -1083,9 +1117,15 @@ button.step{width:100%;margin:0;color:inherit;text-align:left;touch-action:manip
   .app{padding-bottom:calc(var(--tabs-h) + env(safe-area-inset-bottom))}
   .topbar{gap:10px;padding:8px var(--pad)}
   .clock{font-size:24px;min-width:0}
-  .clock[data-sim]{flex-direction:column;align-items:flex-end;gap:2px}
+  .clock[data-sim=tag]{flex-direction:column;align-items:flex-end;gap:2px}
   .clock .cd{order:0;padding:2px 5px 1px;font-size:12px;letter-spacing:.05em}
   .clock .cd .lg{display:none}
+  .clock[data-sim=spd]{flex-direction:column;align-items:flex-end;gap:3px}
+  .clock[data-sim=spd] .cs{order:0;gap:3px}
+  .clock .cdl{font-size:13px;letter-spacing:.05em}
+  .clock .spd{min-height:44px;padding:0 10px}
+  .clock .spd .lg{display:none}
+  .spdbox{right:var(--pad);width:min(360px,calc(100% - 2 * var(--pad)))}
   #link-t{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
   .link{font-size:15px}
   .alloff{flex:0 1 auto;max-width:108px;min-height:46px;padding:4px 10px;font-size:16px;line-height:1.05}
@@ -1229,7 +1269,13 @@ svg.stale .g-out{fill:rgb(107 119 133/.45)}
 :root:not([data-cues=today]) .event{background:var(--cue-evt);border-color:var(--cue-evt-line)}
 :root:not([data-cues=today])[data-layout=b] .tabs,:root:not([data-cues=today]) [data-layout=b] .tabs{margin-top:0}
 :root:not([data-cues=today]) .tabs{background:var(--cue-band)}
-:root:not([data-cues=today]) .recipe{background:var(--cue-plan);border-color:var(--cue-plan-line);box-shadow:inset 4px 0 0 var(--cue-plan-edge)}
+:root:not([data-cues=today]) .recipe{background:var(--cue-plan);border-color:var(--cue-plan-line);box-shadow:inset var(--cue-plan-w,4px) 0 0 var(--cue-plan-edge)}
+/* the recipe column's blue, toned down (asked for on 24 Nov): by default (soft) a quieter Plan Slate halfway to the
+   panel's slate, its line likewise, and a 3px, darker Plan Edge; ?plan=edge the panel's own slate and line with the 4px
+   edge as built; ?plan=ground the ground as built with no edge; ?plan=today as built before */
+:root[data-plan=soft]{--cue-plan:#152233;--cue-plan-line:#233a51;--cue-plan-edge:#2b5f97;--cue-plan-w:3px}
+:root[data-plan=edge]{--cue-plan:var(--panel);--cue-plan-line:var(--line)}
+:root[data-plan=ground]{--cue-plan-w:0px}
 :root:not([data-cues=today]) .rig{background:var(--cue-pic);border-color:transparent;box-shadow:inset 0 2px 10px rgb(0 0 0/.55)}
 :root:not([data-cues=today]) .rig-line .v-shell{fill:#141f29}
 :root:not([data-cues=today]) .tbarb,:root:not([data-cues=today]) .tside:not(.empty){background:var(--cue-band);border-color:#223140}

@@ -216,16 +216,16 @@ Nothing is reordered, and BrewScribe readings never jump ahead of CraftBeerPi's 
   and 40; the clock 17, and its measure; the boil kettle 23; the review page 36; the timers' places 149 and 262; the
   pH box 128 and 134; 12-hour 175.
 - The readings box: `rd_presses` 186 checks and `rd_measure` 798, all passing, with no page errors. `rd_measure` uses
-  seven sizes: 1920 x 950, 1440 x 900, 1180 x 860, 1024 x 768, 820 x 1180, 390 x 844 and 360 x 740. Between them they
+  seven sizes: 1920 × 950, 1440 × 900, 1180 × 860, 1024 × 768, 820 × 1180, 390 × 844 and 360 × 740. Between them they
   cover every press above, dev56's sample answer replayed through the stand-in BrewScribe, the box inside the window,
   44 px keys, no word broken mid-word, and every text at least 4.5:1 on its ground.
 - The chosen gravity pair matches AUTO | MANUAL's pressed half: the same fill, ring and white words. Contrast of its two
   lines (the scale, then the instrument): pressed 19.6:1 and 13.3:1; not pressed 12.3:1 and 8.0:1; under the pointer
   10.7:1 and 7.0:1; while SAVE waits, the chosen pair as when pressed
   and the others 5.1:1.
-- Pictures against the proposal before the readings box, at 1440 x 900, 390 x 844 and 1180 x 860: 462 pictures, and
+- Pictures against the proposal before the readings box, at 1440 × 900, 390 × 844 and 1180 × 860: 462 pictures, and
   only the 20 new `rd-*` moments differ.
-- Every `rd-*` moment at 1920 x 950, 1440 x 900, 1280 x 800, 1180 x 860 and 1024 x 768, with RECORD and with OK alone
+- Every `rd-*` moment at 1920 × 950, 1440 × 900, 1280 × 800, 1180 × 860 and 1024 × 768, with RECORD and with OK alone
   (`?brewscribe=none`), for whether the drawing is still drawn: in windows about 1160 to 1270 px wide and up to about 900
   px tall, RECORD wraps first runnings, before the boil and the final readings onto one more line of the title bar,
   and the drawing is left out until the reminder is answered (its strip 64 px, under the 72 it needs; 79 to 84 px with

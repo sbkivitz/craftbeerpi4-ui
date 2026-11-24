@@ -1,13 +1,25 @@
 # Direction decision log
 
+## The simulator's clock and the recipe column's blue (24 Nov 2026)
+- The brewer: the blue box round the simulator's date and speed looked like a button; the date should be its own
+  line above the speed, in another style, and the speed a button. And the recipe column's blue was "slightly too
+  distinct". He asked Brett to have the best option built overnight, to pick in the morning.
+- Chosen (A): the date as a quiet Soft Steel line with no ground or edge, over SPEED, a button in the title bar's
+  look that opens a chooser of speeds saying what a new speed does to the clock. It shows on any simulator, 1× too.
+  Not chosen: the speeds in a row (B: quicker, but no room to say the clock starts again, and wide); SPEED as big as
+  ALL OFF (C: a 16px taller bar, and as weighty as the one button that must stand out). Blue text for the date was
+  not chosen either: blue words read as a link, the same false promise as the box.
+- Chosen for the recipe: the same cue, quieter: the ground halfway to Panel Slate, the edge 3px and darker. Not
+  chosen: the edge alone, the ground alone (both kept behind flags).
+
 ## Typed times on a 24-hour clock, the order after the sparge, boxes on a phone (23 Nov 2026)
 - Brett, from the 12-hour build: "7p" on a 24-hour clock is 19:00, as the recipe pages read it; a /config without
   CLOCK_FORMAT is 24-hour. The mockup now reads it so, and its notes stop calling 12-hour "the default".
 - The bench walks on BrewScribe dev57 found "HLT level after the sparge" waiting behind "Ready to boil?". Chosen: keep
   the order prompts came in. The boil's question holds the brew; the HLT's level holds still once the sparge stops.
   Not chosen: BrewScribe's readings jumping ahead of CraftBeerPi's own questions.
-- Robin found his time box opening out of view on phones at the heights a browser leaves (390 x 664, 375 x 553,
-  360 x 640). Here BrewStart's box and the readings box opened with SET and SAVE under the tab bar, 390 x 844
+- Robin found his time box opening out of view on phones at the heights a browser leaves (390 × 664, 375 × 553,
+  360 × 640). Here BrewStart's box and the readings box opened with SET and SAVE under the tab bar, 390 × 844
   included. Chosen: the page keeps the tab bar's height clear, and a box opening comes into view whole, or from its
   title where it's taller than the room. Not chosen: a scrolling middle inside the box on a phone, which would put a
   scroll inside a scroll and fight the on-screen keyboard.
