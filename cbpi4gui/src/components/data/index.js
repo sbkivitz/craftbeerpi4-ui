@@ -61,8 +61,9 @@ export const CBPiProvider = ({ children }) => {
   // CraftBeerPi's clock set back to the computer's time (a simulator's change of speed, core 4.7.7.post63): the topic
   // "clock", {now, scale, was, moved}, plus when this page heard it. null until it comes.
   const [clock, setClock] = useState(null);
-  // The last "figures" topic ({changed, figure}: a USE, BACK TO, LEAVE OUT or a brew ended) and when this page heard
-  // it: the Figures page reads GET /figures again on each. null until one comes.
+  // The "figures" topics ({changed, figure}: a USE, BACK TO, LEAVE OUT or a brew ended), numbered as they came: n the
+  // last one's number, recent the last 20 with theirs. Topics that come together are drawn in one render, so the Figures
+  // page takes every one it hasn't had from recent, not only the last. null until one comes.
   const [figures, setFigures] = useState(null);
 
   const onMessage = useCallback((data) => {
@@ -160,7 +161,10 @@ export const CBPiProvider = ({ children }) => {
           setClock(data.data && typeof data.data === "object" ? { ...data.data, received: Date.now() } : null);
           break;
       case "figures":
-          setFigures({ data: data.data, at: Date.now() });
+          setFigures((cur) => {
+            const n = (cur ? cur.n : 0) + 1;
+            return { data: data.data, n, recent: [...(cur ? cur.recent : []), { data: data.data, n }].slice(-20) };
+          });
           break;
       default:
         break;

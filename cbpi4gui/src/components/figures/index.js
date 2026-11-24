@@ -56,7 +56,7 @@ const Figures = () => {
         connected: !!state.connection,
         config: state.config,
         kettles: state.kettle,
-        // the last "figures" topic and when it came: the page reads GET /figures again on each
+        // the "figures" topics, numbered: the page reads GET /figures again on each it hasn't had
         figures: state.figures,
         // the strike water box's state, for its forecast with the tun's steel in use
         strike: state.strike,

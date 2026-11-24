@@ -58,7 +58,7 @@ let host = null, sr = null, env = {}, gen = 0, timers = [], off = [];
    for a CraftBeerPi without it) */
 let D = null, load = {s: "reading", why: ""}, reading = false, again = false;
 /* CFG: what the page takes from CraftBeerPi's settings and state */
-let CFG = {connected: null, h24: false, brewery: "", unit: "F", kettles: [], strike: null, topicAt: null};
+let CFG = {connected: null, h24: false, brewery: "", unit: "F", kettles: [], strike: null, topicN: null};
 let st = null;
 /* an opened brew's graph, by brew and figure: {s: "reading" | "ok" | "failed", data, why, end}; the last few kept */
 let EV = new Map();
@@ -942,11 +942,12 @@ function live(d) {
   if (wasConnected === false && d.connected && (st.everConnected || load.s === "failed")) readFigures();
   if (d.connected) st.everConnected = true;
   const t = d.figures;
-  if (t && t.at !== CFG.topicAt) {
-    const first = CFG.topicAt === null && wasConnected === null;
-    CFG.topicAt = t.at;
-    // a topic already there as the page opens is older than the page's own first read
-    if (!first) topic(t.data);
+  if (t && t.n !== CFG.topicN) {
+    const first = CFG.topicN === null && wasConnected === null, last = CFG.topicN;
+    CFG.topicN = t.n;
+    // a topic already there as the page opens is older than the page's own first read; after that every topic not yet
+    // taken, in order, as several can come in one render
+    if (!first) (last === null ? [t] : (t.recent || [t]).filter(x => x.n > last)).forEach(x => topic(x.data));
   }
   if (redraw) render();
 }
@@ -967,7 +968,7 @@ export function createFigures(el, o = {}) {
   }
   fresh();
   D = null; load = {s: "reading", why: ""}; reading = false; again = false; EV = new Map();
-  CFG = {connected: null, h24: false, brewery: "", unit: "F", kettles: [], strike: null, topicAt: null};
+  CFG = {connected: null, h24: false, brewery: "", unit: "F", kettles: [], strike: null, topicN: null};
   sr = host.shadowRoot || host.attachShadow({mode: "open"});
   sr.innerHTML = `<style>${FIGURES_CSS}${EXTRA_CSS}</style><main class="main" id="main" data-link="ok"></main>`;
   const on = (t, k, f, x) => { t.addEventListener(k, f, x); off.push(() => t.removeEventListener(k, f, x)); };
