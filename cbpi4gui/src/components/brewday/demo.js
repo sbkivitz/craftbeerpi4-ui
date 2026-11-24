@@ -10,7 +10,8 @@
 // check-many, check-noanswer, check-noprobe, check-slow and check-unsure, and the strike water's sw-plan, sw-forecast,
 // sw-volume, sw-grain-edit, sw-grain, sw-hot, sw-used, sw-backhot, sw-working, sw-working-open, sw-reworking, sw-levers,
 // sw-refused, sw-refused-moved, sw-failed, sw-tunprobe, sw-wait, sw-heat, sw-move, sw-late, sw-doughin, sw-hand,
-// sw-novol, sw-missing, sw-missing-steps, sw-noprobe, sw-grain-bad and sw-interval, the one clock's sim-clock and
+// sw-novol, sw-missing, sw-missing-steps, sw-noprobe, sw-grain-bad and sw-interval, the vessels' bs-over, sw-hw and
+// sw-over, the one clock's sim-clock and
 // sim-clock-1x, the timers' timer-change and timer-removed, the boil kettle's MANUAL's bk-hand, bk-hand-off and
 // bk-man-boil, the mash pH's ph, ph-open, ph-set, ph-target, ph-had, ph-end, ph-warm, ph-nolog, ph-vessel, ph-saved,
 // ph-fail, ph-slow, ph-noclose and ph-other, and other-recipe) runs on this, so it can be compared with the mockup
@@ -928,10 +929,12 @@ const SCENES = {
   "bs-soon": () => Object.assign(SCENES["sw-wait"](), {base: "sw-wait", open: {bsAt: {txt: "06:00"}}}),
   /* the vessels' own figures from the Hardware page (design/brewday VESSELS.md), none of which anything needs.
      #bs-over: the HLT holds 20 gal, given on the Hardware page, and BrewStart's water is 25.4 gal, as Test Recipe v5
-     fills it in: a line under the water in BrewStart's box says so. #sw-over: FORECAST with BrewStart's water more than
-     the HLT holds, the line under From you's water. With no figures given, every moment is as before. The mockup's
-     #sw-hw, FORECAST naming the figures from Hardware it used, waits for CraftBeerPi's forecast to use them and say so */
+     fills it in: a line under the water in BrewStart's box says so. #sw-hw: FORECAST with the Mash Tun's and the HLT's
+     empty weight and material given, under From Hardware, in place of BeerSmith's tun and the guess about the HLT's
+     steel (strike-demo.js takes them as CraftBeerPi's forecast does). #sw-over: FORECAST with BrewStart's water more
+     than the HLT holds, the line under From you's water. With no figures given, every moment is as before */
   "bs-over": () => { const s = swUnsaid(swDay(21 * 3600 + 12 * 60 + 5, {})); s.swd.vol = 25.4; s.vessels = {hlt: {capacity: 20}}; return Object.assign(s, {base: "sw-plan", open: {bsAt: {at: "#bs-box .vover"}}}); },
+  "sw-hw": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {vessels: {hlt: {capacity: 20, empty_weight: 30, material: "stainless_steel"}, mt: {capacity: 20, empty_weight: 33, material: "stainless_steel"}}, open: {swOpen: true}}),
   "sw-over": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.vol = 25.4; return Object.assign(s, {vessels: {hlt: {capacity: 20}}, open: {swOpen: true}}); },
   /* USE waiting for where the grain spent the night (screen.js swHTML). #sw-where: the #sw-plan night before,
      BrewStart's time set and the grain not answered yet, so BrewStart's row asks "where's the grain?" and USE's place

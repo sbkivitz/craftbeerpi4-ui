@@ -1552,15 +1552,29 @@ function swTablets(x) {
 const swCampdenText = x => `${swTablets(x)} tablet${x > 1 ? "s" : ""}`;
 /* the dose BrewStart states for the HLT's water now, or none */
 const swCampden = () => { const c = num(st.sw && st.sw.inputs && st.sw.inputs.campden); return c != null && c > 0 ? c : null; };
-/* FORECAST's numbers, by where the model takes each from: the recipe, the brewer, the rig's measurements, the rig's
-   setup, and what hasn't been measured, each a range it allows for in full, with the three that would raise USE most
-   if known and USE if every one proved to be the middle of its range; then BeerSmith's own strike temperature and
-   what it would do here. The HLT's water and the grain's temperature are the brewer's, each with CHANGE, which opens
-   its box in place. They are the numbers as they are now; while CraftBeerPi works USE out, what needs its answer
-   waits for it */
+/* a vessel's own figures from the Hardware page, where CraftBeerPi's forecast takes them (its state's vessels: "mt" or
+   "hlt" from "hardware"); else null: the recipe's tun, the HLT's steel measured on the rig or still a guess */
+const swHw = k => { const v = st.sw && st.sw.vessels && st.sw.vessels[k]; return v && v.from === "hardware" && num(v.empty_weight) != null ? v : null; };
+/* such a figure in a sentence: "33 lb of stainless steel", "of aluminum", "of a material holding 0.09 cal/g °C", and with
+   no material "33 lb, taken as stainless steel", as the forecast takes it */
+function vesselSays(v, tail = "") {
+  const w = `${+(+v.empty_weight).toFixed(1)}&nbsp;${swMU()}`;
+  return v.material === "aluminium" ? `${w} of aluminum${tail}` : v.material === "other" ? `${w} of a material holding ${+v.specific_heat}&nbsp;cal/g&nbsp;°C${tail}`
+    : v.material === "stainless_steel" ? `${w} of stainless steel${tail}` : `${w}${tail}, taken as stainless steel`;
+}
+/* FORECAST's numbers, by where the model takes each from: the recipe, the vessels' own figures from the Hardware page,
+   the brewer, the rig's measurements, the rig's setup, and what hasn't been measured, each a range it allows for in
+   full, with the three that would raise USE most if known and USE if every one proved to be the middle of its range;
+   then BeerSmith's own strike temperature and what it would do here. The HLT's water and the grain's temperature are
+   the brewer's, each with CHANGE, which opens its box in place. They are the numbers as they are now; while
+   CraftBeerPi works USE out, what needs its answer waits for it. From Hardware is there only when the model takes a
+   vessel's figures (swHw): the Mash Tun's in place of the recipe's Mash tun line, the HLT's in place of the guess about
+   its steel, which CraftBeerPi then leaves out of the guesses and the levers */
 function swList(N) {
   const R = N.R, VU = swVU(), gal = x => `${(+x).toFixed(2)}&nbsp;${VU}`, left = N.left ?? N.vol - N.gal, by = swBrewStart(), U = M.U;
   const g = (h, rows) => `<h4 class="swg">${h}</h4><dl class="swd">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>`;
+  const hwMT = swHw("mt"), hwHLT = swHw("hlt");
+  const hw = [hwMT && ["Mash tun", vesselSays(hwMT)], hwHLT && ["HLT", vesselSays(hwHLT, ", with what's fixed in it")]].filter(Boolean);
   const cd = swCampden();
   const water = st.swVol ? swVolHTML(N) : `<div class="swyou"><div><p>${+N.vol.toFixed(2)}&nbsp;${VU} in the HLT, strike and sparge${by ? ": BrewStart's water volume" : ""}.${cd != null ? ` Campden for it: ${swCampdenText(cd)}.` : ""} The ${gal(left)} that stays there warms the mash through the coil.</p>${hltOverHTML(N.vol, VU)}</div>${b("cmdbtn", "CHANGE", "", {cmd: "swv:open", label: "Change the water in the HLT", expanded: false})}</div>`;
   const grainSays = N.typed != null
@@ -1585,8 +1599,9 @@ function swList(N) {
   return g("From the recipe", [
       ["Grain", `${+(+R.grain).toFixed(2)}&nbsp;${swMU()}`],
       ["Water", `${gal(N.gal)} to the mash tun: ${gal(R.for_grain)} for the grain${R.dead ? ` and ${gal(R.dead)} under the false bottom` : ""}`],
-      ["Mash tun", R.tun ? `${+(+R.tun).toFixed(2)}&nbsp;${swMU()} of steel` : "not counted: the recipe has no equipment profile"],
+      ...(hwMT ? [] : [["Mash tun", R.tun ? `${+(+R.tun).toFixed(2)}&nbsp;${swMU()} of steel` : "not counted: the recipe has no equipment profile"]]),
       ["Rest", swT(N.rest)]])
+    + (hw.length ? g("From Hardware", hw) : "")
     + `<h4 class="swg">From you</h4>${water}${grain}`
     + g("Measured on the rig", [
       ["Room", `${swT(N.room)}: the boil kettle's probe, as the kettle is empty, less its offset. The mash tun starts at it, and both vessels lose heat to it`],

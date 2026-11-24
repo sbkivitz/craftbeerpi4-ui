@@ -25,6 +25,25 @@ const swIntervalOk = s => Number.isInteger(swRuns(s));
 /* the guesses, in the design's order (SW_GUESS), and each one's unit as the API names it */
 const GUESSES = [["next_min", "min"], ["tun_share", "share"], ["tun_loss", "W/K"], ["transfer_f", "F"], ["coil_ua", "W/K"],
   ["dough_min", "min"], ["flow", "L/min"], ["grain_c", "cal/g C"], ["hlt_loss", "share"], ["hlt_steel", "kg"], ["probe_lag", "s"]];
+/* a vessel's own figures from the Hardware page as CraftBeerPi's forecast takes them (cbpi.strike.vessels): an empty weight
+   above 0 at its material's specific heat, stainless steel's 0.12 when it has none, aluminium's 0.22, or with "other"
+   its own, above 0 and no more than water's 1; else nothing. The moment's figures are st.vessels, as the mockup keeps
+   them */
+const HEAT = {stainless_steel: 0.12, aluminium: 0.22};
+const figure = n => typeof n === "number" && Number.isFinite(n) ? n : null;
+function vesselFigure(v) {
+  const w = v ? figure(v.empty_weight) : null, m = v && v.material ? v.material : null;
+  const heat = m === "other" ? figure(v.specific_heat) : HEAT[m || "stainless_steel"];
+  return w != null && w > 0 && heat != null && heat > 0 && heat <= 1 ? {from: "hardware", empty_weight: w, material: m, specific_heat: heat} : null;
+}
+/* the state's vessels: where the tun's steel and the HLT's come from, and the figures the model uses. Without the Mash
+   Tun's own, the recipe's tun (BeerSmith's) where it has one; without the HLT's own, the guess about its steel */
+function strikeVessels(st, F) {
+  const none = {from: null, empty_weight: null, material: null, specific_heat: null}, V = st.vessels || {};
+  const mt = vesselFigure(V.mt), hlt = vesselFigure(V.hlt);
+  return {mt: mt || (F && F.tunLb ? {...none, from: "beersmith", empty_weight: F.tunLb, specific_heat: 0.12} : {...none}),
+    hlt: hlt || {...none, from: "guess"}};
+}
 
 /* the steps the box works from: BrewStart (bi), the strike water step (si) and the first step on the mash tun (mi), whose
    temperature is the rest. The strike water step is a MashInStep on the HLT where the recipe has one; without one it is
@@ -158,6 +177,8 @@ export function strikeState(st, M) {
   const s = strikeInputs(st, M);
   if (!s) return null;
   const d = st.swd, {S, bi, si, mi, F, gal, inputs, sample} = s, phase = strikePhase(st, bi, si, mi);
+  /* the HLT's own figures fix the guess about its steel, so it is no longer a guess, nor among the levers */
+  const vessels = strikeVessels(st, F), open = ([k]) => !(k === "hlt_steel" && vessels.hlt.from === "hardware");
   let miss = s.miss, answer = null;
   const A = !miss && d.has ? d.has : null;
   if (A) {
@@ -180,8 +201,9 @@ export function strikeState(st, M) {
       /* the levers come SW_LEVER_S after USE (lvAt): until then, still coming */
       if (A.lvAt != null && st.t < A.lvAt) answer.levers_status = "working";
       else {
-        const top = GUESSES.map(([k]) => [k, Mo.lv[k]]).filter(x => x[1] > 0).sort((x, y) => y[1] - x[1]).slice(0, 3).map(x => x[0]);
-        answer.levers = {rise: Object.assign({}, Mo.lv), top, mid: Mo.mid};
+        const top = GUESSES.filter(open).map(([k]) => [k, Mo.lv[k]]).filter(x => x[1] > 0).sort((x, y) => y[1] - x[1]).slice(0, 3).map(x => x[0]);
+        const rise = Object.fromEntries(Object.entries(Mo.lv).filter(([k]) => open([k])));
+        answer.levers = {rise, top, mid: Mo.mid};
         answer.levers_status = "ready";
       }
     }
@@ -190,7 +212,7 @@ export function strikeState(st, M) {
   let guesses = null;
   if (!miss || miss === "far") {
     const hlt = swModel(inputs.grain, inputs.vol, inputs.probe).hlt, box = Object.assign({}, SW_MODEL.box, {hlt_loss: [hlt[0], hlt[1], +((hlt[0] + hlt[1]) / 2).toFixed(3)]});
-    guesses = GUESSES.map(([k, unit]) => Object.assign({name: k, low: box[k][0], high: box[k][1], mid: box[k][2], unit, provenance: "ASSUMED"}, k === "hlt_loss" ? {at: 15.0} : {}));
+    guesses = GUESSES.filter(open).map(([k, unit]) => Object.assign({name: k, low: box[k][0], high: box[k][1], mid: box[k][2], unit, provenance: "ASSUMED"}, k === "hlt_loss" ? {at: 15.0} : {}));
   }
   const ids = S.map(x => x.id ?? x.n);
   /* CraftBeerPi's work on USE failed for the numbers as they are now (d.failed.for): nothing is offered until one
@@ -204,7 +226,7 @@ export function strikeState(st, M) {
         lacks: ["grain", "water", "tun", "infuse_temp", "grain_temp", "tun_temp"]},
     applies: phase != null, off: phase != null ? null : "malt_in", phase, by: si >= 0 ? "step" : "hand",
     step_ids: {brewstart: bi >= 0 ? ids[bi] : null, strike: si >= 0 ? ids[si] : null, mash_in: ids[mi]},
-    inputs, rig: {through_coil: true, still_probe: 0.0}, sample_time: sample, guesses, miss, was: d.was ?? null,
+    inputs, rig: {through_coil: true, still_probe: 0.0}, sample_time: sample, guesses, vessels, miss, was: d.was ?? null,
     working: d.work ? {since: d.work.since, why: d.work.why === "load" ? "recipe" : d.work.why} : null, failed, answer
   };
 }
