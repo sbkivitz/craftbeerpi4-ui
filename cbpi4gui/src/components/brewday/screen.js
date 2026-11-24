@@ -442,13 +442,14 @@ const nb = s => String(s).replace(/ /g, "\u00a0");
 const clockHTML = hm => { const p = timeParts(hm, {format: fmtNow()}); return !p ? NO_TIME : p.half ? `${p.digits}\u2009<span class="ap">${p.half}</span>` : p.digits; };
 /* how many of CraftBeerPi's seconds go by in a real second: SIM_TIME_SCALE on a simulator, else 1 */
 const SC = () => DEMO_MODE ? (st && st.sim ? st.sim.scale : 1) : bclk ? bclk.scale : 1;
-function demoDay(t) { const d = new Date(st.sim.day0 + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + Math.floor(t / 86400)); return d; }
+/* the demo's date on CraftBeerPi's clock: a simulator's moment's own (sim.day0), else the mockup's, Friday 20 Nov 2026
+   (DAY0), each at st.t 0 */
+function demoDay(t) { const d = new Date(((st.sim && st.sim.day0) || DAY0) + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + Math.floor(t / 86400)); return d; }
 function clockNow() {
   if (DEMO_MODE) {
-    const s = st.sim;
-    if (!s) return {t: st.t, other: false, scale: 1};
-    const d = demoDay(st.t), ymd = d.toISOString().slice(0, 10);
-    return {t: st.t, day: {w: d.getUTCDay(), d: d.getUTCDate(), m: d.getUTCMonth()}, ymd, other: ymd !== s.pc, scale: s.scale};
+    const s = st.sim, d = demoDay(st.t), ymd = d.toISOString().slice(0, 10), day = {w: d.getUTCDay(), d: d.getUTCDate(), m: d.getUTCMonth()};
+    if (!s) return {t: st.t, day, ymd, other: false, scale: 1};
+    return {t: st.t, day, ymd, other: ymd !== s.pc, scale: s.scale};
   }
   const e = brewNow();
   if (e == null) return null;
@@ -497,26 +498,25 @@ function spdPc() {
 }
 const spdSay = () => `A new speed starts CraftBeerPi's clock again from this computer's time, ${spdPc()}.`;
 const CHEV = '<svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg>';
-/* the title bar's clock. The time alone where CraftBeerPi's clock is on the screen's date at 1× and it isn't a
-   simulator, the rig included. Otherwise, left of the time and one over the other: CraftBeerPi's date where it isn't the
-   screen's, on a quiet line with no box, so nothing about it looks pressable; and on a simulator SPEED, a button that
-   opens the chooser (spdDraw), there at 1× on the screen's date too, so the speed can always be changed. A clock at
-   another speed on a CraftBeerPi that isn't a simulator has its speed on the date line. On a phone both go under the
-   time. Drawn again only where they change, keeping the focus in them, as the time changes every second */
+/* the title bar's clock. Left of the time, one over the other: CraftBeerPi's date, always, on every CraftBeerPi and at
+   every speed (its own date, where it isn't the screen's), on a quiet line with no box, so nothing about it looks
+   pressable, and said to a screen reader; and on a simulator SPEED, a button that opens the chooser (spdDraw), there at
+   1× too, so the speed can always be changed. A clock at another speed on a CraftBeerPi that isn't a simulator has its
+   speed on the date line. On a phone both go under the time. Until CraftBeerPi has said where its clock is, the time's
+   dashes alone. Drawn again only where they change, keeping the focus in them, as the time changes every second */
 function clockSet() {
   const el = $("#clock");
   if (!el) return;
   const c = clockNow(), sim = !!c && isSim();
-  if (!c || !(sim || c.other || c.scale !== 1)) {
-    const s = c ? clockHTML(hhmm(c.t)) : NO_TIME;
+  if (!c) {
     if (el.dataset.sim) { el.removeAttribute("data-sim"); el._ct = el._cs = null; }
-    if (el.innerHTML !== s) el.innerHTML = s;
+    if (el.innerHTML !== NO_TIME) el.innerHTML = NO_TIME;
     return;
   }
-  const {day, other, scale: n} = c, fast = n === 1 ? "" : `, running ${n} times as fast`;
-  const words = [other ? `${DOW[day.w]} ${day.d} ${MON3[day.m]}` : "", !sim && n !== 1 ? `${n}× SPEED` : ""].filter(Boolean).join(" · ");
-  const said = `CraftBeerPi's clock${other ? `, ${DOW_SAY[day.w]} ${day.d} ${MON_SAY[day.m]}` : ""}${sim ? "" : fast}`;
-  const date = words ? `<span class="cdl" aria-hidden="true">${words}</span><span class="sr">${said}</span>` : "";
+  const {day, scale: n} = c, fast = n === 1 ? "" : `, running ${n} times as fast`;
+  const words = [`${DOW[day.w]} ${day.d} ${MON3[day.m]}`, !sim && n !== 1 ? `${n}× SPEED` : ""].filter(Boolean).join(" · ");
+  const said = `CraftBeerPi's clock, ${DOW_SAY[day.w]} ${day.d} ${MON_SAY[day.m]}${sim ? "" : fast}`;
+  const date = `<span class="cdl" aria-hidden="true">${words}</span><span class="sr">${said}</span>`;
   const sp = sim ? b("spd", `${n}×<span class="lg"> SPEED</span>${CHEV}`, "", {cmd: "spd:open", expanded: !!st.spdOpen, controls: "spd-box",
     label: `Simulator speed, ${n}×${fast}. Change it`, why: st.link === "lost" ? PAUSED : ""}).replace("<button ", '<button aria-haspopup="dialog" ') : "";
   const ct = clockHTML(hhmm(c.t)), cs = date + sp;

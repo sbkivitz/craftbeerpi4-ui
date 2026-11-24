@@ -6742,20 +6742,20 @@ his pick is a small change.
 
 ### What to build (screen.js, brewday.css)
 
-1. **The date line and SPEED** (mockup: `spdClock`). On a simulator, left of the time, one over the other:
-   - The date, where CraftBeerPi's isn't the screen's: "THU 26 NOV", Barlow Condensed 600 at 16px, capitals,
+1. **The date line and SPEED** (mockup: `spdClock`). Left of the time, one over the other:
+   - CraftBeerPi's date, always, on every CraftBeerPi (the rig and the simulators) and at every speed; where CraftBeerPi's
+     date isn't the screen's, it is CraftBeerPi's: "THU 26 NOV", Barlow Condensed 600 at 16px, capitals,
      .08em apart, Soft Steel, with no ground and no edge. Hidden from screen readers, which hear "CraftBeerPi's clock,
      Thursday 26 November" instead.
    - SPEED, a `<button>`: "60× SPEED" and a 12px chevron; 34px tall; Raised Slate with a 1px #7d8fa2 edge and the 6px
      radius; 700 16px. `aria-haspopup="dialog"`, `aria-expanded`, `aria-controls="spd-box"`, and the name "Simulator
      speed, 60×, running 60 times as fast. Change it" ("Simulator speed, 1×. Change it" at 1×). Greyed with no
      connection, with the screen's reason.
-   - Both on any simulator, at 1× on the screen's own date too, where SPEED shows alone, so the speed can always be
-     changed. A simulator is a CraftBeerPi whose GET /plugin/list includes cbpi4-simvessel and whose /config has
+   - SPEED on any simulator, at 1× on the screen's own date too, so the speed can always be changed. A simulator is a CraftBeerPi whose GET /plugin/list includes cbpi4-simvessel and whose /config has
      SIM_TIME_SCALE; SIM_TIME_SCALE alone isn't enough, as the rig once ran the simulator plugin and its saved settings
-     may still hold the setting. Where /plugin/list fails or doesn't list the plugin, there is no SPEED; the title bar
-     shows the time alone, except that a clock on another date than the screen's, or running at a speed other than 1×,
-     still shows the date line, as the tag did.
+     may still hold the setting. Where /plugin/list fails or doesn't list the plugin, there is no SPEED; the date line
+     still shows, with "60× SPEED" after the date for a clock running at a speed other than 1×. Until CraftBeerPi has
+     said where its clock is, the time's dashes show alone.
    - On a phone (700 px wide or less): under the time, the date at 13px, then SPEED 44px tall, "60×" (its word left
      out).
    - Draw the two only when they change, keeping the focus in them, as the time changes every second.

@@ -1524,13 +1524,14 @@ function clockTag() {
 /* the title bar's time: the digits, then AM or PM at about half their size after a thin space (brew-day.css .ap); in
    24-hour the digits alone */
 const clockHTML = () => { const p = todParts(st.t); return p.ap ? `${p.hm}\u2009<span class="ap">${p.ap}</span>` : p.hm; };
-/* a simulator's clock in the title bar (SIMTAG). By default (a) its date, where it isn't the screen's, on a quiet line
-   above a SPEED button, which opens a chooser of speeds (spdDraw); ?simtag=b the speeds in a row in the button's place;
+/* the title bar's clock (SIMTAG). By default (a) CraftBeerPi's date, always, on every CraftBeerPi and at every speed (its
+   own date, where it isn't the screen's), on a quiet line left of the time, said to a screen reader; on a simulator over
+   a SPEED button, which opens a chooser of speeds (spdDraw); ?simtag=b the speeds in a row in the button's place;
    ?simtag=c a two-line SPEED button as tall as ALL OFF under the date; ?simtag=today the tag as built before, the date
-   and speed in one blue box, only where either isn't the screen's. A, b and c show on any simulator, at 1× on the
-   screen's date too, so its speed can always be changed; on a phone each is the date and a compact SPEED button under
-   the time. A simulator (st.sim) is a CraftBeerPi running the cbpi4-simvessel plugin (/plugin/list) with SIM_TIME_SCALE
-   in /config; anywhere else, the rig included, the title bar shows the time alone */
+   and speed in one blue box, only on a simulator where either isn't the screen's, and the time alone elsewhere. SPEED
+   shows on any simulator, at 1× on the screen's date too, so its speed can always be changed; on a phone the date and
+   a compact SPEED button go under the time. A simulator (st.sim) is a CraftBeerPi running the cbpi4-simvessel plugin
+   (/plugin/list) with SIM_TIME_SCALE in /config */
 const SIMTAG = (v => ["a", "b", "c", "today"].includes(v) ? v : "a")(new URLSearchParams(location.search).get("simtag"));
 /* the speeds offered: SIM_TIME_SCALE's usual ones, with the one it has where that is another */
 const SPEEDS = [1, 10, 30, 60];
@@ -1545,11 +1546,11 @@ const CHEV = '<svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="
 /* the date line and SPEED (a, c) or the speeds' row (b), left of the time; drawn again only where they change, keeping
    the focus in them, as the time changes every second */
 function spdClock(el, ct) {
-  const n = st.sim.scale, d = clockDay(st.t), other = ymd(d) !== st.sim.pc, phone = matchMedia("(max-width:700px)").matches;
+  const sim = st.sim, n = sim ? sim.scale : 1, d = clockDay(st.t), phone = matchMedia("(max-width:700px)").matches;
   const lost = st.link === "lost", P = st.spdPend, fast = n === 1 ? "" : `, running ${n} times as fast`;
-  const date = other ? `<span class="cdl" aria-hidden="true">${DOW[d.getUTCDay()]} ${d.getUTCDate()} ${MON3[d.getUTCMonth()]}</span><span class="sr">CraftBeerPi's clock, ${DOW_SAY[d.getUTCDay()]} ${d.getUTCDate()} ${MON_SAY[d.getUTCMonth()]}</span>` : "";
+  const date = `<span class="cdl" aria-hidden="true">${DOW[d.getUTCDay()]} ${d.getUTCDate()} ${MON3[d.getUTCMonth()]}</span><span class="sr">CraftBeerPi's clock, ${DOW_SAY[d.getUTCDay()]} ${d.getUTCDate()} ${MON_SAY[d.getUTCMonth()]}</span>`;
   const big = SIMTAG === "c" && !phone;
-  const sp = SIMTAG === "b" && !phone
+  const sp = !sim ? "" : SIMTAG === "b" && !phone
     ? `<span class="spdrow" role="group" aria-label="Simulator speed${fast}">${spdList().map(v => `<button type="button" data-cmd="spd:set:${v}" aria-pressed="${v === (P || n)}" title="${esc(spdSay())}"${lost || (P && v !== P) ? ` aria-disabled="true" data-why="${lost ? PAUSED : WAIT}"` : ""}>${v}×</button>`).join("")}</span>`
     : b(`spd${big ? " spdc" : ""}`, `${n}×<span class="lg"> SPEED</span>${big ? "" : CHEV}`, big ? "change" : "", {cmd: "spd:open", expanded: !!st.spdOpen, controls: "spd-box", label: `Simulator speed, ${n}×${fast}. Change it`, why: lost ? PAUSED : ""}).replace("<button ", '<button aria-haspopup="dialog" ');
   const cs = date + sp;
@@ -1614,7 +1615,7 @@ function spdClose() {
 }
 function clockSet() {
   const el = $("#clock"), ct = clockHTML();
-  if (SIMTAG !== "today" && st.sim) return spdClock(el, ct);
+  if (SIMTAG !== "today") return spdClock(el, ct);
   if (el.dataset.sim === "spd") { el.innerHTML = ""; el._ct = el._cs = null; }
   const g = clockTag();
   /* the rig, and a simulator on the screen's date at 1×: the time alone, as ever */
