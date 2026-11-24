@@ -44,7 +44,7 @@
 import { GROUPS, KINDS, TYPES, START } from "./catalog";
 import { call, why as callWhy } from "../brewday/api";
 import { stepModel, bookLine as dayBookLine, cfg as cfgOf, parseLeft, recipeWater, inWords, kettleRoles, hermsLogics, ROLES } from "../brewday/live";
-import { clockFormat, formatTimeOfDay, formatDayTime, parseTypedTime, halfOfDay, NBSP, TWELVE_HOUR } from "../util/timefmt";
+import { settingsClockFormat, formatTimeOfDay, formatDayTime, parseTypedTime, halfOfDay, NBSP, TWELVE_HOUR } from "../util/timefmt";
 import { clearKeyboard } from "../util/keyboard";
 // As text, exactly as written (config-overrides.js): recipes.css for the shadow root; recipes-frame.css, the mockup's
 // .app rules (one screen tall from 620 px, scrolling below 1180 px, room for the phone's save bar), for the document,
@@ -110,9 +110,9 @@ const isoOf = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDat
 const today = () => { const d = cbNow(); return d ? isoOf(d) : null; };
 const CLOCK_WAIT = "Waiting for CraftBeerPi's clock.";
 const STEPS_WAIT = "Waiting for Brew Day's steps from CraftBeerPi.";
-/* times of day as the brewer reads them, by CLOCK_FORMAT (util/timefmt.js): "7:00 AM" or "07:00". Times kept in a step
-   stay "HH:MM" */
-const clockFmt = () => clockFormat(D.config);
+/* times of day as the brewer reads them, by CLOCK_FORMAT (util/timefmt.js): "7:00 AM" or "07:00", 24-hour on a
+   CraftBeerPi without the setting. Times kept in a step stay "HH:MM" */
+const clockFmt = () => settingsClockFormat(D.config);
 const twelve = () => clockFmt() === TWELVE_HOUR;
 const tod = (t, o = {}) => formatTimeOfDay(t, {...o, format: clockFmt()});
 

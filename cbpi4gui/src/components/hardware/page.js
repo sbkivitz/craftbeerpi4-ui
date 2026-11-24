@@ -36,7 +36,7 @@ import { HW_OWN, HW_VESSEL_INTRO, HW_VESSEL, HW_MATERIALS, HW_TYPES, HW_EMPTY, H
 import { rigSVG, RIG_H, rigGeom, r1 } from "../brewday/rig";
 import { call, why as callWhy } from "../brewday/api";
 import { brewNow } from "../brewday/screen";
-import { clockFormat, formatTimeOfDay } from "../util/timefmt";
+import { settingsClockFormat, formatTimeOfDay } from "../util/timefmt";
 import { kettleapi, fileError } from "../data/kettleapi";
 import { readChosenFile, saveKettleFile } from "./kettleFile";
 // As text, exactly as written (config-overrides.js): hardware.css for the shadow root; hardware-frame.css, the mockup's
@@ -74,8 +74,8 @@ const ROLE_OF = {sensor: "probe", heater: "heating element", agitator: "pump"};
    said where its clock is */
 const hhmm = () => { const e = brewNow(), d = e != null ? new Date(e * 1000) : new Date(); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
 /* a time of day as the page shows it, by CraftBeerPi's CLOCK_FORMAT setting (util/timefmt.js): "2:31 PM", or "14:31" in
-   24-hour; what isn't a time stays as it is */
-const tod = x => formatTimeOfDay(x, {format: clockFormat(LAST && LAST.config)}) || String(x ?? "");
+   24-hour, as on a CraftBeerPi without the setting; what isn't a time stays as it is */
+const tod = x => formatTimeOfDay(x, {format: settingsClockFormat(LAST && LAST.config)}) || String(x ?? "");
 
 /* ---------- state ---------- */
 function fresh() {

@@ -1,6 +1,7 @@
 // Times of day as people read them, the same on every screen, by CraftBeerPi's CLOCK_FORMAT setting: "12-hour"
-// (7:00 AM, 11:15:40 PM, no leading zero; midnight 12:00 AM, noon 12:00 PM) or "24-hour" (07:00, 23:15:40). A missing
-// setting, or any other value, reads as 12-hour. AM or PM stays on one line with its time (a no-break space).
+// (7:00 AM, 11:15:40 PM, no leading zero; midnight 12:00 AM, noon 12:00 PM) or "24-hour" (07:00, 23:15:40). Only
+// "12-hour" is 12-hour: a missing setting is a CraftBeerPi from before it, which shows 24-hour itself, and any other value
+// reads as 24-hour too, as the core reads it. AM or PM stays on one line with its time (a no-break space).
 //
 // Only what is written for people comes here. A time kept in a step or sent to CraftBeerPi stays "HH:MM" (BrewStart's
 // StartTime is "23:15" whatever the screen shows), and lengths of time ("in 9 h 48 min", "23:41 left") aren't times of
@@ -15,15 +16,35 @@ const WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const pad = n => String(n).padStart(2, "0");
 
-/* CLOCK_FORMAT, from CraftBeerPi's settings as GET /config/ gives them ({CLOCK_FORMAT: {value: "24-hour", ...}}), the
-   settings as values alone ({CLOCK_FORMAT: "24-hour"}), or the value itself. Only "24-hour" is 24-hour */
+/* CLOCK_FORMAT, from CraftBeerPi's settings as GET /config/ gives them ({CLOCK_FORMAT: {value: "12-hour", ...}}), the
+   settings as values alone ({CLOCK_FORMAT: "12-hour"}), or the value itself. Only "12-hour" is 12-hour */
 export function clockFormat(source) {
   let v = source;
   if (v && typeof v === "object") v = v.CLOCK_FORMAT;
   if (v && typeof v === "object") v = v.value;
-  return String(v ?? "").trim() === TWENTY_FOUR_HOUR ? TWENTY_FOUR_HOUR : TWELVE_HOUR;
+  return String(v ?? "").trim() === TWELVE_HOUR ? TWELVE_HOUR : TWENTY_FOUR_HOUR;
 }
 export const twelveHour = source => clockFormat(source) === TWELVE_HOUR;
+
+const KEPT = "cbpi.clockFormat";
+let kept;
+/* CLOCK_FORMAT as a page has CraftBeerPi's settings, the whole list as clockFormat takes it. Until the list has come
+   (none at all: the page has just opened) a time drawn takes the format last read on this browser, else 12-hour, the
+   setting's own default, so a 12-hour screen doesn't show 24-hour times for a moment as it opens. Each one read is
+   kept for that */
+export function settingsClockFormat(settings) {
+  const known = !!settings && typeof settings === "object" && !Array.isArray(settings) && Object.keys(settings).length > 0;
+  if (!known) {
+    if (kept === undefined) { try { kept = localStorage.getItem(KEPT); } catch (e) { kept = null; } }
+    return kept === TWENTY_FOUR_HOUR ? TWENTY_FOUR_HOUR : TWELVE_HOUR;
+  }
+  const f = clockFormat(settings);
+  if (f !== kept) {
+    kept = f;
+    try { localStorage.setItem(KEPT, f); } catch (e) { /* storage refused: kept for this page only */ }
+  }
+  return f;
+}
 
 /* a moment's hour, minute and second: a Date (its local time), seconds since 1970 (as brewNow() gives them, shown in
    local time), or "H:MM" / "HH:MM:SS" text; null for anything else */

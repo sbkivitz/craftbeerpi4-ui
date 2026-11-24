@@ -33,7 +33,7 @@ import * as DEMO from "./demo-data";
 import { play, soundOf, burstSeconds } from "../brewday/alarm";
 import { call, why as callWhy } from "../brewday/api";
 import { brewNow } from "../brewday/screen";
-import { clockFormat, formatTimeOfDay, TWENTY_FOUR_HOUR } from "../util/timefmt";
+import { settingsClockFormat, formatTimeOfDay, TWENTY_FOUR_HOUR } from "../util/timefmt";
 // As text, exactly as written (config-overrides.js): settings.css for the shadow root; settings-frame.css, the mockup's
 // .app rules (one screen tall from 620 px, scrolling below 1180 px, room for the phone's save bar), for the document, where
 // they apply only while <html> has data-page=settings
@@ -733,8 +733,10 @@ function setDraft(k, v) {
    clock is, else the PC's; the demo's the PC's, as the mockup's */
 const now = () => { const e = DEMO_MODE ? null : brewNow(); return (e != null ? new Date(e * 1000) : new Date()).toTimeString().slice(0, 8); };
 /* a time of day as the page shows it, by CraftBeerPi's CLOCK_FORMAT setting as saved (util/timefmt.js): "2:32 PM", or
-   "14:32" in 24-hour; the demo's 24-hour, as the Settings mockup's. What isn't a time stays as it is */
-const tod = x => formatTimeOfDay(x, {format: DEMO_MODE ? TWENTY_FOUR_HOUR : clockFormat((CFG.CLOCK_FORMAT || {}).v)}) || String(x ?? "");
+   "14:32" in 24-hour, as on a CraftBeerPi without the setting; the demo's 24-hour, as the Settings mockup's. What
+   isn't a time stays as it is */
+const tod = x => formatTimeOfDay(x, {format: DEMO_MODE ? TWENTY_FOUR_HOUR
+  : settingsClockFormat(Object.keys(CFG).length ? {CLOCK_FORMAT: (CFG.CLOCK_FORMAT || {}).v} : null)}) || String(x ?? "");
 function save(then) {
   const ks = dirty();
   if (st.saving) return;

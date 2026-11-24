@@ -69,7 +69,7 @@ import { model, num, parseLeft, bookLine, isHerms, unitText, ROLES, cfg, timerNa
 import { play as playSound, soundOf, DEFAULT_SOUND, SOUNDS } from "./alarm";
 import { GSPANS, GSAY, graphHTML, graphSVG, graphETA } from "./graphs";
 import { createHistory } from "./history";
-import { clockFormat, formatTimeOfDay, timeParts, parseTypedTime, TWELVE_HOUR, TWENTY_FOUR_HOUR } from "../util/timefmt";
+import { settingsClockFormat, formatTimeOfDay, timeParts, parseTypedTime, TWELVE_HOUR, TWENTY_FOUR_HOUR } from "../util/timefmt";
 import { clearKeyboard } from "../util/keyboard";
 // As text, exactly as written (config-overrides.js): the CSS pipeline would rewrite the mockup's colours.
 import BREWDAY_CSS from "./brewday.css";
@@ -423,9 +423,10 @@ const DOW = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"], MON3 = ["JAN", "F
 const DOW_SAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"], MON_SAY = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const NO_TIME = "– –:– –";
 /* every time of day the screen and its frame show (the title bar, LOG, the graphs, STARTS, BrewStart's box and words) by
-   CLOCK_FORMAT (util/timefmt.js), as CraftBeerPi's settings last said it (applyLive): "7:00 AM", or "07:00" in 24-hour.
+   CLOCK_FORMAT (util/timefmt.js), as CraftBeerPi's settings last said it (applyLive): "7:00 AM", or "07:00" in 24-hour,
+   as on a CraftBeerPi without the setting.
    The demo draws its mockup's: Brew Day's 12-hour unless ?clock=24, and the Settings mockup's 24-hour */
-let clockFmt = clockFormat(null);
+let clockFmt = settingsClockFormat(null);
 const fmtNow = () => !DEMO_MODE ? clockFmt : PAGE === "settings" || opts.clock === "24" || opts.clock === TWENTY_FOUR_HOUR ? TWENTY_FOUR_HOUR : TWELVE_HOUR;
 const is12 = () => fmtNow() === TWELVE_HOUR;
 /* a time kept as CraftBeerPi keeps it, 24-hour ("07:00", "23:15:40"), shown by the setting, with its seconds where it
@@ -5625,7 +5626,7 @@ function applyLive(snap) {
   if (bn !== undefined) setBrewery(bn);
   /* a simulator's setting, SIM_TIME_SCALE (isSim) */
   st.simCfg = cfg(snap.config, "SIM_TIME_SCALE") != null;
-  clockFmt = clockFormat(cfg(snap.config, "CLOCK_FORMAT"));
+  clockFmt = settingsClockFormat(snap.config);
   if (st.tedit && st.tedit.id != null) {
     const t = tById(st.tedit.id);
     if (!t || (t.state === "done" && was && was.state !== "done")) st.tedit = null;
