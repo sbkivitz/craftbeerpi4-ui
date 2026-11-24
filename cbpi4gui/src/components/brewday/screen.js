@@ -1530,12 +1530,14 @@ const swStillProbe = () => Math.min(1, Math.max(0, num(st.sw && st.sw.rig && st.
    is found by its strike, to 0.1 (fc); one CraftBeerPi hasn't sent yet is none. A USE over the ceiling is too far even
    where CraftBeerPi doesn't say so, as with an answer it kept from an older version: it is never offered. For the
    words when the recipe lacks what USE is worked out from: which of BeerSmith's mash figures it lacks (lacks), whether
-   a step of the recipe has a grain weight (stepGrain) and the mash step's name */
+   a step of the recipe has a grain weight (stepGrain) and the mash step's name. Every number CraftBeerPi finds missing
+   (misses), the first of them its miss; from a core that sends only that one, that one */
 function swNumbers() {
   const S = st.sw, R = S.recipe || {}, I = S.inputs || {}, A = S.answer;
   const N = {plan: I.planned ?? null, rest: I.rest, room: I.room ?? null, typed: I.typed ?? null, grain: I.grain ?? null, vol: I.vol ?? null,
     left: I.left ?? null, step: S.by === "step", gal: R.strike_vol ?? null, probe: I.probe || "coil", interval: S.sample_time ?? null, R,
-    lacks: Array.isArray(R.lacks) ? R.lacks : [], stepGrain: M.RECIPE.steps.some(s => s.kg > 0), mashName: swMashName(S)};
+    lacks: Array.isArray(R.lacks) ? R.lacks : [], stepGrain: M.RECIPE.steps.some(s => s.kg > 0), mashName: swMashName(S),
+    misses: Array.isArray(S.misses) ? S.misses : S.miss ? [S.miss] : []};
   if (S.miss && S.miss !== "far") return Object.assign(N, {miss: S.miss});
   N.work = S.working || null;
   if (!A) return Object.assign(N, S.failed && !N.work ? {failed: S.failed} : {wait: true});
@@ -1623,10 +1625,11 @@ function swWords(N, list) {
    which only FORECAST's comparison uses, aren't named: the same import brings them. Importing again changes the recipe
    book's copy only, so the loaded recipe has to be loaded again */
 const swOr = a => a.length < 2 ? a.join("") : `${a.slice(0, -1).join(", ")} or ${a[a.length - 1]}`;
+const swLacks = N => [N.lacks.includes("grain") && !N.stepGrain && "grain weight", N.lacks.includes("water") && "mash water",
+  N.lacks.includes("tun") && "mash tun weight"].filter(Boolean);
 function swMissRecipe(N) {
   if (N.rest == null) return `${esc(N.mashName)} has no temperature, so where the mash lands isn't known. Give it one in Brew Steps.`;
-  const L = N.lacks, names = swOr([L.includes("grain") && !N.stepGrain && "grain weight", L.includes("water") && "mash water",
-    L.includes("tun") && "mash tun weight"].filter(Boolean));
+  const names = swOr(swLacks(N));
   return `${names ? `This recipe has no ${names} from BeerSmith` : "This recipe lacks BeerSmith's mash figures"}, so where the mash lands isn't known. Import it again and load it.`;
 }
 /* why there's no forecast, in the buttons' place */
@@ -1654,6 +1657,49 @@ function swFailedSays(N) {
   const T = N.plan != null ? `${N.plan.toFixed(1)}&nbsp;${M.U}` : null;
   const stays = N.step ? `The strike water stays as planned${T ? `, at ${T}` : ""}.` : T ? `The HLT's target stays at ${T}.` : "The HLT's target stays as it is.";
   return `CraftBeerPi couldn't work out a forecast for these numbers, so there's no USE. ${stays} What went wrong is in LOG.`;
+}
+/* the box without a forecast: why, then USE, HLT WATER and GRAIN side by side, as USE and FORECAST sit in the box with
+   one. USE in its place, greyed, saying on a tap what it needs. HLT WATER and GRAIN whatever is missing, each with its
+   figure, as they are the brewer's to give and CraftBeerPi takes them without the recipe's figures (POST
+   /step2/strike/water refuses too little only where the recipe gives its strike water). The water is asked for
+   whenever it is missing, whatever else is: its question after why, and HLT WATER "set it". Either's box, open, takes
+   the place of the sentence and the buttons, so the box is no taller than the water's box alone on one screen */
+function swMissHTML(N) {
+  if (st.swVol) return swVolHTML(N);
+  if (st.swGrain) return swGrainHTML(N);
+  const noVol = N.miss === "vol" || N.misses.includes("vol") || N.vol == null;
+  const line = (N.failed ? swFailedSays(N) : SW_MISS[N.miss] ? SW_MISS[N.miss](N) : "") + (noVol && N.miss !== "vol" ? ` ${SW_MISS.vol()}` : "");
+  const use = b("cmdbtn swuse", `USE –&nbsp;–&nbsp;${M.U}`, N.miss === "far" ? "too far to trust" : "can't work it out", {cmd: "sw:use", why: swNoUse(N)});
+  const VU = swVU(), water = noVol ? "set it" : `${+N.vol.toFixed(2)}&nbsp;${VU} · change`;
+  /* the grain's figure in use: given, else the boil kettle's probe, which stands for nothing while it gives no reading
+     or one no room has */
+  const typed = Number.isFinite(N.typed), probe = !typed && N.room != null && N.miss !== "probe" && N.miss !== "room";
+  const grain = N.miss === "grain" || N.misses.includes("grain") ? "change it" : typed ? `${N.typed.toFixed(1)}&nbsp;${M.U} · change`
+    : probe ? `${N.room.toFixed(1)}&nbsp;${M.U} · change` : "give it";
+  return `<p class="swl">${line}</p><div class="swa three">${use}${b("cmdbtn", "HLT WATER", water, {cmd: "swv:open", expanded: false})}`
+    + `${b("cmdbtn", "GRAIN", grain, {cmd: "swg:open", expanded: false})}</div>${N.vol != null ? hltOverHTML(N.vol, VU) : ""}`;
+}
+/* what USE needs, said on a tap of it greyed: the sentence above it, from USE's side */
+function swNoUse(N) {
+  const U = M.U;
+  if (N.failed) return "CraftBeerPi couldn't work USE out for these numbers. What went wrong is in LOG.";
+  if (N.miss === "recipe") {
+    if (N.rest == null) return `USE needs ${N.mashName}'s temperature: give it one in Brew Steps.`;
+    const L = swLacks(N);
+    return `USE needs the recipe's ${L.length ? swAnd(L) : "mash figures"} from BeerSmith: import the recipe again and load it.`;
+  }
+  if (N.miss === "vol") return "USE needs how much water is in the HLT, strike and sparge: set it with HLT WATER.";
+  if (N.miss === "grain") return "USE needs a grain temperature it can use: change it with GRAIN.";
+  if (N.miss === "probe") return "USE needs the room's temperature, and the boil kettle's probe gives no reading: check its plug and cable.";
+  if (N.miss === "room" && N.room != null) return `USE needs the room's temperature, and the boil kettle's probe reads ${N.room.toFixed(1)} ${U}, ${N.room > swRoom()[1] ? "warmer" : "colder"} than any room.`;
+  if (N.miss === "sample_time") return "USE needs the mash tun's control interval at 2 or 5 s: set it in Hardware.";
+  if (N.miss === "far") {
+    const T = num(N.strike);
+    if (T == null) return "USE isn't offered for these numbers. Check the grain weight and the water in BeerSmith.";
+    const hot = N.rest != null && T - N.rest <= swRise() && swOverCeil(T);
+    return `USE isn't offered: ${T.toFixed(1)} ${U} is ${hot ? `over ${+swCeil().toFixed(1)} ${U}, too hot for strike water` : `more than ${swRise()} ${U} above the rest, too far to trust`}. Check the grain weight and the water in BeerSmith.`;
+  }
+  return "USE can't be worked out for these numbers.";
 }
 /* a grain temperature in LOG's words: BrewStart's can be saved as something that isn't a number */
 const swGrainSays = t => Number.isFinite(t) ? `${t.toFixed(1)} ${M.U}` : "not a number";
@@ -1843,9 +1889,9 @@ function swGrainHTML(N) {
   const v = st.swGrain.val, x = v == null ? "" : v.toFixed(1), pend = st.pend.swg, why = st.link === "lost" ? PAUSED : pend ? WAIT : "", U = M.U;
   const key = (d, l) => `<button type="button" data-cmd="swg:step:${d}" aria-label="${l}">${d < 0 ? "−" : "+"}${Math.abs(d) === 1 ? "1" : ".1"}</button>`;
   const dis = why ? ` aria-disabled="true" data-why="${esc(why)}"` : "";
-  /* THE PROBE: while a figure is in use, or BrewStart's can't be used */
+  /* THE PROBE: while a figure is in use, or BrewStart's can't be used, and the probe has a reading to stand for it */
   const probe = bsGrainAsk() ? `<button type="button" class="swprobe" data-cmd="swg:probe"${dis}>${pend === "probe" ? "SETTING…" : "IN THE GARAGE"}<small>the boil kettle's probe, ${f1(st.v.bk.pv)} ${U}</small></button>`
-    : N.typed == null && N.miss !== "grain" ? "" : `<button type="button" class="swprobe" data-cmd="swg:probe"${dis}>${pend === "probe" ? "SETTING…" : "THE PROBE"}<small>the boil kettle's, ${swT(N.room)}, instead</small></button>`;
+    : (N.typed == null && N.miss !== "grain") || N.room == null ? "" : `<button type="button" class="swprobe" data-cmd="swg:probe"${dis}>${pend === "probe" ? "SETTING…" : "THE PROBE"}<small>the boil kettle's, ${swT(N.room)}, instead</small></button>`;
   return `<div class="editor swvol" role="group" aria-labelledby="swg-l"><label class="swvl" id="swg-l" for="swgin">Grain temperature, in ${U}</label>`
     + `<p class="swvh" id="swg-h">For grain that spent the night away from the boil kettle. ${swBrewStart() ? "It is BrewStart's grain temperature: left blank" : "Without it"}, the kettle's probe is used.</p>`
     + `${key(-1, "Down 1 degree")}${key(-0.1, "Down 0.1 degree")}<input id="swgin" inputmode="decimal" autocomplete="off" value="${x}" aria-describedby="swg-h">${key(0.1, "Up 0.1 degree")}${key(1, "Up 1 degree")}`
@@ -1936,28 +1982,22 @@ function drawSw() {
     + `${Q ? band(Q, " alt") : ""}${P ? band(P, swOver(N, P) ? " hot" : "") : ""}<path class="g-sv" d="M0 ${q(Y(N.rest))}H${w}"/>`
     + `<text class="swrl" x="${w - 4}" y="${q(Y(N.rest) - 4)}" text-anchor="end">${+N.rest.toFixed(1)} ${M.U} REST</text>${gl}${tl}</svg>`;
 }
-/* the box: its head, the window, then USE (or BACK TO) and FORECAST side by side. With a number missing, why, in their
-   place, and for the HLT's water or the grain's temperature a way to give it. FORECAST opens the forecast in detail under
-   the head and turns into CLOSE in its own place, so nothing in the head moves: the forecast drawn and in words, why it is
-   a range, what the Mash Tun's probe may read, and the numbers by where they come from. The head stays in reach while it
-   is open: on one screen the details take the step list's room and scroll under it, as the probes' panel does; where the
-   page scrolls, the head stays at the top of the screen while the details pass under it. Once the water is in the mash
-   tun and the pump has stopped for the dough-in, the head says when the Mash Tun's reading isn't the mash. While
-   CraftBeerPi works USE out, the head says so, with how long it has been at it, and greys USE */
+/* the box: its head, the window, then USE (or BACK TO) and FORECAST side by side. With a number missing, why, then USE
+   greyed, HLT WATER and GRAIN side by side (swMissHTML). FORECAST opens the
+   forecast in detail under the head and turns into CLOSE in its own place, so nothing in the head moves: the forecast
+   drawn and in words, why it is a range, what the Mash Tun's probe may read, and the numbers by where they come from.
+   The head stays in reach while it is open: on one screen the details take the step list's room and scroll under it,
+   as the probes' panel does; where the page scrolls, the head stays at the top of the screen while the details pass
+   under it. Once the water is in the mash tun and the pump has stopped for the dough-in, the head says when the Mash
+   Tun's reading isn't the mash. While CraftBeerPi works USE out, the head says so, with how long it has been at it,
+   and greys USE */
 function swHTML() {
   const phase = swPhase();
   if (!phase || st.pbOpen || st.cmpOpen || st.confirmNext || st.confirmReset || st.confirmUnload || st.bsOpen) return "";
   /* USE and BACK TO wait while their own call, UNLOAD's or BrewStart's SET does */
   const N = swNumbers(), pend = st.pend.sw, why = st.link === "lost" ? PAUSED : pend || st.pend["r:unload"] || st.pend.bs ? WAIT : "", has = N.ok || !!N.wait, open = !!st.swOpen && has;
   const cls = `sw sw-${phase}${has ? "" : " sw-miss"}`;
-  if (!has) {
-    /* without the HLT's water, or with a grain temperature the forecast can't use, the question beside its button, as
-       CHANGE sits beside the figure; once pressed, its box, whose label and line say what to give */
-    const ask = N.miss === "vol" ? (st.swVol ? swVolHTML(N) : `<div class="swyou"><p>${SW_MISS.vol()}</p>${b("cmdbtn", "HLT WATER", "set it", {cmd: "swv:open", expanded: false})}</div>`)
-      : N.miss === "grain" ? (st.swGrain ? swGrainHTML(N) : `<div class="swyou"><p>${SW_MISS.grain(N)}</p>${b("cmdbtn", "GRAIN", "change it", {cmd: "swg:open", label: "Change the grain's temperature", expanded: false})}</div>`)
-      : `<p class="swl">${N.failed ? swFailedSays(N) : SW_MISS[N.miss] ? SW_MISS[N.miss](N) : ""}</p>`;
-    return `<section class="${cls}" aria-label="Strike water">${head0(N, ask)}</section>`;
-  }
+  if (!has) return `<section class="${cls}" aria-label="Strike water">${head0(N, swMissHTML(N))}</section>`;
   /* USE, or once it is in use BACK TO, in one place. While the HLT heats the strike water, a temperature below the
      water's is greyed: the HLT can't cool it, and the step would ask for the water at once, hotter than the box says.
      While CraftBeerPi works USE out, USE is greyed, with the last figure if there is one: CraftBeerPi refuses a figure
