@@ -32,15 +32,35 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .alloff:not([aria-disabled=true]):hover{border-color:#ff8a80;background:#2b1315}
 :where(html.bd-page) .alloff[aria-disabled=true]{opacity:.5;cursor:not-allowed}
 :where(html.bd-page) .clock{font:600 clamp(26px,2.4vw,40px)/1 var(--cond);font-variant-numeric:tabular-nums;min-width:3.2ch;text-align:right}
-/* the title bar's clock: CraftBeerPi's (The One Clock Rule). On a simulator a tag beside the time gives its date, where
-   it isn't the screen's own, and its speed, Progress Blue on Progress Track Navy: the brew's time, not the room's. It
-   sits in the time's row, so the bar keeps its height; on a phone, under the time */
-:where(html.bd-page) .clock[data-sim]{display:flex;align-items:center;justify-content:flex-end;gap:10px}
-:where(html.bd-page) .clock .cd{order:-1;display:inline-block;padding:4px 7px 3px;border:1px solid #3c7fcc;border-radius:4px;background:#0d2b48;font:600 15px/1 var(--cond);letter-spacing:.08em;color:#9bcbff;white-space:nowrap}
+/* the title bar's clock: CraftBeerPi's (The One Clock Rule). Left of the time, one over the other: CraftBeerPi's date,
+   where it isn't the screen's own, as a quiet line in Soft Steel capitals with no box, so nothing about it looks
+   pressable; and on a simulator SPEED, a button in the title bar's button look (ALL OFF's steel edge, at 1px), which
+   opens the chooser below (.spdbox). The date at 16px and SPEED 34px tall make 52px, so on a simulator the bar is 4px
+   taller than ALL OFF's 48px makes it. On a phone, under the time */
 :where(html.bd-page) .clock .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 @media (min-width:1180px){
 :where(html.bd-page) .alloff,:where(html.bd-page) .clock{flex:none}
 }
+/* the chooser's place: under the title bar at its right; the bar is its anchor only while it is open, so nothing else
+   in the bar is painted differently */
+:where(html.bd-page) .topbar:has(>.spdbox:not([hidden])){position:relative}
+:where(html.bd-page) .clock[data-sim=spd]{display:flex;align-items:center;justify-content:flex-end;gap:12px}
+:where(html.bd-page) .clock[data-sim=spd] .cs{order:-1;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:2px}
+:where(html.bd-page) .clock .cdl{font:600 16px/1 var(--cond);letter-spacing:.08em;color:var(--text-2);white-space:nowrap}
+:where(html.bd-page) .clock .spd{display:inline-flex;align-items:center;min-height:34px;padding:0 10px;border:1px solid #7d8fa2;border-radius:var(--r);background:var(--panel-2);color:var(--text);font:700 16px/1 var(--cond);letter-spacing:.06em;white-space:nowrap}
+:where(html.bd-page) .clock .spd .lb{display:inline-flex;align-items:center;gap:6px}
+:where(html.bd-page) .clock .spd .chev{width:12px;height:12px;fill:none;stroke:var(--text-2);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+:where(html.bd-page) .clock .spd:not([aria-disabled=true]):hover{background:#253545}
+:where(html.bd-page) .clock .spd[aria-expanded=true]{background:#070c11;box-shadow:inset 0 0 0 2px #a9bfd4}
+:where(html.bd-page) .clock .spd[aria-disabled=true]{color:var(--text-3);cursor:not-allowed}
+:where(html.bd-page) .spdbox{position:absolute;right:var(--pad);top:calc(100% + 10px);z-index:45;display:flex;flex-direction:column;gap:12px;width:min(360px,calc(100% - 2 * var(--pad)));padding:14px 12px 12px;border:2px solid var(--select);border-radius:var(--r);background:var(--panel);box-shadow:0 18px 40px rgb(0 0 0/.5);font:400 16px/1.35 var(--sans);color:var(--text)}
+:where(html.bd-page) .spdbox[hidden]{display:none}
+:where(html.bd-page) .spdbox .spdt{align-self:flex-start;margin:-26px 0 -2px -4px;padding:0 6px;background:var(--panel);font:700 17px/1.2 var(--cond);letter-spacing:.06em}
+:where(html.bd-page) .spdbox .seg{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
+:where(html.bd-page) .spdbox .seg button{min-height:48px;font:700 19px/1 var(--cond);letter-spacing:.04em}
+:where(html.bd-page) .spdbox .spdsay{margin:0;color:var(--text-2)}
+:where(html.bd-page) .spdbox .spdact{display:flex;justify-content:flex-end}
+:where(html.bd-page) .spdbox .spdact .cmdbtn{min-height:48px;min-width:120px;padding:0 16px;font:700 17px/1 var(--cond)}
 :where(html.bd-page) .status{display:grid;grid-template-columns:minmax(280px,34%) minmax(0,1fr);gap:var(--gap);padding:10px var(--pad) 0}
 :where(html.bd-page) .banner,:where(html.bd-page) .event{display:flex;align-items:center;gap:12px;min-height:58px;padding:8px 10px 8px 14px;border-radius:var(--r);background:var(--panel);border:1px solid var(--line)}
 :where(html.bd-page) .banner{font:600 18px/1.2 var(--cond);letter-spacing:.03em}
@@ -859,9 +879,12 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .app{padding-bottom:calc(var(--tabs-h) + env(safe-area-inset-bottom))}
 :where(html.bd-page) .topbar{gap:10px;padding:8px var(--pad)}
 :where(html.bd-page) .clock{font-size:24px;min-width:0}
-:where(html.bd-page) .clock[data-sim]{flex-direction:column;align-items:flex-end;gap:2px}
-:where(html.bd-page) .clock .cd{order:0;padding:2px 5px 1px;font-size:12px;letter-spacing:.05em}
-:where(html.bd-page) .clock .cd .lg{display:none}
+:where(html.bd-page) .clock[data-sim=spd]{flex-direction:column;align-items:flex-end;gap:3px}
+:where(html.bd-page) .clock[data-sim=spd] .cs{order:0;gap:3px}
+:where(html.bd-page) .clock .cdl{font-size:13px;letter-spacing:.05em}
+:where(html.bd-page) .clock .spd{min-height:44px;padding:0 10px}
+:where(html.bd-page) .clock .spd .lg{display:none}
+:where(html.bd-page) .spdbox{right:var(--pad);width:min(360px,calc(100% - 2 * var(--pad)))}
 :where(html.bd-page) #link-t{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 :where(html.bd-page) .link{font-size:15px}
 :where(html.bd-page) .alloff{flex:0 1 auto;max-width:108px;min-height:46px;padding:4px 10px;font-size:16px;line-height:1.05}
@@ -971,18 +994,21 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
    - the frame: the title bar, the last event and the tabs along the top, and the timers beside the drawing, on the title
      bar's ground: what calls for the brewer, what just happened, and his own countdowns. The tabs' gap in layout B goes
      into the band under the last event, so on one screen nothing moves;
-   - the recipe, the plan: a faintly cool ground with a 4 px Selection Blue edge, the colour of the current step;
+   - the recipe, the plan: a faintly cool ground, halfway between the panel's slate and a blue, with a 3 px darker blue
+     edge, so it reads as the plan without standing out as much as the current step's own blue;
    - the vessels: the faceplates as they are, now the brightest panels;
    - the drawing: the plumbing as a picture, on a darker ground with no edge, set back by a soft inner shadow, as the
      readings' windows are set into their faceplates.
    A run-out timer keeps its Dark Amber Wash, and + TIMER and SOUND over the drawing's corner, with no timers, stay on
    the drawing with no ground of their own. Amber, red and green keep their meanings; nothing here uses them */
-:where(html.bd-page){--cue-band:#0a1016;--cue-evt:#111a23;--cue-evt-line:#1e2b38;--cue-plan:#13243b;--cue-plan-line:#25425f;--cue-plan-edge:#3373b8;--cue-pic:#0a1117}
+/* the recipe column's blue is these four values: its ground (Plan Slate), its line (Plan Line), and its left edge's colour
+   (Plan Edge) and width */
+:where(html.bd-page){--cue-band:#0a1016;--cue-evt:#111a23;--cue-evt-line:#1e2b38;--cue-plan:#152233;--cue-plan-line:#233a51;--cue-plan-edge:#2b5f97;--cue-plan-w:3px;--cue-pic:#0a1117}
 :where(html.bd-page) .status{background:var(--cue-band);padding-bottom:10px}
 :where(html.bd-page) .event{background:var(--cue-evt);border-color:var(--cue-evt-line)}
 :where(html.bd-page)[data-layout=b] .tabs{margin-top:0}
 :where(html.bd-page) .tabs{background:var(--cue-band)}
-:where(html.bd-page) .recipe{background:var(--cue-plan);border-color:var(--cue-plan-line);box-shadow:inset 4px 0 0 var(--cue-plan-edge)}
+:where(html.bd-page) .recipe{background:var(--cue-plan);border-color:var(--cue-plan-line);box-shadow:inset var(--cue-plan-w) 0 0 var(--cue-plan-edge)}
 :where(html.bd-page) .rig{background:var(--cue-pic);border-color:transparent;box-shadow:inset 0 2px 10px rgb(0 0 0/.55)}
 :where(html.bd-page) .rig-line .v-shell{fill:#141f29}
 :where(html.bd-page) .tside:not(.empty){background:var(--cue-band);border-color:#223140}

@@ -58,7 +58,9 @@ export const CBPiProvider = ({ children }) => {
   // The strike water helper's state (GET /step2/strike and the topic "strike"), plus when this page heard it: the newer
   // of the two by CraftBeerPi's brewing clock. null from a CraftBeerPi without the helper (404): the screen shows no box.
   const [strike, setStrike] = useState(null);
-
+  // CraftBeerPi's clock set back to the computer's time (a simulator's change of speed, core 4.7.7.post63): the topic
+  // "clock", {now, scale, was, moved}, plus when this page heard it. null until it comes.
+  const [clock, setClock] = useState(null);
   const onMessage = useCallback((data) => {
     //console.log("WS", data);
     switch (data.topic) {
@@ -150,6 +152,9 @@ export const CBPiProvider = ({ children }) => {
       case "strike":
           setStrike((cur) => newerStrike(cur, data.data));
           break;
+      case "clock":
+          setClock(data.data && typeof data.data === "object" ? { ...data.data, received: Date.now() } : null);
+          break;
       default:
         break;
     }
@@ -240,7 +245,7 @@ export const CBPiProvider = ({ children }) => {
 
   const value = {
     state: { sensors, version, guiversion, codename, commit, actors, logic, kettle, fermenter, fermenterlogic, auth, plugins, temp, sensorData, sensorDataType, sensorInRange, spindledata,
-             actorTypes, sensorTypes, config, mashProfile, fermentersteps, FermenterProfile, mashBasic, stepTypes, stepTypesFermenter, connection, allnotifications, bf_recipes, system, resttimer, timers, strike },
+             actorTypes, sensorTypes, config, mashProfile, fermentersteps, FermenterProfile, mashBasic, stepTypes, stepTypesFermenter, connection, allnotifications, bf_recipes, system, resttimer, timers, strike, clock },
     actions: {
       delete_kettle,
       add_kettle,

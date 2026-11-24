@@ -164,6 +164,7 @@ function skeleton(demo, page) {
     <p class="link" id="link" data-link="ok"><i aria-hidden="true"></i><span id="link-t">Connected</span></p>
     <button class="alloff" id="alloff" data-cmd="alloff" type="button">ALL OFF</button>
     <p class="clock" id="clock">14:32</p>
+    <section class="spdbox" id="spd-box" role="dialog" aria-labelledby="spd-t" hidden></section>
   </header>
 
   <section class="status" aria-label="Alarms and the last event">
@@ -253,6 +254,8 @@ const GSPAN_KEY = "cbpi.brewday.graphspan";
 let TIGHT = false, STACKED = false;
 // the name in the title bar now (LONG_NAME): set again only when the setting changes; null as the screen opens
 let brewery = null;
+/* retick: the demo's tick started again at a new speed (createBrewDay). clockSeen: the topic "clock" as last seen */
+let retick = () => {}, clockSeen = null;
 const answered = new Set(), own = {};
 const $ = s => root.querySelector(s);
 function setBrewery(raw) {
@@ -432,24 +435,182 @@ function clockNow() {
   const d = new Date(e * 1000), ymd = ymdOf(d);
   return {t: daySeconds(d), day: {w: d.getDay(), d: d.getDate(), m: d.getMonth()}, ymd, other: ymd !== ymdOf(new Date()), scale: bclk.scale};
 }
-/* the clock with what the title bar adds to the time, or null for the time alone: on the rig, and on a simulator at 1×
-   on the screen's own date */
+/* the clock with what the title bar adds to the time, or null for the time alone: a clock on another date than the
+   screen's, or at another speed than 1×. LOG's lines say their date only then (logDate) */
 function clockTag() {
   const c = clockNow();
   return c && (c.other || c.scale !== 1) ? c : null;
 }
+/* a simulator: a CraftBeerPi running the cbpi4-simvessel plugin, with its SIM_TIME_SCALE in the settings (st.simCfg).
+   The setting alone isn't enough: the rig's saved settings can keep it from when it ran the simulator plugin. Whether
+   the plugin runs is asked once a page has loaded, as it first connects, and again when the connection comes back, as a
+   plugin comes or goes with a restart (GET /plugin/list). Until it says so, and where it fails, is slow or doesn't list
+   the plugin, there is no SPEED. simv: null until it has answered. The demo's simulator is a moment's st.sim */
+let simv = null, simvBusy = false;
+const SIMVESSEL = /^cbpi4[-_]simvessel$/i;
+const isSim = () => DEMO_MODE ? !!(st && st.sim) : simv === true && !!st.simCfg;
+function simvAsk() {
+  if (DEMO_MODE || simvBusy) return;
+  const g = gen;
+  simvBusy = true;
+  api.plugins().then(res => {
+    simvBusy = false;
+    if (!res.ok || !Array.isArray(res.data)) return;
+    const on = res.data.some(p => p && SIMVESSEL.test(String(p.Name || "").trim()));
+    if (on === simv) return;
+    simv = on;
+    if (g === gen && root && st) renderAll();
+  });
+}
+/* SPEED's chooser: SIM_TIME_SCALE's usual speeds, with the one the clock runs at where that is another */
+const SPEEDS = [1, 10, 30, 60];
+const spdList = n => SPEEDS.includes(n) ? SPEEDS : [...SPEEDS, n].sort((x, y) => x - y);
+/* this computer's date and time now, in the core's words for a moment on its clock (clock_controller.clock_time), "Sun
+   22 Nov 9:02 PM", its time of day by CLOCK_FORMAT (st.clock12): where a new speed starts CraftBeerPi's clock again
+   (cbpi.api.clock.reset, core post63). The demo's is its moment's: sim.pc, at sim.pcT or 21:02:40 */
+const spdPcT = () => st.sim.pcT != null ? st.sim.pcT : 21 * 3600 + 2 * 60 + 40;
+function spdPc() {
+  const day = (w, d, m) => `${tcase(DOW[w])} ${d} ${tcase(MON3[m])}`;
+  if (DEMO_MODE) { const d = new Date(st.sim.pc + "T00:00:00Z"); return `${day(d.getUTCDay(), d.getUTCDate(), d.getUTCMonth())} ${hhmm(spdPcT())}`; }
+  const d = new Date(), h = d.getHours(), mm = pad(d.getMinutes());
+  return `${day(d.getDay(), d.getDate(), d.getMonth())} ${st.clock12 ? `${h % 12 || 12}:${mm}\u00a0${h < 12 ? "AM" : "PM"}` : `${pad(h)}:${mm}`}`;
+}
+const spdSay = () => `A new speed starts CraftBeerPi's clock again from this computer's time, ${spdPc()}.`;
+const CHEV = '<svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg>';
+/* the title bar's clock. The time alone where CraftBeerPi's clock is on the screen's date at 1× and it isn't a
+   simulator, the rig included. Otherwise, left of the time and one over the other: CraftBeerPi's date where it isn't the
+   screen's, on a quiet line with no box, so nothing about it looks pressable; and on a simulator SPEED, a button that
+   opens the chooser (spdDraw), there at 1× on the screen's date too, so the speed can always be changed. A clock at
+   another speed on a CraftBeerPi that isn't a simulator has its speed on the date line. On a phone both go under the
+   time. Drawn again only where they change, keeping the focus in them, as the time changes every second */
 function clockSet() {
   const el = $("#clock");
   if (!el) return;
-  const c = clockNow(), g = c && (c.other || c.scale !== 1) ? c : null;
-  if (!g) { el.removeAttribute("data-sim"); const s = c ? hhmm(c.t) : NO_TIME; if (el.childElementCount || el.textContent !== s) el.textContent = s; return; }
-  const {day, other, scale} = g;
-  /* the weekday and SPEED give way on a phone (.lg), so the brewery's name keeps its room */
-  const line = [other ? `<span class="lg">${DOW[day.w]} </span>${day.d} ${MON3[day.m]}` : "", scale !== 1 ? `${scale}×<span class="lg"> SPEED</span>` : ""].filter(Boolean).join(" · ");
-  const said = `CraftBeerPi's clock${other ? `, ${DOW_SAY[day.w]} ${day.d} ${MON_SAY[day.m]}` : ""}${scale !== 1 ? `, running ${scale} times as fast` : ""}`;
-  const html = `<span class="ct">${hhmm(g.t)}</span><span class="cd" aria-hidden="true">${line}</span><span class="sr">${said}</span>`;
-  if (el.innerHTML !== html) el.innerHTML = html;
-  el.setAttribute("data-sim", "");
+  const c = clockNow(), sim = !!c && isSim();
+  if (!c || !(sim || c.other || c.scale !== 1)) {
+    const s = c ? hhmm(c.t) : NO_TIME;
+    if (el.dataset.sim) { el.removeAttribute("data-sim"); el._ct = el._cs = null; }
+    if (el.childElementCount || el.textContent !== s) el.textContent = s;
+    return;
+  }
+  const {day, other, scale: n} = c, fast = n === 1 ? "" : `, running ${n} times as fast`;
+  const words = [other ? `${DOW[day.w]} ${day.d} ${MON3[day.m]}` : "", !sim && n !== 1 ? `${n}× SPEED` : ""].filter(Boolean).join(" · ");
+  const said = `CraftBeerPi's clock${other ? `, ${DOW_SAY[day.w]} ${day.d} ${MON_SAY[day.m]}` : ""}${sim ? "" : fast}`;
+  const date = words ? `<span class="cdl" aria-hidden="true">${words}</span><span class="sr">${said}</span>` : "";
+  const sp = sim ? b("spd", `${n}×<span class="lg"> SPEED</span>${CHEV}`, "", {cmd: "spd:open", expanded: !!st.spdOpen, controls: "spd-box",
+    label: `Simulator speed, ${n}×${fast}. Change it`, why: st.link === "lost" ? PAUSED : ""}).replace("<button ", '<button aria-haspopup="dialog" ') : "";
+  const ct = hhmm(c.t), cs = date + sp;
+  if (el.dataset.sim !== "spd") { el.innerHTML = '<span class="ct"></span><span class="cs"></span>'; el.dataset.sim = "spd"; el._ct = el._cs = null; }
+  if (el._ct !== ct) { el.querySelector(".ct").textContent = ct; el._ct = ct; }
+  if (el._cs !== cs) {
+    const w = el.querySelector(".cs"), a = document.activeElement, f = w.contains(a) ? a.dataset.cmd : null;
+    w.innerHTML = cs; el._cs = cs;
+    if (f) w.querySelector(`[data-cmd="${f}"]`)?.focus({preventScroll: true});
+  }
+}
+/* the chooser SPEED opens: SIMULATOR SPEED set into its top edge, the speeds in the pressed look's row, the one
+   CraftBeerPi runs at pressed, what a new one does to its clock, and CANCEL; under the title bar at its right */
+function spdDraw() {
+  const box = root && $("#spd-box");
+  if (!box) return;
+  const c = st.spdOpen && isSim() ? clockNow() : null;
+  if (!c) { if (!box.hidden) { box.hidden = true; box.innerHTML = ""; box._h = null; } return; }
+  const n = c.scale, P = st.spdPend, why = st.link === "lost" ? PAUSED : P ? WAIT : "";
+  const html = '<h3 class="spdt" id="spd-t">SIMULATOR SPEED</h3>'
+    + `<div class="seg spdsel" role="group" aria-label="Speeds">${spdList(n).map(v => b("", `${v}×`, "", {cmd: `spd:set:${v}`, pressed: v === (P || n), why: v === P ? "" : why})).join("")}</div>`
+    + `<p class="spdsay">${P ? `Setting ${P}×: waiting for CraftBeerPi.` : esc(spdSay())}</p>`
+    + `<div class="spdact">${b("cmdbtn", "CANCEL", "", {cmd: "spd:x", why: P ? WAIT : ""})}</div>`;
+  if (box._h === html) return;
+  const a = document.activeElement, f = box.contains(a) ? a.dataset.cmd : null;
+  box.innerHTML = html; box._h = html; box.hidden = false;
+  if (f) box.querySelector(`[data-cmd="${f}"]`)?.focus({preventScroll: true});
+}
+const spdFocus = sel => setTimeout(() => { if (root && st) $(sel)?.focus({preventScroll: true}); }, 0);
+/* SPEED opens and closes the chooser, LOG's list closing (one at a time), focus on the speed pressed; CANCEL, Escape
+   and a press outside close it, focus back on SPEED. A speed pressed is saved as SIM_TIME_SCALE (spdSetLive), its button
+   pressed while it goes; once CraftBeerPi has set its clock back to this computer's time at that speed, the box closes
+   (clockReset). The speed it runs at already changes nothing, and closes the box */
+function spdCmd(x, y) {
+  if (!isSim()) return;
+  if (x === "open") { st.spdOpen = !st.spdOpen; if (st.spdOpen) st.logOpen = false; renderAll(); spdFocus(st.spdOpen ? '#spd-box [aria-pressed="true"]' : '#clock [data-cmd="spd:open"]'); return; }
+  if (x === "x") return spdClose();
+  const c = clockNow();
+  if (x !== "set" || !c || st.spdPend != null || st.link === "lost") return;
+  const v = +y;
+  if (!(v > 0)) return;
+  if (v === c.scale) return spdClose();
+  if (!DEMO_MODE) return spdSetLive(v);
+  /* the demo: CraftBeerPi's answer a moment later. Its clock starts again from the moment's computer time on the
+     computer's date; LOG's earlier lines keep the dates they were logged on, and the graphs start again from now, as the
+     core archives the sensor logs written ahead of the clock */
+  st.spdPend = v; renderAll();
+  timers.push(setTimeout(() => {
+    if (!st || !st.sim) return;
+    const was = st.sim.scale;
+    st.events.forEach(e => { if (!e[8]) e[8] = st.sim.day0; });
+    st.spdPend = null;
+    st.sim = Object.assign({}, st.sim, {scale: v, day0: st.sim.pc});
+    st.t = spdPcT();
+    if (st.hist) { ["hlt", "mt", "bk"].forEach(k => { const r = st.hist.v[k], l = r[r.length - 1]; st.hist.v[k] = l ? [[st.t - 10, ...l.slice(1)], [st.t, ...l.slice(1)]] : []; }); st.hist.start = st.t - 10; st.hist.steps = []; }
+    const said = `CraftBeerPi's clock is back to this computer's time, ${spdPc()}, now running ${v}× (was ${was}×).`;
+    logEvent(`Clock: ${said}`, "from CraftBeerPi", "");
+    say(said);
+    spdDone();
+    retick();
+  }, 700));
+}
+function spdClose() {
+  if (st.spdPend != null || !st.spdOpen) return;
+  st.spdOpen = false; renderAll();
+  spdFocus('#clock [data-cmd="spd:open"]');
+}
+/* the speed set: the box closes, and focus goes back to SPEED where it was in the box */
+function spdDone() {
+  const was = st.spdOpen;
+  st.spdOpen = false; renderAll();
+  if (was) spdFocus('#clock [data-cmd="spd:open"]');
+}
+/* a speed pressed, live: saved as SIM_TIME_SCALE as the Settings page saves it. cbpi4-simvessel then has CraftBeerPi
+   set its clock back to this computer's time at the new speed, which tells every screen (the topic "clock",
+   clockReset) and says so in a notice LOG shows as any other. No answer in 5 s, or a refusal: as any command, LOG says
+   it failed, and the box stays. A CraftBeerPi that saves the speed without setting its clock back tells no screen: after
+   SPD_WAIT_MS the clock is asked for again and the box closes, LOG saying the speed was set */
+const SPD_WAIT_MS = 5000;
+let spdWaitT = 0;
+async function spdSetLive(v) {
+  const g = gen;
+  st.spdPend = v; renderAll();
+  const res = await api.setting("SIM_TIME_SCALE", v);
+  if (g !== gen || !st || st.spdPend !== v) return;
+  if (!res.ok) {
+    const w = failWhy(res);
+    st.spdPend = null;
+    logEvent(`Simulator speed ${v}×`, "failed: " + w, "bad");
+    say(`Simulator speed ${v}×: failed, ${w}.`, true);
+    renderAll();
+    return;
+  }
+  clearTimeout(spdWaitT);
+  spdWaitT = setTimeout(() => {
+    if (g !== gen || !st || st.spdPend !== v) return;
+    st.spdPend = null;
+    logEvent(`Simulator speed ${v}×`, "confirmed", "ok");
+    say(`Simulator speed ${v}×: confirmed`);
+    syncBrewClock(true);
+    spdDone();
+  }, SPD_WAIT_MS);
+  timers.push(spdWaitT);
+}
+/* CraftBeerPi's clock set back to the computer's time (the topic "clock"): where it is and how fast it runs from now
+   on, and a speed pressed here is done */
+function clockReset(c) {
+  const now = num(c.now), sc = num(c.scale);
+  if (now > 0) {
+    const first = !bclk;
+    bclk = {srv: now, at: c.received || Date.now(), scale: sc > 0 ? sc : 1}; bclkAt = Date.now();
+    if (first) clockKnown();
+  }
+  if (st.spdPend != null) { clearTimeout(spdWaitT); st.spdPend = null; spdDone(); } else renderAll();
 }
 /* while the title bar adds a date or a speed, a LOG line from another of CraftBeerPi's days says its date, as
    "26 Nov 23:58:40" (e[8]: CraftBeerPi's date as the line was logged). A line kept from a build before has none, and
@@ -2883,7 +3044,7 @@ function renderAll() {
   $("#link").dataset.link = hello ? "connecting" : st.link;
   setText($("#link-t"), hello ? "Connecting…" : lost ? "No connection" : "Connected");
   if (!DEMO_MODE) { const c = clockNow(); st.t = c ? c.t : null; }
-  clockSet();
+  clockSet(); spdDraw();
   const ho = $("#alloff");
   setText(ho, st.pend.alloff ? "SWITCHING OFF…" : "ALL OFF");
   if (lost || st.pend.alloff) { ho.setAttribute("aria-disabled", "true"); ho.dataset.why = lost ? PAUSED : WAIT; } else { ho.removeAttribute("aria-disabled"); delete ho.dataset.why; }
@@ -5164,7 +5325,8 @@ function run(cmd) {
     case "bs": return bsCmd(x, y);
     case "e": case "w": return liveOk(k, x);
     case "alloff": return DEMO_MODE ? cmdAllOff() : liveAllOff();
-    case "log": st.logOpen = !st.logOpen; if (st.logOpen) phLogOpened(); return renderAll();
+    case "log": st.logOpen = !st.logOpen; if (st.logOpen) { phLogOpened(); st.spdOpen = false; } return renderAll();
+    case "spd": return spdCmd(x, y);
     case "ph": return phCmd(cmd);
     case "tm": return DEMO_MODE ? cmdTimer(x) : liveTimer(x);
     case "te": return cmdTe(x, y);
@@ -5186,7 +5348,7 @@ function blankMoment() {
   return {t: null, link: "lost", age: null, banner: null, v, a, recipe: null, timer: {left: 3600, running: false},
     tmrs: [], names: [], tedit: null, snd: soundInit(),
     events: loadEvents(), pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, logOpen: false, rbOpen: false,
-    sw: null, swOpen: false, swVol: null, swGrain: null, bsOpen: false, bs: null,
+    sw: null, swOpen: false, swVol: null, swGrain: null, bsOpen: false, bs: null, simCfg: false, clock12: false, spdOpen: false, spdPend: null,
     fail: {}, expect: {}, alarm: null, errors: [], warnings: [], prompts: [], lostAt: null, openedAt: Date.now(),
     waitN: 0, oldAt: 0, seenN: 0, seenDone: new Set()};
 }
@@ -5276,6 +5438,10 @@ function applyLive(snap) {
   // the name: until the settings arrive, the title bar keeps the one it opened with
   const bn = cfg(snap.config, "BREWERY_NAME");
   if (bn !== undefined) setBrewery(bn);
+  /* a simulator's setting, SIM_TIME_SCALE (isSim), and how times of day are written (CLOCK_FORMAT: 12-hour only when it
+     is exactly "12-hour"), for the speed chooser's sentence */
+  st.simCfg = cfg(snap.config, "SIM_TIME_SCALE") != null;
+  st.clock12 = cfg(snap.config, "CLOCK_FORMAT") === "12-hour";
   if (st.tedit && st.tedit.id != null) {
     const t = tById(st.tedit.id);
     if (!t || (t.state === "done" && was && was.state !== "done")) st.tedit = null;
@@ -5532,8 +5698,9 @@ function observe(prev, snap) {
     syncBrewClock(true);
     logEvent("Connection to CraftBeerPi back", "", "");
     if (!PAGE && !st.recipe) loadBook();
-    // a plugin comes or goes with a restart: ask again whether BrewScribe is there
+    // a plugin comes or goes with a restart: ask again whether BrewScribe is there, and the simulator
     probeBrewScribe();
+    simvAsk();
   }
   /* What came in this update is logged in the order it happened,
      so the event line ends on what it led to: the question that waits, or that the hoses can be moved. First the questions
@@ -5855,12 +6022,15 @@ const handlers = {
     /* the pH box: Escape closes it while focus is in it or on its reminder; from elsewhere, once nothing else open is left
        to close first (below) */
     if (e.key === "Escape" && st.ph && st.ph.open && e.target.closest && e.target.closest("#ph-box, #banner")) { phClose(); return; }
+    /* the speed chooser: Escape closes it while focus is in it or on SPEED, before anything else open */
+    if (e.key === "Escape" && st.spdOpen && e.target.closest && e.target.closest("#spd-box, #clock")) { spdClose(); return; }
     /* a timer's editor: with the timers in the column on one screen, a box open in the column has them make way, the editor
        with them, so Escape is for the box. Beside the drawing the editor is in a box of its own and closes first, unless
        focus is in a box open in the recipe column, which then closes first: Escape closes the box being worked in */
     const inColBox = !!(e.target.closest && e.target.closest("#recipe")) && !!(st.bsOpen || st.pbOpen || st.cmpOpen || st.swOpen || st.rbOpen || st.confirmLoad != null);
     if (e.key === "Escape" && st.tedit && (tHere() !== "col" ? !inColBox : !(ONE_SCREEN.matches && (st.pbOpen || st.cmpOpen || st.swOpen || st.rbOpen || st.bsOpen)))) { st.tedit = null; renderAll(); return; }
     if (e.key === "Escape" && st.bsOpen) { bsClose(); return; }
+    if (e.key === "Escape" && st.spdOpen) { spdClose(); return; }
     if (e.key === "Escape" && st.confirmLoad != null) { st.confirmLoad = null; renderAll(); return; }
     // OTHER RECIPE's book
     if (e.key === "Escape" && st.rbOpen) { st.rbOpen = false; renderAll(); return; }
@@ -5940,7 +6110,11 @@ const handlers = {
     const held = afterHold;
     afterHold = null;
     if (held && el === held) return;
-    if (!el) { if (st.logOpen && !e.target.closest(".log")) { st.logOpen = false; renderAll(); } return; }
+    if (!el) {
+      if (st.logOpen && !e.target.closest(".log")) { st.logOpen = false; renderAll(); }
+      if (st.spdOpen && !e.target.closest("#spd-box")) spdClose();
+      return;
+    }
     if (el.hasAttribute("data-hold")) return;
     if (el.getAttribute("aria-disabled") === "true") { explain(el); return; }
     const cmd = el.dataset.cmd;
@@ -6061,6 +6235,8 @@ function liveTick() {
   const c = clockNow();
   st.t = c ? c.t : null;
   clockSet();
+  // the chooser's sentence names this computer's time now
+  if (st.spdOpen) spdDraw();
   if (st.bsOpen) bsPatch(true);
   // where CraftBeerPi's clock is: once a minute while connected, and every 5 s until it first says
   if (st.link !== "lost") syncBrewClock();
@@ -6108,7 +6284,7 @@ export function createBrewDay(el, o = {}) {
   if (!DEMO_MODE) { try { window.name = "craftbeerpi"; } catch (_) { /* a sandboxed frame: no name */ } }
   timers = []; noteTimers = {}; hold = null; afterHold = null; heldOn = null; pbKeep = null; rigW = 0; tcornerKeep = null; last = null; everConnected = false; book = []; bookBusy = false; bookAgain = false; bookShown = false;
   bookNames = null; bookFor = null;
-  tAns = null; tMsg = null; lastBannerKey = null; rangAt = 0; newIds = new Set(); openIds = null; sAns = null; swFailedAt = null; swFcGap = null; bsOff = null;
+  tAns = null; tMsg = null; lastBannerKey = null; rangAt = 0; newIds = new Set(); openIds = null; sAns = null; swFailedAt = null; swFcGap = null; bsOff = null; clockSeen = null;
   answered.clear(); Object.keys(own).forEach(k => delete own[k]);
   const html = document.documentElement;
   // The stylesheets go in once and stay: every rule is scoped to html.bd-page, so they rest while it is off.
@@ -6170,7 +6346,7 @@ export function createBrewDay(el, o = {}) {
     // a moment can open an editor (open) and borrow another moment's graph history (base)
     const open = st.open, base = st.base || key;
     delete st.open; delete st.base;
-    Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, logOpen: false, pbOpen: false, cmpOpen: false, rbOpen: false, swOpen: false, swVol: null, swGrain: null, bsOpen: false, bs: null}, open);
+    Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, logOpen: false, pbOpen: false, cmpOpen: false, rbOpen: false, swOpen: false, swVol: null, swGrain: null, bsOpen: false, bs: null, spdOpen: false, spdPend: null}, open);
     /* BrewScribe as the moment has it, and Brew Day's copy of its answer (phLoad) */
     phLoad();
     /* the strike water box: CraftBeerPi's answer for the moment's numbers, worked out already, unless the moment has it
@@ -6241,11 +6417,14 @@ export function createBrewDay(el, o = {}) {
   // the Settings page's demo stands still, as its mockup's title bar does
   const tock = () => gen === myGen && st && !(DEMO_MODE && PAGE);
   /* a tick a second; a simulator's moment (st.sim) runs the demo's clock, and everything on it, SIM_TIME_SCALE times as
-     fast: every 50 ms the seconds due by the real time since it began, so the page keeps up at any size */
-  const sc = DEMO_MODE && st.sim ? st.sim.scale : 1;
-  let ticker;
-  if (sc === 1) ticker = setInterval(() => { if (tock()) (DEMO_MODE ? demoTick : liveTick)(); }, 1000);
-  else {
+     fast: every 50 ms the seconds due by the real time since it began, so the page keeps up at any size. Started again
+     at a new speed (retick: a speed chosen in the demo) */
+  let ticker = 0, tickSc = 0;
+  const startTick = () => {
+    const sc = DEMO_MODE && st && st.sim ? st.sim.scale : 1;
+    if (ticker && sc === tickSc) return;
+    clearInterval(ticker); tickSc = sc;
+    if (sc === 1) { ticker = setInterval(() => { if (tock()) (DEMO_MODE ? demoTick : liveTick)(); }, 1000); return; }
     const t0 = performance.now();
     let done = 0;
     ticker = setInterval(() => {
@@ -6254,7 +6433,9 @@ export function createBrewDay(el, o = {}) {
       for (let i = 0; i < n && tock(); i++) demoTick();
       done = Math.max(done + n, due - sc);
     }, 50);
-  }
+  };
+  startTick();
+  retick = () => { if (gen === myGen) startTick(); };
   const ro = PAGE ? null : new ResizeObserver(drawRig);
   if (ro) ro.observe($("#rig"));
   /* the pH box follows its reminder as the title bar changes size, and Brew Day asks BrewScribe again on its own time
@@ -6326,7 +6507,7 @@ export function createBrewDay(el, o = {}) {
     delete html.dataset.timers;
     if (actx) { try { actx.close().catch(() => {}); } catch (e) { /* already closed */ } }
     actx = null;
-    H = null; bclk = null; bclkAt = 0; bclkBusy = false;
+    H = null; bclk = null; bclkAt = 0; bclkBusy = false; retick = () => {};
     if (root) root.innerHTML = "";
     root = null; st = null; gen++;
     teardown = () => {};
@@ -6350,7 +6531,11 @@ export function createBrewDay(el, o = {}) {
         if (!st.events.length || st.events[0][1] === LOST) logEvent("Connected to CraftBeerPi", "", "");
         if (!PAGE && !st.recipe) loadBook();
         probeBrewScribe();
+        if (simv == null) simvAsk();
       }
+      /* CraftBeerPi's clock set back to the computer's time. One heard before this screen opened is old news: the
+         screen asks where the clock is as it opens */
+      if (snap.clock !== clockSeen) { const heard = prev != null && !!snap.clock; clockSeen = snap.clock; if (heard) clockReset(snap.clock); }
       /* the questions CraftBeerPi was waiting on as this page first connected: it sends them again then, and they haven't
          just arrived (observe). Taken before observe, as they can come in the same update as its list */
       if (openIds == null && snap.waiting && snap.waiting.n === 1) openIds = new Set(snap.waiting.ids() || []);

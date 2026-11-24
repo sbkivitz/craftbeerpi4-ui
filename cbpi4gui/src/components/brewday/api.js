@@ -122,4 +122,8 @@ export const api = {
   // (1.2.0.post10). Not run, 400 {error: "action not run", detail}, CraftBeerPi's sentence; the step may say why in a
   // notice of its own, titled with its name.
   stepAction: (stepId, action, parameter) => post(`/step2/action/${id(stepId)}`, { action, parameter }),
+  // A setting saved as the Settings page saves it: PUT /config/<name>/ {value}.
+  setting: (name, value) => call("PUT", `/config/${id(name)}/`, { value }),
+  // The plugins installed, each with its package's metadata ({Name, Version, ...}).
+  plugins: () => get("/plugin/list"),
 };

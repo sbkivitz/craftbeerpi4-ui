@@ -9,7 +9,8 @@ import { createBrewDay } from "./screen";
 // waiting: the prompts CraftBeerPi waits on (AlertProvider), with how many times it has sent the list. retired and
 // answer: why a prompt was taken down, and the button it was answered with when CraftBeerPi says. seen: the warnings
 // and errors OK'd on any page or in BrewScribe, with how many times that has changed. version and commit: CraftBeerPi's
-// release number and the commit of the checkout it runs from (GET /system/; "---" and null until it answers)
+// release number and the commit of the checkout it runs from (GET /system/; "---" and null until it answers). clock:
+// CraftBeerPi's clock as it was last set back to the computer's time (the topic "clock"), null until that happens
 export const liveSnap = (state, alerts, retired, waiting = null, answer = null, seen = null) => ({
   connected: !!state.connection,
   version: state.version,
@@ -26,6 +27,7 @@ export const liveSnap = (state, alerts, retired, waiting = null, answer = null, 
   timer: state.resttimer,
   timers: state.timers,
   strike: state.strike,
+  clock: state.clock,
   alerts,
   retired,
   answer,
