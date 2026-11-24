@@ -45,10 +45,12 @@ const readyBy = p => norm((p || {}).Timing) === "Ready by";
 const hm = t => { const m = /^\s*(\d{1,2}):(\d{2})/.exec(String(t ?? "")); return m ? `${m[1].padStart(2, "0")}:${m[2]}` : ""; };
 const todayAt = hm => Date.parse(`${D.TODAY}T${hm}:00`) / 1000;
 /* ---------- times of day: Brew Day's Twelve-Hour Rule ----------
-   Every time of day reads the way the brewer reads a clock, by CraftBeerPi's CLOCK_FORMAT setting: "12-hour", the
-   default, gives 7:00 AM and 11:15:40 PM; "24-hour" gives 07:00 and 23:15:40. A step keeps its time as 24-hour text
-   ("19:00") either way. Lengths of time aren't times of day and don't change: "in 9 h 48 min", "23:41 left" */
-const TWELVE = norm(QS.get("clock") || D.CONFIG.CLOCK_FORMAT) !== "24-hour";
+   Every time of day reads the way the brewer reads a clock, by CraftBeerPi's CLOCK_FORMAT setting: exactly "12-hour"
+   gives 7:00 AM and 11:15:40 PM; anything else gives 07:00 and 23:15:40. CraftBeerPi adds the setting as "12-hour", but
+   a CraftBeerPi from before the setting has none and writes its own times in 24-hour, so a missing or blank setting
+   means 24-hour here too. A step keeps its time as 24-hour text ("19:00") either way. Lengths of time aren't times of
+   day and don't change: "in 9 h 48 min", "23:41 left" */
+const TWELVE = norm(QS.has("clock") ? QS.get("clock") : D.CONFIG.CLOCK_FORMAT) === "12-hour";
 const NB = "\u00a0";
 // a time of day for the screen, "HH:MM" or "HH:MM:SS" in; AM or PM stays with its time (a no-break space)
 function timeOfDay(t, secs) {
@@ -904,12 +906,16 @@ function render() {
   $("#app").toggleAttribute("data-dirty", !bar.hidden);
   applyView();
   grow();
-  fitTool();
+  fitPinned();
 }
 // the tool row's height where it sticks to the top of the window (701 to 1179 px), else 0
 const stickTop = () => { const t = $("#tool"); return t && getComputedStyle(t).position === "sticky" ? t.offsetHeight : 0; };
-// the clock band and the time in words stay clear of it
-const fitTool = () => document.documentElement.style.setProperty("--tool-h", stickTop() + "px");
+/* what is pinned over the settings, for what is kept in view under it: the tool row where it sticks (--tool-h, which
+   the clock band sticks under too), and a BrewStart's clock band (--band-h, on its part) */
+function fitPinned() {
+  document.documentElement.style.setProperty("--tool-h", stickTop() + "px");
+  $$(".cbbar").forEach(b => b.parentElement.style.setProperty("--band-h", b.offsetHeight + "px"));
+}
 function applyView() {
   const m = $("#main");
   m.dataset.view = narrow() ? st.view : "split";
@@ -942,7 +948,7 @@ function paintEdit(k, label) {
   bar.hidden = !n;
   if (n) bar.innerHTML = `<p>${n} ${n === 1 ? "change" : "changes"} not saved</p>${saveBtns(n, st.page === "steps" ? "for this brew" : "in the book")}`;
   $("#app").toggleAttribute("data-dirty", !bar.hidden);
-  fitTool();
+  fitPinned();
 }
 
 /* ---------- moving about ---------- */
@@ -965,17 +971,33 @@ function spy() {
   if (cur) setCur(cur);
 }
 function land(el) { el.classList.remove("land"); void el.offsetWidth; el.classList.add("land"); setTimeout(() => el.classList.remove("land"), 1300); }
-/* the time in words is what shows a slip of twelve hours, so while BrewStart's time is being set it stays in view: the
-   page scrolls as little as it can, clear of the sticky tool row and of a phone's save bar and tabs (the sentence's
-   scroll margins). Called after a key or a tap, never as a box is left: a scroll between a finger going down and coming
-   up can put the tap on another control. A phone's on-screen keyboard covers the page without making it shorter, so the
+// the top of the part of the screen BrewStart's settings scroll in: the pane's from 1180 px; else under the tool row
+// where it sticks, or the window's
+const coverTop = () => wide() ? $("#pane").getBoundingClientRect().top : stickTop() ? $("#tool").getBoundingClientRect().bottom : 0;
+/* while BrewStart's time is set, its time box (with AM and PM) stays in view, and so does what is said under it: the
+   time in words, which shows a slip of twelve hours, or with no time yet what it needs. Where both don't fit, the box
+   wins. The page scrolls as little as it can, clear of the sticky tool row and the pinned clock above, and of a phone's
+   save bar and tabs below (their scroll margins in recipes.css), and doesn't leave When's heading cut in two. Called as
+   When opens and after a key or a tap, never as a box is left: a scroll between a finger going down and coming up can
+   put the tap on another control. A phone's on-screen keyboard covers the page without making it shorter, so the
    visual viewport is checked too */
 function keepWhenInView(k) {
-  const w = $(`#when-${k}`);
-  if (!w || !w.textContent.trim()) return;
-  w.scrollIntoView({block: "nearest"});
+  const box = $(`#i-${k}-StartTime`);
+  if (!box) return;
+  const ctl = box.closest(".tmf") || box, sc = wide() ? $("#pane") : document.scrollingElement, was = sc.scrollTop;
+  const said = [$(`#when-${k}`), $(`#need-${k}-StartTime`)].find(e => e && e.textContent.trim());
+  if (said) said.scrollIntoView({block: "nearest"});
+  ctl.scrollIntoView({block: "nearest"});
   const vv = window.visualViewport;
-  if (vv && !wide()) { const over = w.getBoundingClientRect().bottom + 12 - (vv.offsetTop + vv.height); if (over > 0) window.scrollBy(0, over); }
+  if (vv && !wide()) {
+    const over = (said || ctl).getBoundingClientRect().bottom + 12 - (vv.offsetTop + vv.height);
+    const room = ctl.getBoundingClientRect().top - vv.offsetTop - parseFloat(getComputedStyle(ctl).scrollMarginTop);
+    if (over > 0 && room > 0) sc.scrollTop += Math.min(over, room);
+  }
+  if (sc.scrollTop === was) return;
+  // When's heading goes out of view whole rather than cut in two; the box is well below it, so stays in view
+  const h = ctl.closest(".part").querySelector(":scope > h3"), top = coverTop(), r = h && h.getBoundingClientRect();
+  if (r && r.top < top - 1 && r.bottom > top + 1) sc.scrollTop += r.bottom - top;
 }
 /* a new BrewStart opens at its When settings with its time box ready: the time is the one thing only the brewer knows.
    The column (or, one thing at a time, the way back) still says where it went */
@@ -1369,7 +1391,7 @@ document.addEventListener("dragleave", e => { const d = e.target.closest && e.ta
 document.addEventListener("drop", e => { const d = e.target.closest && e.target.closest("#drop"); if (!d) return; e.preventDefault(); d.classList.remove("over"); $("[data-choose]").click(); });
 $("#pane").addEventListener("scroll", () => requestAnimationFrame(spy), {passive: true});
 addEventListener("scroll", () => requestAnimationFrame(spy), {passive: true});
-addEventListener("resize", () => { applyView(); grow(); fitTool(); });
+addEventListener("resize", () => { applyView(); grow(); fitPinned(); });
 
 /* ---------- moments (the strip at the top) ---------- */
 const V4 = "FtHtz5YsgsSFEikqEieXJb", V5 = "YhweWUoDCyYKB887DJ9EXd", V3 = "JimaSx8vJFQoZ2wjioiVRT", BS = "Sm2ziW9v2nxAMid7ft6PTr";
@@ -1410,19 +1432,22 @@ const SCENES = {
   "brewstart-add": () => { evening(); },
   "brewstart-added": () => { evening(); addedBrewStart(); },
   "brewstart-time": () => { evening(); addedBrewStart().props.StartTime = "07:00"; },
-  // the try-out simulator at 30×: CraftBeerPi's clock reads Mon 23 Nov, 1:16 PM while the screen's reads Sun 22 Nov, 11:20 PM
-  "brewstart-sim": () => { evening(false, {clock: "13:16", at: "13:02", sim: {scale: 30, day: "2026-11-23", pc: "23:20"}}); addedBrewStart().props.StartTime = "07:00"; },
+  // the try-out simulator at 30×: CraftBeerPi's clock reads Mon 23 Nov, 1:16 PM while the screen's reads Sun 22 Nov, 11:20 PM.
+  // + BrewStart just tapped, with no time yet; then its time set
+  "brewstart-sim-added": () => { evening(false, SIM30); addedBrewStart(); },
+  "brewstart-sim": () => { evening(false, SIM30); addedBrewStart().props.StartTime = "07:00"; },
   move: () => { evening(true); const ed = st.bs, s = ed.doc.steps[ed.doc.steps.length - 1]; ed.mv = s._k; ed.cur = s._k; st.after = () => inColumn(s._k); },
   moved: () => { evening(true); const ed = st.bs, s = ed.doc.steps[ed.doc.steps.length - 1]; moveTo(ed, s, 0); s._moved = true; ed.cur = s._k; st.after = () => inColumn(s._k); },
   offline: () => { loadFrom(V5); st.open = V4; st.link = "lost"; }
 };
+const SIM30 = {clock: "13:16", at: "13:02", sim: {scale: 30, day: "2026-11-23", pc: "23:20"}};
 // a monitor opens the step's settings beside the column; one thing at a time, the steps stay in view, as after a move
 const inColumn = k => { if (!narrow()) return jump(k); const c = $(`#c-${k}`); if (c) c.scrollIntoView({block: "center"}); };
 /* the night before: v5 loaded on Brew Day, not begun, on the Brew Steps page. withLast adds a saved BrewStart as the last
    step, where + on today's Brew Steps page puts every new step: the case MOVE is for. o.sim puts it on a simulator whose
    clock (o.clock, o.at) isn't the screen's */
 function evening(withLast, o = {}) {
-  st.sim = o.sim || null;
+  st.sim = o.sim ? {...o.sim} : null;   // a copy: its clock counts on, and may pass midnight
   loadFrom(V5); st.loaded.at = o.at || "20:31"; st.page = "steps"; st.view = "recipe";
   at(o.clock || "20:40", [[`${o.at || "20:31"}:12`, "Craftbeerpi Test Recipe v5 loaded", "confirmed", "ok"]]);
   if (withLast) st.loaded.steps.push({name: "BrewStart", type: "BrewStart", status: "I", props: {Timing: "Ready by", Mode: "Tomorrow", StartDate: "", StartTime: "07:00",
@@ -1450,6 +1475,7 @@ function startTick() {
     paintClock();
     const tag = cbClockHTML(), ed = E();
     $$(".cbbar").forEach(x => { x.outerHTML = tag; });
+    fitPinned();
     $$(".whenl").forEach(w => { const s = ed && ed.doc.steps.find(x => `when-${x._k}` === w.id); if (s) w.innerHTML = whenHTML(ed, s); });
   }, 60000 / st.sim.scale);
 }
