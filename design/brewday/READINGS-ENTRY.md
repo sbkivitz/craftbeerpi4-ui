@@ -184,7 +184,8 @@ unless it says otherwise:
   compensation (the sample's temperature asked); and 1.048 typed in °Bx.
 - `#rd-last`, `#rd-last-all`: last runnings; with the offered pH and volume added and three figures in, "SAVE 3
   READINGS".
-- `#rd-sparge`, `#rd-sparge-nolevel`, `#rd-sparge-volume`, `#rd-sparge-bad`: the level after with 10.00 gal kept and
+- `#rd-sparge`, `#rd-sparge-nolevel`, `#rd-sparge-volume`, `#rd-sparge-bad`: just after START THE BOIL (see "The order
+  after the sparge" below), the level after with 10.00 gal kept and
   4.60 typed ("Sparge water: 5.40 gal."); with none kept (or one kept in another unit), both levels; the volume typed
   instead; and a level after that isn't lower.
 - `#rd-preboil`, `#rd-postboil`, `#rd-final`: before the boil, after it, and the final volume and OG.
@@ -194,6 +195,20 @@ unless it says otherwise:
 - `#rd-nounit`: no `volume_unit`: first runnings still offers its gravity; Record strike water has no RECORD.
 
 The pH reminders' moments (PH-ENTRY.md) are unchanged.
+
+## The order after the sparge
+
+When the sparge ends, three prompts go up in the same second: CraftBeerPi's "Ready to boil?", then BrewScribe's "HLT
+level after the sparge" and "Record before-boil readings". The title bar shows prompts in the order they came, so
+"Ready to boil?" comes first, and the level only once START THE BOIL (or a held START) has started the boil. That is
+the right order:
+
+- "Ready to boil?" holds the brew: nothing heats until it is answered. The readings hold nothing.
+- The HLT's level doesn't change once the sparge pump stops, unless its water is used, and the level reminder comes up
+  the moment the boil starts, so the reading is the same either way.
+- The before-boil readings ask for a sample "before a rolling boil"; the kettle takes many minutes to get there.
+
+Nothing is reordered, and BrewScribe readings never jump ahead of CraftBeerPi's own questions.
 
 ## How it was checked
 

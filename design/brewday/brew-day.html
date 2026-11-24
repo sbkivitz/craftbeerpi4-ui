@@ -130,8 +130,10 @@ The time is CraftBeerPi's clock (The One Clock Rule). #sim-clock is a simulator 
 its date and speed sit beside the time, and LOG's lines from the day before say their date. #sim-clock-1x is a
 simulator at 1× on the screen's own date: the time alone, as on the rig.
 Clock format (The Twelve-Hour Rule): every time of day in 12-hour form by default, "7:00 AM", "11:15:40 PM" in LOG,
-as CraftBeerPi's CLOCK_FORMAT setting has it by default; ?clock=24 shows its other choice, 24-hour ("07:00",
-"23:15:40"). BrewStart's box has AM and PM under the time in 12-hour. Saved times stay 24-hour either way. Times in
+as CraftBeerPi sets its CLOCK_FORMAT setting where a configuration lacks it; ?clock=24 shows its other choice, 24-hour
+("07:00", "23:15:40"), which is also what a /config without the setting, a blank one or any other value gives.
+BrewStart's box has AM and PM under the time in 12-hour; in 24-hour a time typed with AM or PM is read as it says
+("7p" is 19:00). Saved times stay 24-hour either way. Times in
 these notes are in 12-hour form.
 Section cues: by default (CUES.md, A, approved on 22 Nov) each kind of section on a ground of its own, with no new
 colour: the title bar, the last event, the tabs and the timers beside the drawing on the title bar's dark band; the

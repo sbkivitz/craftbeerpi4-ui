@@ -43,8 +43,9 @@ const fmtT = v => (blankish(v) || isNaN(+v) ? "–" : (+v).toFixed(1)) + "\u00a0
 /* CraftBeerPi keeps 0 for a kettle whose target was never set */
 const targetText = v => (blankish(v) || +v === 0 ? "no target" : `target ${fmtT(v)}`);
 const now = () => new Date().toTimeString().slice(0, 8);
-/* every time of day on the page by CraftBeerPi's CLOCK_FORMAT setting (The Twelve-Hour Rule): "12-hour", the default,
-   "2:33:02 PM", or with ?clock=24 "24-hour", "14:33:02". Times are kept 24-hour, as CraftBeerPi keeps them, and
+/* every time of day on the page by CraftBeerPi's CLOCK_FORMAT setting (The Twelve-Hour Rule): "12-hour", "2:33:02 PM",
+   as the mockup shows it, or with ?clock=24 "24-hour", "14:33:02"; a /config without the setting, a blank one or any
+   other value is 24-hour. Times are kept 24-hour, as CraftBeerPi keeps them, and
    shown by it; AM or PM is kept with the digits by a no-break space */
 const CLOCK24 = new URLSearchParams(location.search).get("clock") === "24";
 function todParts(x) {

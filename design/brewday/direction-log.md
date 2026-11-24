@@ -1,5 +1,17 @@
 # Direction decision log
 
+## Typed times on a 24-hour clock, the order after the sparge, boxes on a phone (23 Nov 2026)
+- Brett, from the 12-hour build: "7p" on a 24-hour clock is 19:00, as the recipe pages read it; a /config without
+  CLOCK_FORMAT is 24-hour. The mockup now reads it so, and its notes stop calling 12-hour "the default".
+- The bench walks on BrewScribe dev57 found "HLT level after the sparge" waiting behind "Ready to boil?". Chosen: keep
+  the order prompts came in. The boil's question holds the brew; the HLT's level holds still once the sparge stops.
+  Not chosen: BrewScribe's readings jumping ahead of CraftBeerPi's own questions.
+- Robin found his time box opening out of view on phones at the heights a browser leaves (390 x 664, 375 x 553,
+  360 x 640). Here BrewStart's box and the readings box opened with SET and SAVE under the tab bar, 390 x 844
+  included. Chosen: the page keeps the tab bar's height clear, and a box opening comes into view whole, or from its
+  title where it's taller than the room. Not chosen: a scrolling middle inside the box on a phone, which would put a
+  scroll inside a scroll and fight the on-screen keyboard.
+
 ## BrewScribe readings from every reminder that asks for one (23 Nov 2026)
 - The brewer: "what about entering brewscribe data in the reminder prompts from brewday screen?", every reminder that
   asks for a reading. Contract with Porter (draft 5, dev56) first, then the pH box made general.

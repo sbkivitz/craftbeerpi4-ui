@@ -6224,7 +6224,8 @@ BrewStart's box in Components. The recipe pages follow the same rule (Robin); us
 
 ### What to build (screen.js, brewday.css, and the hardware page)
 
-1. **CLOCK_FORMAT**, read from /config: "12-hour", the default, or "24-hour", exactly as the screen is today. Every
+1. **CLOCK_FORMAT**, read from /config: "12-hour", or "24-hour", exactly as the screen is today. A /config without the
+   setting, a blank one or any other value is 24-hour (the core's `cbpi/api/timefmt.py`). Every
    time of day the screen shows goes through `timefmt.js` by it: "7:00 AM", "11:15:40 PM", "12:00 AM" at midnight and
    "12:00 PM" at noon, with a no-break space before AM or PM. Saved times (BrewStart's StartTime, the steps' times)
    stay 24-hour; only what is shown and typed changes. Lengths of time don't change, and keep to one line with
@@ -6636,8 +6637,10 @@ water while the water heats.
   vessels' buttons meanwhile. `#boilpower` already loses the drawing at this size. Windows 1024, 1280, 1440 and 1920 px
   wide keep it. If this size matters to the brewer, the fix is letting a reminder's words run on under OK and RECORD
   in the title bar, which changes every reminder.
-- The HLT level after the sparge and the before-boil reminder go up together, with the boil's own question: the title
-  bar shows one, and LOG has the others, as for any reminders that come together.
+- The HLT level after the sparge and the before-boil reminder go up in the same second as the boil's own question,
+  "Ready to boil?". The title bar shows them in the order they came, so "Ready to boil?" first, and the level once the
+  boil has started (READINGS-ENTRY.md, "The order after the sparge"). Build it that way: nothing is reordered.
+  `#rd-sparge` and the three like it show the moment just after START THE BOIL.
 - "Record strike water" goes up while BrewStart heats the HLT from BrewScribe dev57 (dev56 raised it at MashIn, after
   the water had moved), and stays up through MashIn until answered.
 
@@ -6665,6 +6668,63 @@ water while the water heats.
   `proposal\READINGS-ENTRY.md` (new); this section.
 - `DESIGN.md` (the Alarm Banner's BrewScribe readings bullet), `.impeccable\decisions\direction-log.md`,
   `.impeccable\design.json`.
+
+## Four points from the builds: the 12-hour clock, the order after the sparge, boxes on a phone (23 Nov)
+
+The first two settled by you, from the 12-hour builder; the third from the bench walks on BrewScribe dev57; the fourth
+from Robin:
+
+1. **A time typed with AM or PM on a 24-hour clock:** "7p", "7 pm" or "7:30a" is read as it says, so "7p" is 19:00, as
+   the recipe pages read it. Without AM or PM a time is the 24-hour time, as before ("7" is 07:00, "19" is 19:00).
+   BrewStart's time box takes up to 8 characters on both clocks, as the recipe pages' box does, so "7:30 pm" fits. The
+   mockup's `bsParse` and `#bstin` now do this; in the build it is the shared `timefmt.js`.
+2. **No CLOCK_FORMAT:** a /config without the setting, a blank one or any other value is 24-hour on every page, as the
+   core's `cbpi/api/timefmt.py` says. "12-hour" is what CraftBeerPi writes into a configuration that lacks it. Step 1
+   of the 12-hour section above, DESIGN.md's Twelve-Hour Rule and the mockup's comments and notes now say so; the
+   mockup still shows 12-hour unless `?clock=24` is added.
+3. **The HLT level after the sparge waits behind "Ready to boil?":** right as built. The title bar shows prompts in the
+   order they came; "Ready to boil?" holds the brew, and the HLT's level doesn't change once the sparge pump stops, so
+   the level is read just after START THE BOIL. Nothing is reordered (READINGS-ENTRY.md, "The order after the
+   sparge"). The mockup's `#rd-sparge`, `#rd-sparge-nolevel`, `#rd-sparge-volume` and `#rd-sparge-bad` now show the
+   moment just after START THE BOIL (15:45:31): the boil heating in AUTO, the wort pump off, "Ready to boil?" answered
+   in LOG. Before, they showed the level over a boil still waiting, which the build never shows.
+
+4. **A box opening on a phone, under the tab bar** (Robin's finding on the recipe pages, measured here too): BrewStart's
+   box opened with SET under the fixed tab bar at every phone height, 390 x 844 included (SET at 777 to 831 px, the
+   tabs from 747), and the readings box with SAVE under it (727 to 781 px). Robin measured his at the heights a phone
+   browser leaves once its own bars are drawn: 390 x 664, 375 x 553 and 360 x 640. Now, on a phone (700 px wide or
+   less):
+   - The page keeps the tab bar's height clear when it scrolls something into view: `html{scroll-padding-bottom:
+     calc(var(--tabs-h) + env(safe-area-inset-bottom) + 8px)}`.
+   - BrewStart's box and the pH and readings box come into view as they open (`boxInView`), by the least scrolling:
+     all of it, from the title set into its top edge, between the window's top and the tabs, 8 px clear of each. A
+     box taller than that goes to the window's top: its title and first figure show, and SET or SAVE is a scroll
+     away. Focus goes into the first figure without the browser's own scrolling, which only looks for the figure.
+   - At 390 x 844 both boxes now open wholly in view, SET and SAVE included. At the shorter heights BrewStart's box
+     (623 px) and the readings box (about 600 px) are taller than the room, so they open at the top; the pH box fits.
+
+### Checked
+
+- All 15 Brew Day suites pass, with no page errors. 12-hour is 188 checks (175 before): on a 24-hour clock "7p", "7 pm",
+  "7:30 pm", "7a", "12a" and "12p" are read as they say; "7.30", "19" and "0" as before; "13p", "0a", "24", "7:60" and
+  "7x" are refused; the box takes 8 characters. Presses are 289 (285 before): BrewStart's box opened from its row at
+  390 x 844, 390 x 664, 375 x 553 and 360 x 640, whole between the window's top and the tabs where it fits, else its
+  title at the top, with focus in the time box in view.
+- The readings suites: 194 presses (186 before; the pH box and the readings box opened at the same four phone heights)
+  and 798 measurements, all passing. The Hardware page's 85 presses pass.
+- Pictures against UI main 033a838 at 1440 x 900, 390 x 844 and 1180 x 860, and with `?clock=24` at 1440 x 900 and
+  390 x 844: only `#rd-sparge` and the three like it differ. Pages that hadn't finished drawing under load were taken
+  again on their own and match (`#bs-sim`, `#notarget-hlt`, `#sw-forecast`, `#ph`, `#ph-open`, and BrewStart's and the
+  pH box's moments at 360 x 640 too).
+
+### Changed
+
+- `proposal\brew-day.js` (`bsParse`, the time box's 8 characters, the CLOCK_FORMAT comment, `rdAfter`);
+  `proposal\brew-day.html` (the notes' clock paragraph); `proposal\hardware.js` (its CLOCK_FORMAT comment);
+  `proposal\READINGS-ENTRY.md` (the sparge moments, "The order after the sparge"); `proposal\brew-day.js`
+  (`boxInView`, called from `bsFocus` and `phOpen`) and `proposal\brew-day.css` (the phone's `scroll-padding-bottom`).
+- `DESIGN.md` (The Twelve-Hour Rule; the phone's layout, 700px and narrower); step 1 of the 12-hour section; the
+  readings section's "Known, accepted"; this section.
 
 ## Open questions about the drawing
 

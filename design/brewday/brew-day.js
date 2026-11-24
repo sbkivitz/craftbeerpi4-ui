@@ -1003,8 +1003,8 @@ const SCENES = {
      both added, and 1.012 SG, pH 5.62 and 6.95 gal typed */
   "rd-last": () => Object.assign(rdLast(), {open: {phAt: {}}}),
   "rd-last-all": () => Object.assign(rdLast(), {open: {phAt: {add: ["ph", "volume"], f: {g: "1.012", vol: "6.95"}, txt: "5.62"}}}),
-  /* the sparge done at 15:45:02 (#boil-hold's day, at 15:45:40): "HLT level after the sparge" up, then "Record
-     before-boil readings", with the boil waiting for the brewer. #rd-sparge: BrewScribe keeping the level before, 10.00
+  /* the sparge done at 15:45:02 (#boil-hold's day, at 15:45:40) and the boil started at 15:45:31: "HLT level after the
+     sparge" up, then "Record before-boil readings". #rd-sparge: BrewScribe keeping the level before, 10.00
      gal, and 4.60 typed: the sparge water 5.40 gal. #rd-sparge-nolevel: no level BrewScribe can work from (none kept;
      one kept in another unit than its volume_unit gives the same box), so both levels asked. #rd-sparge-volume: the
      sparge water typed instead, 5.40 gal. #rd-sparge-bad: 10.20 typed, not lower than the level before, and SAVE
@@ -1082,13 +1082,21 @@ function rdLast() {
   s.t = 15 * 3600 + 40 * 60 + 20; s.recipe.left = 15 * 3600 + 45 * 60 + 2 - s.t;
   return Object.assign(rdUp(s, 3, "15:40:02"), {base: "sparge-run"});
 }
-/* 15:45:40, the sparge done at 15:45:02 and the boil waiting for the brewer (#boil-hold's day): "HLT level after the
-   sparge" up, then "Record before-boil readings"; the level before kept, unless kept is false */
+/* 15:45:40 on #boil-hold's day: the sparge done at 15:45:02, when CraftBeerPi asked "Ready to boil?" and BrewScribe
+   put up "HLT level after the sparge", then "Record before-boil readings". The title bar shows prompts in the order
+   they came, so the boil's question came first; START THE BOIL answered it at 15:45:31, which switched the wort pump off
+   and the boil kettle's AUTO on, and the level is up now. The level before kept, unless kept is false */
 function rdAfter(kept = true) {
-  const s = SCENES["boil-hold"]();
+  const s = SCENES["boil-hold"](), b = RECIPE.steps[4], q = s.events.find(e => e[3] === "wait" && e[1].startsWith(`${b.n}: Ready to boil?`));
   s.bscribe = scribeDay();
   if (kept) rdKept(s);
-  s.t = 15 * 3600 + 45 * 60 + 40; s.v.hlt.pv = 165.2; s.v.mt.pv = 166.2; s.v.bk.pv = 150.2;
+  s.t = 15 * 3600 + 45 * 60 + 40; s.v.hlt.pv = 165.2; s.v.mt.pv = 166.2;
+  s.v.bk = {pv: 150.2, sv: b.temp, mode: "auto"};
+  Object.assign(s.a, {wortPump: {on: false}, bkEl: {on: true, pct: 100}});
+  s.recipe = {state: "running", cur: 4, left: 90 * 60, adds: [], wait: true};
+  q[2] = "answered"; q[3] = "";
+  rdLine(s, ["15:45:31", `${b.n} answered: Start the boil`, "confirmed", "ok"], ["15:45:33", boilStartLine(b), "by recipe", ""],
+    ["15:45:33", `${b.n}: The wort pump is off, so you can move its hoses.`, "from CraftBeerPi", ""]);
   rdUp(s, 4, "15:45:02");
   rdLine(s, ["15:45:02", `${RD_Q[5].title}: ${RD_Q[5].text}`, "waiting for you", "wait"]);
   return Object.assign(s, {base: "boil-hold"});
@@ -1462,8 +1470,9 @@ const mmss = s => `${Math.floor(s / 60)}:${pad(s % 60)}`;
 /* a time of day as CraftBeerPi keeps it, 24-hour: "07:00", "23:15:40" (saved times and LOG's lines keep this form) */
 const hhmm = t => `${pad(Math.floor(t / 3600) % 24)}:${pad(Math.floor(t / 60) % 60)}`;
 const hhmmss = t => `${hhmm(t)}:${pad(t % 60)}`;
-/* CraftBeerPi's CLOCK_FORMAT setting (The Twelve-Hour Rule): "12-hour", the default, or "24-hour", which the mockup
-   shows with ?clock=24 */
+/* CraftBeerPi's CLOCK_FORMAT setting (The Twelve-Hour Rule): "12-hour", which CraftBeerPi writes into a configuration
+   without it and the mockup shows, or "24-hour", which the mockup shows with ?clock=24. A /config without the setting,
+   a blank one or any other value is 24-hour, as on a core that has no such setting */
 const CLOCK24 = new URLSearchParams(location.search).get("clock") === "24";
 /* every time of day the screen shows, in parts: t in seconds on CraftBeerPi's clock (only the time of day counts), as
    the digits, "7:00" or with seconds "11:15:40", and the half, "AM" or "PM": midnight's hour is 12 AM, noon's 12 PM.
@@ -3040,19 +3049,16 @@ function hmMin(x) {
    "7", "700", "7:00", "7.30" and "7 30" are in that half, leading zeros or not ("07:00" showing PM is 7:00 PM); "7a"
    and "7 am" are morning, "7p" and "7 pm" evening, the hour then 1 to 12; an hour only the 24-hour clock has says its
    half: 0 is midnight's, 13 to 23 the evening's ("19", "19:00"); "12" is noon and "12a" midnight. Minutes are 00 to
-   59. In 24-hour, as typed there: 7, 700, 0700 and 7:00 are all 07:00 */
+   59. In 24-hour a time without AM or PM is the 24-hour time (7, 700, 0700, 7:00 and 7.00 are all 07:00), and one with
+   it is read as above, so "7p" is 19:00 */
 function bsParse(x, half) {
-  if (CLOCK24) {
-    const k = /^\s*(\d{1,2})(?::?(\d{2}))?\s*$/.exec(x || ""), h = k ? +k[1] : 24, mi = k && k[2] != null ? +k[2] : 0;
-    return h < 24 && mi < 60 ? {m: h * 60 + mi, said: true} : null;
-  }
   const k = /^\s*(\d{1,2})(?:[:. ]?(\d{2}))?\s*(?:([ap])\.?(?:m\.?)?)?\s*$/i.exec(x || "");
   if (!k) return null;
   const h = +k[1], mi = k[2] == null ? 0 : +k[2], ap = k[3] && k[3].toLowerCase();
   if (mi > 59) return null;
   if (ap) return h >= 1 && h <= 12 ? {m: (h % 12 + (ap === "p" ? 12 : 0)) * 60 + mi, said: true} : null;
   if (h > 23) return null;
-  if (h === 0 || h >= 12) return {m: h * 60 + mi, said: true};
+  if (CLOCK24 || h === 0 || h >= 12) return {m: h * 60 + mi, said: true};
   return {m: (h + (half === "PM" ? 12 : 0)) * 60 + mi, said: false};
 }
 /* the box's time as it shows it: "7:00", the half beside it on its own buttons; in 24-hour "07:00" */
@@ -3219,7 +3225,7 @@ function bsHTML() {
   const head = wait ? `<p class="bsw">BrewStart is waiting: ${s.start ? `${nx ? nx.n : "the next step"} starts at ${todS(s.start)}` : `heating starts about ${st.recipe.wait.slice(7)}`}. A change here plans it again at once.</p>` : "";
   const kind = `<div class="bskind"><p class="bsl" id="bs-kl">${B.kind === "start" ? "Start at" : "Ready by"}</p>${b("bsq", B.kind === "start" ? "READY BY INSTEAD" : "START AT INSTEAD", "", {cmd: "bs:kind", why: off || (wait ? "Not while BrewStart waits: STOP it first." : "")})}</div>`;
   const as = CLOCK24 ? "07:00" : "7:00";
-  const time = `<div class="editor bstime" role="group" aria-labelledby="bs-kl">${key(-60, "−1 H", "An hour earlier")}${key(-15, "−15", "15 minutes earlier")}<input id="bstin" inputmode="numeric" autocomplete="off" maxlength="${CLOCK24 ? 5 : 8}" placeholder="${as}" value="${esc(B.txt)}" aria-label="Time, as ${as}"${busy ? " readonly" : ""}>${key(15, "+15", "15 minutes later")}${key(60, "+1 H", "An hour later")}</div>`;
+  const time = `<div class="editor bstime" role="group" aria-labelledby="bs-kl">${key(-60, "−1 H", "An hour earlier")}${key(-15, "−15", "15 minutes earlier")}<input id="bstin" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="${as}" value="${esc(B.txt)}" aria-label="Time, as ${as}"${busy ? " readonly" : ""}>${key(15, "+15", "15 minutes later")}${key(60, "+1 H", "An hour later")}</div>`;
   /* the half of the day the time is in, pressed; a tap moves the same time to the other half. A compact pair, without
      hints: the time in words below says which half it is */
   const half = CLOCK24 ? "" : `<div class="bsday bsap" role="group" aria-label="AM or PM">${b("cmdbtn", "AM", "", {cmd: "bs:ap:AM", pressed: B.ap === "AM", why: off})}${b("cmdbtn", "PM", "", {cmd: "bs:ap:PM", pressed: B.ap === "PM", why: off})}</div>`;
@@ -3312,10 +3318,11 @@ function bsOpen(o = {}) {
 /* focus goes to the time box, or to IN THE GARAGE with the grain's two answers scrolled into view in the box's middle
    (for USE waiting for the grain, and for the row while its hint asks where the grain is); a moment can show the
    middle scrolled to a part of it (at). Opened at the time, the time in words is brought into view where it must be
-   read before SET (bsSayInView) */
+   read before SET (bsSayInView). On a phone the page first brings the box itself into view (boxInView) */
 const bsFocus = (at, on) => setTimeout(() => {
   const i = on === "garage" ? $('#bs-box [data-cmd="bs:where:garage"]') : $("#bstin"), keep = !!at || on === "garage";
-  if (i && document.activeElement !== i) { i.focus({preventScroll: keep}); if (i.select) i.select(); }
+  if (i && document.activeElement !== i) { i.focus({preventScroll: keep || PHONE.matches}); if (i.select) i.select(); }
+  boxInView($("#bs-box"));
   if (keep) $(at || "#bs-box .bswhere")?.scrollIntoView({block: "nearest"});
   else bsSayInView();
 }, 0);
@@ -4433,6 +4440,17 @@ function phFit() {
   const over = r.bottom - (innerHeight - 8);
   if (over > 0 && mid) mid.style.maxHeight = `${Math.max(120, mid.getBoundingClientRect().height - over)}px`;
 }
+/* on a phone, where the screen tabs are fixed along the foot, a box opening in the page (BrewStart's, the pH and
+   readings box) comes into view by the least scrolling: all of it, from the title set into its top edge to its foot,
+   between the window's top and the tabs, 8 px clear of each. A box taller than that goes to the window's top, so its
+   title and first figure show and its main button is a scroll away. A box already in view doesn't move the page */
+function boxInView(box) {
+  if (!box || box.hidden || !PHONE.matches) return;
+  const tabs = $(".tabs"), foot = (tabs ? tabs.getBoundingClientRect().top : innerHeight) - 8, R = box.getBoundingClientRect();
+  const t = box.querySelector(":scope > .bst, :scope > .pht"), top = Math.min(R.top, t ? t.getBoundingClientRect().top : R.top);
+  const d = R.bottom - top > foot - 8 ? top - 8 : R.bottom > foot ? R.bottom - foot : top < 8 ? top - 8 : 0;
+  if (d) window.scrollBy(0, d > 0 ? Math.ceil(d) : Math.floor(d));
+}
 /* as each reminder shows, Brew Day asks BrewScribe about it (phAsk); the box goes with its reminder, answered here or
    elsewhere or taken down, unless its SAVE is on its way */
 function phCheck() {
@@ -4483,7 +4501,7 @@ function phRaise(i) {
   renderAll();
 }
 /* RECORD pH: the box opens under the reminder, LOG's list closing (one at a time), the pH empty and focus in it with its
-   text selected; pressed again, it closes. A moment can open it with figures typed, BrewScribe's sentence from a SAVE
+   text selected, and on a phone the page brings the box into view (boxInView); pressed again, it closes. A moment can open it with figures typed, BrewScribe's sentence from a SAVE
    that didn't go, and the entry that SAVE sent (o). The readings box opens the same way, focus in its first figure,
    with the gravity's pair BrewScribe starts it in and the sparge water from the HLT's levels; a moment can give it its
    figures (f), pair (pick), readings added with "+" (add), way, the entries an earlier SAVE sent (sent, by kind), a
@@ -4497,7 +4515,7 @@ function phOpen(o = {}) {
   if (!f.ph) { const g = rdOf(f, "gravity"); Object.assign(st.ph, {f: Object.assign({}, o.f), add: (o.add || []).slice(), way: o.way || "levels", pick: o.pick || (g ? rdPair(rdPick(g, null)) : "")}); }
   if (o.sent) { if (f.ph) st.phSent = {key: phBody(f).key, id: o.sent}; else st.rdSent = rdSentFor(f, o.sent); }
   renderAll();
-  setTimeout(() => { const i = f.ph ? $("#phin") : $(o.focus ? "#" + o.focus : "#ph-box .phmid input"); if (i) { i.focus(); i.select(); } }, 0);
+  setTimeout(() => { const i = f.ph ? $("#phin") : $(o.focus ? "#" + o.focus : "#ph-box .phmid input"); if (i) { i.focus({preventScroll: PHONE.matches}); i.select(); } boxInView($("#ph-box")); }, 0);
   if (o.go) setTimeout(() => { const g = $("#ph-box .phgo"); if (g && g.getAttribute("aria-disabled") === "true") explain(g); }, 0);
 }
 /* CANCEL, Escape and RECORD pH pressed again close the box and keep nothing, focus back on RECORD pH; not while SAVE
