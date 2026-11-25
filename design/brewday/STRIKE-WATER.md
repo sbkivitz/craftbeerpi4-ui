@@ -1,9 +1,9 @@
 # Strike water helper: approved by the brewer (20 Nov 2026), with the model's figures
 
-**A redesign is proposed** (25 Nov): the strike water card, `STRIKE-CARD.md`, in the mockup behind `?strike=bs` and
+**A redesign is being built** (25 Nov), for the simulators first: the strike water card, `STRIKE-CARD.md`, in the mockup behind `?strike=bs` and
 the `#card-…` moments. It follows an independent review of this flow and the brewer's decision that BeerSmith's strike
-temperature drives BrewStart and MashIn, with this helper's forecast kept as an optional check. Until he approves it,
-this note describes the box as built.
+temperature drives BrewStart and MashIn, with this helper's forecast kept as an optional check. Until it reaches the
+rig, this note describes the box as built there.
 
 From BrewStart 1.3.0 (22 Nov, night) the strike water step is usually BrewStart itself: with Ready by it heats the HLT,
 holds the water and asks for it to be moved, as the strike water step on the HLT did, and the box sits on it. Where

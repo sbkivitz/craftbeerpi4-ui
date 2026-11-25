@@ -7648,8 +7648,7 @@ Measured with every placement of the timers at 1920 × 1080, 1920 × 950, 1440 �
 
 ## The mash water's ratio from the figure in force, and BeerSmith's figure named plainly: ready to build (25 Nov)
 
-An independent review of the strike water flow found two wrong figures. Both are to build now, whatever becomes of the
-card proposed below.
+An independent review of the strike water flow found two wrong figures. Both are to build now, with the card below.
 
 1. **The ratio stays at BeerSmith's after the mash water changes** (screen.js `swRatio`, and the mockup's). With
    BeerSmith's 19.51 gal changed to 8.00 gal, MashIn's row, the box and FORECAST still said 3.75 qt/lb, and warned it
@@ -7668,12 +7667,14 @@ the HLT, the long refusal is gone from the boxes, and one short line under the s
 "Less than the 19.5 gal of mash water." (`hltShortText`, two places where one would show both figures the same), as
 post73 builds it; with it the forecast waits for more HLT water.
 
-## The strike water card: a proposal for the brewer to see first (25 Nov)
+## The strike water card: ready to build, for the simulators first (25 Nov)
 
-**Not to build yet.** `STRIKE-CARD.md` has the design, its words, the review's findings and where each went, and what
-each part needs; the mockup has it behind `?strike=bs` and in the `#card-…` moments. It answers "give me the option to
-set the mash water too" and "I need to be able to get out of this screen", and makes BeerSmith's strike the plan, with
-CraftBeerPi's forecast as CHECK. Once he has seen it, this section becomes its "ready to build".
+Built as drawn for the simulators only; the brewer tries it there before it goes to the rig. `STRIKE-CARD.md` has the
+design, its words, the review's findings and where each went, and what each part needs; the mockup has it behind
+`?strike=bs` and in the `#card-…` moments. It answers "give me the option to set the mash water too" and "I need to be
+able to get out of this screen", and makes BeerSmith's strike the plan, with CraftBeerPi's forecast as CHECK. Not in
+this build: the recipe editor's parts (BrewStart's "Water temperature" with its tag and BEERSMITH'S, MashIn's plate
+line), which aren't drawn yet.
 
 ## Open questions about the drawing
 
