@@ -43,7 +43,7 @@
 //   reader for every screen, where the mockup has its own timeOfDay, boxText and readTime.
 import { GROUPS, KINDS, TYPES, START } from "./catalog";
 import { call, why as callWhy } from "../brewday/api";
-import { stepModel, bookLine as dayBookLine, cfg as cfgOf, parseLeft, recipeWater, inWords, kettleRoles, hermsLogics, ROLES } from "../brewday/live";
+import { stepModel, bookLine as dayBookLine, cfg as cfgOf, parseLeft, recipeWater, inWords, kettleRoles, hermsLogics, ROLES, declares } from "../brewday/live";
 import { settingsClockFormat, formatTimeOfDay, formatDayTime, parseTypedTime, halfOfDay, NBSP, TWELVE_HOUR } from "../util/timefmt";
 import { clearKeyboard } from "../util/keyboard";
 // As text, exactly as written (config-overrides.js): recipes.css for the shadow root; recipes-frame.css, the mockup's
@@ -57,7 +57,8 @@ import { brewNow, brewScale } from "../brewday/screen";
    while CraftBeerPi's clock, Brew Day's steps or the Recipe Book's steps are still coming (bsWhy), as a greyed command
    is; a recipe without BeerSmith's mash figures (NOFIG), on its book row and in its column, quieter than what the row
    says of it; the question before importing a BeerXML recipe of a name the book has, whose answers each say what they
-   do; and on Brew Steps, the recipe's author over its notes */
+   do; on Brew Steps, the recipe's author over its notes; and BrewStart's plate opened from Brew Day (ALL SETTINGS),
+   whose BACK TO BREW DAY is as tall as SAVE's answers */
 const OWN_CSS = `
 .bsadd[aria-disabled=true],.kind[aria-disabled=true]{color:var(--text-3);cursor:not-allowed}
 .bsadd[aria-disabled=true]:hover,.kind[aria-disabled=true]:hover{background:none}
@@ -71,6 +72,8 @@ const OWN_CSS = `
 .confirm .acts.ways{grid-template-columns:1fr}
 .confirm .acts.ways button{display:grid;gap:3px;justify-items:start;padding:8px 12px;text-align:left}
 .confirm .acts.ways button small{font:500 15px/1.25 var(--sans);letter-spacing:0;text-transform:none;color:var(--text-2)}
+.pnote.day{border-color:var(--select)}
+.pnote.day .cmd{min-height:54px}
 `;
 
 const CAT = {GROUPS, KINDS, TYPES, START};
@@ -323,6 +326,18 @@ function ensureBs() {
 const origOf = (ed, s) => ed.orig.steps.find(o => o._k === s._k);
 const live = ed => ed.doc.steps.filter(s => !s._removed);
 const isRunning = s => s.status === "A";
+/* a running BrewStart's settings still change on Brew Steps, where BrewStart takes them while it runs (its own
+   change_settings, 1.3.0.post6): waiting for its time, heating the water or holding it. SAVE sends them through it
+   (saveSteps), as CraftBeerPi changes no running step itself. Its name and kind stay as they are while it runs, and
+   every other running step stays locked */
+const bsTakes = () => declares(Object.values(D.types), "BrewStart", "change_settings");
+const liveBs = s => st.page === "steps" && isRunning(s) && s.type === "BrewStart" && bsTakes();
+/* what a running BrewStart is doing, as it keeps it with the step: heating the water, holding it for the move, or
+   waiting for its time */
+const bsDoing = s => { const p = s.props || {}; return p._brewstart_heating ? (p._brewstart_asked ? "holding" : "heating") : "waiting"; };
+/* a running BrewStart whose name or kind has a change not saved (made before it began, on this page): BrewStart can't
+   take those, so SAVE waits for them to be put back */
+const bsFixed = (ed, s) => liveBs(s) && stepChange(ed, s).keys.some(k => k === "name" || k === "type");
 /* a step's settings as the brewer sets them: not the ones a step keeps for itself while it runs (_elapsed_seconds and
    the rest), which CraftBeerPi writes */
 const ownKeys = p => Object.keys(p || {}).filter(k => !k.startsWith("_"));
@@ -610,6 +625,7 @@ function needsWhy(ed) {
   const words = {StartTime: "Set BrewStart's time first.", StartDate: "Give BrewStart its date first.", Heat_Kettle: "Choose BrewStart's vessel first.", Heater_Watts: "Give BrewStart the element's watts first."};
   for (const s of live(ed)) {
     if (s.type !== "BrewStart" || !stepChange(ed, s).tag) continue;
+    if (bsFixed(ed, s)) return "Put BrewStart's name and kind back first: they can't change while it runs.";
     for (const l of Object.keys(words)) if (needOf(s, l)) return words[l];
   }
   return "";
@@ -618,7 +634,16 @@ function needsWhy(ed) {
 function needsSmall(ed) {
   const x = blockedOf(ed);
   if (x) return `move ${nameIn(x.s)} below ${nameIn(x.begun)} first`;
-  return needsWhy(ed).replace(/^Set/, "set").replace(/^Give/, "give").replace(/^Choose/, "choose").replace(/\.$/, "");
+  return needsWhy(ed).replace(/^Set/, "set").replace(/^Give/, "give").replace(/^Choose/, "choose").replace(/^Put/, "put").replace(/:.*$/, "").replace(/\.$/, "");
+}
+/* what SAVE does to a running BrewStart that the brewer should know before pressing it, said under the setting: a new
+   vessel while it heats asks first (saveSteps' question), and Start at while it heats stops the heating */
+function bsSaveSays(ed, s, label) {
+  if (!liveBs(s) || bsDoing(s) === "waiting") return "";
+  const o = origOf(ed, s), p = s.props || {}, q = (o && o.props) || {}, was = nameOf(D.kettles, q.Heat_Kettle) || "vessel";
+  if (label === "Heat_Kettle" && norm(p.Heat_Kettle) !== "" && !same(p.Heat_Kettle, q.Heat_Kettle)) return `BrewStart is heating the ${was}: SAVE asks before the heating moves.`;
+  if (label === "Timing" && readyBy(q) && !readyBy(p)) return `SAVE stops BrewStart's heating: the ${was}'s AUTO goes off.`;
+  return "";
 }
 // whether a setting shows: as the plugin's form shows it (its show_if, where CraftBeerPi sends one), any one of the
 // conditions being enough; else the catalogue's copy of it, where a blank setting counts as the choice it stands for
@@ -746,7 +771,8 @@ function colStepsHTML() {
     <div class="rctl two">${cmd("", "RECIPE BOOK", "choose one", {data: ' data-tabgo="Recipe Book"'})}${cmd("", "+ STEP", "build steps here", {data: " data-addstep"})}</div>
     <p class="note" id="col-note" role="status">${esc(st.notes.col || "")}</p>`;
   const un = unloadRule(), pendU = st.pend.unload, pendB = st.pend.tobook;
-  const ask = st.ask && (st.ask.kind === "unload" ? unloadAskHTML() : st.ask.kind === "tobook" ? toBookHTML() : "");
+  const ask = st.ask && (st.ask.kind === "unload" ? unloadAskHTML() : st.ask.kind === "tobook" ? toBookHTML() : !narrow() ? ""
+    : st.ask.kind === "leave" ? leaveHTML() : st.ask.kind === "vessel" && st.view !== "plate" ? vesselHTML() : "");
   const meta = L ? `<span class="on${b.state === "running" ? " run" : ""}">On Brew Day · ${statusWords(b).toLowerCase()}</span>` : `<span class="on">Not on Brew Day yet</span>`;
   return `<h2>${esc((L && L.name) || "Steps with no name")}</h2>
     <p class="rmeta">${meta}${n ? ` · <b>${n} ${n === 1 ? "change" : "changes"} not saved</b>` : ""}</p>
@@ -873,7 +899,8 @@ function platesHTML() {
   h += steps.map((s, i) => stepPlateHTML(ed, s, i)).join("");
   if (ed.kinds) h += kindsHTML();
   if (st.page === "book") h += deletePlateHTML();
-  return `${back}${st.ask && st.ask.kind === "leave" && !narrow() ? leaveHTML() : ""}${saveNoteHTML()}<div class="plates" id="plates">${h}</div>`;
+  const vessel = st.ask && st.ask.kind === "vessel" && (!narrow() || st.view === "plate") ? vesselHTML() : "";
+  return `${back}${st.ask && st.ask.kind === "leave" && !narrow() ? leaveHTML() : ""}${vessel}${saveNoteHTML()}<div class="plates" id="plates">${h}</div>`;
 }
 const pickCls = k => E() && E().pick === k ? " pick" : "";
 const landCls = k => st.land && st.land.k === k && Date.now() < st.land.until ? " land" : "";
@@ -883,7 +910,7 @@ function overviewHTML() {
     <p class="lead">SAVE puts these steps on Brew Day, where START is held for a second. To keep them for next time, <b>SAVE TO BOOK</b> once they are saved.</p></section>`;
   return `<section class="plate${pickCls("o")}" id="p-o" data-k="o" aria-labelledby="h-o"><div class="phd"><h2 id="h-o">This brew's steps</h2><p class="sum">Brew Day's copy of <b>${esc(L.name || "steps with no name")}</b>${L.at != null || loadedInBook() ? `, loaded${atWords(L.at)}${loadedInBook() ? " from the Recipe Book" : ""}` : ""}.</p></div>
     <p class="lead">Change a step here and SAVE: the change is for this brew. To keep it for next time, <b>SAVE TO BOOK</b>. The steps run on <b>Brew Day</b>, where START is held for a second.</p>
-    ${b.state === "running" ? `<p class="lead">Step ${b.cur + 1}, ${esc(L.steps[b.cur].name)}, is running: CraftBeerPi doesn't change a step while it runs. The steps still to come can change.</p>` : ""}</section>`;
+    ${b.state === "running" ? `<p class="lead">Step ${b.cur + 1}, ${esc(L.steps[b.cur].name)}, is running: ${liveBs(L.steps[b.cur]) ? "BrewStart takes its own settings while it runs, at SAVE, and the steps still to come can change too." : "CraftBeerPi doesn't change a step while it runs. The steps still to come can change."}</p>` : ""}</section>`;
 }
 function recipePlateHTML() {
   const ed = st.ed, d = ed.doc;
@@ -914,6 +941,8 @@ function partsOf(s) {
 }
 function stepPlateHTML(ed, s, i) {
   const kc = CAT.KINDS[s.type], ch = stepChange(ed, s), run = st.page === "steps" && isRunning(s), done = st.page === "steps" && s.status === "D";
+  // a running BrewStart takes its settings itself (liveBs): only its name and kind stay locked
+  const lv = run && liveBs(s), lock = run && !lv, fixed = l => lock || (lv && (l === "name" || l === "type"));
   const L = live(ed), li = L.indexOf(s), free = firstFree(ed), begun = st.page === "steps" && s.status && s.status !== "I";
   // CraftBeerPi keeps every step up to the last one that has begun in its place, a step still to come among them too
   const held = st.page === "steps" && li >= 0 && li < free && origOf(ed, s) && !s._moved;
@@ -928,18 +957,35 @@ function stepPlateHTML(ed, s, i) {
   const head = `<div class="phd"><h2 id="h-${k}"><span class="n">${i + 1}</span>${esc(s.name || kindName(s.type))}</h2><div class="stools">${tools}</div>
     <p class="sum"><b>${esc(kindName(s.type))}</b>${kc ? ` · ${esc(kc.h)}` : " · A kind of step from a plugin."}${ch.moved && origOf(ed, s) ? ` Moved: it was step ${ed.orig.steps.indexOf(origOf(ed, s)) + 1}.` : ""}</p></div>`;
   if (ch.tag === "removed") return `<section class="plate removed${pickCls(s._k)}" id="p-${k}" data-k="${k}" aria-labelledby="h-${k}">${head}<p class="lead">Removed. It goes when you SAVE; UNDO keeps it.</p></section>`;
-  const lockNote = run ? `<p class="pnote"><b>Running now.</b> CraftBeerPi doesn't change a step while it runs. To change it, STOP the brew on Brew Day first; or change the steps still to come.</p>`
+  const lockNote = lv ? bsRunNote(ed, s)
+    : run ? `<p class="pnote"><b>Running now.</b> CraftBeerPi doesn't change a step while it runs. To change it, STOP the brew on Brew Day first; or change the steps still to come.</p>`
     : done ? `<p class="pnote"><b>Done.</b> A change here counts only if the recipe is reset to step 1.</p>` : "";
   const moving = ed.mv === s._k ? `<p class="pnote mv">Moving it: tap <b>PUT IT HERE</b> in the steps where it goes, or FIRST or LAST above them.</p>` : "";
   const bl = blockedOf(ed), blocked = bl && bl.s === s ? `<p class="pnote">${esc(blockedWords(bl))}</p>` : "";
   const placed = ch.tag === "new" && s._where ? `<p class="pnote"><b>Went in as step ${li + 1}, ${esc(s._where)}.</b> MOVE puts it elsewhere.</p>` : "";
   const body = [{rows: ["name", "type"]}, ...partsOf(s)].map(p => {
-    const rows = p.adds ? addsHTML(ed, s, run) : (p.rows || []).filter(l => shows(s, l)).map(l => rowHTML(ed, s, l, run)).join("");
+    const rows = p.adds ? addsHTML(ed, s, lock) : (p.rows || []).filter(l => shows(s, l)).map(l => rowHTML(ed, s, l, fixed(l))).join("");
     const when = p.when ? `<p class="whenl" id="when-${k}">${whenHTML(ed, s)}</p>` : "";
     const fill = p.fill && s._fill && ch.tag === "new" ? `<p class="pnote fill">${esc(s._fill)}</p>` : "";
     return `<div class="part">${p.h ? `<h3>${esc(p.h)}</h3>` : ""}${p.when ? cbClockHTML() : ""}${fill}${rows}${when}${p.note ? `<p class="foot">${esc(p.note)}</p>` : ""}</div>`;
   }).join("");
-  return `<section class="plate${run ? " locked" : ""}${pickCls(s._k)}${landCls(s._k)}" id="p-${k}" data-k="${k}" aria-labelledby="h-${k}">${head}${lockNote}${blocked}${moving}${placed}${body}</section>`;
+  return `<section class="plate${lock ? " locked" : ""}${pickCls(s._k)}${landCls(s._k)}" id="p-${k}" data-k="${k}" aria-labelledby="h-${k}">${head}${dayBackHTML(s)}${lockNote}${blocked}${moving}${placed}${body}</section>`;
+}
+/* a running BrewStart's plate says what it is doing and that SAVE gives it the changes at once; its name and kind stay
+   as they are while it runs */
+function bsRunNote(ed, s) {
+  const o = origOf(ed, s), kn = nameOf(D.kettles, ((o || s).props || {}).Heat_Kettle) || "HLT", doing = bsDoing(s);
+  const now = doing === "heating" ? `<b>Heating the ${esc(kn)}'s water now.</b> SAVE gives BrewStart the changes at once: a new water temperature is the ${esc(kn)}'s target from then, and a new vessel asks first.`
+    : doing === "holding" ? `<b>Holding the ${esc(kn)}'s water now.</b> SAVE gives BrewStart the changes at once: a new water temperature is the ${esc(kn)}'s target from then, and a new vessel asks first.`
+    : "<b>Waiting for its time.</b> SAVE gives BrewStart the changes at once, and it plans again from them.";
+  return `<p class="pnote">${now} Its name and kind stay as they are while it runs.</p>`;
+}
+/* BrewStart's plate opened from Brew Day's BrewStart box (ALL SETTINGS, st.fromDay): the way straight back, as BREW
+   DAY's tab goes, so changes not saved are asked about first (leaveFor). After SAVE focus comes here */
+function dayBackHTML(s) {
+  const f = st.page === "steps" && s.type === "BrewStart" ? st.fromDay : null;
+  if (!f || !(f === true || f === s._k || f === s.id)) return "";
+  return `<div class="pnote day" id="dayback"><b>Opened from Brew Day.</b> Every BrewStart setting is here: change it, SAVE, then go back.<div class="acts">${cmd("", "BACK TO BREW DAY", "", {data: ' data-tabgo="Brew Day"'})}</div></div>`;
 }
 function rowHTML(ed, s, label, locked) {
   const o = origOf(ed, s), isName = label === "name", isType = label === "type", k = esc(s._k);
@@ -953,7 +999,7 @@ function rowHTML(ed, s, label, locked) {
   const timed = !isName && !isType && typeOf(s.type, label) === "time";
   const help = timed ? [m.h, twelve() ? "Type it as 7, 7:30 or 730, and tap AM or PM." : "Type it as 7, 7:30 or 19:30."].filter(Boolean).join(" ") : m.h;
   return `<div class="row${changed ? " chg" : ""}" id="r-${k}-${label}" data-s="${k}" data-p="${label}"><div class="lb"><label class="nm" for="i-${k}-${label}" id="n-${k}-${label}">${esc(m.n)}</label>${help ? `<p class="wh" id="wh-${k}-${label}">${esc(help)}</p>` : ""}<p class="ky">${esc(key)}</p></div>
-    <div class="ct">${ctlHTML(s, label, v, locked)}${stHTML(changed, ov, s._k, label, was, m.n)}<p class="why" id="need-${k}-${label}" role="status">${esc(needOf(s, label))}</p></div></div>`;
+    <div class="ct">${ctlHTML(s, label, v, locked)}${stHTML(changed, ov, s._k, label, was, m.n)}<p class="why" id="need-${k}-${label}" role="status">${esc(needOf(s, label) || bsSaveSays(ed, s, label))}</p></div></div>`;
 }
 /* the kinds the page offers: the catalogue's that CraftBeerPi has, in its order, then any a plugin adds */
 function kindsOffered() {
@@ -1195,7 +1241,7 @@ function fitPinned() {
 function applyView() { const m = $("#main"); if (m) m.dataset.view = narrow() ? st.view : "split"; }
 function grow() { $$("textarea.fld").forEach(t => { if (!t.getClientRects().length) return; t.style.height = "auto"; t.style.height = t.scrollHeight + 2 + "px"; }); }
 /* CraftBeerPi's word on things arrives many times a second: drawn once a frame */
-function schedule() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; render(); }); }
+function schedule() { if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (st && st.wantBsAdd) tryBsAdd(); render(); }); }
 
 /* ---------- moving about ---------- */
 function setCur(k) {
@@ -1351,11 +1397,15 @@ function apply(r) {
     ensureBs();
     const ed = st.bs;
     ed.mv = null;
+    /* from Brew Day's BrewStart box (ALL SETTINGS): BrewStart's plate offers the way back, and for a new BrewStart
+       + BrewStart is pressed here (tryBsAdd) */
+    if (s.from === "brewday") { st.fromDay = r.kind === "step" ? r.id : true; st.wantBsAdd = !!s.bsadd; }
     if (r.kind === "add") { ed.kinds = true; ed.from = ed.from || ed.cur; ed.pick = "kinds"; st.view = "plate"; }
     else if (r.kind === "step" || s.pick) { st.wantPick = r.id || s.pick; st.view = "plate"; }
     else { ed.pick = null; st.view = "recipe"; }
     render();
     if (st.wantPick) tryPick();
+    else if (st.wantBsAdd) tryBsAdd();
     else if (r.kind === "add" && !narrow()) requestAnimationFrame(() => { const p = $("#p-kinds"); if (p && wide()) $("#pane").scrollTop = p.offsetTop - $("#pane").offsetTop - 8; else if (p) p.scrollIntoView(); });
     return;
   }
@@ -1369,14 +1419,48 @@ function apply(r) {
   render();
   if (st.ed && st.ed.pick && !narrow()) { const k = st.ed.pick; requestAnimationFrame(() => jump(k)); }
 }
-/* a step's settings named by the address, once the brew steps have it */
+/* a step's settings named by the address, once the brew steps have it; from Brew Day's BrewStart box, with focus on its
+   first setting */
 function tryPick() {
   const ed = st.bs, k = st.wantPick;
   if (!ed || !k || !ed.doc.steps.some(s => s._k === k)) return;
   st.wantPick = null;
   ed.pick = k; ed.cur = k;
   render();
-  if (!narrow()) requestAnimationFrame(() => jump(k));
+  const day = st.fromDay === k;
+  requestAnimationFrame(() => { if (!narrow()) jump(k); if (day) focusFirst(k); });
+}
+/* BrewStart's plate opened from Brew Day: focus on its first setting (When's Timing), in view */
+function focusFirst(k) {
+  const p = $(`#p-${CSS.escape(k)}`);
+  if (!p) return;
+  const row = $$(".row", p).find(r => !["name", "type"].includes(r.dataset.p));
+  const c = row && (row.querySelector('[role=radio][aria-checked="true"]') || row.querySelector("input, select, textarea, button"));
+  if (c) { c.focus({preventScroll: true}); c.scrollIntoView({block: "nearest"}); }
+}
+/* + BrewStart, over step 1 of a recipe without one: added first, filled in, its When settings open with its time box
+   ready (showWhen). Its key */
+function addBrewStart() {
+  if (st.page === "steps") ensureBs();
+  const ed = E(), s = newStep("BrewStart");
+  insertAt(ed, s, firstFree(ed)); s._where = "before everything else";
+  ed.kinds = false; ed.cur = s._k;
+  if (narrow()) st.view = "recipe";
+  render();
+  if (!narrow()) goView(true);
+  requestAnimationFrame(() => showWhen(s._k));
+  return s._k;
+}
+/* Brew Day's + BrewStart box's ALL SETTINGS (st.wantBsAdd): + BrewStart pressed here once it can be (bsWhy: CraftBeerPi's
+   clock, and where its HLT and element come from), where Brew Steps offers it; a BrewStart already there is shown */
+function tryBsAdd() {
+  if (!st.wantBsAdd || st.page !== "steps" || !D.loaded || bsWhy()) return;
+  st.wantBsAdd = false;
+  ensureBs();
+  const b = brew(), had = st.bs.doc.steps.find(s => s.type === "BrewStart" && !s._removed);
+  if (had) { st.fromDay = had._k; st.wantPick = had._k; return tryPick(); }
+  if (!(b.state === "none" || (b.state === "ready" && !b.begun)) || lastOnly()) return;
+  st.fromDay = addBrewStart();
 }
 const focusAsk = () => requestAnimationFrame(() => { const a = $("#ask"); if (a) a.scrollIntoView({block: "nearest"}); const b = a && a.querySelector("button"); if (b) b.focus({preventScroll: true}); });
 /* the column's choice when no recipe is named: the recipe on Brew Day, else the newest */
@@ -1554,7 +1638,41 @@ function save(then) {
   ed.doc.steps.forEach(s => { s._typing = false; });
   const need = needsWhy(ed);
   if (need) { render(); return sayAt("save", null, need); }
+  if (st.page === "steps") {
+    const v = vesselMove(ed);
+    if (v && !st.vesselOk) { st.ask = {kind: "vessel", ...v, then}; render(); return focusVessel(); }
+  }
+  st.vesselOk = false;
   return st.page === "steps" ? saveSteps(then) : saveBook(then);
+}
+/* a new vessel for a BrewStart heating (or holding) the water: the one change SAVE asks about first, once, naming what
+   happens, as the heating moves from one element to another. Neither answer is the default; MOVE THE HEATING saves
+   it with the rest, KEEP THE HLT (its vessel's name) puts the vessel back and saves the rest */
+function vesselMove(ed) {
+  for (const s of live(ed)) {
+    if (!liveBs(s) || bsDoing(s) === "waiting") continue;
+    const o = origOf(ed, s), p = s.props || {}, q = (o && o.props) || {};
+    if (o && norm(p.Heat_Kettle) !== "" && !same(p.Heat_Kettle, q.Heat_Kettle)) return {k: s._k, from: nameOf(D.kettles, q.Heat_Kettle) || "vessel", to: nameOf(D.kettles, p.Heat_Kettle) || "new vessel"};
+  }
+  return null;
+}
+function vesselHTML() {
+  const a = st.ask;
+  return `<div class="confirm" role="group" aria-labelledby="vs-t" id="ask"><p id="vs-t" tabindex="-1">Heating moves from the ${esc(a.from)} to the ${esc(a.to)}: the ${esc(a.from)}'s element stops and the ${esc(a.to)}'s starts.</p>
+    <div class="acts"><button type="button" data-yes="vessel-move">Move the heating</button><button type="button" data-yes="vessel-keep">Keep the ${esc(a.from)}</button></div></div>`;
+}
+/* the question in view, and focus on its words, not on an answer, as neither is the default */
+const focusVessel = () => requestAnimationFrame(() => { const a = $("#ask"), p = $("#vs-t"); if (a) a.scrollIntoView({block: "nearest"}); if (p) p.focus({preventScroll: true}); if (p) say(p.textContent); });
+function vesselAnswer(move) {
+  const a = st.ask, ed = E();
+  st.ask = null;
+  if (!a || a.kind !== "vessel" || !ed) return render();
+  if (move) { st.vesselOk = true; render(); return save(a.then); }
+  const s = stepByKey(a.k), o = s && origOf(ed, s);
+  if (s && o) s.props.Heat_Kettle = (o.props || {}).Heat_Kettle;
+  if (changes(ed)) { render(); return save(a.then); }
+  render();
+  say(`BrewStart keeps heating the ${a.from}.`);
 }
 const tidy = steps => steps.filter(s => !s._removed).map(s => { const c = {...s, props: clone(s.props || {})}; delete c._moved; delete c._where; delete c._fill; return c; });
 async function saveBook(then) {
@@ -1588,7 +1706,9 @@ async function saveBook(then) {
 async function saveSteps(then) {
   const ed = st.bs, L = st.loaded, name = (L && L.name) || "Brew Steps";
   const ops = [];
-  for (const s of ed.doc.steps) { const o = origOf(ed, s); if (o && !s._removed) { const c = stepChange(ed, s); if (c.keys.length) ops.push({kind: "put", s, n: c.keys.length}); } }
+  /* a running BrewStart's changes go to it through its change_settings (liveBs), only the settings changed: CraftBeerPi
+     refuses PUT on a running step */
+  for (const s of ed.doc.steps) { const o = origOf(ed, s); if (o && !s._removed) { const c = stepChange(ed, s); if (c.keys.length) ops.push(liveBs(s) ? {kind: "act", s, n: c.keys.length, params: Object.fromEntries(c.keys.map(k => [k, s.props[k] ?? ""]))} : {kind: "put", s, n: c.keys.length}); } }
   for (const s of ed.doc.steps) if (s._removed && origOf(ed, s)) ops.push({kind: "del", s, n: 1});
   const ids = ed.doc.steps.filter(s => origOf(ed, s) && !s._removed).map(s => s._k), was = ed.orig.steps.map(s => s._k).filter(k => ids.includes(k));
   if (ids.join() !== was.join()) ops.push({kind: "order", ids, n: ed.doc.steps.filter(s => s._moved && !s._removed).length || 1});
@@ -1599,12 +1719,13 @@ async function saveSteps(then) {
   let done = 0, failed = null;
   for (const op of ops) {
     const res = op.kind === "put" ? await call("PUT", `/step2/${enc(op.s._k)}`, body(op.s))
+      : op.kind === "act" ? await call("POST", `/step2/action/${enc(op.s._k)}`, {action: "change_settings", parameter: op.params})
       : op.kind === "del" ? await call("DELETE", `/step2/${enc(op.s._k)}`)
       : op.kind === "order" ? await call("PUT", "/step2/order", {ids: op.ids})
       : await call("POST", "/step2/", {...body(op.s), index: op.index});
     if (g !== gen || !st) return;
     if (!res.ok) { failed = {op, res}; break; }
-    if (op.kind === "put") { const o = origOf(ed, op.s); o.name = op.s.name; o.type = op.s.type; o.props = clone(op.s.props || {}); }
+    if (op.kind === "put" || op.kind === "act") { const o = origOf(ed, op.s); o.name = op.s.name; o.type = op.s.type; o.props = clone(op.s.props || {}); }
     else if (op.kind === "del") { ed.doc.steps = ed.doc.steps.filter(x => x !== op.s); ed.orig.steps = ed.orig.steps.filter(x => x._k !== op.s._k); }
     else if (op.kind === "order") { ed.orig.steps = op.ids.map(k => ed.orig.steps.find(o => o._k === k)).filter(Boolean); ed.doc.steps.forEach(x => delete x._moved); }
     else {
@@ -1623,6 +1744,8 @@ async function saveSteps(then) {
     log(`${name}: brew steps saved for this brew`, "confirmed", "ok");
     say(`${name}: brew steps saved for this brew.`);
     render();
+    /* from Brew Day's BrewStart box: the way back next, in view and focused */
+    if (!then && st.fromDay) requestAnimationFrame(() => { const d = $("#dayback"), x = d && d.querySelector("button"); if (d) d.scrollIntoView({block: "nearest"}); if (x) x.focus({preventScroll: true}); });
     if (then) then();
     return;
   }
@@ -1852,6 +1975,7 @@ function onClick(e) {
   if (ds.load) return pressLoad(ds.load, ds.from);
   if (ds.yes) {
     const a = st.ask || {};
+    if (ds.yes === "vessel-move" || ds.yes === "vessel-keep") return vesselAnswer(ds.yes === "vessel-move");
     if (ds.yes === "load") return doLoad(a.file, a.from);
     if (ds.yes === "unload") return doUnload();
     if (ds.yes === "delete") return delRecipe();
@@ -1909,14 +2033,8 @@ function onClick(e) {
   // + BrewStart, over step 1 of a recipe without one: added first, filled in, its time to set
   if ("bsadd" in ds) {
     if (st.page === "book" && st.pane !== "edit" && !startEdit(st.open)) return render();
-    if (st.page === "steps") ensureBs();
-    const ed = E(), s = newStep("BrewStart");
-    insertAt(ed, s, firstFree(ed)); s._where = "before everything else";
-    ed.kinds = false; ed.cur = s._k;
-    if (narrow()) st.view = "recipe";
-    render();
-    if (!narrow()) goView(true);
-    return requestAnimationFrame(() => showWhen(s._k));
+    addBrewStart();
+    return;
   }
   // MOVE: the step is marked, and PUT IT HERE shows between the steps; one tap there puts it, however far
   if (ds.move) {
