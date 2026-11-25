@@ -21,7 +21,9 @@
 //   last-event line, the brew-day screen's own list, says what happened. CraftBeerPi takes a kettle's record without its
 //   target and sets the target to 0, so a saved kettle's target is sent back after (POST /kettle/{id}/target_temp).
 // - A kettle's Vessel group (capacity, empty weight, material) is shown only where CraftBeerPi keeps those figures: its
-//   kettles have the fields (4.7.7.post65 on). A kettle whose only changes are there is sent just them, PUT
+//   kettles have the fields (4.7.7.post65 on). The boil kettle's adds its steam condenser on the lid and, once Fitted,
+//   its name, where CraftBeerPi keeps them (the kettle fields condenser and condenser_name); a CraftBeerPi without them
+//   ignores what it doesn't know. A kettle whose only changes are there is sent just them, PUT
 //   /kettle/{id}/vessel, which leaves its AUTO running and its target as it is. A settings file's figures are listed in
 //   its preview, and a new kettle filled in from a file is saved with them.
 // - A switch's ON/OFF asks CraftBeerPi (POST /actor/{id}/on or off) and waits for its answer; DELETE asks it too.
@@ -83,7 +85,7 @@ function fresh() {
     file: null, fileSay: null, fileListSay: null, wait: null, waitFor: null, view: "index", more: {}, adding: 0, aside: {},
     ask: null, news: [], patch: {}, expect: {}, busy: {}, gone: new Set(), deleting: null, why: {}, hotKey: null,
     flash: null, path: null, loaded: false, left: {}};
-  D = {brewery: "", unit: "C", mashTun: "", boilKettle: "", kettle: [], sensor: [], actor: [], readings: {}, fermenters: 0, vessels: false};
+  D = {brewery: "", unit: "C", mashTun: "", boilKettle: "", kettle: [], sensor: [], actor: [], readings: {}, fermenters: 0, vessels: false, condenser: false};
 }
 const ik = (kind, id) => kind + ":" + id;
 const split = k => { const i = k.indexOf(":"); return [k.slice(0, i), k.slice(i + 1)]; };
@@ -130,7 +132,7 @@ const invalid = (kind, id, f) => {
   /* a vessel's figure: empty is usual and fine; one that can't be right (0 or less) is said at its row once the box is
      left, or at SAVE, never while it is typed, so "0.12" doesn't flash red on its way. It holds back SAVE, as a box
      that needs a number does, and changes nothing anywhere else */
-  if (kind === "kettle" && isVessel(f) && f !== "material") {
+  if (kind === "kettle" && isVessel(f) && !VESSEL_WORDS.includes(f)) {
     if (blankish(v)) return "";
     const n = +String(v).replace(",", ".");
     if (isNaN(n)) return "Needs a number";
@@ -155,8 +157,15 @@ const pick = line => (Array.isArray(line) ? line[F() ? 0 : 1] : line) || "";
 const unitText = u => (u === "deg" ? unit() : u === "vol" ? (F() ? "gal" : "L") : u === "mass" ? (F() ? "lb" : "kg") : u || "");
 /* a kettle's vessel fields (HW_VESSEL): optional, kept with the kettle, edited in its Vessel group */
 const isVessel = f => HW_VESSEL.some(([k]) => k === f);
-/* a vessel field as CraftBeerPi is sent it: null for empty, a number for a figure, the material by its name */
-const vesselOut = (f, v) => (blankish(v) ? null : f === "material" ? String(v).trim() : +String(v).replace(",", "."));
+/* the vessel fields that are words, not figures: the material, and the boil kettle's steam condenser and its name */
+const VESSEL_WORDS = ["material", "condenser", "condenser_name"];
+/* a kettle's Vessel group's rows: Specific heat only for another material; the steam condenser on the lid only on the
+   boil kettle, and its name only once it is Fitted */
+const vesselRows = (kind, id) => HW_VESSEL.filter(([k]) => (k !== "specific_heat" || val(kind, id, "material") === "other")
+  && (!k.startsWith("condenser") || (D.condenser && id === D.boilKettle)) && (k !== "condenser_name" || val(kind, id, "condenser") === "fitted"));
+/* a vessel field as CraftBeerPi is sent it: null for empty, a number for a figure, the material, the condenser and its
+   name as words */
+const vesselOut = (f, v) => (blankish(v) ? null : VESSEL_WORDS.includes(f) ? String(v).trim() : +String(v).replace(",", "."));
 /* a choice's values as the page compares them: a plugin may give plain values, or {value, label} */
 const optVal = o => String(o && typeof o === "object" ? o.value : o);
 /* what an empty kettle setting means: its control's built-in value in the brewery's units (CraftBeerPi's blank_defaults
@@ -187,7 +196,7 @@ function partsOf(kind, id) {
   const parts = [{h: {kettle: "Kettle", sensor: "Probe", actor: "Switch"}[kind], rows: HW_OWN[kind].map(([k, n, l, u]) => ({f: k, n, l, u}))}];
   /* a kettle's vessel, next: what the pot is, before its settings file and its control's settings. Only where
      CraftBeerPi keeps a kettle's measurements: an older one would drop them */
-  if (kind === "kettle" && D.vessels) parts.push({h: "Vessel", intro: HW_VESSEL_INTRO, rows: HW_VESSEL.filter(([k]) => k !== "specific_heat" || val(kind, id, "material") === "other").map(([k, n, l, u]) => ({f: k, n, l, u}))});
+  if (kind === "kettle" && D.vessels) parts.push({h: "Vessel", intro: HW_VESSEL_INTRO, rows: vesselRows(kind, id).map(([k, n, l, u]) => ({f: k, n, l, u}))});
   (c ? c.parts : []).forEach(([h, rows]) => {
     const r = rows.filter(([k]) => shownDefs.some(p => p.label === k)).map(([k, n, l, u]) => { known.add(k); return {f: "props." + k, n, l: pick(l), u}; });
     if (r.length) parts.push({h, rows: r});
@@ -334,6 +343,7 @@ function marked(text) {
 function shown(kind, id, f, v) {
   if (blankish(v)) return f === "type" ? "none" : "blank";
   if (f === "material") { const m = HW_MATERIALS.find(([k]) => k === v); return m ? m[1] : String(v); }
+  if (f === "condenser") return v === "fitted" ? "Fitted" : String(v);
   const link = f === "sensor" ? "sensor" : f === "heater" || f === "agitator" ? "actor" : null;
   const p = propDef(kind, id, f), lk = link || (p && ["sensor", "actor", "kettle"].includes(p.type) ? p.type : null);
   if (lk) { const x = find(lk, v); return x ? x.name : `an unknown one (${v})`; }
@@ -568,12 +578,16 @@ function ctlHTML(kind, id, f) {
     return `<select class="fld" id="${fid}" data-f="type" ${d}><option value=""${blankish(v) ? " selected" : ""}>${find(kind, id).fresh ? "Choose one" : "None"}</option>${list.map(t => `<option value="${esc(t)}"${t === v ? " selected" : ""}>${esc(t)}</option>`).join("")}</select>${c ? `<p class="fx">${esc(c.does)}</p>` : ""}`;
   }
   /* a vessel's figures: a number with its unit, an empty box reading "empty", and no line under it, as empty is usual;
-     the material from a menu, "Not set" first, and one CraftBeerPi has that the menu doesn't name kept as it is */
+     the material from a menu, "Not set" first, and one CraftBeerPi has that the menu doesn't name kept as it is; the
+     boil kettle's steam condenser from a menu, Not fitted first, and its name a box whose empty reads as Brew Day says
+     it then */
   if (kind === "kettle" && isVessel(f)) {
     if (f === "material") {
       const odd = !blankish(v) && !HW_MATERIALS.some(([k]) => same(k, v)) ? `<option value="${esc(v)}" selected>${esc(v)}</option>` : "";
       return `<select class="fld" id="${fid}" data-f="material" ${d}><option value=""${blankish(v) ? " selected" : ""}>Not set</option>${HW_MATERIALS.map(([k, n]) => `<option value="${k}"${same(k, v) ? " selected" : ""}>${n}</option>`).join("")}${odd}</select>`;
     }
+    if (f === "condenser") return `<select class="fld" id="${fid}" data-f="condenser" ${d}><option value=""${v !== "fitted" ? " selected" : ""}>Not fitted</option><option value="fitted"${v === "fitted" ? " selected" : ""}>Fitted</option></select>`;
+    if (f === "condenser_name") return `<input class="fld" id="${fid}" data-f="condenser_name" autocomplete="off" spellcheck="false" value="${esc(v)}" placeholder="steam condenser" ${d}>`;
     const u = unitText(rowMeta(kind, id, f).u);
     return `<div class="numf"><input id="${fid}" data-f="${f}" inputmode="decimal" autocomplete="off" spellcheck="false" value="${esc(v)}" placeholder="empty" ${d}>${u ? `<span aria-hidden="true">${esc(u)}</span>` : ""}</div>`;
   }
@@ -670,7 +684,8 @@ function planRows(f) {
   (p.measurements || []).forEach(r => {
     const m = HW_VESSEL.find(([k]) => k === r.field);
     if (!m) return;
-    const u = unitText(m[3]), say = v => (blankish(v) ? "" : r.field === "material" ? (HW_MATERIALS.find(([k]) => k === v) || [v, String(v)])[1] : `${ownText(v)}${u ? " " + u : ""}`);
+    const u = unitText(m[3]), say = v => (blankish(v) ? "" : r.field === "material" ? (HW_MATERIALS.find(([k]) => k === v) || [v, String(v)])[1]
+      : r.field === "condenser" ? (v === "fitted" ? "Fitted" : String(v)) : `${ownText(v)}${u ? " " + u : ""}`);
     rows.push({key: r.field, name: m[1], now: say(r.now), after: say(r.after), changes: !!r.changes, note: ""});
   });
   const order = [];
@@ -1370,8 +1385,10 @@ function merge() {
   });
   D = {brewery: cfg("BREWERY_NAME") || "", unit: cfg("TEMP_UNIT") || "C", mashTun: cfg("MASH_TUN") || "", boilKettle: cfg("BoilKettle") || "",
     kettle: out.kettle, sensor: out.sensor, actor: out.actor, readings: d.sensorData || {}, fermenters: (d.fermenters || []).length,
-    /* CraftBeerPi keeps each kettle's measurements (4.7.7.post65 on): its kettles have the fields, blank or not */
-    vessels: lists.kettle.some(x => x && typeof x === "object" && "capacity" in x)};
+    /* CraftBeerPi keeps each kettle's measurements (4.7.7.post65 on): its kettles have the fields, blank or not; and a
+       steam condenser on a kettle's lid where they have its field too */
+    vessels: lists.kettle.some(x => x && typeof x === "object" && "capacity" in x),
+    condenser: lists.kettle.some(x => x && typeof x === "object" && "condenser" in x)};
 }
 const typesOf = list => Object.fromEntries((list || []).filter(t => t && t.name).map(t => [t.name, Array.isArray(t.properties) ? t.properties : []]));
 function live(d) {

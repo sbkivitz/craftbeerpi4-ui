@@ -44,7 +44,14 @@ are missing. They should only improve - not hinder". The design, with Brew Day's
     stainless steel.", a menu: Not set, Stainless steel, Aluminum, Other;
   - Specific heat (`specific_heat`), only while Other is chosen, "How much heat the material holds, as BeerSmith's
     equipment profile gives it: copper 0.09, stainless steel 0.12, aluminum 0.22.", cal/g·°C. Choosing the material
-    draws the item again, so the row comes and goes.
+    draws the item again, so the row comes and goes;
+  - on the boil kettle alone, Steam condenser on the lid (`condenser`), "Shows it in Brew Day's drawing, and reminds
+    you to turn its mister off after the boil. Its mister is shown set by hand unless steps_boil_actor names the actor
+    that switches it.", a menu: Not fitted (empty, the default) or Fitted (`fitted`); and once Fitted, Its name
+    (`condenser_name`), "As Brew Day's drawing and its reminders say it. Left empty: steam condenser.", a text box
+    whose empty reads "steam condenser" (`design/brewday/STEAM-SLAYER.md`). Choosing Fitted draws the item again, so
+    the name's row comes and goes. Moment: `#vesselslayer`, Fitted and named Steam Slayer. Only where CraftBeerPi
+    keeps these fields: its kettles have them.
 - **Empty:** the box reads "empty", the menu "Not set". No "Empty: …" line under them, and they are never among the
   empty settings named before SAVE (`emptyText` and `emptiesOf` only look at a control's settings).
 - **A figure that can't be right**, 0 or less: in red in the row's status line, "0 gal can't be right: leave it empty

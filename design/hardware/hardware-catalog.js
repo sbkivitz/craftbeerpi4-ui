@@ -29,14 +29,18 @@ const HW_OWN = {
    specific_heat). Each is optional, and empty is usual: nothing
    needs them, and what uses them does without. So they have no "Empty:" line and aren't among the empty settings asked
    about before SAVE. Units: "vol" is the brewery's volume (gal on a °F brewery, L on a °C one), "mass" its weight (lb
-   or kg). Specific heat shows only for another material */
+   or kg). Specific heat shows only for another material. The boil kettle's alone has a steam condenser on its lid
+   (design/brewday STEAM-SLAYER.md, the kettle fields condenser and condenser_name): Not fitted, the default, or Fitted,
+   and once Fitted its name */
 const HW_VESSEL_INTRO = "Each is optional: leave it empty if you don't know it. Saving these leaves the kettle's AUTO as it is.";
 const HW_VESSEL = [
   ["capacity", "Capacity", "How much it holds, full. Brew Day checks BrewStart's water against the HLT's.", "vol"],
   ["min_water", "Least water", "The least water that keeps its element, and an HLT's coil, covered. Brew Day never leaves the HLT less after the strike water. Empty, it takes 15% of the capacity, or 3 gal (11.4 L).", "vol"],
   ["empty_weight", "Empty weight", "What it weighs empty, with what's fixed in it, such as a coil or a false bottom. The strike water forecast uses it.", "mass"],
   ["material", "Material", "What it's made of. The forecast uses it with the empty weight; without it, it takes stainless steel.", ""],
-  ["specific_heat", "Specific heat", "How much heat the material holds, as BeerSmith's equipment profile gives it: copper 0.09, stainless steel 0.12, aluminum 0.22.", "cal/g·°C"]
+  ["specific_heat", "Specific heat", "How much heat the material holds, as BeerSmith's equipment profile gives it: copper 0.09, stainless steel 0.12, aluminum 0.22.", "cal/g·°C"],
+  ["condenser", "Steam condenser on the lid", "Shows it in Brew Day's drawing, and reminds you to turn its mister off after the boil. Its mister is shown set by hand unless steps_boil_actor names the actor that switches it.", ""],
+  ["condenser_name", "Its name", "As Brew Day's drawing and its reminders say it. Left empty: steam condenser.", ""]
 ];
 /* the materials, as CraftBeerPi keeps them and as this page says them; "Not set" first, for empty */
 const HW_MATERIALS = [["stainless_steel", "Stainless steel"], ["aluminium", "Aluminum"], ["other", "Other"]];
