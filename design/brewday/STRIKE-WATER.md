@@ -153,8 +153,9 @@ in. Beside FORECAST is USE 132.4 °F, "aims under the rest". Nothing changes unt
 **Just loaded, before anything is worked out** (`#sw-working`, `#sw-working-open`). CraftBeerPi works USE out when the
 recipe is loaded, and on the Pi that's expected to take about 12 to 55 seconds (an estimate: not yet measured there).
 Meanwhile the window's MASH shows dashes and WORKING OUT, USE is greyed with dashes for its figure and "working it out"
-under them, and one line says how long so far: "Working out USE: 20 s so far." FORECAST opens to the numbers it's
-worked out from, with "The chart, and where the mash lands, come once USE is worked out."
+under them, and one line under USE's row says how long so far: "Working out USE: 20 s so far." It sits under the row,
+not over it, so USE doesn't move as it lights up (decision 18). FORECAST opens to the numbers it's worked out from, with
+"The chart, and where the mash lands, come once USE is worked out."
 
 **FORECAST opened** (`#sw-forecast`). The box's head stays as it was: the window, USE, and FORECAST's button, which now
 says CLOSE, "the forecast". Under the head, the chart shows the mash for an hour from the grain going in. Red is the
@@ -203,7 +204,8 @@ mash itself lands 118-124 °F. Once the malt is in, the box goes.
 
 **No forecast, with figures to give: one row** (`#sw-missing`, `#sw-missing-steps`, `#sw-noprobe`, `#sw-asks`, then
 `#sw-give`; decision 17). Where what stops the forecast is a figure the brewer can give in the box (the recipe's grain
-weight or mash water, or the room while the boil kettle's probe can't stand for it), the box is one row under its window,
+weight or mash water, or the room while the boil kettle's probe can't stand for it), and nothing else stops it, the box
+is one row under its window,
 as tall as with a forecast, so the step list keeps the room it has on a recipe with BeerSmith's figures: USE in its
 place, greyed, "can't work it out", and GIVE THEM in FORECAST's place, naming them: "grain weight · mash water"; GIVE IT
 and "mash water" for one; with three or more, the first named and the rest counted, "grain weight and 2 more". The HLT's
@@ -214,8 +216,10 @@ open. Once the last is given and USE is worked out, the forecast is there in the
 CLOSE. MashIn's row already says "mash water not given" in Note Amber, and USE, tapped, says what it needs, so nothing
 is hidden that the closed box used to say.
 
-**No forecast: why, and what can be given** (`#sw-novol`, `#sw-grain-bad`, `#sw-interval`, `#sw-failed`, and the
-figures above once GIVE THEM is pressed). Whenever a number the forecast needs is missing, the box says why where its
+**No forecast: why, and what can be given** (`#sw-novol`, `#sw-grain-bad`, `#sw-interval`, `#sw-failed`, the figures
+above once GIVE THEM is pressed, and any of those with a figure to give besides: with the control interval unusable and
+the probe giving no reading, giving the room alone wouldn't bring USE, so the box says both, the interval first, as
+before). Whenever a number the forecast needs is missing, the box says why where its
 buttons were, and under that keeps USE, HLT WATER and GRAIN side by side, as USE and FORECAST sit when there is a forecast
 (decision 15). USE
 stays in its place with dashes, greyed, "can't work it out"; tapped, it says what it needs: "USE needs how much water is
@@ -508,6 +512,17 @@ no more than that, it moves nothing and says why. The same at any simulator spee
     The other ways the forecast stops (no HLT water alone, a grain temperature it can't use, the control interval, USE
     too far, a failure) are said as before: one line, with nothing to give but HLT WATER or GRAIN beside USE. Recipes
     imported from BeerSmith since core post55 have the figures, so this is mostly older and hand-written recipes.
+    Only where every missing number is one the box takes (the recipe's figures, the room, the HLT's water): with the
+    mash step's temperature, the control interval, a grain temperature it can't use, USE too far or a failure among
+    them, GIVE THEM would promise a USE the figures can't bring.
+18. **The line saying USE is being worked out sits under USE's row, and the box's kept height goes once the forecast
+    is in** (25 Nov). The closed box keeps the tallest its contents have needed (pbFit), so a line that goes doesn't
+    move a button under a reaching hand. The working line used to sit over USE's row, so when the forecast came the box
+    stayed 28 px taller than a fresh load, and USE still moved up 16 px and grew, just as it lit up to be pressed. Under
+    the row, the line's going moves nothing in the box: USE stays where it was. The working box has its own class
+    (`sw-wk`), so the height it kept is let go as the forecast comes, and the box is then as tall as on a fresh load;
+    the step list moves up once, by the line's height, as the forecast arrives. The Mash Tun's line during dough-in
+    stays over the row: it doesn't come and go while USE waits to be pressed.
 
 ## The dead space in the BeerSmith profile
 
@@ -776,8 +791,9 @@ faceplates share their rows, so a box on one would push the other two out of lin
   and holds the water, and through dough-in. Then it's gone.
 - It makes way for the pre-brew check's box, the probes side by side, and NEXT STEP's or RESET's question, which sit
   in the same place. One box at a time.
-- On one screen it is 152-172 px tall, 180-194 px while USE is worked out, with its one line about it, and 215-226 px
-  during dough-in with its line about the Mash Tun's reading. Asking for figures to give, closed, it is as tall as with
+- On one screen it is 152-172 px tall, 180-194 px while USE is worked out, with its one line about it under USE's row,
+  and 215-226 px during dough-in with its line about the Mash Tun's reading. Once the forecast is in it is as tall as on
+  a fresh load again: the height kept while it was worked out is let go (decision 18). Asking for figures to give, closed, it is as tall as with
   a forecast (152-166 px); it was 298-336 px, which left a 1920 × 950 window's step list 103-124 px, one row. Opened
   with GIVE THEM, it takes the step list's room as FORECAST does: 376-402 px. The current step stays whole at every one-screen size,
   from 1180 × 860 up.

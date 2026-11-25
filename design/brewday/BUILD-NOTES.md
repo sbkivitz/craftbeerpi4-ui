@@ -7185,7 +7185,12 @@ strike water stays as planned. So the step list, what's next, keeps its room, an
 1. **When:** no forecast (`!has`), and the figures USE needs include one the brewer can give in the box (`swGives`):
    - the recipe's grain weight or mash water, missing and not given here;
    - the room, while the boil kettle's probe can't stand for it (miss or misses "probe" or "room");
-   - with any of those, the HLT's water where it is missing too.
+   - with any of those, the HLT's water where it is missing too;
+
+   and only where every missing number, miss and misses alike, is one of "recipe", "probe", "room" and "vol"
+   (`SW_GIVES`), the mash step has a temperature, and the work hasn't failed. With the control interval, a grain
+   temperature it can't use or USE too far among them, giving the figures wouldn't bring USE, so the box is drawn as
+   today (with the interval unusable and the probe giving no reading, the interval's sentence, then the probe's).
 
    Figures already given here aren't among them; they are changed in the open box. A figure's own box open (HLT
    WATER's, GRAIN's, or one of the recipe's or the room's, opened in the box, not from MashIn's row) shows as today, in
@@ -7249,6 +7254,37 @@ water · room"), `#sw-noprobe` (GIVE IT, "room"), and the new `#sw-give`, `#sw-m
 `proposal\brew-day.js` (`swHTML`'s no-forecast branch; `swMissHTML` split into `swMissBits`; `swEditing`, `SW_GIVE`,
 `swGives`, `swGiveRow`, `swGiveDet`; the `#sw-give` moment); `proposal\brew-day.html` (its link); `STRIKE-WATER.md`
 (what the brewer sees, where it sits, decisions 13 and 17, the moments); this section.
+
+## The line saying USE is being worked out, under USE's row: ready to build (25 Nov)
+
+You asked for the closed box to match a fresh load once the forecast is in, rather than keeping 194 px (STRIKE-WATER.md
+decision 18). The kept height (`pbFit`) is there so a line that goes doesn't move a button under a reaching hand. The
+line that went here, "Working out USE: 20 s so far.", sat over USE's row, so letting the box shrink as the forecast came
+would have moved USE up 28 px just as it lit up to be pressed; keeping the height still moved it up 16 px and made it
+taller. So:
+
+### What to build (screen.js)
+
+1. In `swHTML`'s box with a forecast, the working line (`.swl.swwk`, `swWorkSays`) goes after USE's row
+   (`.swa`) instead of before it. The Mash Tun's line during dough-in (`.swl.swmt`) stays before the row.
+2. The box's class gains `sw-wk` while CraftBeerPi works USE out (`N.work || N.wait`). `pbMeasure` and `pbFit` key the
+   kept height on the class, so it is let go as the forecast comes: the box is then as tall as on a fresh load (166 px
+   at 1920 × 950), USE where it was, and the step list moves up once, by the line's height.
+3. Nothing else changes: `pbFit` keeps working as today within one state, and for the pre-brew check's box and the
+   probes' panel.
+
+### Moments whose pictures change
+
+`#sw-working`, `#sw-working-open`, `#sw-reworking`, and any with USE being worked out: the line under the buttons.
+
+### Checked
+
+- `files\wk_presses.py` (new): 17 checks, all passing, no page errors. At 8 sizes from 2000 × 1000 to 360 × 740,
+  `#sw-working`'s USE where it is on `#sw-plan`, the line under its row, the class `sw-wk`; at 1920 × 950, 1440 × 900
+  and 390 × 844, once the forecast comes, the box as tall as on a fresh load with no height kept and USE where it was,
+  both for `#sw-working` and for the HLT's water changed in FORECAST and the box closed while USE is worked out again.
+- `files\give_presses.py`: the last figure given, then CLOSE: once USE is worked out, the box as on a fresh load, with
+  no height kept.
 
 ## Open questions about the drawing
 
