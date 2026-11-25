@@ -362,6 +362,8 @@ html.bare .mock{display:none}
 .swm.hot,.swm.hot .swk{color:var(--prompt)}
 .swa{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:8px}
 .swa.one{grid-template-columns:minmax(0,1fr)}
+.swa.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.swa.three{grid-template-columns:repeat(3,minmax(0,1fr))}
 .sw .cmdbtn{min-height:54px}
 .sw .swuse{background:var(--select);border-color:var(--select);color:#fff}
 .sw .swuse small{color:#fff}

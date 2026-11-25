@@ -201,19 +201,32 @@ So the box says only what's certain, and only when the reading is more than 3 °
 "The Mash Tun's 132.2 °F isn't the mash: with the pump stopped, its probe reads the water left in the HLT's coil." The
 mash itself lands 118-124 °F. Once the malt is in, the box goes.
 
-**No water figure** (`#sw-novol`). If BrewStart has no water volume, the box asks for it, and HLT WATER opens the box to
-give it.
+**No forecast: why, and what can be given** (`#sw-novol`, `#sw-missing`, `#sw-missing-steps`, `#sw-noprobe`,
+`#sw-interval`). Whenever a number the forecast needs is missing, the box says why where its buttons were, and under
+that keeps USE, HLT WATER and GRAIN side by side, as USE and FORECAST sit when there is a forecast (decision 15). USE
+stays in its place with dashes, greyed, "can't work it out"; tapped, it says what it needs: "USE needs how much water is
+in the HLT, strike and sparge: set it with HLT WATER." HLT WATER and GRAIN show their figures with "change" (HLT WATER
+"set it" while there's none, GRAIN "give it" while nothing stands for the grain), and each opens its small box in place
+of the line and the buttons. With no water volume on BrewStart (`#sw-novol`), the line asks for it: "How much water is
+in the HLT, strike and sparge? The forecast needs it." A recipe imported before CraftBeerPi kept BeerSmith's mash
+figures (`#sw-missing`) has its MashIn's grain weight, so the line names the mash water alone, and MASH WATER, "give
+it", sits over the three buttons (decision 13); one built on Brew Steps (`#sw-missing-steps`) has no grain weight
+either, so GRAIN WEIGHT sits beside it. With the boil kettle's probe giving no reading (`#sw-noprobe`), ROOM, "give it",
+asks for the room's temperature (decision 14), and GRAIN says "give it", as nothing stands for the grain. The mash
+tun's control interval at 2.5 s (`#sw-interval`) is set in Hardware, so nothing is asked for over the buttons.
 
 **A grain temperature the forecast can't use** (`#sw-grain-bad`). BrewStart's grain temperature is saved on Brew Steps,
-which takes anything. Outside 35-120 °F, or not a number, the forecast can't use it, so the box says so where USE was:
-"BrewStart's grain temperature is 150.0 °F, warmer than any room. The forecast can't use it." ("colder" below 35 °F;
-"BrewStart's grain temperature isn't a number. The forecast can't use it.") GRAIN, "change it", beside it, opens the
-grain's box, with THE PROBE across its foot. SET or THE PROBE puts it right, and USE is worked out as usual. If the
+which takes anything. Outside 35-120 °F, or not a number, the forecast can't use it, so the box says so: "BrewStart's
+grain temperature is 150.0 °F, warmer than any room. The forecast can't use it." ("colder" below 35 °F; "BrewStart's
+grain temperature isn't a number. The forecast can't use it."; brewing by hand, "The grain's temperature is …")
+GRAIN, "change it", under it beside USE and HLT WATER, opens the grain's box at the boil kettle's probe's reading,
+with THE PROBE across its foot. SET or THE PROBE puts it right, and USE is worked out as usual. If the
 numbers come back to those of the last answer, that answer holds again at once.
 
 **The forecast failed** (`#sw-failed`). If CraftBeerPi's work on USE fails, there's no USE: "CraftBeerPi couldn't work
 out a forecast for these numbers, so there's no USE. The strike water stays as planned, at 126.0 °F. What went wrong is
-in LOG." MASH shows dashes. The last figures aren't shown, even greyed: they were for other numbers, and nothing is
+in LOG." MASH shows dashes, and USE stays in its place, greyed, with HLT WATER and GRAIN beside it. The last figures
+aren't shown, even greyed: they were for other numbers, and nothing is
 coming to replace them. LOG has "Strike water forecast failed: …", with "failed" in light red, as a failed command's
 result has. Nothing in the title bar and no sound, since nothing waits for the brewer. Once a number it works from
 changes, the box works USE out again as usual.
@@ -246,6 +259,18 @@ take it at the tun's, a setting in the rig's setup. There PID_HERMS takes the ma
 say so: "Going over the rest is PID_HERMS's own overshoot, which it makes whatever the strike: with the water heated
 only to the rest, it takes the mash to 127.5 °F." USE is 132.9 °F. With the probe reading the tun itself there's no
 dough-in line and no "may read" sentence.
+
+**Figures given in the box** (`#sw-typed`, `#sw-room`, `#sw-asks`). A recipe built on Brew Steps whose grain weight and
+mash water were given in the box (`#sw-typed`) has its forecast as one with BeerSmith's figures has. FORECAST's FROM
+THE RECIPE has no grain or water lines, and FROM YOU has "Grain weight 20 lb, given here for this recipe." and "Mash
+water 8.26 gal to the mash tun, given here for this recipe.", each with CHANGE. With the boil kettle's probe giving no
+reading and the room's temperature given as 66 °F (`#sw-room`), USE is worked out from that: FROM YOU has "Room 66 °F,
+given here while the boil kettle's probe gives no reading a room can have.", with CHANGE, whose box has THE PROBE to
+take it back; the grain's line names "the room's temperature given here"; and MEASURED ON THE RIG has no ROOM. With the
+grain weight given but not the mash water, and the probe giving no reading (`#sw-asks`), the box asks for both: "This
+recipe has no mash water from BeerSmith. Type it here, or import its BeerSmith file again and choose UPDATE. The boil
+kettle's probe gives no reading either.", then GRAIN WEIGHT "20 lb · change", and MASH WATER and ROOM, "give it", over
+USE, HLT WATER and GRAIN.
 
 **On a phone** the box sits in the same place in the recipe column, with the same buttons at the same size.
 
@@ -365,6 +390,14 @@ dough-in line and no "may read" sentence.
     one. LOG: "Room temperature set to 66.0 °F for this brew", with ": kept aside, as the boil kettle's probe reads the
     room" where the probe reads one, and "Room temperature from the boil kettle's probe, the 66.0 °F given taken
     back".
+15. **Without a forecast, nothing the brewer can give is taken away.** A missing figure may only improve things,
+    never take a control away. Whatever stops the forecast (the recipe's figures, the boil kettle's probe, the mash
+    tun's control interval, a grain temperature it can't use, USE too far above the rest, or CraftBeerPi's work
+    failing), the box keeps USE in its place, greyed, saying on a tap what it needs, and offers HLT WATER and GRAIN
+    with their figures. They are the brewer's to give, and CraftBeerPi takes them without the recipe's figures (POST
+    /step2/strike/water refuses too little only where the recipe gives its strike water). CraftBeerPi reports every
+    missing number (misses, beside the first of them, miss, which older screens read), so the water is asked for
+    whenever it is missing, whatever else is: its question follows the first line, and HLT WATER says "set it".
 
 ## The dead space in the BeerSmith profile
 
@@ -569,9 +602,10 @@ When CraftBeerPi doesn't answer, or answers with an error that isn't one of thes
 - The grain: "The grain's temperature did not change. It is still 70.0 °F." From the probe before: "The grain's
   temperature did not change. It is still the boil kettle's probe's, 60.4 °F."
 
-When a number is missing, the reason takes the buttons' place, and each says what to do:
+When a number is missing, the reason takes the buttons' place, over USE (greyed), HLT WATER and GRAIN (decision 15),
+and each says what to do:
 
-- "How much water is in the HLT, strike and sparge? The forecast needs it." with `HLT WATER` / "set it" beside it.
+- "How much water is in the HLT, strike and sparge? The forecast needs it." with `HLT WATER` / "set it" under it.
 - What the recipe lacks for USE, named: "This recipe has no mash water from BeerSmith, so where the mash lands isn't
   known. Type it here, or import its BeerSmith file again and choose UPDATE." That is a recipe imported before
   CraftBeerPi kept BeerSmith's mash figures (core post55), as every recipe in the rig's book is; its MashIn has a grain
@@ -605,10 +639,18 @@ When a number is missing, the reason takes the buttons' place, and each says wha
 - "It works out at 160.5 °F, more than 27 °F above the rest: too far to trust. Check the grain weight and the water in
   BeerSmith." (MashInStep's own limit, 15 °C) Within 27 °F of the rest but over the ceiling, which only a rest above
   152.6 °F can bring: "It works out at 181.2 °F, over 179.6 °F: too hot for strike water. Check the grain weight and the
-  water in BeerSmith." (MashInStep's ceiling, 82 °C)
+  water in BeerSmith." (MashInStep's ceiling, 82 °C) With the grain weight or the mash water given in the box, each
+  ends "Check the grain weight and the mash water given here."
 - "BrewStart's grain temperature is 150.0 °F, warmer than any room. The forecast can't use it." ("colder" below 35 °F;
-  "BrewStart's grain temperature isn't a number. The forecast can't use it."), with `GRAIN` / "change it" beside it,
-  which opens the grain's box.
+  "BrewStart's grain temperature isn't a number. The forecast can't use it."; brewing by hand, "The grain's temperature
+  is …"), with `GRAIN` / "change it" under it, which opens the grain's box.
+- USE, greyed in its place, says on a tap what it needs, from its side: "USE needs the recipe's mash water: give it with
+  MASH WATER, or import its BeerSmith file again and choose UPDATE.", "USE needs the room's temperature, and the boil
+  kettle's probe gives no reading: give it with ROOM, or check the probe's plug and cable.", "USE needs a grain
+  temperature it can use: change it with GRAIN.", "USE needs the mash tun's control interval at 2 or 5 s: set it in
+  Hardware.", "USE isn't offered: 160.5 °F is more than 27 °F above the rest, too far to trust. Check the grain weight
+  and the water in BeerSmith.", and with a failed forecast "CraftBeerPi couldn't work USE out for these numbers. What
+  went wrong is in LOG."
 
 When CraftBeerPi's work on USE fails, in the same place: "CraftBeerPi couldn't work out a forecast for these numbers,
 so there's no USE. The strike water stays as planned, at 126.0 °F. What went wrong is in LOG." Brewing by hand, the
@@ -876,10 +918,17 @@ In `brew-day.html`, second in the strip:
   HLT's coil.
 - `#sw-hand`: brewing by hand, the HLT on its own AUTO, the recipe loaded.
 - `#sw-novol`: BrewStart with no water volume.
-- `#sw-missing`: a recipe built on Brew Steps, with no grain weight.
+- `#sw-missing`: a recipe imported before CraftBeerPi kept BeerSmith's mash figures, its MashIn with a grain weight: the
+  box asks for the mash water.
+- `#sw-missing-steps`: a recipe built on Brew Steps, with no grain weight either: the box asks for both.
 - `#sw-noprobe`: the boil kettle's probe gives no reading.
 - `#sw-grain-bad`: BrewStart's grain temperature saved on Brew Steps as 150 °F.
 - `#sw-interval`: the mash tun's control interval set to 2.5 s.
+- `#sw-typed`: a recipe built on Brew Steps, its grain weight and mash water given in the box, FORECAST opened.
+- `#sw-room`: the boil kettle's probe giving no reading, the room's temperature given as 66 °F, FORECAST opened.
+- `#sw-asks`: a recipe built on Brew Steps, its grain weight given, the probe giving no reading: the box asks for the
+  mash water and the room.
+- `#sw-hw` and `#sw-over`: the vessels' own figures in FORECAST (VESSELS.md).
 
 ## Where it came from
 
