@@ -79,8 +79,9 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .spdbox[hidden]{display:none}
 :where(html.bd-page) .spdbox .spdt{align-self:flex-start;margin:-26px 0 -2px -4px;padding:0 6px;background:var(--panel);font:700 17px/1.2 var(--cond);letter-spacing:.06em}
 /* what is under the title, scrolling inside the box where the window is too short for all of it (--spd-max, set as
-   the box is drawn); the scroller reaches the box's edges, so a focused button's ring isn't cut */
-:where(html.bd-page) .spdbox .spdin{display:flex;flex-direction:column;gap:12px;max-height:var(--spd-max,none);overflow-y:auto;overscroll-behavior:contain;margin:-4px -12px -12px;padding:4px 12px 12px}
+   the box is drawn); the scroller reaches the box's edges, so a focused button's ring isn't cut. Nothing in it is the
+   page's scroll anchor, so what changes in it never scrolls the page */
+:where(html.bd-page) .spdbox .spdin{display:flex;flex-direction:column;gap:12px;max-height:var(--spd-max,none);overflow-y:auto;overscroll-behavior:contain;overflow-anchor:none;margin:-4px -12px -12px;padding:4px 12px 12px}
 :where(html.bd-page) .spdbox .seg{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
 :where(html.bd-page) .spdbox .seg button{min-height:48px;font:700 19px/1 var(--cond);letter-spacing:.04em}
 :where(html.bd-page) .spdbox .spdsay{margin:0;color:var(--text-2)}
