@@ -40,8 +40,9 @@ const kindName = t => (CAT.KINDS[t] || {}).n || t || "No kind chosen";
 const nameIn = s => s.name || kindName(s.type);
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const WEEK = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-// BrewStart's Timing: only "Ready by" heats; a step saved with no Timing runs as Start at, as it did before Timing existed
-const readyBy = p => norm((p || {}).Timing) === "Ready by";
+// BrewStart's Timing: Ready by (hot by the time) or Start at (heating starts at the time); both heat the water and hold
+// it until the brewer's NEXT, and a step saved with no Timing is Ready by
+const readyBy = p => norm((p || {}).Timing) !== "Start at";
 const hm = t => { const m = /^\s*(\d{1,2}):(\d{2})/.exec(String(t ?? "")); return m ? `${m[1].padStart(2, "0")}:${m[2]}` : ""; };
 const todayAt = hm => Date.parse(`${D.TODAY}T${hm}:00`) / 1000;
 /* ---------- times of day: Brew Day's Twelve-Hour Rule ----------
@@ -117,14 +118,14 @@ function additions(p) {
   return out;
 }
 /* a step as Brew Day's recipe column lists it (live.js stepModel): its name, its temperature and minutes, a note, the
-   boil's additions; a BrewStart on Ready by gives the water's temperature, when it's ready by and how much there is */
+   boil's additions; a BrewStart gives the water's temperature, when it's ready by or starts heating and how much there is */
 function stepView(s) {
   const p = s.props || {}, temp = num(p.Temp), t = num(p.Timer), v = {n: s.name || kindName(s.type)};
-  if (s.type === "BrewStart" && readyBy(p)) {
-    const rt = num(p.Ready_Temp), vol = num(p.Volume), at = hm(p.StartTime);
+  if (s.type === "BrewStart") {
+    const rt = num(p.Ready_Temp), vol = num(p.Volume), at = hm(p.StartTime), kw = readyBy(p) ? "ready by" : "start at";
     // a date's weekday stays with its time, as on Brew Day's row: "ready by 7:00 AM Sat"
     const on = norm(p.Mode) === "Date" && ymd(p.StartDate) ? WEEK[dateAt(ymd(p.StartDate)).getDay()] : "";
-    v.p = [rt != null ? `${fmt(rt)}${NB}${U}` : "", at ? `ready by ${timeOfDay(at)}${on ? NB + on : ""}` : "", vol != null && vol > 0 ? `${fmt(vol)}${NB}${p.Volume_Unit === "L" || p.Volume_Unit === "gal" ? p.Volume_Unit : D.UNIT === "C" ? "L" : "gal"}` : ""].filter(Boolean).join(`${NB}· `);
+    v.p = [rt != null ? `${fmt(rt)}${NB}${U}` : "", at ? `${kw} ${timeOfDay(at)}${on ? NB + on : ""}` : "", vol != null && vol > 0 ? `${fmt(vol)}${NB}${p.Volume_Unit === "L" || p.Volume_Unit === "gal" ? p.Volume_Unit : D.UNIT === "C" ? "L" : "gal"}` : ""].filter(Boolean).join(`${NB}· `);
   } else v.p = [temp != null ? `${s.type === "SpargeStep" ? "water " : ""}${fmt(temp)}${NB}${U}` : "", t ? `${fmt(t)}${NB}min` : ""].filter(Boolean).join(`${NB}· `);
   if (s.type === "MashInStep") v.note = temp != null ? `Add the malt when it reaches ${fmt(temp)} ${U}` : "Add the malt when it is up to temperature";
   else if (s.type === "NotificationStep" && p.Notification) v.note = unitText(p.Notification);
@@ -212,10 +213,10 @@ function loadRule() {
   return {};
 }
 function runningWhy() {
-  const L = st.loaded, s = L.steps[brew().cur], p = s.props || {}, nx = L.steps[brew().cur + 1];
+  const L = st.loaded, s = L.steps[brew().cur], p = s.props || {};
   const what = s.type !== "BrewStart" ? `${s.name}${L.left != null ? `, ${mmss(L.left)} left` : ""}`
     : readyBy(p) ? `BrewStart is waiting to have the ${nameOf(D.KETTLES, p.Heat_Kettle) || "water"} at ${fmt(num(p.Ready_Temp))} ${U} by ${timeOfDay(hm(p.StartTime))}`
-    : `BrewStart is waiting until ${timeOfDay(hm(p.StartTime))} to start ${nx ? nameIn(nx) : "the next step"}`;
+    : `BrewStart is waiting until ${timeOfDay(hm(p.StartTime))} to start heating the ${nameOf(D.KETTLES, p.Heat_Kettle) || "water"} to ${fmt(num(p.Ready_Temp))} ${U}`;
   return `${L.name} is running: ${what}. Stop it on Brew Day first.`;
 }
 // where the brew stopped, for a question: "stopped at step 3, Saccharification, after 16 of its 40 min"
@@ -372,7 +373,7 @@ function brewStartProps(ed) {
   const props = {Timing: "Ready by", Mode: st.clock >= "12:00" ? "Tomorrow" : "Today", StartDate: "", StartTime: "",
     Heat_Kettle: q.Heat_Kettle || hltOf(L), Ready_Temp: mi && num(mi.props.Temp) != null ? mi.props.Temp : q.Ready_Temp ?? "",
     Volume: w ? Math.round(w.total * 10) / 10 : q.Volume ?? "", Volume_Unit: w ? unit : q.Volume_Unit || unit, Grain_Temp: "", Heater_Watts: q.Heater_Watts ?? "",
-    Campden_Reminder: q.Campden_Reminder || "No", NotifyBefore: "", AutoNext: "Yes"};
+    Campden_Reminder: q.Campden_Reminder || "No", NotifyBefore: ""};
   const got = [props.Heat_Kettle && `the ${nameOf(D.KETTLES, props.Heat_Kettle)}`, num(props.Heater_Watts) != null && `its ${fmt(num(props.Heater_Watts))} W element`,
     !w && num(props.Volume) != null && `${fmt(num(props.Volume))} ${props.Volume_Unit} of water, the last brew's`, props.Campden_Reminder === "Yes" && "the Campden reminder"].filter(Boolean);
   const from = src && got.length ? `Filled in from ${src.from}, the newest recipe with a BrewStart: ${andList(got)}.` : "No recipe has a BrewStart yet, so the element is blank.";
@@ -401,9 +402,9 @@ function whenHTML(ed, s) {
   const dw = `${WEEK[day.getDay()]} ${day.getDate()} ${MON[day.getMonth()]}`, tt = timeOfDay(t);
   const rel = iso === today ? "today" : iso === dayAfter(today) ? "tomorrow" : "";
   const left = (Date.parse(`${iso}T${t}:00`) - Date.parse(`${today}T${st.clock}:00`)) / 1000;
-  if (left <= 0) return `<span class="late">${tt} ${rel || dw} has passed, so nothing would start by itself. For tomorrow morning, choose TOMORROW.</span>`;
-  const L = live(ed), nx = L[L.indexOf(s) + 1], when = `<b>${tt}</b>${rel ? ` ${rel},` : ""} ${dw}: ${inWords(left)}.`;
-  const what = ready ? `the ${esc(nameOf(D.KETTLES, p.Heat_Kettle) || "HLT")}'s water is hot by ${when}` : `${esc(nx ? nameIn(nx) : "the next step")} starts at ${when}`;
+  if (left <= 0) return `<span class="late">${tt} ${rel || dw} has passed. For tomorrow morning, choose TOMORROW.</span>`;
+  const when = `<b>${tt}</b>${rel ? ` ${rel},` : ""} ${dw}: ${inWords(left)}.`;
+  const what = ready ? `the ${esc(nameOf(D.KETTLES, p.Heat_Kettle) || "HLT")}'s water is hot by ${when}` : `heating starts at ${when}`;
   return mode === "Date" ? `${what[0].toUpperCase()}${what.slice(1)}` : `With START pressed today, ${what}`;
 }
 /* what a BrewStart still needs before it can be saved, for a setting (said under it) or for the whole step (said by
@@ -415,7 +416,7 @@ function needOf(s, label) {
   if (label === "StartTime" && !hm(p.StartTime)) return !norm(s._tt) ? "Needed: without a time, BrewStart can't start." : s._typing ? ""
     : TWELVE ? "That isn't a time: type it as 7, 7:30 or 730, and tap AM or PM." : "That isn't a time: type it as 7, 7:30 or 19:30.";
   if (label === "StartDate" && p.Mode === "Date" && !ymd(p.StartDate)) return "Needed with DATE.";
-  if (label === "Heat_Kettle" && ready && !norm(p.Heat_Kettle)) return "Needed for Ready by: the vessel to heat.";
+  if (label === "Heat_Kettle" && shows(s, "Heat_Kettle") && !norm(p.Heat_Kettle)) return "Needed: the vessel to heat.";
   if (label === "Heater_Watts" && ready && num(p.Heater_Watts) == null) return "Needed for Ready by: it works out when to start heating from the element's watts.";
   return "";
 }
@@ -781,7 +782,7 @@ function ctlHTML(s, label, v, locked) {
   }
   const t = typeOf(s.type, label), m = meta(s.type, label);
   if (Array.isArray(t)) {
-    // a blank setting shows the choice the step takes for it (blankAs): a BrewStart saved with no Timing runs as Start at
+    // a blank setting shows the choice the step takes for it (blankAs): a BrewStart saved with no Timing is Ready by
     const opts = m.opts ? Object.keys(m.opts) : t, cur = norm(v) === "" && m.blankAs ? m.blankAs : norm(v);
     return `<div class="seg" role="radiogroup" aria-labelledby="n-${s._k}-${label}" id="${id}">${opts.map(x => `<button type="button" role="radio" aria-checked="${String(cur === x)}" data-set="${esc(x)}"${data}${locked ? ' aria-disabled="true" data-why="Running now: CraftBeerPi doesn\'t change a step while it runs."' : ""}>${esc((m.opts || {})[x] || x)}</button>`).join("")}</div>`;
   }
@@ -1451,7 +1452,7 @@ function evening(withLast, o = {}) {
   loadFrom(V5); st.loaded.at = o.at || "20:31"; st.page = "steps"; st.view = "recipe";
   at(o.clock || "20:40", [[`${o.at || "20:31"}:12`, "Craftbeerpi Test Recipe v5 loaded", "confirmed", "ok"]]);
   if (withLast) st.loaded.steps.push({name: "BrewStart", type: "BrewStart", status: "I", props: {Timing: "Ready by", Mode: "Tomorrow", StartDate: "", StartTime: "07:00",
-    Heat_Kettle: D.KETTLES[0].id, Ready_Temp: 126, Volume: 20, Volume_Unit: "gal", Grain_Temp: "", Heater_Watts: 6500, Campden_Reminder: "Yes", NotifyBefore: "", AutoNext: "Yes"}});
+    Heat_Kettle: D.KETTLES[0].id, Ready_Temp: 126, Volume: 20, Volume_Unit: "gal", Grain_Temp: "", Heater_Watts: 6500, Campden_Reminder: "Yes", NotifyBefore: ""}});
   ensureBs();
 }
 function addedBrewStart() {

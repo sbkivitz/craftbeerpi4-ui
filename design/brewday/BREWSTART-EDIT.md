@@ -42,11 +42,13 @@ COMPARE PROBES step aside while it is open. From the top:
 
 1. **READY BY**, the time the water is hot, with −1 H, −15, the time, +15 and +1 H, and TODAY or TOMORROW with the date
    ("TOMORROW · SAT 21"). Typing "7", "700" or "7:00" is 07:00. START AT INSTEAD, a quiet button, swaps the label to
-   START AT, the time heating starts.
+   START AT, the time heating starts. Under the label, what the choice means: "Hot by the time, and held until you
+   press NEXT." or "Heating starts at the time, and held until you press NEXT." Both timings heat the water and hold it;
+   neither moves on by itself (BrewStart 1.3.0.post7: nothing but the brewer's NEXT does, and AutoNext is gone).
 2. **The time in words**, as Robin's pages say it: "The HLT's water is hot by 07:00 tomorrow, Sat 21 Nov: in 9 h 48
-   min." On a simulator it adds the real time: "…, about 10 real minutes at 60×." With START AT: "Strike water starts
-   at 05:30 tomorrow, Sat 21 Nov: in 8 h 18 min." A time that has passed is refused, in Robin's words: "07:00 today has
-   passed, so nothing would start by itself. For tomorrow morning, choose TOMORROW."
+   min." On a simulator it adds the real time: "…, about 10 real minutes at 60×." With START AT: "Heating starts at
+   05:30 tomorrow, Sat 21 Nov: in 8 h 18 min." A time that has passed is refused: "07:00 today has passed. For tomorrow
+   morning, choose TOMORROW."
 3. **Where is the grain tonight?** "Asked once a brew: USE depends on it." IN THE GARAGE (the boil kettle's probe reads
    it, and the button gives its reading) or INDOORS, with 64, 68 or 72 °F, or a typed figure. Neither is pressed until
    it's answered for this brew. CraftBeerPi keeps the answer with the loaded recipe, so it's shown the next time, on
@@ -125,8 +127,9 @@ new vessel asks first.", and "Its name and kind stay as they are while it runs."
 sends only the settings changed, as `POST /step2/action/{id}` with `{"action": "change_settings", "parameter":
 {...}}`, as Brew Day sends `change_time`. A refusal is said under SAVE in BrewStart's own words and logged as failed.
 
-Two changes say what SAVE will do, under the setting, before it is pressed. Start at, while BrewStart heats: "SAVE
-stops BrewStart's heating: the HLT's AUTO goes off." A new vessel, while it heats or holds: "BrewStart is heating the
+One change says what SAVE will do, under the setting, before it is pressed. (Start at while BrewStart heats changes
+nothing in the heating, which carries on; Brew Day's box says so: "Heating has begun, so Start at's time changes
+nothing now: the heating carries on.") A new vessel, while it heats or holds: "BrewStart is heating the
 HLT: SAVE asks before the heating moves." That is the one change that asks, once, as SAVE is pressed, naming what
 happens: "Heating moves from the HLT to the Boil Kettle: the HLT's element stops and the Boil Kettle's starts.", with
 MOVE THE HEATING and KEEP THE HLT. Neither is the default and focus goes to the question's words. MOVE THE HEATING saves
@@ -143,8 +146,10 @@ on the HLT, so at the heating start BrewStart handed over, and the Mash Tun's pu
 - At its heating start BrewStart sets the HLT's target to its own temperature and its AUTO on, and stays the current
   step: its row says HEATING. LOG: BrewStart's "Time to heat - the water should be ready by Sat Nov 21, 07:00.", then
   "BrewStart heating, HLT target 132.4 °F".
-- With the water there, it holds it and asks, as the strike water step did: "BrewStart: Move the strike water to the
-  Mash Tun, then press Next", with NEXT STEP, in the title bar; its row WAITING FOR YOU.
+- With the water there, it holds it and asks, whichever its timing: "BrewStart: Strike water hot and holding at 132.4
+  °F. When you've moved the strike water to the Mash Tun and connected the hoses and pumps for recirculating, press
+  NEXT.", with NEXT STEP, in the title bar; its row WAITING FOR YOU. The HLT pump may run while it heats and holds, as
+  core's HLT_PUMP_WITH_HEAT has it; BrewStart itself switches only the vessel's AUTO and target.
 - Nothing else starts until NEXT. NEXT switches the HLT's AUTO off, and MashIn on the Mash Tun begins with the water in
   the tun. Skipping BrewStart with NEXT STEP before then asks first, and says the tun is still empty.
 - It is the recipe's strike water step: the strike water box's USE and BACK TO set its temperature, while it waits

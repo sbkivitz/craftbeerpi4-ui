@@ -82,6 +82,8 @@ const SW_WATTS = 6500;
 /* the question that holds the strike water until it has been moved, in CraftBeerPi's words: BrewStart's, or in the
    older shape the strike water step's */
 const SW_ASK = "Move the strike water to the Mash Tun, then press Next";
+/* BrewStart's question while it holds the strike water (1.3.0.post7), either timing */
+const bsHoldWords = (temp, mt = "Mash Tun") => `Strike water hot and holding at ${(+temp).toFixed(1)} °F. When you've moved the strike water to the ${mt} and connected the hoses and pumps for recirculating, press NEXT.`;
 /* the steps the strike water moments put in front of the recipe (load): BrewStart alone, as the brewer's recipe has it.
    ?sws=step (SWS) adds the older shape's strike water step after it, a MashInStep on the HLT that BrewStart hands over
    to at its heating start and that heats the water and asks for it to be moved, kept for comparison */
@@ -1310,12 +1312,12 @@ function swMorning(t, plan) {
     s.a.hltEl = {on: true, pct: held ? 16 : 100};
     s.recipe.wait = held ? WFY : true;
     if (held) {
-      s.banner = {tone: "prompt", title: S.n, text: SW_ASK, act: "NEXT STEP", cmd: "b:done"};
-      log.push([hhmmss(hot + 6), `${S.n}: ${SW_ASK}`, "waiting for you", "wait"]);
+      s.banner = {tone: "prompt", title: S.n, text: bsHoldWords(plan), act: "NEXT STEP", cmd: "b:done"};
+      log.push([hhmmss(hot + 6), `${S.n}: ${bsHoldWords(plan)}`, "waiting for you", "wait"]);
     }
   } else {
     s.recipe.cur = old ? 2 : 1; s.sw.g.moved = SW_MOVED; s.sw.g.marks.push([SW_MOVED, s.recipe.cur + 1]);
-    log.push([hhmmss(hot + 6), `${S.n}: ${SW_ASK}`, "answered", ""], [hhmmss(SW_MOVED), `${S.n} answered: Next Step`, "confirmed", "ok"],
+    log.push([hhmmss(hot + 6), `${S.n}: ${bsHoldWords(plan)}`, "answered", ""], [hhmmss(SW_MOVED), `${S.n} answered: Next Step`, "confirmed", "ok"],
       ...(old ? [] : [[hhmmss(SW_MOVED), "BrewStart finished, HLT AUTO off", "by recipe", ""]]),
       [hhmmss(SW_MOVED + 1), "MashIn started, mash tun target 126.0 °F", "by recipe", ""]);
     const asked = t >= ask;
@@ -2645,7 +2647,7 @@ const brewAsks = (q, x) => q.has(x.title) || (x.title.startsWith("BrewScribe: ")
    target, as SET would */
 function swSteps() {
   const S = RECIPE.steps, bi = S.findIndex(s => s.type === "BrewStart"), hi = S.findIndex(s => s.k === "hlt" && s.type === "MashInStep");
-  return {S, bi, si: hi >= 0 ? hi : bi >= 0 && !S[bi].start ? bi : -1, mi: S.findIndex(s => s.k === "mt")};
+  return {S, bi, si: hi >= 0 ? hi : bi, mi: S.findIndex(s => s.k === "mt")};
 }
 /* BrewStart as the strike water step: it heats the HLT itself at its heating start and holds the water for the move */
 const bsStrike = () => { const {bi, si} = swSteps(); return bi >= 0 && si === bi; };
@@ -3467,9 +3469,10 @@ function bsHeating(s) {
   if (st.v.hlt.pv < s.temp - 0.5) { r.wait = true; r.bsHeat = "heating"; return; }
   r.wait = WFY; r.bsHeat = "holding";
   soon(() => {
-    st.banner = {tone: "prompt", title: s.n, text: SW_ASK, act: "NEXT STEP", cmd: "b:done"};
-    logEvent(`${s.n}: ${SW_ASK}`, "waiting for you", "wait");
-    say(`${s.n}. ${SW_ASK}.`, true);
+    const ask = bsHoldWords(s.temp, KNAME.mt);
+    st.banner = {tone: "prompt", title: s.n, text: ask, act: "NEXT STEP", cmd: "b:done"};
+    logEvent(`${s.n}: ${ask}`, "waiting for you", "wait");
+    say(`${s.n}. ${ask}`, true);
   });
 }
 /* the strike water moved and Next pressed: the water is in the mash tun. It came through the coil, so the Mash Tun's
@@ -3642,13 +3645,13 @@ function bsSays(B) {
   const m = B.m;
   if (m == null) return null;
   const at = B.day * 86400 + m * 60, now = dayOf(st.t), hm = tod(m * 60), rel = B.day === now ? "today" : B.day === now + 1 ? "tomorrow" : "";
-  if (at <= st.t) return {past: true, text: `${hm} ${rel || dMid(B.day)} has passed, so nothing would start by itself. For tomorrow morning, choose TOMORROW.`};
+  if (at <= st.t) return {past: true, text: `${hm} ${rel || dMid(B.day)} has passed. For tomorrow morning, choose TOMORROW.`};
   const lead = B.neu || B.kind === "start" ? null : bsLead();
   if (lead != null && at - st.t <= lead + 60) return {past: false, soon: true, text: `Heating starts as soon as you press HEAT NOW: BrewStart plans ${bsDur(lead)} for heating the water, and ${hm} ${rel || dMid(B.day)} is ${bsDur(at - st.t)} away.`};
   const {S, bi} = swSteps(), nx = B.neu ? S[0] : S[bi + 1], when = `${hm}${rel ? ` ${rel},` : ""} ${dMid(B.day)}: ${bsIn(at - st.t)}.`;
   /* Start at chosen while BrewStart heats or holds the water: SET stops its heating, so the box says so first */
-  const stops = !B.neu && B.kind === "start" && bsRuns() && st.recipe.bsHeat && !S[bi].start ? `SET stops BrewStart's heating: the ${KNAME[S[bi].k]}'s AUTO goes off. ` : "";
-  return {past: false, text: B.kind === "start" ? `${stops}${nx ? nx.n : "The next step"} starts at ${when}` : `The ${KNAME[B.neu ? "hlt" : S[bi].k]}'s water is hot by ${when}`};
+  if (!B.neu && B.kind === "start" && bsRuns() && st.recipe.bsHeat) return {past: false, text: "Heating has begun, so Start at's time changes nothing now: the heating carries on."};
+  return {past: false, text: B.kind === "start" ? `Heating starts at ${when}` : `The ${KNAME[B.neu ? "hlt" : S[bi].k]}'s water is hot by ${when}`};
 }
 /* what BrewStart heats, from the step: its kettle, its element's power, its water and its temperature; a new one's
    water is the recipe's, worked out from its mash numbers. It says where it changes: ALL SETTINGS always, and the strike
@@ -3718,12 +3721,13 @@ function bsHTML() {
   const off = busy ? WAIT : "", dis = off ? ` aria-disabled="true" data-why="${esc(off)}"` : "", ws = bsSays(B), nx = S[bi + 1];
   const run = !B.neu && bsRuns(), heat = run ? st.recipe.bsHeat : null, at = s && s.temp != null ? ` ${heat === "holding" ? "at" : "to"} ${s.temp.toFixed(1)} °F` : "";
   const key = (d, l, a) => `<button type="button" data-cmd="bs:step:${d}" aria-label="${a}"${dis}>${l}</button>`;
-  const head = wait ? `<p class="bsw">BrewStart is waiting: ${s.start ? `${nx ? nx.n : "the next step"} starts at ${todS(s.start)}` : `heating starts about ${st.recipe.wait.slice(7)}`}. A change here plans it again at once.</p>`
+  const head = wait ? `<p class="bsw">BrewStart is waiting: ${s.start ? `heating starts at ${todS(s.start)}` : `heating starts about ${st.recipe.wait.slice(7)}`}. A change here plans it again at once.</p>`
     : heat === "heating" ? `<p class="bsw">BrewStart is heating the ${KNAME[s.k]}'s water${at}. A new time here changes when it should be ready; the heating carries on.</p>`
     : heat === "holding" ? `<p class="bsw">BrewStart is holding the ${KNAME[s.k]}'s water${at} for you to move it.</p>`
     : !B.neu && bsStopped() ? '<p class="bsw">BrewStart is stopped: START carries it on with what is set here.</p>' : "";
   /* Ready by and Start at swap here whenever BrewStart isn't done: SET sends the swap through BrewStart's change_settings */
-  const kind = `<div class="bskind"><p class="bsl" id="bs-kl">${B.kind === "start" ? "Start at" : "Ready by"}</p>${b("bsq", B.kind === "start" ? "READY BY INSTEAD" : "START AT INSTEAD", "", {cmd: "bs:kind", why: off})}</div>`;
+  const kind = `<div class="bskind"><p class="bsl" id="bs-kl">${B.kind === "start" ? "Start at" : "Ready by"}</p>${b("bsq", B.kind === "start" ? "READY BY INSTEAD" : "START AT INSTEAD", "", {cmd: "bs:kind", why: off})}</div>`
+    + `<p class="bsgh" id="bs-kh">${B.kind === "start" ? "Heating starts at the time" : "Hot by the time"}, and held until you press NEXT.</p>`;
   const as = CLOCK24 ? "07:00" : "7:00";
   const time = `<div class="editor bstime" role="group" aria-labelledby="bs-kl">${key(-60, "−1 H", "An hour earlier")}${key(-15, "−15", "15 minutes earlier")}<input id="bstin" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="${as}" value="${esc(B.txt)}" aria-label="Time, as ${as}"${busy ? " readonly" : ""}>${key(15, "+15", "15 minutes later")}${key(60, "+1 H", "An hour later")}</div>`;
   /* the half of the day the time is in, pressed; a tap moves the same time to the other half. A compact pair, without
@@ -3860,9 +3864,12 @@ function bsOpen(o = {}) {
    (for USE waiting for the grain, and for the row while its hint asks where the grain is); a moment can show the
    middle scrolled to a part of it (at). Opened at the time, the time in words is brought into view where it must be
    read before SET (bsSayInView). On a phone the page first brings the box itself into view (boxInView) */
+let bsFocusCmd = null;
+document.addEventListener("pointerdown", () => { bsFocusCmd = null; }, true);
 const bsFocus = (at, on) => setTimeout(() => {
   const i = on === "garage" ? $('#bs-box [data-cmd="bs:where:garage"]') : $("#bstin"), keep = !!at || on === "garage";
   if (i && document.activeElement !== i) { i.focus({preventScroll: keep || PHONE.matches}); if (i.select) i.select(); }
+  bsFocusCmd = i && i.dataset ? i.dataset.cmd || null : null;
   const y0 = window.scrollY, place = () => {
     boxInView($("#bs-box"));
     if (keep) $(at || "#bs-box .bswhere")?.scrollIntoView({block: "nearest"});
@@ -4036,12 +4043,12 @@ function stepHTML(s, i) {
   const when = live ? (tm ? `${s.start ? "start at" : "ready by"} ${todS(tm)}${s.date ? `&nbsp;${dShort(dayIdx(s.date))}` : ""}` : '<span class="amb">no time set</span>') : held ? "" : s.ready ? `ready&nbsp;by ${todS(s.ready)}` : s.start ? `start&nbsp;at ${todS(s.start)}` : "";
   const p = [s.temp != null ? `${stepTemp(s)}&nbsp;°F` : "", s.min ? `${s.min}&nbsp;min` : "", when, s.vol != null ? `${+s.vol.toFixed(2)}&nbsp;gal` : ""].filter(Boolean).join("&nbsp;· ");
   const right = state === "done" ? "✓ DONE" : state === "cur" ? (r.state === "running" ? (r.wait ? waitHTML(r.wait) : s.min ? `<span id="r-left">${mmss(r.left)}</span> LEFT` : runWord(s)) : r.state === "ready" ? (r.wait ? waitHTML(r.wait) : "READY") : "STOPPED") : '<i class="todo" aria-hidden="true"></i><span class="sr">to come</span>';
-  if (bsOpens(i)) return bsRowHTML(s, i, state, p, right, state === "cur" && s.type === "BrewStart" && r.bsHeat === "holding" ? SW_ASK : "");
+  if (bsOpens(i)) return bsRowHTML(s, i, state, p, right, state === "cur" && s.type === "BrewStart" && r.bsHeat === "holding" ? bsHoldWords(s.temp, KNAME.mt) : "");
   const pct = s.min ? Math.round(100 * (1 - r.left / (s.min * 60))) : 0;
   const bar = state === "cur" && s.min ? `<span class="bar"><i id="r-bar" style="width:${pct}%"></i></span>` : "";
   const adds = s.adds ? `<span class="adds">${s.adds.map((a, j) => addHTML(a, j, state)).join("")}</span>` : "";
   /* BrewStart holding the strike water has its question as its note line, as the strike water step's note shows it */
-  const nt = s.note || (state === "cur" && s.type === "BrewStart" && r.bsHeat === "holding" ? SW_ASK : "");
+  const nt = s.note || (state === "cur" && s.type === "BrewStart" && r.bsHeat === "holding" ? bsHoldWords(s.temp, KNAME.mt) : "");
   return `<li class="step${state === "done" ? " done" : ""}"${state === "cur" ? ' aria-current="step"' : ""}><span class="n">${i + 1}</span><span class="t">${s.n}</span>${p ? `<span class="p">${p}</span>` : ""}${nt ? `<span class="p pn${state === "cur" && st.banner && st.banner.title === s.n ? " asked" : ""}">${nt}</span>` : ""}<span class="s">${right}</span>${bar}${adds}</li>`;
 }
 function addHTML(a, j, state) {
@@ -4608,9 +4615,15 @@ function renderAll() {
   $("#recipe").toggleAttribute("data-tbox", FOLD && !!st.tfOpen);
   /* typing in BrewStart's box keeps its caret, whatever draws the column again meanwhile */
   const fa = document.activeElement, fid = fa && (fa.id === "bstin" || fa.id === "bsgin") ? fa.id : null, fsel = fid ? [fa.selectionStart, fa.selectionEnd] : null;
+  /* and the box's middle where it was scrolled to, and the button the box gave the focus as it opened keeping it until
+     something is pressed, as the screen keeps them while it draws the column again */
+  const mid = $("#bs-box .bsmid"), midTop = mid ? mid.scrollTop : 0;
+  const fcmd = !fid && bsFocusCmd && fa && fa.dataset && fa.dataset.cmd === bsFocusCmd ? bsFocusCmd : null;
   $("#recipe").innerHTML = recipeHTML() + verHTML();
   if (fid) { const fi = document.getElementById(fid); if (fi) { fi.focus({preventScroll: true}); try { fi.setSelectionRange(...fsel); } catch (_) {} } }
+  else if (fcmd) $(`#bs-box [data-cmd="${fcmd}"]`)?.focus({preventScroll: true});
   bsFit();
+  if (midTop) { const m2 = $("#bs-box .bsmid"); if (m2) m2.scrollTop = midTop; }
   pbFit(before);
   drawSw();
   $("#now").innerHTML = nowHTML();
