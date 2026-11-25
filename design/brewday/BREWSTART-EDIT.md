@@ -100,7 +100,8 @@ greyed with "Not while BrewStart waits: STOP it first."; once stopped, the row s
 A ready time sooner than BrewStart plans for heating the water can't be waited for: BrewStart starts heating at once, as
 at START. So the box says that first, and SET says what it does: "Heating starts as soon as you press HEAT NOW:
 BrewStart plans 43 min for heating the water, and 06:00 today is 20 min away.", with SET reading HEAT NOW. A later
-time brings SET back.
+time brings SET back. Taken, BrewStart's notice is spoken and in LOG, and focus goes back where the box was opened
+from, as after any SET: BrewStart's row, now HEATING with "change", or USE when "where's the grain?" opened it.
 
 ### While BrewStart heats or holds the water
 
@@ -108,8 +109,10 @@ The row is still a button, and the box opens with what BrewStart is doing pinned
 HLT's water to 126.0 °F. A new time here changes when it should be ready; the heating carries on.", or holding: "BrewStart
 is holding the HLT's water at 126.0 °F for you to move it." A new time goes by `change_settings` (an older BrewStart's
 `change_time`), which once the heating has begun moves only the ready time. The grain still changes, as the strike water box's GRAIN changes it. START AT
-INSTEAD swaps here too; chosen, the time in words says first what SET will do: "SET stops BrewStart's heating: the
-HLT's AUTO goes off. MashIn starts at …". ALL SETTINGS is there, as always.
+INSTEAD swaps here too; chosen while the heating has begun, the time in words says what SET will do: "Heating has
+begun, so Start at's time changes nothing now: the heating carries on." SET keeps the new timing with the step, and
+the HLT stays in AUTO, heating or holding (BrewStart 1.3.0.post7's `change_settings`). ALL SETTINGS is there, as
+always.
 
 ### When BrewStart is stopped
 

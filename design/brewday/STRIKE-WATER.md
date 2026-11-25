@@ -203,7 +203,7 @@ So the box says only what's certain, and only when the reading is more than 3 °
 mash itself lands 118-124 °F. Once the malt is in, the box goes.
 
 **No forecast, with figures to give: one row** (`#sw-missing`, `#sw-missing-steps`, `#sw-noprobe`, `#sw-asks`, then
-`#sw-give`; decision 17). Where what stops the forecast is a figure the brewer can give in the box (the recipe's grain
+`#sw-give-open` and `#sw-gave`; decisions 17 and 19). Where what stops the forecast is a figure the brewer can give in the box (the recipe's grain
 weight or mash water, or the room while the boil kettle's probe can't stand for it), and nothing else stops it, the box
 is one row under its window,
 as tall as with a forecast, so the step list keeps the room it has on a recipe with BeerSmith's figures: USE in its
@@ -523,6 +523,17 @@ no more than that, it moves nothing and says why. The same at any simulator spee
     (`sw-wk`), so the height it kept is let go as the forecast comes, and the box is then as tall as on a fresh load;
     the step list moves up once, by the line's height, as the forecast arrives. The Mash Tun's line during dough-in
     stays over the row: it doesn't come and go while USE waits to be pressed.
+19. **In a box GIVE THEM opened, USE and CLOSE keep GIVE THEM's halves until it closes** (25 Nov, from the build). A
+    forecast's row gives USE two thirds and FORECAST one; asking for figures, USE greyed and GIVE THEM share it in
+    halves, as GIVE THEM is then the one to press and names what it needs. Built as first drawn, the last figure given
+    turned the open box into a forecast's, and CLOSE narrowed from half the row to a third: its right edge stayed, but
+    the edge between it and USE moved right by a sixth of the row as CraftBeerPi took the figure, while the hand was
+    still in the box and about to reach for CLOSE. A press on CLOSE's left part would then have been a press on USE,
+    which sets the HLT's target. So the box remembers GIVE THEM opened it, and USE (lit once worked out, then BACK TO)
+    and CLOSE stay in halves; the row takes the forecast's two thirds and one when CLOSE is pressed, as the box closes
+    and everything under it moves anyway, and FORECAST opens it that way afterwards. "USE 132.4 °F" over "aims under
+    the rest", and "BACK TO 126.0 °F" over "as it was", fit a half on one line at every size, 138 px wide on a 360 px
+    phone.
 
 ## The dead space in the BeerSmith profile
 
@@ -1050,7 +1061,8 @@ In `brew-day.html`, second in the strip:
 - `#sw-missing`: a recipe imported before CraftBeerPi kept BeerSmith's mash figures, its MashIn with a grain weight: the
   box asks for the mash water.
 - `#sw-missing-steps`: a recipe built on Brew Steps, with no grain weight either: the box asks for both.
-- `#sw-give`: the same, GIVE THEM pressed.
+- `#sw-give-open`: the same, GIVE THEM pressed. (Not `#sw-give`, the open part's own id: the page would jump to it.)
+- `#sw-gave`: the figures given there and USE worked out, the forecast open under the same CLOSE, USE and CLOSE in halves.
 - `#sw-noprobe`: the boil kettle's probe gives no reading.
 - `#sw-grain-bad`: BrewStart's grain temperature saved on Brew Steps as 150 °F.
 - `#sw-interval`: the mash tun's control interval set to 2.5 s.

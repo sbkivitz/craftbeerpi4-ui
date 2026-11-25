@@ -5969,7 +5969,8 @@ does; the rest is as that section says.
      59.8 °F it needs about 33 min, so the water will be ready around Sat Nov 21, 06:13, after Sat Nov 21, 06:00.", or,
      where only the spare minutes go, "BrewStart: Time to heat - the water should be ready by Sat Nov 21, 06:20."
      Then "BrewStart finished" and the strike water step's start. The box closes and focus goes to LOG, as BrewStart's
-     row is no longer a button.
+     row is no longer a button. (Since BrewStart's row stays a button while it heats, focus goes back to the row: see
+     "HEAT NOW gives the focus back to BrewStart's row" below.)
 4. **Refused (400).** The answer is the core's sentence for any action that didn't run: "'change_time' did not run.
    Either the step is not running, or that is not a declared action." Here it would read wrongly. BrewStart's reason
    comes to every screen just before it, as an info notice titled with the step's name ("BrewStart's time has come
@@ -7220,8 +7221,10 @@ strike water stays as planned. So the step list, what's next, keeps its room, an
      (`.swa.two`), without USE, which is in the head; and the sparge water left, where MASH WATER is asked for.
 
    A figure's button opens its own box as today; SET or CANCEL comes back to this, still open. Once the last figure is
-   given and USE is worked out, the box is FORECAST's, still open, under the same CLOSE: the same command, so nothing
-   moves and focus stays on it. Opened, it is 376-402 px on one screen, less than FORECAST opened, and like FORECAST
+   given and USE is worked out, the box is FORECAST's, still open, under the same CLOSE: the same command, so focus
+   stays on it, and USE and CLOSE keep their halves until it closes ("In a box GIVE THEM opened, USE and CLOSE keep
+   their halves", below). Opened, it is
+   376-402 px on one screen, less than FORECAST opened, and like FORECAST
    it takes the step list's room.
 4. **Nothing else changes.** MashIn's row keeps "mash water not given" in Note Amber and its own box. The mash water's
    rules (the HLT's least water, the ratio, the suggestion) are as today, in the figure's own box.
@@ -7233,7 +7236,8 @@ Nothing new: what the state already reports (miss, misses, the recipe's figures 
 ### Moments
 
 `#sw-missing-steps` (GIVE THEM, "grain weight · mash water"), `#sw-missing` (GIVE IT, "mash water"), `#sw-asks` ("mash
-water · room"), `#sw-noprobe` (GIVE IT, "room"), and the new `#sw-give`, `#sw-missing-steps` with GIVE THEM pressed.
+water · room"), `#sw-noprobe` (GIVE IT, "room"), and the new `#sw-give-open` (named `#sw-give` until 25 Nov, the open
+part's own id, which the page jumped to), `#sw-missing-steps` with GIVE THEM pressed.
 
 ### Checked
 
@@ -7247,7 +7251,7 @@ water · room"), `#sw-noprobe` (GIVE IT, "room"), and the new `#sw-give`, `#sw-m
     figures' buttons, HLT WATER and GRAIN under it; on one screen, the page doesn't scroll. GRAIN WEIGHT's box, focused;
     SET logs "Grain weight set to 20.0 lb for this recipe" and comes back open, asking for the mash water alone; CLOSE
     leaves GIVE IT, "mash water", as tall as with a forecast; the mash water given: FORECAST's details open under the
-    same CLOSE; CLOSE, once USE is worked out: FORECAST in its place. Escape closes `#sw-give`. `#sw-novol` as today.
+    same CLOSE; CLOSE, once USE is worked out: FORECAST in its place. Escape closes it in `#sw-give-open`. `#sw-novol` as today.
 - `sw7_presses`, `sw8_presses` and `bs_presses` fail the same on main 12d5056 as with this change (4, a stop part-way,
   and 32): they predate BrewStart's two timings and the mash water's rows, and need bringing up to date separately.
   The one check here whose words change, the probe's sentence first in `#sw-noprobe`, already fails on main.
@@ -7256,7 +7260,7 @@ water · room"), `#sw-noprobe` (GIVE IT, "room"), and the new `#sw-give`, `#sw-m
 ### Changed
 
 `proposal\brew-day.js` (`swHTML`'s no-forecast branch; `swMissHTML` split into `swMissBits`; `swEditing`, `SW_GIVE`,
-`swGives`, `swGiveRow`, `swGiveDet`; the `#sw-give` moment); `proposal\brew-day.html` (its link); `STRIKE-WATER.md`
+`swGives`, `swGiveRow`, `swGiveDet`; the `#sw-give-open` moment); `proposal\brew-day.html` (its link); `STRIKE-WATER.md`
 (what the brewer sees, where it sits, decisions 13 and 17, the moments); this section.
 
 ### Built (web UI 0.5.1.a3.post67)
@@ -7319,6 +7323,177 @@ taller. So:
   sizes); test_ui_strike_live.py (the last figure given, CLOSE while USE is worked out: the box `sw-wk`, its line under
   USE's row and USE where a fresh load has it; once the forecast is in, the box as on a fresh load, 166 px at
   1920 × 950, with no height kept).
+
+## HEAT NOW gives the focus back to BrewStart's row: ready to build (25 Nov)
+
+HEAT NOW (SET for a ready time too soon to wait for) closes BrewStart's box and starts the heating. Focus then went to
+LOG, because BrewStart's row stopped being a button once it heated. Since BrewStart's box opens until BrewStart is done
+(7c5c7e3), the row stays a button, HEATING with "change", so focus goes back where the box was opened from, as after any
+SET, CANCEL or Escape: a box gives the focus back to what opened it (WAI-ARIA Authoring Practices, dialog pattern), and
+a brewer who opened it from the row finds himself on the row he pressed. BrewStart's notice is still spoken and in LOG.
+
+### What to build (screen.js)
+
+1. The demo's `bsSet`, in HEAT NOW's `soon`: `if (B.then !== "all") bsBack(B.from);` in place of focusing
+   `#event .logbtn`.
+2. `bsSetLive`, once every call has answered: drop the `B.soon` case, so HEAT NOW takes
+   `bsBack(B.from === "new" ? "row" : B.from)` as every other SET does. From USE's "where's the grain?" (`from:
+   "use"`) it goes back to USE.
+
+Nothing else changes. With AND GO (`B.then === "all"`) Brew Steps opens as today.
+
+### Start at while BrewStart heats: nothing to build
+
+The screen already keeps the heating when Start at is chosen while BrewStart heats or holds the water (BrewStart
+1.3.0.post7's `change_settings`), as its box says: "Heating has begun, so Start at's time changes nothing now: the
+heating carries on." The mockup's `bsSet` had kept an older rule that turned the HLT's AUTO off; it now keeps the
+heating, logs only the change confirmed, and gives the focus back to the row. BREWSTART-EDIT.md says the same.
+
+### In the mockup only
+
+`renderAll` gives the focus back to the recipe column's button with the same command after it draws the column again,
+as the screen's `patchNode` keeps it: while BrewStart heats, the mockup redraws the column every tick.
+
+### Checked
+
+- `files\bs_presses.py`: 293 checks, all passing, no page errors. New: HEAT NOW's focus back on BrewStart's row;
+  START AT chosen while BrewStart heats, its words, then SET: the HLT still in AUTO to 132.4 °F and heating, BrewStart
+  still the current step, HEATING with "change", LOG with the change confirmed and nothing about the heating stopping,
+  focus back on the row.
+
+## In a box GIVE THEM opened, USE and CLOSE keep their halves: ready to build (25 Nov)
+
+From the build (web UI post67): once the last figure is given, the open box turns into a forecast's, and CLOSE narrowed
+from half the row to a third. Its top and right edge stayed, but the edge between it and USE moved right by a sixth of
+the row as CraftBeerPi took the figure, while the hand was still in the box and about to reach for CLOSE; a press on
+CLOSE's left part would then have pressed USE, which sets the HLT's target. The note said nothing moves, so the note
+was wrong, not the build. Decided: CLOSE keeps its width (STRIKE-WATER.md decision 19).
+
+### What to build (screen.js)
+
+1. `sw:more`, opening: when the closed box is the asking row (no forecast, `swGives(N)` not empty, no figure's own box
+   open), `st.swOpen = "give"` instead of `true`. Closing (CLOSE, Escape, and every other path that closes the box)
+   leaves it `false`, as today. `st.swOpen` is read as true or false everywhere else, so nothing else changes.
+2. In `swHTML`'s box with a forecast, USE's row: `.swa.two` (halves) while the box is open and `st.swOpen === "give"`;
+   otherwise as today, `.swa` (two thirds and one) or `.swa.one`. So from GIVE THEM to CLOSE, USE (greyed, then lit
+   once worked out, then BACK TO) and CLOSE keep GIVE THEM's halves and every edge where it was; the row takes two
+   thirds and one when CLOSE is pressed, as the box closes and everything under it moves anyway, and FORECAST opens it
+   that way afterwards.
+
+USE's and BACK TO's words fit a half on one line at every size: "USE 132.4 °F" over "aims under the rest", "BACK TO
+126.0 °F" over "as it was", in halves 138 px (360 × 740) to 462 px (1024 × 768) wide.
+
+### Rename: the moment `#sw-give` is now `#sw-give-open`
+
+`#sw-give` was also the open part's id (`div.swdet.swgive#sw-give`), so the page jumped to it and focused it as it
+opened. The moment is renamed; the id, which the screen uses, stays. For demo.js and the identity test: `sw-give-open`.
+New moment `#sw-gave`: `#sw-typed` (the recipe's figures given) open as GIVE THEM opened it, USE and CLOSE in halves.
+
+### Checked
+
+- `files\give_presses.py`: 93 checks, all passing, no page errors. New, at 1920 × 950 and 390 × 844: the last figure
+  given, USE and CLOSE where they were, every edge to the pixel; USE worked out, lit in its half, on one line, still
+  where it was; USE pressed, BACK TO in the same half; CLOSE: two thirds and one, the box as on a fresh load; FORECAST
+  opened again: two thirds and one; `#sw-gave` in halves. And across all 184 moments: no moment's name is the id of an
+  element on its page.
+- `files\gave_sizes.py` (new): 22 checks, all passing. `#sw-gave` at 11 sizes from 2000 × 1000 to 360 × 740, USE and
+  CLOSE in halves on one line, then BACK TO the same.
+
+## The liquid in each vessel: ready to build (25 Nov)
+
+The brewer chose the tint ("Tint (Recommended)"), and that a volume he types into a BrewScribe reminder replaces the
+estimate, marked READ ("Yes, a volume I type replaces the estimate (Recommended)"). He has no level sensors yet but
+may add them, so the measured level stays designed for later. The design is in LEVELS.md; the mockup's code is the
+block after the Steam Slayer's in `brew-day.js` (`LEVELS` to `lvDesc`) and the hooks in `rig.js`'s `vesselB`.
+
+### What to build (rig.js, screen.js, brewday.css)
+
+1. **When:** a kettle setting or a screen setting, as you prefer; the mockup's flag is `?levels=tint`. Off, nothing
+   is drawn, as today. There is one look, the tint.
+2. **The drawing** (`rig.js`, `vesselB(v, x, ss, lv)`, `rigSVG(…, lv)`): with the levels on, each vessel gets a group
+   clipped to its shell's inside (`clipPath#lvc-{id}`, `g.lv#lv-{id}`) under its coil, element and name, the MIN group
+   outside the clip (`g.lv-min#lvm-{id}`), and the dome's figure (`text.tag.lv-t#lvt-{id}`, y 110). The defs gain the
+   two hatches (`pattern#lvh-water`, `#lvh-wort`).
+3. **Each vessel's figure** (`lvState`): from the step list and the recipe's figures, as LEVELS.md's first table, and
+   the point of the day P (-1 to 6) it is at. BrewStart holding the strike water hot (its hold question up) is "the
+   strike water on its way"; an older recipe's strike water step asking to move it, likewise.
+4. **READ** (`lvRead`): from BrewScribe's answer, `vessel_volumes` (BrewScribe 0.1.0.dev60; its contract, section 9).
+   - Each item is matched to a vessel by `vessel_id` (the kettle's CraftBeerPi id), or by `vessel` (its name) where
+     `vessel_id` is null. Its value is in the answer's `volume_unit`; convert it to the brewery's unit for the drawing
+     (gal on a °F brewery, L on a °C one, as `leastWater` decides), and show it to one decimal.
+   - Its point of the day comes from its stage, and for the HLT's levels from `reading` (`LV_AT`, `lvAt`):
+     `strike_water` 0; `mash`, `mash_start`, `mash_end` 2; `level_before` 2; `first_runnings`, `last_runnings` 3;
+     `level_after` 4; `pre_boil` 4; `boil` 5; `post_boil`, `transfer` 6. `read_at` is for the words only: "read at
+     3:48 PM", in CraftBeerPi's clock format, with the day's short name when it isn't today's.
+   - The moves (`LV_MOVES`): the HLT at 1 (out by the strike water with the tun's dead space) and 3 (out by the
+     recipe's sparge water); the mash tun at 1 and 3, and the boil kettle at 3, to a figure the recipe sets; the boil
+     kettle at 5 (out by the boil volume less the volume after the boil).
+   - The rules, in order: a reading for a point after the one the steps are at (or after 0 while P is -1) isn't used.
+     Read at a point where its vessel moves (3 or 5 for the boil kettle), it stands while that move goes on, with the
+     estimate's range above it, and is dropped once it is over. Otherwise it stands while no move of its vessel has
+     started since. Once one has: past a move to a figure the recipe sets, dropped; otherwise worked forward, the
+     reading less each move's figure, drawn and said as worked out ("read 15.4, strike water out", "read 15.4, less the
+     strike and sparge water"), never below 0.
+5. **Drawn** (`lvSVG`): worked out, the tint to the lower figure, the range hatched, the surface where it is going
+   dashed. READ: the tint to it, its surface solid (`.lv-top.read`, 2.5 wide like the estimate's), and READ's pointer
+   (`.lv-rm`, `M112 y-8 L96 y L112 y+8 Z`, inside the right wall); read while on its way, the hatching up to the dashed
+   surface it is going to. With a working sensor too: the sensor's tint and surface as designed, the reading beside it
+   as its own solid line and pointer, with no tint. Each group has a `<title>` (the tooltip): the phone's line, then
+   where it comes from ("Typed into BrewScribe, not measured: it stands until liquid next moves in or out.", "and
+   corrected there" for a corrected one; "Worked out from the 7.2 gal read at 3:15 PM in BrewScribe, not measured.").
+6. **The dome** (`lvDome`): "≈ 7.0 GAL", "→ ≈ 6.5 GAL", "7.2 GAL READ" (also while still on its way), SPENT GRAIN; with
+   a sensor, "6.4 GAL", "6.4 GAL · ≈ 7.0", "6.4 · READ 6.9", "LAST 6.4 GAL", EMPTY. The boil kettle's gives way to LID
+   ON? while the lid reminder waits.
+7. **MIN** (`renderLevels`, `lvLeast`): the HLT's least water as the strike water helper reports it (`GET
+   /step2/strike`: its own, else 15% of its capacity, else 3 gal or 11.4 L); any other kettle's own least water, only
+   where set. A tick across the left wall and "MIN", in the drawing's steel, and a `<title>`: "MIN 3.0 gal, the least
+   water over the element: " then the strike water box's own words for where it comes from (`leastFrom`). No MIN
+   without a capacity. Never coloured or alarmed, whatever is under it.
+8. **Words:** the phone's line under each vessel's own (`lvLine`, `p.ssline.lvline`), one line at 360 px: "Water 15.4
+   gal · read at 5:52 AM", "Wort 6.6 → ≈ 7.0 gal · read at 3:11 PM, running off", "Water 15.4 → ≈ 7.1 gal · read 15.4,
+   strike water out". The drawing's words for screen readers (`lvDesc`, added to `rigDesc`): "Liquid, worked out from
+   the recipe and its steps, or from a volume read in BrewScribe where it says so, not measured: hot liquor tank, 1.6
+   gallons of water, read at 3:28 PM in BrewScribe; …".
+9. **BrewScribe's answer:** `rdClean` keeps `vessel_volumes`, each item only with a vessel (`vessel_id` or `vessel` a
+   string), a finite `value` of 0 or more, `unit` `us_gal` or `l`, a `read_at` that parses, a `stage` string and
+   `reading` one of `volume`, `level_before`, `level_after`; anything else dropped, so an older BrewScribe means no
+   READ, never a broken drawing. `phPoll` asks only while a reminder BrewScribe names is up; with the levels on it also
+   asks every 15 s while a recipe is loaded, reminder or not, so a volume typed on BrewScribe's page shows within 15 s.
+   No answer: the last answer's readings stay (a reading is a moment's figure, not a live one). 404 or a refusal: no
+   readings. After a SAVE BrewScribe takes, `phHad`'s `DEMO.rdApply` puts the reading into Brew Day's copy at once,
+   `vessel_volumes` too (`vvSet`, `vvItem`, with `read_at` now), so READ shows as SAVE is answered; the next ask
+   replaces it with BrewScribe's own.
+10. **Styles** (brewday.css, after the Steam Slayer's): `.lv-body`, `.lv-top` (dashed), `.lv-top.read` (solid),
+    `.lv-rm` (the pointer, the liquor's blue or the wort's gold), `.lv-top.meas`, `.lv-hl`, `.lv-t`, `.lv-mtick`,
+    `.lv-mt`, as in the mockup's stylesheet. The `.was` rule went with the line look.
+
+### In CraftBeerPi and BrewScribe
+
+- Core: nothing new for READ or MIN (least water, post77). Still to come: the recipe's volume after the boil (the
+  mockup's 6.3 gal is an example), and the sparge volume in Brew Day's state if it isn't there.
+- BrewScribe 0.1.0.dev60: `vessel_volumes`, as its contract's section 9.
+
+### Known, accepted
+
+- On a simulator running faster than real time, "read at" is the PC's time from BrewScribe, not the simulator's clock.
+- A volume before the boil read once the boil has begun is taken as before the boil-off: a few minutes' boil-off out.
+- After the boil the boil kettle keeps its figure, READ or worked out, until a recipe is loaded or reset: the transfer
+  isn't a step.
+
+### Moments
+
+`#lv-read-strike`, `#lv-read-move`, `#lv-read-sparge`, `#lv-read-last`, `#lv-read-boil`, `#lv-read-hop`,
+`#lv-read-after`, `#lv-read-sensor`: LEVELS.md's second and third tables. The sensor moments as before. Each reading in
+them is taken as BrewScribe takes it (`lvReads`, through `rdApply`), so the reminders say saved too.
+
+### Checked
+
+- `files\lv_check.py`: 309 checks, all passing, no page errors (LEVELS.md, "How it was checked"). The `#sw-move` check
+  had failed since BrewStart took the strike water's hold (12d5056): the levels looked for the older step's question.
+  The levels now take BrewStart's hold, and the check passes.
+- `slayer_check` 102, `bs_presses` 293, `sw7_presses` 28, `sw8_presses` 38, `wk_presses` 17, `unload_presses` 61,
+  `tm2_presses` 72: all passing. `tm2_presses` expected +5 MIN on a run-out timer, which went with the alarm's one
+  answer, OK (above); the check now expects OK alone.
 
 ## Open questions about the drawing
 
