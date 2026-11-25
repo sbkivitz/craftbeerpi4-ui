@@ -1071,6 +1071,11 @@ button.step{width:100%;margin:0;color:inherit;text-align:left;touch-action:manip
 .rig-line .lv-top{fill:none;stroke-width:2.5;stroke-dasharray:9 6}
 .rig-line .lv-top.water{stroke:rgb(70 184 234/.62)}.rig-line .lv-top.wort{stroke:rgb(233 179 59/.55)}
 .rig-line .lv-top.was{stroke-dasharray:2 6;opacity:.6}
+/* a level sensor's reading: its surface solid and a little stronger, so measured and worked out differ in shape as well
+   as in their figures' "≈"; with no connection the last reading's surface in the drawing's steel */
+.rig-line .lv-top.meas{stroke-dasharray:none;stroke-width:3}
+.rig-line .lv-top.meas.water{stroke:rgb(70 184 234/.9)}.rig-line .lv-top.meas.wort{stroke:rgb(233 179 59/.85)}
+.rig-line .lv-top.meas.stale{stroke:#7d8fa2}
 .rig-line .lv-hl{stroke-width:2.5}.rig-line .lv-hl.water{stroke:rgb(70 184 234/.32)}.rig-line .lv-hl.wort{stroke:rgb(233 179 59/.3)}
 .rig-line .lv-t{text-anchor:middle;font-size:16px}[data-graphs] .rig-line .tag.lv-t{font-size:calc(16px * min(var(--rs,1),1.1))}
 .rig-line .lv-mtick{stroke:#7d8fa2;stroke-width:2}

@@ -20,8 +20,9 @@ This is a proposal, a mockup to choose from. Nothing here is built. Without `?le
 
 ## What CraftBeerPi knows, and what it doesn't
 
-- **No level is measured.** As far as the notes show, the rig has temperature probes only: its hardware snapshot
-  lists its actors and kettles and nothing else. To be confirmed from the rig's sensor list before building.
+- **No level is measured today.** The rig has no level sensors. Asked, the brewer said: "Not yet, but I may add
+  them". So the estimate comes first, and a measured level has its place in the design for when a vessel gets a
+  sensor (below).
 - **What the figures can come from**, all already in CraftBeerPi:
   - BrewStart's water: what it heats in the HLT, so once it runs, that water is in the HLT;
   - the strike water and the grain, from the recipe's mash numbers (the strike water helper has them);
@@ -32,7 +33,8 @@ This is a proposal, a mockup to choose from. Nothing here is built. Without `?le
 - **Not yet in CraftBeerPi:** the recipe's volume after the boil (BeerXML's batch size plus its trub and chiller loss,
   or its evaporation rate), and the element-cover minimum, which the mash water guard is adding.
 - **On a simulator** cbpi4-simvessel models each vessel's real fill. The screen doesn't show it: a simulator shows
-  the same worked-out figures the rig would, so it previews the rig, and nothing on the screen ever looks measured.
+  the same worked-out figures the rig would, so it previews the rig. A simulated level sensor, if one is ever added,
+  would be shown as a sensor's reading, as on the rig.
 
 ## The design
 
@@ -68,6 +70,35 @@ In both:
   6.7 gal · less the strike water", "Mash ≈ 9.9 gal · strike water and 20 lb of grain", "Wort 0 → ≈ 7.0 gal · running
   off". On one line at 360 px wide, so the buttons under it don't move.
 
+### A level sensor's reading, when a vessel has one
+
+None of the rig's vessels has a level sensor yet. When one does:
+
+- **Measured looks different from worked out**, in shape and in words, never in colour alone:
+  - its surface is a **solid** line, a little stronger than the estimate's dashes, and the tint is drawn to it;
+  - its figure has **no "≈"**: "6.4 GAL", where the estimate says "≈ 7.0 GAL";
+  - the tooltip and the words for screen readers say "measured", and that the dashed line is the estimate;
+  - on a phone, "Wort 6.4 gal measured · estimate ≈ 7.0, 0.6 less".
+- **The estimate stays beside it**, as a dashed line with no tint or hatching of its own, so the two lines show at
+  a glance how they compare. While liquid moves, the dashed line is where the move is going ("3.1 → ≈ 7.0 GAL"), and
+  the reading rises or falls towards it; the hatching goes, as the reading says where the liquid is.
+- **Both figures only where they differ.** When the reading is within a quart (0.25 gal, about 1 L) of the estimate,
+  or inside the range a move is in, the dome shows the reading alone, and the two lines lie together. Further apart,
+  the dome says both, "6.4 GAL · ≈ 7.0", and the phone says by how much. A difference is shown, not alarmed: it may be
+  the recipe's figures, not the vessel, that are off.
+- **A reading the estimate can't know**, such as the HLT filled the night before, before BrewStart runs: the reading
+  alone, "15.0 GAL", or EMPTY.
+- **No connection:** the last reading's surface in the drawing's steel, solid, with no tint, and "LAST 6.4 GAL", as a
+  pump says LAST: ON. It never looks live.
+- **A sensor with no reading** (unplugged, or a reading that isn't a number): the vessel falls back to the estimate,
+  drawn as without a sensor, and the phone's line says "level sensor: no reading".
+- **MIN** stays a quiet mark. A measured level under it is a real reading the mash water guard could act on; that is
+  for the guard to decide when it has one.
+
+Where it would be set: on the Hardware page, in each vessel's group, "Level sensor": none (the default) or one of
+CraftBeerPi's sensors that reads the vessel's volume, with its unit (gal or L). A vessel without one is drawn as
+today's proposal draws it.
+
 ### Through the brew day
 
 The mockup's Test Recipe v5 (the figures BrewScribe's readings use): 15 gal of BrewStart's water, 8.26 gal of strike
@@ -91,6 +122,16 @@ mash tun in the hold before the boil, look the same: the figures say where thing
 The wort going on to the fermenter isn't a step, so after the boil the boil kettle keeps its figure until a recipe is
 loaded or reset.
 
+With level sensors (`?lsens=hlt,bk`, or the moments below), the same day reads:
+
+| Moment | Hot liquor tank (sensor) | Mash tun (none) | Boil kettle (sensor) |
+|---|---|---|---|
+| The night before (`#lv-sensor-night`) | 15.0, measured; no estimate yet | nothing | EMPTY |
+| The sparge and runoff (`#lv-sensor`) | 4.2 → ≈ 1.7 | ≈ 9.9 | 3.1 → ≈ 7.0 |
+| Ready to boil? (`#lv-sensor-diff`) | 1.8 (the estimate's 1.7 within a quart) | SPENT GRAIN | 6.4 · ≈ 7.0 |
+| No connection (`#lv-sensor-lost`) | LAST 1.8 | SPENT GRAIN | LAST 6.4 |
+| The boil kettle's sensor with no reading (`#lv-sensor-none`) | 1.8 | SPENT GRAIN | ≈ 7.0, the estimate |
+
 ## Not chosen
 
 - **A level that falls with the clock**, worked out from the time since a move began. It would look live and be
@@ -101,6 +142,10 @@ loaded or reset.
 - **The simulator's own model of each vessel's fill.** It would look measured on a simulator and be missing on the
   rig.
 - **An alarm when a worked-out level is under MIN.** A guess shouldn't raise an alarm; the mash water guard decides.
+- **A measured level in another colour.** Colour alone, and the drawing's colours already mean the liquid; the solid
+  line and the missing "≈" say it instead.
+- **The estimate hidden once a vessel has a sensor.** Comparing them is the point: a difference says the recipe's
+  figures, or the vessel, need a look.
 
 ## What it needs
 
@@ -111,25 +156,32 @@ loaded or reset.
 | The recipe's volume after the boil | Core: BeerXML's batch size and trub and chiller loss, or its evaporation rate, from the import |
 | The element-cover minimum | Core: the mash water guard's figure, per vessel |
 | Capacities | Nothing new: the Hardware page |
+| A level sensor per vessel, later | Core: a kettle field naming a sensor and its unit; the Hardware page. Brew Day reads its readings as it reads the probes |
 
 ## In the mockup
 
 `brew-day.html?levels=tint` or `?levels=line`, with any moment; the day: `#sw-heat`, `#sw-move`, `#sw-doughin`,
 `#mash`, `#sparge-run`, `#boil-hold`, `#heatup`, `#hop`, `#whirlpool`, `#finished`.
 
+Level sensors: `#lv-sensor-night`, `#lv-sensor`, `#lv-sensor-diff`, `#lv-sensor-lost`, `#lv-sensor-none` (these show
+the tint without the flag), or `?lsens=hlt,bk` with any moment, which reads each sensor as the estimate's figure
+(midway while it moves).
+
 ## How it was checked
 
-- `lv_check.py`: 253 checks, all passing, no page errors.
+- `lv_check.py`: 363 checks, all passing, no page errors.
   - Every moment (168) at 1920 × 1080 with `?levels=tint`: each figure inside its dome, clear of the outline, and
     each figure and MIN clear of every other word, pipe and part of the drawing and of + TIMER and SOUND.
-  - The day's 13 moments in both looks at nine sizes, 820 to 2000 wide: each vessel's figure as in the table, clear of
-    everything, and nothing in the levels moving.
+  - The day's 13 moments and the five sensor moments, in both looks at nine sizes, 820 to 2000 wide: each vessel's
+    figure as in the tables, clear of everything, and nothing in the levels moving.
+  - With sensors: the reading's surface solid over its tint and the estimate's dashed; both figures only where they
+    differ; the tooltip and the words for screen readers; LAST in steel with no tint; the estimate back for a sensor
+    with no reading; the night before's reading with no estimate; `?lsens` on any moment.
   - The boil kettle's figure giving way to LID ON? and coming back on DONE; the hatched ranges in `#sparge-run`; MIN
     on the HLT and the boil kettle only; the words for screen readers.
   - Without `?levels`: nothing drawn, no figures, no phone lines, the words as before.
-  - Phones at 390 × 844 and 360 × 740: each vessel's line on one line.
-- Pictures against UI main 8de7e6d at 1920 × 1080 and 390 × 844 without `?levels`: nothing outside the Steam Slayer's
-  moments changes.
+  - Phones at 390 × 844 and 360 × 740: each vessel's line on one line, the sensor moments' word for word.
+- Pictures against UI main 379ad6e at 1920 × 1080 and 390 × 844: only the five new sensor moments differ.
 
 ## Questions for the brewer, one at a time
 

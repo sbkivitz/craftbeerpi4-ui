@@ -773,6 +773,23 @@ const SCENES = {
     s.events.splice(1, 0, ["15:25:02", `${LID_Q.title} answered: Done`, "confirmed", "ok"], ["15:24:10", `${LID_Q.title}: ${LID_Q.text}`, "answered", ""]);
     return s;
   },
+  /* a level sensor (LEVELS.md, proposal; none on the rig yet), on the HLT and the boil kettle, with the tint.
+     #lv-sensor-night: #sw-plan, the night before: the HLT measured at 15.0 gal, which the estimate can't know until
+     BrewStart runs, the boil kettle empty. #lv-sensor: #sparge-run: the HLT at 4.2 gal on its way to about 1.7, the boil
+     kettle at 3.1 on its way to about 7.0. #lv-sensor-diff: #boil-hold: the boil kettle at 6.4 gal where the estimate
+     is about 7.0; the HLT at 1.8, within a quart of its 1.7. #lv-sensor-lost: the same, the connection lost 48 s ago.
+     #lv-sensor-none: the boil kettle's sensor with no reading */
+  "lv-sensor-night": () => Object.assign(SCENES["sw-plan"](), {levels: "tint", lsens: ["hlt", "bk"], lvm: {hlt: 15.0, bk: 0}}),
+  "lv-sensor": () => Object.assign(SCENES["sparge-run"](), {levels: "tint", lsens: ["hlt", "bk"], lvm: {hlt: 4.2, bk: 3.1}}),
+  "lv-sensor-diff": () => Object.assign(SCENES["boil-hold"](), {levels: "tint", lsens: ["hlt", "bk"], lvm: {hlt: 1.8, bk: 6.4}}),
+  "lv-sensor-lost": () => {
+    const s = SCENES["lv-sensor-diff"]();
+    s.link = "lost"; s.age = 48;
+    s.banner = {tone: "alarm", title: "No connection", text: "Readings are {age} s old. Trying again every 5 s. Controls are paused until CraftBeerPi answers."};
+    s.events.unshift([hhmmss(s.t - 48), "Connection to CraftBeerPi lost", "trying again", "bad"]);
+    return s;
+  },
+  "lv-sensor-none": () => Object.assign(SCENES["boil-hold"](), {levels: "tint", lsens: ["hlt", "bk"], lvm: {hlt: 1.8, bk: null}}),
   /* #sim-speed: #sim-clock with SPEED pressed, its chooser open (with ?simtag=b the row has no chooser) */
   "sim-speed": () => Object.assign(SCENES["sim-clock"](), {open: {spdOpen: true}}),
   /* LOAD in the by-hand list over a finished recipe the Recipe Book doesn't have (Rye Pale Ale, built on Brew Steps):
@@ -2053,7 +2070,7 @@ function plateHTML(v) {
       ${LAYOUT === "b" ? auxHTML(v) : ""}
       ${GRAPHS ? graphHTML(v, "f") : ""}
     </div>
-    <p class="dev">${devHTML(v)}</p>${v === "bk" && slayer() ? `<p class="ssline">${slayerLine()}</p>` : ""}${LEVELS ? `<p class="ssline lvline">${lvLine(v)}</p>` : ""}
+    <p class="dev">${devHTML(v)}</p>${v === "bk" && slayer() ? `<p class="ssline">${slayerLine()}</p>` : ""}${lvMode() ? `<p class="ssline lvline">${lvLine(v)}</p>` : ""}
     <div class="ctrls${nudge && !own ? " bkpow" : ""}">${lamps}</div>
     ${st.edit && st.edit.v === v ? editorHTML(v) : v === "hlt" && st.v.mt.mode === "auto" ? hermsRowHTML() : own ? `<div class="mstack">${mode}<div class="bksteps" role="group" aria-label="Boil power steps">${steps()}</div></div>` : keep ? `<div class="mstack">${mode}<div class="bkspace"></div></div>` : mode}
     <p class="note">${st.notes[v] || ""}</p>
@@ -4269,54 +4286,132 @@ function lvState() {
   }
   return L;
 }
+/* a level sensor per vessel (LEVELS.md): none on the rig yet, perhaps later. The Hardware page would name a vessel's
+   sensor, a CraftBeerPi sensor that reads its volume; in the mockup a moment's lsens, or ?lsens=hlt,mt,bk. Its reading:
+   a moment's lvm (gal; null for a sensor with no reading), else a stand-in, the estimate's figure (midway while it
+   moves). A reading is drawn solid and its figure has no "≈"; the estimate stays dashed beside it */
+const LSENS = (v => (v || "").split(",").filter(x => ["hlt", "mt", "bk"].includes(x)))(new URLSearchParams(location.search).get("lsens"));
+const lvMode = () => LEVELS || (st && st.levels) || "";
+/* a reading and the estimate differ when the reading is more than a quart (0.25 gal, about 1 L) from the estimate's
+   figure, or outside the range a move is in */
+const LV_AGREE = 0.25;
+const LV_VKIND = {hlt: "water", mt: "water", bk: "wort"};
+function lvMeas(v, o) {
+  if (!((st && st.lsens) || LSENS).includes(v)) return null;
+  const g = st.lvm && v in st.lvm ? st.lvm[v] : !o || o.kind === "grain" ? 0 : o.to != null ? Math.round((o.gal + o.to) * 5) / 10 : o.gal;
+  return g == null ? {none: true} : {gal: g, live: st.link !== "lost"};
+}
+/* how far a reading is from the estimate: 0 when they agree */
+function lvDiff(o, g) {
+  if (!o || o.kind === "grain") return 0;
+  const lo = Math.min(o.gal, o.to ?? o.gal), hi = Math.max(o.gal, o.to ?? o.gal), d = g < lo ? g - lo : g > hi ? g - hi : 0;
+  return Math.abs(d) > LV_AGREE ? d : 0;
+}
+/* a vessel's estimate (o, as lvState gives it), its reading (m), whether its sensor has no reading (none), and the
+   estimate that can be drawn (est: not spent grain) */
+function lvView(v, L) {
+  const o = L[v], r = lvMeas(v, o);
+  return {o, m: r && !r.none ? r : null, none: !!(r && r.none), est: o && o.kind !== "grain" ? o : null};
+}
 const LV_KIND = {water: "Water", mash: "Mash", wort: "Wort"};
-/* a vessel's figure in words: the phone's line, the drawing's tooltip and its words for screen readers */
+const lvLess = d => `${lvF(Math.abs(d))} ${d < 0 ? "less" : "more"}`;
+/* a vessel's figure in words: the phone's line, the drawing's tooltip */
 function lvLine(v, L = lvState()) {
-  const o = L[v];
-  if (!o) return "";
+  const {o, m, none, est} = lvView(v, L);
+  if (m) {
+    const name = est ? LV_KIND[est.kind] : o ? "Spent grain:" : LV_KIND[LV_VKIND[v]];
+    if (!m.live) return `${name} last reading ${lvF(m.gal)} gal`;
+    if (!est) return m.gal < 0.05 ? (o ? "Spent grain · no liquid measured" : "Empty · measured") : `${name} ${lvF(m.gal)} gal measured`;
+    if (est.to != null) return `${name} ${lvF(m.gal)} gal measured → ≈ ${lvF(est.to)} · ${est.from}`;
+    const d = lvDiff(est, m.gal);
+    return `${name} ${lvF(m.gal)} gal measured · estimate ≈ ${lvF(est.gal)}${d ? `, ${lvLess(d)}` : ""}`;
+  }
+  if (!o) return none ? "Level sensor: no reading" : "";
   if (o.kind === "grain") return `Spent grain · ${o.from}`;
-  return `${LV_KIND[o.kind]} ${o.to != null ? `${o.gal ? lvF(o.gal) : "0"} → ≈ ${lvF(o.to)}` : `≈ ${lvF(o.gal)}`} gal · ${o.from}`;
+  return `${LV_KIND[o.kind]} ${o.to != null ? `${o.gal ? lvF(o.gal) : "0"} → ≈ ${lvF(o.to)}` : `≈ ${lvF(o.gal)}`} gal · ${none ? "level sensor: no reading" : o.from}`;
 }
 const lvY = (v, g) => 298 - Math.max(0, Math.min(g, LV_CAP[v])) / LV_CAP[v] * 186;
-function lvSVG(v, o) {
-  if (!o || o.kind === "grain") return "";
-  const k = o.kind === "water" ? "water" : "wort", y = g => r1(lvY(v, g)), to = o.to ?? o.gal;
-  const lo = Math.min(o.gal, to), hi = Math.max(o.gal, to);
-  let s = `<title>${esc(lvLine(v))}. Worked out, not measured.</title>`;
+function lvSVG(v, V) {
+  const {o, m, est} = V, mode = lvMode(), y = g => r1(lvY(v, g));
+  if (!est && !m) return "";
+  const k = (est ? est.kind : LV_VKIND[v]) === "water" ? "water" : "wort";
+  const why = m ? (m.live ? `. Measured by its level sensor${est ? "; the dashed line is the estimate" : ""}.` : ". The last reading before the connection was lost.") : ". Worked out, not measured.";
+  let s = `<title>${esc(lvLine(v))}${why}</title>`;
   if (!LV_CAP[v]) return s;
-  if (LEVELS === "tint" && lo > 0) s += `<rect class="lv-body ${k}" x="-112" y="${y(lo)}" width="224" height="${r1(320 - y(lo))}"/>`;
+  /* measured: the tint to the reading, and its surface solid; the estimate's surface (where a move is going) dashed,
+     with no tint or hatching of its own. With no connection the last reading's surface is in the drawing's steel, with
+     no tint */
+  if (m) {
+    if (m.live && mode === "tint" && m.gal > 0) s += `<rect class="lv-body ${k}" x="-112" y="${y(m.gal)}" width="224" height="${r1(320 - y(m.gal))}"/>`;
+    const e = est ? est.to ?? est.gal : 0;
+    if (e > 0) s += `<path class="lv-top ${k}" d="M-112 ${y(e)} H112"/>`;
+    if (m.gal > 0) s += `<path class="lv-top meas ${m.live ? k : "stale"}" d="M-112 ${y(m.gal)} H112"/>`;
+    return s;
+  }
+  const to = o.to ?? o.gal, lo = Math.min(o.gal, to), hi = Math.max(o.gal, to);
+  if (mode === "tint" && lo > 0) s += `<rect class="lv-body ${k}" x="-112" y="${y(lo)}" width="224" height="${r1(320 - y(lo))}"/>`;
   if (hi > lo) {
-    if (LEVELS === "tint") s += `<rect class="lv-band" x="-112" y="${y(hi)}" width="224" height="${r1(y(lo) - y(hi))}" fill="url(#lvh-${k})"/>`;
+    if (mode === "tint") s += `<rect class="lv-band" x="-112" y="${y(hi)}" width="224" height="${r1(y(lo) - y(hi))}" fill="url(#lvh-${k})"/>`;
     else s += `<path class="lv-top was ${k}" d="M-112 ${y(o.gal)} H112"/>`;
   }
   if (to > 0) s += `<path class="lv-top ${k}" d="M-112 ${y(to)} H112"/>`;
   return s;
 }
+/* the dome's figure. Worked out: "≈ 6.7 GAL", "→ ≈ 6.7 GAL" while on its way, SPENT GRAIN. Measured: "6.4 GAL", with
+   the estimate beside it only when they differ ("6.4 GAL · ≈ 7.0"), "3.1 → ≈ 7.0 GAL" while on its way, EMPTY, and
+   "LAST 6.4 GAL" with no connection. A sensor with no reading: the estimate's */
+function lvDome(V) {
+  const {o, m, est} = V;
+  if (m) {
+    if (!m.live) return `LAST ${lvF(m.gal)} GAL`;
+    if (est && est.to != null) return `${lvF(m.gal)} → ≈ ${lvF(est.to)} GAL`;
+    if (m.gal < 0.05 && !est) return o ? "SPENT GRAIN" : "EMPTY";
+    return est && lvDiff(est, m.gal) ? `${lvF(m.gal)} GAL · ≈ ${lvF(est.gal)}` : `${lvF(m.gal)} GAL`;
+  }
+  if (!o) return "";
+  return o.kind === "grain" ? "SPENT GRAIN" : o.to != null ? `→ ≈ ${lvF(o.to)} GAL` : o.gal > 0 ? `≈ ${lvF(o.gal)} GAL` : "";
+}
 /* the figures in the drawing, on every render; drawn again only when they change */
 function renderLevels() {
-  if (!LEVELS || !$("#lv-hlt")) return;
+  if (!lvMode() || !$("#lv-hlt")) return;
   const L = lvState(), lid = $("#ss-lidt") && $("#ss-lidt").textContent;
   ["hlt", "mt", "bk"].forEach(v => {
-    const o = L[v], g = $("#lv-" + v), html = lvSVG(v, o);
+    const V = lvView(v, L), g = $("#lv-" + v), html = lvSVG(v, V);
     if (g.dataset.k !== html) { g.innerHTML = html; g.dataset.k = html; }
-    /* the dome's figure: "≈ 6.7 GAL", "→ ≈ 6.7 GAL" while on its way, SPENT GRAIN; the boil kettle's gives way to the
-       lid's question while the lid reminder waits */
-    const t = $("#lvt-" + v), txt = !o || (v === "bk" && lid) ? "" : o.kind === "grain" ? "SPENT GRAIN" : o.to != null ? `→ ≈ ${lvF(o.to)} GAL` : o.gal > 0 ? `≈ ${lvF(o.gal)} GAL` : "";
+    /* the boil kettle's figure gives way to the lid's question while the lid reminder waits */
+    const t = $("#lvt-" + v), txt = v === "bk" && lid ? "" : lvDome(V);
     if (t.textContent !== txt) t.textContent = txt;
-    const m = $("#lvm-" + v), y = o && LV_MIN[v] && LV_CAP[v] ? r1(lvY(v, LV_MIN[v])) : null;
+    const m = $("#lvm-" + v), y = (V.o || V.m) && LV_MIN[v] && LV_CAP[v] ? r1(lvY(v, LV_MIN[v])) : null;
     const mh = y == null ? "" : `<path class="lv-mtick" d="M-122 ${y} H-100"/><text class="lv-mt" x="-126" y="${r1(y + 5)}">MIN</text>`;
     if (m.dataset.k !== mh) { m.innerHTML = mh; m.dataset.k = mh; }
   });
 }
 /* the drawing's words for screen readers */
 function lvDesc() {
-  if (!LEVELS) return "";
+  if (!lvMode()) return "";
   const L = lvState(), K = {water: "water", mash: "mash", wort: "wort"};
   const say = o => o.kind === "grain" ? "only spent grain, the runoff over" : o.to != null ? `from ${o.gal ? lvF(o.gal) : "0"} to about ${lvF(o.to)} gallons of ${K[o.kind]}, ${o.from}` : `about ${lvF(o.gal)} gallons of ${K[o.kind]}, ${o.from}`;
-  const parts = ["hlt", "mt", "bk"].map(v => L[v] ? `${VNAME[v].toLowerCase()}, ${say(L[v])}` : null).filter(Boolean);
-  return parts.length ? ` Liquid, worked out from the recipe and its steps, not measured: ${parts.join("; ")}.` : "";
+  let measured = false;
+  const parts = ["hlt", "mt", "bk"].map(v => {
+    const {o, m, none, est} = lvView(v, L), name = VNAME[v].toLowerCase();
+    if (m) {
+      measured = true;
+      if (!m.live) return `${name}, ${lvF(m.gal)} gallons at its last reading, before the connection was lost`;
+      if (m.gal < 0.05 && !est) return `${name}, ${o ? "no liquid with the spent grain" : "empty"}, measured`;
+      const s = `${name}, ${lvF(m.gal)} gallons ${est ? `of ${K[est.kind]}` : o ? "with the spent grain" : `of ${K[LV_VKIND[v]]}`}, measured`;
+      if (!est) return s;
+      if (est.to != null) return `${s}, on its way to about ${lvF(est.to)}`;
+      const d = lvDiff(est, m.gal);
+      return `${s}; the estimate is about ${lvF(est.gal)}${d ? `, so ${lvF(Math.abs(d))} gallons ${d < 0 ? "less" : "more"} than expected` : ""}`;
+    }
+    if (!o) return none ? `${name}, its level sensor has no reading` : null;
+    return `${name}, ${say(o)}${none ? ", worked out, as its level sensor has no reading" : ""}`;
+  }).filter(Boolean);
+  if (!parts.length) return "";
+  return measured ? ` Liquid in each vessel, measured where it has a level sensor, otherwise worked out from the recipe and its steps: ${parts.join("; ")}.`
+    : ` Liquid, worked out from the recipe and its steps, not measured: ${parts.join("; ")}.`;
 }
-let rigW = 0, rigRs = 1, rigSs = "";
+let rigW = 0, rigRs = 1, rigSs = "", rigLv = "";
 function drawRig() {
   /* --rig-r: room left at the drawing's right for + TIMER and SOUND where they can't clear it (tsideCorner) */
   const box = $("#rig"), w = box.clientWidth - 12 - (parseFloat(box.style.getPropertyValue("--rig-r")) || 0), h = box.clientHeight - 12;
@@ -4326,9 +4421,9 @@ function drawRig() {
   const W = Math.max(1200, Math.round(RIG_H * w / h));
   /* with graphs in the faceplates the drawing gets shorter, so its labels grow to stay readable (up to 1.3 times) */
   const rs = GRAPHS === "face" ? Math.round(Math.min(1.3, Math.max(1, 0.68 / Math.min(h / RIG_H, w / 1200))) * 100) / 100 : 1;
-  if (Math.abs(W - rigW) < 4 && rs === rigRs && slayer() === rigSs && $("#rigsvg")) return;
-  rigW = W; rigRs = rs; rigSs = slayer();
-  box.innerHTML = rigSVG(LAYOUT === "b" ? "line" : "kettle", W, rs, WP, rigSs, LEVELS);
+  if (Math.abs(W - rigW) < 4 && rs === rigRs && slayer() === rigSs && lvMode() === rigLv && $("#rigsvg")) return;
+  rigW = W; rigRs = rs; rigSs = slayer(); rigLv = lvMode();
+  box.innerHTML = rigSVG(LAYOUT === "b" ? "line" : "kettle", W, rs, WP, rigSs, rigLv);
   renderRig();
   if (TPLACE) tsideCorner();
 }
@@ -6970,6 +7065,12 @@ function load(name) {
     if (v) q.set("slayer", v); else q.delete("slayer");
     a.href = `?${q}#${key}`;
     a.setAttribute("aria-current", v === (QS.get("slayer") || "") ? "true" : "false");
+  });
+  document.querySelectorAll(".mock a[data-lsens]").forEach(a => {
+    const q = new URLSearchParams(location.search), v = a.dataset.lsens;
+    if (v) q.set("lsens", v); else q.delete("lsens");
+    a.href = `?${q}#${key}`;
+    a.setAttribute("aria-current", v === LSENS.join(",") ? "true" : "false");
   });
   document.querySelectorAll(".mock a[data-levels]").forEach(a => {
     const q = new URLSearchParams(location.search), v = a.dataset.levels;
