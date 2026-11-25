@@ -76,7 +76,7 @@ export const HW_TYPES = {
         ["HLT_D", "HLT D gain", "Takes power off while the HLT climbs.", ""],
         ["HLT_Kettle", "HLT kettle", "Shows on the HLT the target this sets. Blank finds it from the HLT probe.", ""]]],
       ["Pump", [
-        ["MashIn_Pump_Within", "Mash-in pump start", "At mash-in, starts the pump once the HLT is this close to the target. Blank starts it at once.", "deg"],
+        ["MashIn_Pump_Within", "Mash-in pump start", "At mash-in, asks you to start the pump once the HLT is this close to the target. Blank asks at once.", "deg"],
         ["Pump_Rest", "Rest the pump", "Yes rests it now and then during the mash. No runs it all the time.", ""],
         ["Rest_Interval", "Pump rest every", "Seconds between rests.", "s"],
         ["Rest_Time", "Pump rest for", "Seconds each rest lasts.", "s"],
@@ -161,7 +161,7 @@ export const HW_TYPES = {
 /* settings that mean something when empty, so they are never filled in: what the control does then, in a few words */
 export const HW_EMPTY = {
   MashIn_DeltaTemp: "uses HLT lead",
-  MashIn_Pump_Within: "pumps from the start",
+  MashIn_Pump_Within: "asks for the pump from the start",
   HLT_Kettle: "found from the HLT probe",
   Usual_Boil_Power: "boil power stays as you left it"
 };

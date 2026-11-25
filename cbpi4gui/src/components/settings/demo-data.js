@@ -210,7 +210,7 @@ export const CFG = {
 "v": "Yes"
 },
 "HLT_PUMP_WITH_HEAT": {
-"d": "Start the HLT pump (the HLT kettle's agitator) whenever the HLT starts heating, until the recipe reaches its sparge, so the water does not settle into hot and cool layers. Also when BrewStart heats the water before you are up: starting a BrewStart step asks you to check the pump and its valves. It is left running when the heating stops. You can still stop it; it starts again the next time the HLT starts heating.",
+"d": "While BrewStart heats the strike water, start the HLT pump (the HLT kettle's agitator) with the heat, so the water does not settle into hot and cool layers; nobody may be there, so starting a BrewStart step asks you to check the pump and its valves. When anything else starts heating the HLT before the sparge - its AUTO under another step, or the mash tun's HERMS - you are asked to start the HLT pump instead, once a step. Never for the HLT element switched on by hand: the pump may not be primed, or its hoses in place. It is left running when the heating stops, and you can still stop it. No: nothing starts the HLT pump or asks for it.",
 "o": [
 {
 "label": "Yes",

@@ -21,7 +21,7 @@ const CATALOG = (() => {
           Temp: {n: "Strike temperature", unit: "deg", h: "The water is heated to this before the malt goes in."},
           AutoMode: AUTO,
           Notification: {n: "Message", h: "What it says when the water is ready. It waits for your answer."},
-          Stop_Pump_At_Strike: {n: "Stop the pump at strike", h: "Yes: the pump stops once the water is hot, so the malt goes into still water. It starts again at NEXT STEP.", opts: {Yes: "YES", No: "NO"}},
+          Stop_Pump_At_Strike: {n: "Stop the pump at strike", h: "Yes: the pump stops once the water is hot, so the malt goes into still water. After NEXT STEP, the first rest asks you to start it again.", opts: {Yes: "YES", No: "NO"}},
           Grain_Kg: {n: "Grain", unit: "kg", h: "With the grain's temperature and the mash water, it heats past the strike so the mash lands on it."},
           Grain_Sensor: {n: "Grain temperature", h: "A probe in the room, where the grain sits.", blank: "None"},
           Mash_Water: {n: "Mash water", unit: "L"}}},
