@@ -3538,11 +3538,12 @@ async function bsFillLoad(B) {
    water box's own small boxes, with the same rules and refusals; once the malt is in, the line stays and the row no
    longer opens. From CraftBeerPi's strike water state for this recipe, where it takes the recipe's figures given here
    (recipe.typed). MashIn is the step the strike water helper takes the rest from (step_ids.mash_in), else the first
-   step on the mash tun */
+   MashIn on the mash tun; never another kind of step, though one with no kettle is drawn as the mash tun's: a recipe
+   with no MashIn has no such row */
 function mwIdx() {
   const S = M.RECIPE.steps, id = st.sw && st.sw.step_ids && st.sw.step_ids.mash_in;
   const i = id != null ? S.findIndex(x => String(x.id ?? x.n) === String(id)) : -1;
-  return i >= 0 ? i : S.findIndex(x => x.k === "mt");
+  return i >= 0 ? i : S.findIndex(x => x.k === "mt" && (x.type == null || x.type === "MashInStep"));
 }
 function mwShows(i) {
   const S = st.sw, R = S && S.recipe;

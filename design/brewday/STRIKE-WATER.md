@@ -361,7 +361,7 @@ water?"
 **The mash water on the MashIn row.** The mash water is on Brew Day whenever a recipe is loaded, whether or not the
 strike water box is drawn (BrewStart with Start at, no BrewStart, a MashIn on the HLT, or the helper off for another
 reason): in the line of MashIn on the mash tun, "126 °F · mash water 8.26 gal · 1.5 qt/lb", or "mash water not given"
-in Note Amber. Until the malt is in, that row is a button, with "change" or "give it" under its state, that opens a small
+in Note Amber. A recipe with no MashIn on the mash tun has no such row: no other step shows the mash water. Until the malt is in, that row is a button, with "change" or "give it" under its state, that opens a small
 box in the column where the strike water box sits: MASH WATER, GRAIN WEIGHT and HLT WATER, each in plain words with its
 figure, where it comes from and CHANGE (GIVE IT while it isn't given), then the sparge water left and any warning.
 CHANGE opens the same small boxes as the strike water box's, with the same rules and refusals. A figure BeerSmith gave

@@ -2647,7 +2647,7 @@ const brewAsks = (q, x) => q.has(x.title) || (x.title.startsWith("BrewScribe: ")
    target, as SET would */
 function swSteps() {
   const S = RECIPE.steps, bi = S.findIndex(s => s.type === "BrewStart"), hi = S.findIndex(s => s.k === "hlt" && s.type === "MashInStep");
-  return {S, bi, si: hi >= 0 ? hi : bi, mi: S.findIndex(s => s.k === "mt")};
+  return {S, bi, si: hi >= 0 ? hi : bi, mi: S.findIndex(s => s.k === "mt" && (s.type == null || s.type === "MashInStep"))};
 }
 /* BrewStart as the strike water step: it heats the HLT itself at its heating start and holds the water for the move */
 const bsStrike = () => { const {bi, si} = swSteps(); return bi >= 0 && si === bi; };
