@@ -466,6 +466,26 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .vover:empty{display:none}
 :where(html.bd-page) .swvol .vover{grid-column:1/-1;margin:0 0 2px;font-size:14px}
 :where(html.bd-page) .bsmid>.vover{margin-top:-8px}
+/* the mash water and the HLT water named in plain words in their small boxes: the name as the boxes' labels are, what
+   it is in the page's words; the other figure and the sparge water left under them; the ratio typed instead of the
+   mash water (util/mashwater.js) */
+:where(html.bd-page) .swvol .swvs{text-transform:none;letter-spacing:0;font:500 15px/1.2 var(--sans)}
+:where(html.bd-page) .swvol .swvo{grid-column:1/-1;margin:0;font:500 14px/1.35 var(--sans);color:var(--text-2)}
+:where(html.bd-page) .swvol .swvq{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:0;font:500 14px/1.35 var(--sans);color:var(--text-2)}
+:where(html.bd-page) .swvol .swvq input{width:96px;min-height:44px;font-size:22px}
+:where(html.bd-page) .swsp{margin:0}
+/* the MashIn row as the way to the mash water's box, as BrewStart's row is (mwRowHTML), and the box itself in
+   BrewStart's box's look (mwHTML) */
+:where(html.bd-page) .step.mwrow:not([aria-disabled=true]):hover{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),#253545}
+:where(html.bd-page) .step.mwrow[aria-current=step]:not([aria-disabled=true]):hover{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),#23629f}
+:where(html.bd-page) .step.mwrow[aria-disabled=true]{cursor:not-allowed}
+:where(html.bd-page) .steps .step.mwrow:focus-visible{outline-offset:-3px}
+:where(html.bd-page) .step.mwrow .s{min-width:64px;margin:-8px 0}
+:where(html.bd-page) .step.mwrow:not([aria-current=step]):not([aria-disabled=true]):hover .bsh:not(.amb){color:var(--text-2)}
+:where(html.bd-page) .mwbox .swyou{font-size:15px}
+:where(html.bd-page) .mwbox .swyou b{font:700 15px/1.2 var(--cond);letter-spacing:.06em}
+:where(html.bd-page) .mwbox .amb{font-weight:600;color:var(--prompt)}
+:where(html.bd-page) .mwbox .swn,:where(html.bd-page) .mwbox .vover{margin:0}
 :where(html.bd-page) .bsgrain{display:grid;gap:8px}
 :where(html.bd-page) .bsgrain .bsgh{margin-top:-4px;font:500 14px/1.35 var(--sans);color:var(--text-3)}
 :where(html.bd-page) .bsin{display:flex;flex-wrap:wrap;align-items:center;gap:6px}

@@ -5,6 +5,7 @@
 // strike water API's state (the topic "strike"); the screen draws only from that. So the demo makes the same state from
 // the mockup's numbers and answers, and the screen draws the demo's moments and CraftBeerPi's alike.
 import { SW_MODEL } from "./strike-model";
+import { leastWater } from "../util/mashwater";
 
 /* a figure more than this above the rest is too far to trust (MashInStep.MAX_STRIKE_RISE_C, 15 °C), and so is one over
    MashInStep's ceiling, the hottest strike water the box sets (MAX_STRIKE_ABS_C, 82 °C); a room's reading is 35-120 °F,
@@ -162,7 +163,10 @@ function strikeInputs(st, M) {
   const miss = misses[0] || null;
   /* BrewStart's Campden dose for its water, while its Campden reminder is on */
   const campden = bi >= 0 && S[bi].campden && vol != null && vol > 0 ? campdenTablets(vol) : null;
+  /* the least water the HLT keeps over its element and coil, from the moment's HLT figures (st.vessels, in gallons) */
+  const least = leastWater((st.vessels || {}).hlt, "F", "gal");
   const inputs = {rest, planned: planned ?? null, vol, vol_from: bi >= 0 ? "brewstart" : "brewday", left: vol != null && gal != null ? +(vol - gal).toFixed(2) : null,
+    least: least.value, least_from: least.from,
     campden, room, room_why: room == null ? "stale" : null, room_from: roomFrom, room_given: d.room ?? null, room_probe: probeRoom,
     typed, grain: typed ?? room, grain_from: typed != null ? "you" : "probe",
     grain_place: bi >= 0 && (S[bi].where === "garage" || S[bi].where === "indoors") ? S[bi].where : null, probe: d.probe || "coil"};
@@ -234,6 +238,7 @@ export function strikeState(st, M) {
     applies: phase != null, off: phase != null ? null : "malt_in", phase, by: si >= 0 ? "step" : "hand",
     step_ids: {brewstart: bi >= 0 ? ids[bi] : null, strike: si >= 0 ? ids[si] : null, mash_in: ids[mi]},
     inputs, rig: {through_coil: true, still_probe: 0.0}, sample_time: sample, guesses, vessels, miss, misses: miss === "far" ? ["far"] : s.misses,
+    warnings: inputs.left != null && inputs.left < inputs.least - 1e-9 ? ["hlt_low"] : [],
     was: d.was ?? null,
     working: d.work ? {since: d.work.since, why: d.work.why === "load" ? "recipe" : d.work.why} : null, failed, answer
   };

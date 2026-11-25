@@ -34,6 +34,10 @@ are missing. They should only improve - not hinder". The design, with Brew Day's
 - **The rows**, in the page's row anatomy, the key under each being CraftBeerPi's field:
   - Capacity (`capacity`), "How much it holds, full. Brew Day checks BrewStart's water against the HLT's.", a number
     box with gal (L on a °C brewery);
+  - Least water (`min_water`), "The least water that keeps its element, and an HLT's coil, covered. Brew Day never
+    leaves the HLT less after the strike water. Empty, it takes 15% of the capacity, or 3 gal (11.4 L).", gal (L);
+    the strike water box holds the mash water and the HLT water to it (STRIKE-WATER.md, "The mash water and the
+    HLT's water");
   - Empty weight (`empty_weight`), "What it weighs empty, with what's fixed in it, such as a coil or a false bottom.
     The strike water forecast uses it.", lb (kg);
   - Material (`material`), "What it's made of. The forecast uses it with the empty weight; without it, it takes

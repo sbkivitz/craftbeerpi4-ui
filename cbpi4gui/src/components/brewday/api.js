@@ -122,6 +122,9 @@ export const api = {
   // probe can't stand for it (null takes it back).
   strikeRecipe: (figures, steps) => post("/step2/strike/recipe", { ...figures, steps }),
   strikeRoom: (room, steps) => post("/step2/strike/room", { room, steps }),
+  // A suggestion for the recipe's grain weight and mash water from BeerSmith's data, where the recipe has none:
+  // {grain, strike_vol}, each {value, from, says} or null. A CraftBeerPi without it answers 404 or 405.
+  strikeSuggest: () => get("/step2/strike/suggest"),
   // Its whole state, as the websocket's topic "strike" sends it: asked for where a refusal brings none (recipe_changed).
   strikeState: () => get("/step2/strike"),
   // A step's settings, all of them ({name, type, props}): refused with 409 while the step runs, {error} CraftBeerPi's

@@ -308,6 +308,77 @@ USE, HLT WATER and GRAIN.
 - How much it matters, for Test Recipe v5: grain at 70 °F with the garage at 60.4 °F makes USE 131.8 °F instead of
   132.4 °F. Grain warmer than the box knows about lands the mash higher, so the figure needs to be right.
 
+## The mash water and the HLT's water
+
+Two figures of water, in the same unit, that must never be taken for each other:
+
+- **MASH WATER: the strike water that goes to the mash tun.** BeerSmith's, or given on Brew Day where the recipe has
+  none.
+- **HLT WATER: all the water in the HLT, strike and sparge.** BrewStart's water volume, or given on Brew Day.
+
+Each small box names its figure that way, in plain words with its unit ("MASH WATER: the strike water that goes to the
+mash tun, in gallons"), shows the other figure beside it ("HLT WATER: 20.00 gal."), and under them the **sparge water
+left**, the HLT water less the mash water ("Sparge water left: 11.74 gal."), which follows the figure as it is typed.
+The same words come from one shared module (`cbpi4gui/src/components/util/mashwater.js`), so the recipe pages say
+exactly what Brew Day says.
+
+**The least water the HLT keeps.** The HLT's element, and the HERMS coil, sit low in the kettle and must stay under
+water. The least water that covers them is:
+
+1. the HLT's own **Least water** on the Hardware page (a kettle figure beside Capacity, in the brewery's volume unit),
+   where it is set;
+2. else 15% of the HLT's capacity on the Hardware page: 3 gal for a 20 gal kettle, enough to cover an element mounted
+   near the bottom of a common 15-20 gal kettle;
+3. else 3 gal (11.4 L on a °C brewery), a cautious figure applied only where the Hardware page gives neither.
+
+**What is refused, and what is only said.**
+
+- Mash water given on Brew Day that would leave the HLT less than the least is refused, saying what would be left and
+  what the least is, and the most mash water the HLT water allows: "Mash water 20.00 gal would leave 0.00 gal in the
+  HLT. The HLT needs at least 3.00 gal over its element and coil (15% of its 20 gal capacity, until its least water is
+  set on the Hardware page). With 20.00 gal of HLT water, the mash water can be at most 17.00 gal."
+- HLT water given on Brew Day that would leave less than the least once the mash water has gone is refused the same
+  way: "HLT water 10.00 gal would leave 1.74 gal in the HLT after the 8.26 gal of mash water. The HLT needs at least
+  3.00 gal over its element and coil (…), so the HLT water has to be at least 11.26 gal."
+- The box says either as it is typed, in Note Amber under the figures, and SET refuses it without sending anything.
+  CraftBeerPi refuses the same figures itself (POST /step2/strike/recipe's 400 too_much, POST /step2/strike/water's
+  400 too_little), so any screen gets the same answer, in the same words.
+- Figures set anywhere else, BrewStart's water volume on Brew Steps or ALL SETTINGS and BeerSmith's mash water, are
+  never refused. Where they leave the HLT short, CraftBeerPi's strike water state says so (`warnings: ["hlt_low"]`) and
+  the box, FORECAST and the MashIn row's box say it in Note Amber: "Only 0.00 gal stays in the HLT after the 20.00 gal
+  of mash water: it needs at least 3.00 gal over its element and coil (…). Check MASH WATER and HLT WATER." USE and
+  the forecast go on as before.
+
+**The water-to-grain ratio.** Beside the mash water, wherever it shows, is the ratio it gives, in the brewery's units:
+qt/lb on a °F brewery, L/kg on a °C one, worked out from the grain weight and the water for the grain (BeerSmith's,
+without what goes under a false bottom, where the recipe has it; else the mash water itself): "8.26 gal · 1.5 qt/lb for
+20 lb". Where the mash water is given on Brew Day, the box also takes the ratio instead ("or as a ratio, in qt/lb for
+20 lb"): a ratio typed fills the mash water from the grain weight, and the water typed shows the ratio it gives. Without
+a grain weight it says the ratio needs one. A ratio outside 0.75-3 qt/lb (1.6-6.3 L/kg) is said plainly to be unusual,
+never refused: "4 qt/lb is unusual: most mashes take 0.75 to 3 qt/lb. Is that the mash water alone, not all the HLT's
+water?"
+
+**The mash water on the MashIn row.** The mash water is on Brew Day whenever a recipe is loaded, whether or not the
+strike water box is drawn (BrewStart with Start at, no BrewStart, a MashIn on the HLT, or the helper off for another
+reason): in the line of MashIn on the mash tun, "126 °F · mash water 8.26 gal · 1.5 qt/lb", or "mash water not given"
+in Note Amber. Until the malt is in, that row is a button, with "change" or "give it" under its state, that opens a small
+box in the column where the strike water box sits: MASH WATER, GRAIN WEIGHT and HLT WATER, each in plain words with its
+figure, where it comes from and CHANGE (GIVE IT while it isn't given), then the sparge water left and any warning.
+CHANGE opens the same small boxes as the strike water box's, with the same rules and refusals. A figure BeerSmith gave
+is changed there only where CraftBeerPi keeps BeerSmith's beside it; otherwise the box says to import the recipe's
+BeerSmith file again with UPDATE. Once the malt is in, the row keeps the mash water in its line and no longer opens the
+box. The strike water box keeps its own MASH WATER button for the same figure.
+
+**A suggestion from BeerSmith's data.** A mash water or grain weight box opened with no figure asks CraftBeerPi for a
+suggestion (GET /step2/strike/suggest): the recipe's own kept BeerSmith file, else the same recipe imported again into
+the Recipe Book with a matching grain bill, else BeerSmith's mash ratio times the grain weight. The box opens filled
+with it and says where it came from ("Suggested from the recipe's BeerSmith file: SET keeps it."); nothing is kept
+until SET, and LOG names where it came from. With no source, the box opens empty: nothing is invented.
+
+**On the simulator.** Moving the strike water never takes the simulated HLT below the same least water. Asked for more,
+it moves what it can, keeps the least and says so on the screen, whether the brewer or the brew steps moved it; holding
+no more than that, it moves nothing and says why. The same at any simulator speed.
+
 ## Decisions
 
 1. **The two fixes.** USE or BACK TO, with CLOSE, stay in reach while FORECAST is open, and FORECAST's button turns into

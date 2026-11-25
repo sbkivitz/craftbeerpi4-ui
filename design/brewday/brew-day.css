@@ -576,6 +576,26 @@ button.step{width:100%;margin:0;color:inherit;text-align:left;touch-action:manip
 .vover:empty{display:none}
 .swvol .vover{grid-column:1/-1;margin:0 0 2px;font-size:14px}
 .bsmid>.vover{margin-top:-8px}
+/* the mash water and the HLT water named in plain words in their small boxes: the name as the boxes' labels are, what
+   it is in the page's words; the other figure and the sparge water left under them; the ratio typed instead of the
+   mash water (util/mashwater.js) */
+.swvol .swvs{text-transform:none;letter-spacing:0;font:500 15px/1.2 var(--sans)}
+.swvol .swvo{grid-column:1/-1;margin:0;font:500 14px/1.35 var(--sans);color:var(--text-2)}
+.swvol .swvq{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:0;font:500 14px/1.35 var(--sans);color:var(--text-2)}
+.swvol .swvq input{width:96px;min-height:44px;font-size:22px}
+.swsp{margin:0}
+/* the MashIn row as the way to the mash water's box, as BrewStart's row is (mwRowHTML), and the box itself in
+   BrewStart's box's look (mwHTML) */
+.step.mwrow:not([aria-disabled=true]):hover{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),#253545}
+.step.mwrow[aria-current=step]:not([aria-disabled=true]):hover{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),#23629f}
+.step.mwrow[aria-disabled=true]{cursor:not-allowed}
+.steps .step.mwrow:focus-visible{outline-offset:-3px}
+.step.mwrow .s{min-width:64px;margin:-8px 0}
+.step.mwrow:not([aria-current=step]):not([aria-disabled=true]):hover .bsh:not(.amb){color:var(--text-2)}
+.mwbox .swyou{font-size:15px}
+.mwbox .swyou b{font:700 15px/1.2 var(--cond);letter-spacing:.06em}
+.mwbox .amb{font-weight:600;color:var(--prompt)}
+.mwbox .swn,.mwbox .vover{margin:0}
 .bsgrain{display:grid;gap:8px}
 .bsgrain .bsgh{margin-top:-4px;font:500 14px/1.35 var(--sans);color:var(--text-3)}
 .bsin{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
