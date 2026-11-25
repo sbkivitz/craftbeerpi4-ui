@@ -548,6 +548,19 @@ button.step{width:100%;margin:0;color:inherit;text-align:left;touch-action:manip
 .bsfoot{display:grid;gap:8px;flex:none}
 .bsact{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .bsact .cmdbtn{min-height:54px;font-size:17px}
+/* ALL SETTINGS under SET and CANCEL, as tall as they are, and its question in their place while something in the box
+   isn't set yet, in the recipe's questions' look: the answers as tall as SET, STAY on a row of its own, and an answer
+   that can't be used now greyed as every greyed button is */
+.bsfoot>.bsall{min-height:54px;font-size:17px}
+.bsask{gap:8px;padding:10px}
+.bsask p{font-size:16px}
+.bsask div.one{grid-template-columns:1fr}
+.bsask button{font-size:17px}
+.bsask button[aria-disabled=true]{background:var(--panel-2);border-color:var(--edge);color:var(--text-3);cursor:not-allowed}
+/* on a phone, START AT INSTEAD (READY BY INSTEAD) as tall as SET, about 9 mm there */
+@media (max-width:700px){
+.bsbox .bsq{min-height:54px}
+}
 .bsgo{background:var(--select);border-color:var(--select);color:#fff}
 .bsgo small{color:#fff}
 .bsgo:not([aria-disabled=true]):hover{background:#3477c8}
