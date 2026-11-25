@@ -899,9 +899,14 @@ more than 3 flashes a second: this is one slow pulse) are met.
   - NAME, a text box (placeholder: the default name), and under it the names to pick from Settings (see "Names from
     Settings" below; HOP STAND, YEAST and VORLAUF unless the brewer changes them). A tap fills the name; a second tap
     clears it.
-  - For a stopped or new timer: MINUTES with −1, a box (1 to 300) and +1, and six presets: 5, 10, 15, 20, 30, 60.
+  - For a stopped or new timer: its own time as MINUTES and SECONDS side by side, each its label over −, its box and
+    +. MINUTES 0 to 300, whose −1 and +1 keep the seconds; SECONDS 0 to 59, whose −5 and +5 carry into the minutes
+    (0:55 and +5 is 1:00). A timer is minutes and seconds, or seconds only, from 1 second to 300 minutes; a blank box
+    counts as 0. Under them six presets of whole minutes: 5, 10, 15, 20, 30, 60; a preset sets the seconds to 0, and
+    is lit only while the time is exactly its minutes. While the boxes make no time, START, SAVE and SET are greyed,
+    and a tap or Enter says why ("A timer needs at least 1 second.", and the like).
     New: CANCEL, SAVE ("start it later") and START ("counts down now"). Stopped: REMOVE, CANCEL, SET.
-  - For a running or paused timer: "Time left 7:08" with −1 MIN, +1 MIN and +5 MIN, which apply at once ("Changes
+  - For a running or paused timer: "Time left 7:08" with −1 MIN and +1 MIN, which apply at once ("Changes
     the time left at once, on every screen."), then REMOVE and DONE. Removing a timer that has time left (running
     or paused) asks once, in place, as NEXT STEP does: "Remove Stir? It has 8:02 left." REMOVE IT / KEEP IT. A
     stopped timer, or one that has run out, goes at once, and a waiting alarm goes with it. SET on a timer that has
@@ -918,18 +923,17 @@ more than 3 flashes a second: this is one slow pulse) are met.
     `@media (min-width:1180px){.recipe[data-tedit] :is(.steps,.book,.handlinks){display:none}}`. Where the page
     stacks (under 1180 px, phones included) nothing is hidden: the timers already come first and the page scrolls.
 - **When a timer runs out**, on every screen, until somebody answers it on any one:
-  - its row turns Prompt Amber: "TIME'S UP", the time counting up from zero ("+0:12"), and two buttons, +5 MIN and
-    a white OK ("stops the alarm");
+  - its row turns Prompt Amber: "TIME'S UP", the time counting up from zero ("+0:12"), and a white OK ("stops the
+    alarm") across it;
   - CraftBeerPi's kept prompt in the title bar, titled with the timer's name: "The 15:00 timer has run out.", with
-    +5 MIN (drawn as the lesser button: no fill, an amber outline) and OK. Two at once: "Timer 2 · 1 more waiting",
+    OK, its one button. Two at once: "Timer 2 · 1 more waiting",
     as the screen as built shows it;
   - the row, the title bar's prompt and a frame round the whole screen (a 4 px Prompt Amber edge with a soft glow
     inside it) pulse together: opacity from 0.15 to 1 and back, 1 s each way, ease-in-out. With reduced motion they
     stay lit and still. Nothing else on the screen pulses;
   - with SOUND on, the screen beeps three times every 3 s;
   - the event line: "Stir finished · waiting for you".
-  - OK puts the timer back to its own time, stopped, ready to start again ("Stir: alarm answered"). +5 MIN runs it
-    for 5 more minutes ("Stir: 5 more minutes"; its row then says "of 5:00").
+  - OK puts the timer back to its own time, stopped, ready to start again ("Stir: alarm answered").
 - **SOUND**, at the right of the TIMERS heading: this screen's own switch, KEEP BOILING's lit box with role
   "switch". It covers this screen's timers and CraftBeerPi's alerts: three beeps every 3 s while a timer's alarm
   waits, two beeps once when any other prompt, warning or error appears. Turning it on plays the two beeps, so he
@@ -1016,18 +1020,18 @@ timers. At 1440×900 three names fit and six scroll the page by 28 to 52 px. At 
 
 | On the screen | Request |
 |---|---|
-| NEW TIMER: START | `POST /timers` `{name, seconds, start: true}` |
+| NEW TIMER: START | `POST /timers` `{name, seconds, start: true}` (seconds: 1 to 18000, minutes and seconds) |
 | NEW TIMER: SAVE | `POST /timers` `{name, seconds, start: false}` |
 | SET, for a stopped timer or one whose alarm waits | `PUT /timers/{id}` `{name, seconds}` (an alarm that waits is answered and the timer stopped at its new time) |
 | DONE, for a running or paused timer, with a new name | `PUT /timers/{id}` `{name}` (name only: the server refuses a new time while a timer counts) |
-| −1 MIN, +1 MIN, +5 MIN in a running or paused timer's editor | `POST /timers/{id}/add` `{seconds: -60}`, `60` or `300` |
+| −1 MIN, +1 MIN in a running or paused timer's editor | `POST /timers/{id}/add` `{seconds: -60}` or `60` |
 | START, PAUSE, START "carry on" | `POST /timers/{id}/start`, `/pause` |
 | REMOVE, or REMOVE IT | `DELETE /timers/{id}` |
-| OK and +5 MIN, in the row or the title bar | `POST /timers/{id}/ok`, `/plus5` (the prompt's own two actions call the same) |
+| OK, in the row or the title bar | `POST /timers/{id}/ok` (the prompt's own OK calls the same) |
 
 - A name left blank can be sent as the placeholder or not at all: the server's "Timer N" is the same name.
-- The title bar knows a prompt is a timer's from the timer's `prompt` field (its prompt's id), and only then draws
-  +5 MIN as the lesser button.
+- The title bar knows a prompt is a timer's from the timer's `prompt` field (its prompt's id), and then sends its OK
+  as the timer's own command.
 - The names to pick come from the settings, which the server pushes to every screen whenever one changes (the
   "configupdate" topic), so a list saved in Settings shows on open screens at once. The timers' own `names`, in
   `GET /timers` and every "timers" message, is the fallback.
@@ -1102,7 +1106,7 @@ Three more, mine, for Brett to take or leave:
   tap once anywhere, then let a timer run out.
 - **A finished timer's alarm goes when the timer is removed or SET.** The mockup's simulation, which your demo
   mode copies, left the prompt pulsing in the title bar with buttons that did nothing. A new `tAnswered(t)` takes
-  the prompt down (OK and +5 MIN use it too), and the next waiting alarm takes the title bar a second later. Live,
+  the prompt down (OK uses it too), and the next waiting alarm takes the title bar a second later. Live,
   CraftBeerPi already withdraws the prompt, so only the demo was wrong.
 
 > **Taken, 11 Nov.** Brett took all three as written, in web UI d31b4b1 (build 72af3d1). One difference, right for
@@ -1156,7 +1160,7 @@ Three more, mine, for Brett to take or leave:
 - Pressed through: + TIMER with an idea and a preset, START and SAVE; PAUSE and carry on; −1/+1 MIN on a running
   timer (its "of" and bar follow); renaming; typing 12 and Enter; REMOVE at once when stopped and with the question
   when running; four timers and the refusal; one and then two running out (the second waits its turn, "1 more
-  waiting"); OK and +5 MIN from the row and from the title bar; SOUND off and on; the first tap allowing sound;
+  waiting"); OK from the row and from the title bar; SOUND off and on; the first tap allowing sound;
   Escape; the phone's strip jumping to the timers.
 - Every moment of the page in every view: 567 loads, no errors. Today's view of the timer moments shows the screen
   as built ("Rest timer · The rest timer has finished." in `#timer-done`).
@@ -1853,7 +1857,7 @@ for hop alerts, questions and errors (Recommended)". So only the press on SOUND 
 - **A press on SOUND makes no sound.** That's switching it on, and the press that allows it while it says "SOUND · TAP
   TO ALLOW". Switching it off was already silent.
 - **Sound comes only when something needs him**, as before:
-  - a timer that has run out: the whole burst every 3 s until OK or +5 MIN;
+  - a timer that has run out: the whole burst every 3 s until OK;
   - a new prompt, warning or error in the title bar: its first two pulses, once.
 - **The lit box says it's on**, and the amber "SOUND · TAP TO ALLOW" turns into "SOUND" once the browser allows it.
   To hear the sound on purpose, Settings has Try ("plays it here") beside BREWDAY_ALARM_SOUND.
@@ -2402,7 +2406,7 @@ mockup has them (search `questionGone(` in `brew-day.js`):
 - `boilStart`: the hold's question, "answered", from START THE BOIL or a held START.
 - `cmdStop`: the sparge question, "no longer needed".
 - `cmdBanner`: ADDED, SPARGE STARTED, a NotificationStep's NEXT STEP, and OK, "answered".
-- `tAnswered`: a run-out timer's OK and +5 MIN, "answered"; removed, or saved while it's done, "no longer needed".
+- `tAnswered`: a run-out timer's OK, "answered"; removed, or saved while it's done, "no longer needed".
 
 A NotificationStep now asks as the screen as built does. The title bar's button is NEXT STEP (it was DONE). Its
 question is logged a moment after the step starts ("Whirlpool Hop: Cool down to 170 °F. Then add 1.50 oz Calypso."),
@@ -2509,7 +2513,7 @@ Only in the event line:
   `#sparge-ready` (1920, 960 and 390 wide), `#hop` (390), `#boilpower` (1180) and `#mash` (701).
 - **Pressed through, at 1920×950**, with no page errors. Each question's line turns plain, saying:
   - "answered": ADDED in `#hop`; START THE BOIL held, and START held, in `#boil-hold`; SPARGE STARTED in
-    `#sparge-ready`; OK and +5 MIN in `#timer-done`; OK on the rest timer with `?timers=today`; OK in `#notarget` and
+    `#sparge-ready`; OK in `#timer-done`; OK on the rest timer with `?timers=today`; OK in `#notarget` and
     `#pause-long`; NEXT STEP in the title bar for Whirlpool Hop (reached from `#boiling` with NEXT STEP).
   - "no longer needed": STOP and NEXT STEP in `#sparge-ready` (the boil's question then waits, amber); MANUAL and a
     target in `#notarget`; MANUAL in `#pause-long`; the recipe's NEXT STEP past Whirlpool Hop.
@@ -2770,8 +2774,8 @@ is, as now.
 
 - **A question:** "Hop Alert answered · from another screen". Here it's "Hop Alert answered: Added · confirmed", but
   this screen doesn't know which button was pressed elsewhere (see the core, below).
-- **A timer's alarm:** "Mash rest: alarm answered · from another screen", as OK pressed here. Its row shows which it
-  was: stopped at its own time (OK) or running again (+5 MIN).
+- **A timer's alarm:** "Mash rest: alarm answered · from another screen", as OK pressed here. Its row shows it
+  stopped at its own time.
 - **The sparge's question:** no line of its own. Its step's "Batch Sparge: sparge started, 15 min timer started · from
   another screen" is the answer, as "… · confirmed" is when it's pressed here. Recognise the question as `livePrompt`
   does: titled with a SpargeStep's name, with a "Sparge started" button. That works whichever of the question going
@@ -2797,8 +2801,8 @@ In `observe`, the loop for questions that have gone:
 ```
 
 ```js
-/* an answer given on another screen, in the words an answer here logs. A timer's alarm, OK or +5 MIN (its row shows
-   which); a SpargeStep's question, none: its step's "sparge started" line is its answer; any other, "Title answered" */
+/* an answer given on another screen, in the words an answer here logs. A timer's alarm, OK (its row shows it
+   stopped); a SpargeStep's question, none: its step's "sparge started" line is its answer; any other, "Title answered" */
 function elsewhereLine(a) {
   if (M.TIMERS && TIMER_RAN_OUT.test(String(a.message || "").trim())) return `${ut(a.title)}: alarm answered`;
   if (spargeQuestion(a)) return null;
@@ -2812,8 +2816,8 @@ const spargeQuestion = p => M.RECIPE.steps.some(s => s.type === "SpargeStep" && 
 `logStep` already stops at "from another screen", so a step's line stays after the answer that set it going.
 
 **The core, if you want the button's name.** CraftBeerPi knows it: `notify_callback` has the `action`, and the timers'
-`ok` and `plus5` know theirs. Sent with the retirement (`retire(id, reason="answered", answer=action.label)`), the line
-could read exactly as an answer here: "Hop Alert answered: Added · from another screen", "Mash rest: 5 more minutes ·
+`ok` knows its own. Sent with the retirement (`retire(id, reason="answered", answer=action.label)`), the line
+could read exactly as an answer here: "Hop Alert answered: Added · from another screen", "Mash rest: alarm answered ·
 from another screen". It isn't needed. Most questions have one button, and for the rest what the answer did shows in
 the lines after it or on the screen: the stand's "Holding 170.0…", a step "stopped · from another screen", the timer's
 row. Your call.
@@ -2844,7 +2848,7 @@ Brett built it (M83: UI d45186a, build b1a0c19, main.2117d396.js; core 5de41ae; 
 the optional part too: CraftBeerPi now sends the label of the button that was pressed when it takes a question down as
 answered. So the line names it, as an answer here does: "MashIn answered: Next Step", "Hop Alert answered: Added",
 "Resume brew? answered: Resume", each "· from another screen". With an older core it's "Hop Alert answered". A timer's
-alarm says "Mash rest: alarm answered", or "Mash rest: 5 more minutes" for +5 MIN. The sparge's question has no line,
+alarm says "Mash rest: alarm answered". The sparge's question has no line,
 and a question the tab never logged is logged whole.
 
 - **His fix.** A question answered in this screen's title bar could be logged as answered on another screen:
@@ -4031,7 +4035,7 @@ In `brew-day.css`, after `.trow .tok:hover` (your built CSS follows):
   two-line note doesn't leave one word alone.
 - `.trow:not([data-state=done]) .tbtn{grid-column:2;grid-row:1}`: START or PAUSE stays beside the name, so the note
   can't push it down.
-- On a run-out row the note is Prompt Cream, between the name and +5 MIN and OK.
+- On a run-out row the note is Prompt Cream, between the name and OK.
 - While another timer's editor is open, the note hides with the state line, so the editor keeps its room.
 
 ### Demo moments, for demo.js and the identity test
@@ -5574,7 +5578,7 @@ reasons and the measurements. CraftBeerPi has everything it needs since core 4.7
    right, each at least 84 × 56 px. Copy `.trow.tr2`, `.tr2 .tsel` and the rules after it, `.trow .trm`, `.tr2 .toff`
    and the `.tmrs[data-editing] .tr2` rules from the mockup's `brew-day.css`.
    - REMOVE is the quieter button: Soft Steel 600 lettering on a Hairline Slate edge, Panel White under the pointer.
-   - A run-out timer keeps +5 MIN and OK across its row; after OK it is ready, with REMOVE and START.
+   - A run-out timer has OK across its row; after OK it is ready, with REMOVE and START.
    - While its own editor is open, a timer keeps the one-line row with START or PAUSE only, so the editor's buttons
      stay on the screen at 1180 × 860.
 2. **+ TIMER in the heading**, beside SOUND (`timersHTML`, `.tmrs .thr`, `.tmrs .tplus2`), instead of its row under the
@@ -5600,8 +5604,8 @@ reasons and the measurements. CraftBeerPi has everything it needs since core 4.7
 6. **BACK TO 15:00 in the editor** (`teditHTML`, `cmdTe` "reset"), while the timer counts down or is paused, hint
    "ready to start again": `POST /timers/{id}/reset` (no call for it in `api.js` yet either). The editor stays open,
    now a stopped timer's (CANCEL, SET), so a name typed and not yet saved is kept. LOG: "Stir back to 15:00, stopped
-   with 7:12 to go". A 409 (it ran out meanwhile): CraftBeerPi's "Stir has run out: answer it with OK or +5 MIN." in
-   the note line; the editor closes and the row shows +5 MIN and OK. The editor no longer has REMOVE, nor its question.
+   with 7:12 to go". A 409 (it ran out meanwhile): CraftBeerPi's "Stir has run out: answer it with OK." in
+   the note line; the editor closes and the row shows OK. The editor no longer has REMOVE, nor its question.
 7. **Moments for the demo**: `#timer-change` (Stir's editor while it counts down) and `#timer-removed` (Stir just
    removed), from the mockup.
 
@@ -6869,6 +6873,51 @@ it open:
 - **Escape** closes the box first whenever focus is in it or on SPEED.
 - The core's notice in LOG can be longer than the mockup's: it adds what it archived ("The sensor logs written ahead
   of it, up to …, were archived so the graphs start again from now - zipped (…) and moved to …").
+
+## A timer's time in minutes and seconds, and its alarm's one answer, OK
+
+A new or stopped timer's own time is minutes and seconds, or seconds only, from 1 second to 300 minutes. A timer that
+has run out is answered with OK alone, wherever it is offered: its row, the column beside the drawing, and the title
+bar's alarm, on a monitor and on a phone. A running or paused timer's editor has −1 MIN and +1 MIN.
+
+### What the editor does (screen.js and the mockup's brew-day.js alike)
+
+- `teTimeHTML`: MINUTES and SECONDS side by side (`.ttime`), each its label over −, its box and +: `te:step:±1` for the
+  minutes, which keep the seconds and stop at 300:00; `te:sec:±5` (`TSECS`) for the seconds, which carry into the
+  minutes (0:55 and +5 is 1:00; 1:00 and −5 is 0:55) and stop at 0:00 and 300:00. The keys are 48 px wide and 52 px
+  tall (44 px wide under 400 px, with the figures at 24 px, so 300 fits its box on a 360 px phone). Then the six
+  presets, `te:min:N`, whole minutes: each sets the seconds to 0, and is pressed while the time is exactly its minutes.
+- The boxes keep what is typed in them (`e.mt`, `e.st`) until a key or a preset sets the time again (`teSet`); a blank
+  box counts as 0. `teTime` makes the time from them, or says why it can't be sent: "A timer needs at least 1
+  second.", "Minutes are a whole number from 0 to 300.", "Seconds are a whole number from 0 to 59.", or "300 minutes is
+  the longest a timer can be." While it says why, START, SAVE and SET are greyed (the greyed look of the screen's other
+  main buttons, Dim Steel on Raised Slate), and a tap or Enter in a box puts the reason in the timers' note line.
+- As a box is typed in, `tePatch` draws the editor again in place (the screen through `patchNode`, the mockup by its
+  buttons' attributes), so the presets and the greyed buttons follow the typing and the box keeps its caret.
+- START, SAVE and SET send the seconds as they are (`POST /timers` and `PUT /timers/{id}` with `seconds`). The row, its
+  "of", the column beside the drawing, the phone's strip, LOG and CraftBeerPi's alarm write a time with `tfmt`: 0:45,
+  1:30, 15:00, 1:30:00.
+- A timer that has run out: OK across its row (`.trow[data-state=done] .tbtn`, one column), OK on its row beside the
+  drawing, and the title bar's alarm with OK alone (`tBanner`, and `ask` for CraftBeerPi's prompt). An answer from
+  another screen logs "Stir: alarm answered · from another screen".
+- Every key in the editor is at least 48 px tall: the names to pick and the presets 48 px, the time's keys and the
+  actions 52 px.
+
+### In CraftBeerPi (TimersController)
+
+- A timer's own time is `MIN_SET` 1 to `MAX_SET` 18000 seconds, on `POST /timers`, `PUT /timers/{id}` and in
+  timers.json read back after a restart; less is refused with "A timer's time is 1 second to 300 minutes."
+- The alarm's prompt has one action, OK. A timer that has run out refuses START and BACK TO with "Stir has run out:
+  answer it with OK." `POST /timers/{id}/plus5` still answers a run-out timer with five minutes more, for whatever
+  calls it; Brew Day doesn't.
+
+### Moments
+
+- `#timer-secs`: Hop stand, 45 seconds, counting down with 0:32 to go, and + TIMER's editor at 1 minute 30 seconds,
+  no preset pressed.
+- `#timer-zero`: the same editor at 0 minutes 0 seconds, SAVE and START greyed.
+- `#timer-done`, `#timer-back-done` and `#timer-back-unknown`: the alarm with OK alone, and OK across the row.
+- `#timer-change`: −1 MIN and +1 MIN.
 
 ## Open questions about the drawing
 

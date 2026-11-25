@@ -29,7 +29,7 @@ no list of its own.
 ### RECORD pH, beside OK
 
 Such a reminder gets a second button: **RECORD pH**, with "for BrewScribe" under it, at the right end, where the
-main answer is on a timer's alarm. OK moves to its left, drawn as the lesser answer, as +5 MIN is there. A habitual tap
+main answer is on a timer's alarm. OK moves to its left, drawn as the lesser answer: no fill, an amber outline. A habitual tap
 at the right end then opens the pH box, which CANCEL closes, rather than closing the reminder with nothing recorded.
 RECORD pH opens the pH box; pressed again, it closes it.
 

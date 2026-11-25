@@ -559,8 +559,7 @@ button.step{width:100%;margin:0;color:inherit;text-align:left;touch-action:manip
 .timer div,.handlinks{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .timer .go{grid-column:1/-1}
 /* the timers (?timers=new): up to four rows, each a name, a big time and its one
-   button; the row's left part opens its editor in place. A finished one is Prompt Amber, counts up, and offers +5 MIN
-   and OK */
+   button; the row's left part opens its editor in place. A finished one is Prompt Amber, counts up, and offers OK */
 .tmrs{flex:none;display:grid;gap:8px}
 .tmrs .thead{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px}
 .tmrs h3{margin:0;font:700 20px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase}
@@ -585,7 +584,7 @@ button.step{width:100%;margin:0;color:inherit;text-align:left;touch-action:manip
 .tmrs[data-editing] .trow:not(.editing) .tsel .tn{font-size:18px}
 .trow[data-state=done]{border-color:var(--prompt);background:var(--prompt-bg)}
 .trow[data-state=done] .ts,.trow[data-state=done] .tt{color:var(--prompt)}
-.trow[data-state=done] .tbtn{grid-column:1/-1;display:grid;grid-template-columns:1fr 1.4fr}
+.trow[data-state=done] .tbtn{grid-column:1/-1;display:grid;grid-template-columns:1fr}
 .trow .tok{background:#f4f6f8;color:#10161c;border-color:#f4f6f8}
 .trow .tok small{color:#3a4652}
 .trow .tok:not([aria-disabled=true]):hover{background:#dfe5ea}
@@ -794,14 +793,20 @@ button.step{width:100%;margin:0;color:inherit;text-align:left;touch-action:manip
 .tfield label{min-width:62px;font:600 15px/1 var(--cond);letter-spacing:.05em;color:var(--text-2);text-transform:uppercase}
 .tedit input{min-width:0;min-height:52px;padding:0 12px;border:2px solid #3d7fd0;border-radius:var(--r);background:var(--face);color:var(--text);font:600 22px/1 var(--cond)}
 .tedit input::placeholder{color:#8a9bad;opacity:1}
-.tfield.tmin{grid-template-columns:auto 64px minmax(0,1fr) 64px}
-.tmin input{text-align:center;font-size:28px;font-variant-numeric:tabular-nums}
+/* a stopped or new timer's time: MINUTES and SECONDS side by side, each its label over its −, box and + */
+.ttime{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.ttime .tfield{grid-template-columns:48px minmax(0,1fr) 48px;row-gap:5px;column-gap:6px}
+.ttime .tfield label{grid-column:1/-1;min-width:0}
+.ttime input{padding:0;text-align:center;font-size:28px;font-variant-numeric:tabular-nums}
+/* under 400 px the keys are 44 px wide and the figures 24 px, so 300 still fits its box on a 360 px phone */
+@media (max-width:399px){.ttime{column-gap:8px}.ttime .tfield{grid-template-columns:44px minmax(0,1fr) 44px;column-gap:4px}.ttime input{font-size:24px}}
 .tsug,.tkeys{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.tkeys{grid-template-columns:repeat(2,minmax(0,1fr))}
 /* six presets share the editor's width, 282 px on a monitor's recipe column and 278 px on a 360 px phone: a 2 px gap
    leaves each at least 44 px */
 .tpre{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:2px}
-.tedit .cmdbtn{min-height:46px;font-size:17px}
-.tedit .tmin .cmdbtn{min-height:52px}
+.tedit .cmdbtn{min-height:48px;font-size:17px}
+.tedit .ttime .cmdbtn{min-height:52px;padding-left:0;padding-right:0}
 .tsug .cmdbtn[aria-pressed=true],.tpre .cmdbtn[aria-pressed=true]{background:#070c11;color:#fff;box-shadow:inset 0 0 0 2px #a9bfd4}
 /* the names to pick (BREWDAY_TIMER_NAMES): a long one wraps, up to three lines, rather than being cut short. 2 px of
    padding a side leaves a 9-letter word like WHIRLPOOL (80 px) room in a monitor's three-to-a-row (84 px) */
@@ -815,6 +820,9 @@ button.step{width:100%;margin:0;color:inherit;text-align:left;touch-action:manip
 .tact .tgo{background:var(--select);border-color:var(--select);color:#fff}
 .tact .tgo small{color:#fff}
 .tact .tgo:not([aria-disabled=true]):hover{background:#3477c8}
+/* greyed (no time to send, CraftBeerPi still answering, no connection): the greyed look of the screen's other main buttons */
+.tact .tgo[aria-disabled=true]{background:var(--panel-2);border-color:var(--edge);color:var(--text-3)}
+.tact .tgo[aria-disabled=true] small{color:var(--text-3)}
 .keep.snd.blocked .box{border-color:var(--prompt);background:var(--prompt-bg);box-shadow:none}
 .keep.snd.blocked .box svg{visibility:hidden}
 .keep.snd.blocked .kl{color:var(--prompt)}

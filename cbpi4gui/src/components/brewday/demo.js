@@ -12,7 +12,7 @@
 // sw-refused, sw-refused-moved, sw-failed, sw-tunprobe, sw-wait, sw-heat, sw-move, sw-late, sw-doughin, sw-hand,
 // sw-novol, sw-missing, sw-missing-steps, sw-noprobe, sw-grain-bad and sw-interval, the vessels' bs-over, sw-hw and
 // sw-over, the one clock's sim-clock and
-// sim-clock-1x, the timers' timer-change and timer-removed, the boil kettle's MANUAL's bk-hand, bk-hand-off and
+// sim-clock-1x, the timers' timer-change, timer-removed, timer-secs and timer-zero, the boil kettle's MANUAL's bk-hand, bk-hand-off and
 // bk-man-boil, the mash pH's ph, ph-open, ph-set, ph-target, ph-had, ph-end, ph-warm, ph-nolog, ph-vessel, ph-saved,
 // ph-fail, ph-slow, ph-noclose and ph-other, other-recipe, and BrewScribe's readings' rd-strike, rd-level, rd-first,
 // rd-first-bx, rd-first-nofactor, rd-first-noatc, rd-looks-sg, rd-nounit, rd-last, rd-last-all, rd-sparge,
@@ -706,6 +706,16 @@ const SCENES = {
     s.events = [["14:32:28", "Stir removed, 7:15 to go", "confirmed", "ok"], ...s.events];
     return s;
   },
+  /* a timer's time in minutes and seconds, or seconds only: Hop stand, 45 seconds, started at 14:32:18 and counting down
+     with 0:32 to go, and + TIMER's editor at 1 minute 30 seconds, no preset pressed */
+  "timer-secs": () => {
+    const s = SCENES.timers();
+    s.tmrs.push({id: 3, name: "Hop stand", set: 45, left: 32, state: "running"});
+    s.events = [["14:32:18", "Hop stand added and started, 0:45", "confirmed", "ok"], ...s.events];
+    return Object.assign(s, {open: {tedit: {id: null, name: "Vorlauf", ph: "Timer 4", set: 90}}});
+  },
+  /* the same editor at 0 minutes 0 seconds: SAVE and START greyed, each saying why when tapped */
+  "timer-zero": () => Object.assign(SCENES["timer-secs"](), {open: {tedit: {id: null, name: "Vorlauf", ph: "Timer 4", set: 0}}}),
   /* #other-recipe: the recipe not begun on brew morning (#prebrew), with OTHER RECIPE's book open */
   "other-recipe": () => Object.assign(SCENES.prebrew(), {open: {rbOpen: true}}),
   /* the boil kettle in MANUAL, brewing by hand: the wort just under a boil, the element on by hand, the boil power 45 %.
@@ -1369,11 +1379,11 @@ function pauseBanner() {
 /* a timer's time, as its row and CraftBeerPi's prompt write it: 15:00, or 1:30:00 from an hour */
 const tpad = n => String(n).padStart(2, "0");
 const tfmt = s => s >= 3600 ? `${Math.floor(s / 3600)}:${tpad(Math.floor(s / 60) % 60)}:${tpad(s % 60)}` : `${Math.floor(s / 60)}:${tpad(s % 60)}`;
-/* CraftBeerPi's kept prompt for a timer that has run out: titled with its name, on every screen until answered. Its
-   +5 MIN is the lesser button (sec); a second one run out waits behind it ("1 more waiting") */
+/* CraftBeerPi's kept prompt for a timer that has run out: titled with its name, on every screen until answered, with
+   OK; a second one run out waits behind it ("1 more waiting") */
 function tBanner(t, list) {
   return {tone: "prompt", title: t.name, text: `The ${tfmt(t.set)} timer has run out.`, timer: t.id, more: list.filter(x => x.state === "done").length - 1,
-    acts: [{label: "+5 MIN", cmd: `tm2:plus5:${t.id}`, dir: "plus5", sec: true}, {label: "OK", cmd: `tm2:ok:${t.id}`, dir: "ok"}]};
+    acts: [{label: "OK", cmd: `tm2:ok:${t.id}`, dir: "ok"}]};
 }
 
 /* ---------- the temperature graphs' demo history (the mockup's graphs.js, gDemo and gHistory) ----------

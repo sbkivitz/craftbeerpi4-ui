@@ -29,8 +29,8 @@
 // - The timers are CraftBeerPi's, up to four, kept on
 //   its brewing clock so every screen shows the same ones (M.TIMERS: it has them; with an older CraftBeerPi the screen
 //   keeps its one rest timer). The names to pick for a timer are its BREWDAY_TIMER_NAMES setting, read from the settings so
-//   a new list shows at once. A timer's alarm is CraftBeerPi's
-//   kept prompt, which the title bar shows with +5 MIN as the lesser button. SOUND is this browser's own, kept on this
+//   a new list shows at once. A timer's own time is minutes and seconds, from a second to 300 minutes. A timer's alarm is
+//   CraftBeerPi's kept prompt, which the title bar shows with its one button, OK. SOUND is this browser's own, kept on this
 //   device. Pressing SOUND while it says TAP TO ALLOW allows it and leaves it on; on a phone a finger counts as it lifts.
 // - A question's line in the event log says "waiting for you", in amber, only while CraftBeerPi waits for its answer; then
 //   the same line says "answered", "no longer needed" or, where the page can't tell which (opened later, or after the
@@ -138,10 +138,11 @@ const CONNECTING_MS = 5000;
 // CraftBeerPi's routine step notices: the event line already says these in its own words.
 const ROUTINE = /^(?:timer started|step finished|boiling completed)$/i;
 const WAITING_FOR_YOU = "WAITING FOR YOU";
-/* the timers: four at most, as the server keeps them. TPRE: the editor's minutes. The names to pick are CraftBeerPi's
+/* the timers: four at most, as the server keeps them. TPRE: the editor's minutes; TMINS the most minutes a timer's own
+   time has, and TSECS what its SECONDS keys take off or add. The names to pick are CraftBeerPi's
    BREWDAY_TIMER_NAMES, sent with the timers as `names`. TNAMES is its default, which the demo offers; TNLEN a name's
    length; TNMAX how many buttons the editor has room for: two rows of three */
-const TMAX = 4, TPRE = [5, 10, 15, 20, 30, 60];
+const TMAX = 4, TPRE = [5, 10, 15, 20, 30, 60], TMINS = 300, TSECS = 5;
 const TNAMES = ["Hop stand", "Yeast", "Vorlauf"], TNLEN = 24, TNMAX = 6;
 const tfmt = DEMO.tfmt;
 // SOUND, for the timers and CraftBeerPi's alerts, on this device only: the phone can stay quiet while the monitor beeps
@@ -3196,8 +3197,8 @@ function nowHTML() {
 }
 
 /* ---------- alarms, last event, rig ---------- */
-/* a prompt from CraftBeerPi can have several buttons (x.acts); x.more counts what waits behind it. A timer's alarm has two:
-   +5 MIN, drawn as the lesser one (sec), and OK. What it waits for is its timer's command, not the title bar's */
+/* a prompt from CraftBeerPi can have several buttons (x.acts); x.more counts what waits behind it. A timer's alarm has one,
+   OK. What it waits for is its timer's command, not the title bar's */
 function bannerHTML() {
   const x = st.banner;
   if (!x) return `${ICON.ok}<span class="msg">No alarms</span>`;
@@ -5548,7 +5549,7 @@ function tgoneHTML(g, off) {
   return `<div class="trow tgone" data-state="gone" id="tr-${g.t.id}" role="group" aria-label="${esc(g.t.name)} removed"${g.h ? ` style="min-height:${g.h}px;--tw:${g.w}px"` : ""}><p class="tgn"><span class="tn">${esc(g.t.name)}</span><span class="ts">removed</span></p><div class="tbtn">${undo}</div></div>`;
 }
 /* a timer's row: its name and state, its time large, and its buttons. Its left part opens its editor. run: this countdown's
-   length (its own time, or the 5 minutes more after it ran out), for "of" and the bar. "of 20:00" stays whole, so a narrow
+   length (its own time, as −1 MIN and +1 MIN left it), for "of" and the bar. "of 20:00" stays whole, so a narrow
    row wraps "PAUSED ·" over "of 20:00". A timer brought back after a restart has its own line across the row, under the
    name and state, saying how long CraftBeerPi was off; the button's label ends with it, so the line is hidden from screen
    readers */
@@ -5559,12 +5560,12 @@ function trowHTML(t, off) {
   const sub = done ? "TIME'S UP" : run ? of : live ? `<span class="nw">PAUSED ·</span> ${of}` : "ready";
   const said = tSaid(t);
   // while its time or name is being changed, START or PAUSE waits without saying it is starting or pausing
-  const btn = done ? b("cmdbtn", p === "plus5" ? "ADDING…" : "+5 MIN", "", {cmd: `tm2:plus5:${t.id}`, why}) + b("cmdbtn tok", p === "ok" ? "SENDING…" : "OK", "stops the alarm", {cmd: `tm2:ok:${t.id}`, why})
+  const btn = done ? b("cmdbtn tok", p === "ok" ? "SENDING…" : "OK", "stops the alarm", {cmd: `tm2:ok:${t.id}`, why})
     : b("cmdbtn", p === "start" ? "STARTING…" : p === "pause" ? "PAUSING…" : run ? "PAUSE" : "START", t.state === "paused" ? "carry on" : "", {cmd: `tm2:go:${t.id}`, why});
   const open = !!(st.tedit && st.tedit.id === t.id);
   /* two lines, the name and its state over the time and two buttons. REMOVE sits beside START or PAUSE in every state but
-     a run-out one, always in the same place; START or PAUSE keeps the far right, where it was. A run-out timer keeps its
-     +5 MIN and OK across the row. While its editor is open the timer keeps the one-line row, with START or PAUSE only:
+     a run-out one, always in the same place; START or PAUSE keeps the far right, where it was. A run-out timer has OK
+     across the row. While its editor is open the timer keeps the one-line row, with START or PAUSE only:
      the editor fits a 1180 × 860 window with nothing to spare, and REMOVE is back when it closes */
   if (!done && !open) {
     const rm = b("cmdbtn trm", p === "rm" ? "REMOVING…" : "REMOVE", "", {cmd: `tm2:rm:${t.id}`, label: p === "rm" ? "" : `Remove ${t.name}`, why});
@@ -5586,23 +5587,59 @@ function namesHTML(e, t) {
   }).join("");
   return `<div class="tsug" role="group" aria-label="Names to pick">${btns}</div>`;
 }
+/* a stopped or new timer's own time in its editor: MINUTES (0 to 300) and SECONDS (0 to 59) side by side, so a timer can
+   be minutes and seconds, or seconds only. Each box keeps what was typed in it (e.mt, e.st) until a key or a preset sets
+   the time again (teSet); a blank box counts as 0. The time they make is at least a second and at most 300 minutes:
+   anything else greys START, SAVE and SET, which say why (teTime) */
+const teText = e => ({m: e.mt ?? String(Math.floor(e.set / 60)), s: e.st ?? String(e.set % 60)});
+function teNums(e) {
+  const x = teText(e), n = v => /^\s*\d*\s*$/.test(v) ? Number(v) || 0 : null;
+  return {m: n(x.m), s: n(x.s)};
+}
+function teTime(e) {
+  const {m, s} = teNums(e);
+  if (m == null || m > TMINS) return {why: `Minutes are a whole number from 0 to ${TMINS}.`};
+  if (s == null || s > 59) return {why: "Seconds are a whole number from 0 to 59."};
+  if (m * 60 + s > TMINS * 60) return {why: `${TMINS} minutes is the longest a timer can be.`};
+  if (!m && !s) return {why: "A timer needs at least 1 second."};
+  return {set: m * 60 + s, why: ""};
+}
+function teSet(e, set) { e.set = set; delete e.mt; delete e.st; }
+/* the minutes' keys change the minutes and keep the seconds (to 300:00 at most); the seconds' keys take TSECS seconds off
+   or add them, into the minutes past 0:55 or under 1:00. The presets are whole minutes: each sets the seconds to 0, and
+   is pressed while the time is exactly its minutes */
+function teTimeHTML(e, tm) {
+  const x = teText(e);
+  return `<div class="ttime"><div class="tfield tmin"><label for="tmin">Minutes</label>${b("cmdbtn", "−1", "", {cmd: "te:step:-1", label: "One minute less"})}<input id="tmin" type="text" inputmode="numeric" maxlength="3" autocomplete="off" value="${esc(x.m)}">${b("cmdbtn", "+1", "", {cmd: "te:step:1", label: "One minute more"})}</div><div class="tfield tsec"><label for="tsec">Seconds</label>${b("cmdbtn", `−${TSECS}`, "", {cmd: `te:sec:-${TSECS}`, label: `${TSECS} seconds less`})}<input id="tsec" type="text" inputmode="numeric" maxlength="2" autocomplete="off" value="${esc(x.s)}">${b("cmdbtn", `+${TSECS}`, "", {cmd: `te:sec:${TSECS}`, label: `${TSECS} seconds more`})}</div></div>
+      <div class="tpre" role="group" aria-label="Minutes">${TPRE.map(m => b("cmdbtn", String(m), "", {cmd: `te:min:${m}`, pressed: tm.set === m * 60, label: `${m} minutes`})).join("")}</div>`;
+}
+/* the editor drawn again in place as its time is typed: the presets and the greyed START, SAVE or SET follow the boxes,
+   and the box being typed in keeps what it has and its caret (patchNode) */
+function tePatch() {
+  const el = $(".tedit");
+  if (!el || !st.tedit) return;
+  const n = document.createElement("template");
+  n.innerHTML = teditHTML(st.link === "lost" ? PAUSED : "");
+  if (n.content.firstElementChild) patchNode(el, n.content.firstElementChild);
+}
 /* one editor at a time, in place: under its timer, or where + TIMER was for a new one. A running or paused timer's time
-   changes by a minute or five at once, as the boil power's nudges do; a stopped one is set and then saved */
+   changes by a minute at once, as the boil power's nudges do; a stopped one is set and then saved */
 function teditHTML(off) {
   const e = st.tedit, t = e.id != null ? tById(e.id) : null, live = !!t && (t.state === "running" || t.state === "paused");
   const pT = st.pend["t:" + (t ? t.id : "new")], why = off || (pT ? WAIT : "");
+  /* START, SAVE and SET send the time: greyed while the boxes don't make one, saying why */
+  const tm = live ? null : teTime(e), tWhy = why || (tm ? tm.why : "");
   const nm = `<div class="tfield"><label for="tnm">Name</label><input id="tnm" type="text" maxlength="${TNLEN}" autocomplete="off" spellcheck="false" value="${esc(e.name)}" placeholder="${esc(e.ph)}"></div>
     ${namesHTML(e, t)}`;
   const time = live
-    ? `<p class="tleft">Time left <b id="te-left">${tfmt(t.left)}</b></p><div class="tkeys">${[[-60, "−1 MIN"], [60, "+1 MIN"], [300, "+5 MIN"]].map(([s, l]) => b("cmdbtn", l, "", {cmd: `tm2:add:${t.id}:${s}`, why})).join("")}</div><p class="tnote">Changes the time left at once, on every screen.</p>`
-    : `<div class="tfield tmin"><label for="tmin">Minutes</label>${b("cmdbtn", "−1", "", {cmd: "te:step:-1", label: "One minute less"})}<input id="tmin" type="text" inputmode="numeric" maxlength="3" autocomplete="off" value="${e.set / 60}">${b("cmdbtn", "+1", "", {cmd: "te:step:1", label: "One minute more"})}</div>
-      <div class="tpre" role="group" aria-label="Minutes">${TPRE.map(m => b("cmdbtn", String(m), "", {cmd: `te:min:${m}`, pressed: e.set === m * 60, label: `${m} minutes`})).join("")}</div>`;
-  const acts = !t ? [b("cmdbtn", "CANCEL", "", {cmd: "te:x"}), b("cmdbtn", pT === "save" ? "SAVING…" : "SAVE", "start it later", {cmd: "te:save", why}), b("cmdbtn tgo", pT === "start" ? "STARTING…" : "START", "counts down now", {cmd: "te:start", why})]
+    ? `<p class="tleft">Time left <b id="te-left">${tfmt(t.left)}</b></p><div class="tkeys">${[[-60, "−1 MIN"], [60, "+1 MIN"]].map(([s, l]) => b("cmdbtn", l, "", {cmd: `tm2:add:${t.id}:${s}`, why})).join("")}</div><p class="tnote">Changes the time left at once, on every screen.</p>`
+    : teTimeHTML(e, tm);
+  const acts = !t ? [b("cmdbtn", "CANCEL", "", {cmd: "te:x"}), b("cmdbtn", pT === "save" ? "SAVING…" : "SAVE", "start it later", {cmd: "te:save", why: tWhy}), b("cmdbtn tgo", pT === "start" ? "STARTING…" : "START", "counts down now", {cmd: "te:start", why: tWhy})]
     /* REMOVE is on the row, so the editor doesn't repeat it. A timer counting down or paused can go back to its own
        time here, stopped, as OK does after its alarm and a kitchen timer's clear does: the editor stays open, now a
        stopped timer's, so a name typed and not yet saved stays */
     : live ? [b("cmdbtn", pT === "reset" ? "SENDING…" : `BACK TO ${tfmt(t.set)}`, "ready to start again", {cmd: "te:reset", why}), b("cmdbtn tgo", pT === "name" ? "SAVING…" : "DONE", "", {cmd: "te:done", why})]
-    : [b("cmdbtn", "CANCEL", "", {cmd: "te:x"}), b("cmdbtn tgo", pT === "save" ? "SAVING…" : "SET", "", {cmd: "te:save", why})];
+    : [b("cmdbtn", "CANCEL", "", {cmd: "te:x"}), b("cmdbtn tgo", pT === "save" ? "SAVING…" : "SET", "", {cmd: "te:save", why: tWhy})];
   /* a timer shown as a row without its buttons, where the column beside the drawing is too narrow for them (tMode): the
      editor has a second row with what the row would have, REMOVE (one tap, with UNDO on its row) and START or PAUSE */
   const two = t && t.state !== "done" && ["plain", "go"].includes(tChipped(t))
@@ -5848,19 +5885,20 @@ function cmdTe(x, y) {
   if (!e) return;
   if (x === "x") { st.tedit = null; return renderAll(); }
   if (x === "pick") { const n = st.names[+y]; if (n != null) e.name = e.name === n ? "" : n; return renderAll(); }
-  if (x === "step") { e.set = Math.min(300, Math.max(1, e.set / 60 + parseInt(y, 10))) * 60; return renderAll(); }
-  if (x === "min") { e.set = parseInt(y, 10) * 60; return renderAll(); }
+  if (x === "step") { const m = Math.min(TMINS, Math.max(0, Math.floor(e.set / 60) + parseInt(y, 10))); teSet(e, m === TMINS ? m * 60 : m * 60 + e.set % 60); return renderAll(); }
+  if (x === "sec") { teSet(e, Math.min(TMINS * 60, Math.max(0, e.set + parseInt(y, 10)))); return renderAll(); }
+  if (x === "min") { teSet(e, parseInt(y, 10) * 60); return renderAll(); }
   /* spaces as the server keeps them: trimmed, and one between words */
   const t = e.id != null ? tById(e.id) : null, name = (e.name || "").split(/\s+/).filter(Boolean).join(" ") || e.ph, shut = {ok: () => { st.tedit = null; }};
   if (e.id != null && !t) { st.tedit = null; return renderAll(); } // removed on another screen meanwhile
   if ((x === "reset" || x === "done") && !t) return;
   /* BACK TO: the timer goes back to its own time, stopped; its editor stays open, now a stopped timer's, so a name typed
      and not yet saved is kept. CraftBeerPi refuses it for one that has run out meanwhile: its sentence, and the editor
-     closes, leaving the row's +5 MIN and OK */
+     closes, leaving the row's OK */
   if (x === "reset") {
     return tSend("t:" + t.id, "reset", `${t.name} back to ${tfmt(t.set)}, stopped with ${tfmt(t.left)} to go`,
-      () => { t.state = "stopped"; t.left = t.run = t.set; delete t.interrupted; e.set = t.set; }, () => api.timersReset(t.id),
-      {ok: () => { e.set = t.set; }, fail: res => { if (res.status === 409 && st.tedit === e) st.tedit = null; },
+      () => { t.state = "stopped"; t.left = t.run = t.set; delete t.interrupted; teSet(e, t.set); }, () => api.timersReset(t.id),
+      {ok: () => { teSet(e, t.set); }, fail: res => { if (res.status === 409 && st.tedit === e) st.tedit = null; },
         why: res => res.status === 409 && res.data && res.data.error ? String(res.data.error) : ""});
   }
   /* a typed name another timer has is refused as its greyed button is, before anything is sent */
@@ -5870,15 +5908,19 @@ function cmdTe(x, y) {
     if (name === t.name) { st.tedit = null; return renderAll(); }
     return tSend("t:" + t.id, "name", `${t.name} is now ${name}`, () => { t.name = name; st.tedit = null; }, () => api.timersChange(t.id, {name}), shut);
   }
+  /* START, SAVE and SET send the time the boxes make, greyed while they make none (teTime) */
+  const tm = teTime(e);
+  if (tm.why) return note("t", tm.why);
+  const set = tm.set;
   if (!t) {
     if (st.tmrs.length >= TMAX) return note("t", "Four timers at most. Remove one to add another.");
-    const go = x === "start", set = e.set;
+    const go = x === "start";
     return tSend("t:new", x, `${name} added${go ? " and started" : ""}, ${tfmt(set)}`, () => {
       st.tmrs.push({id: Math.max(0, ...st.tmrs.map(z => z.id)) + 1, name, set, left: set, run: set, state: go ? "running" : "stopped"});
       st.tedit = null;
     }, () => api.timersAdd(name, set, go), shut);
   }
-  const said = name !== t.name ? `${t.name} is now ${name}, ${tfmt(e.set)}` : `${t.name} set to ${tfmt(e.set)}`, set = e.set;
+  const said = name !== t.name ? `${t.name} is now ${name}, ${tfmt(set)}` : `${t.name} set to ${tfmt(set)}`;
   /* SET on one that has run out answers its alarm too, and stops it at its new time, as CraftBeerPi does */
   return tSend("t:" + t.id, "save", said, () => { if (t.state === "done") { tAnswered(t, "no longer needed"); t.state = "stopped"; } t.name = name; t.set = t.left = t.run = set; st.tedit = null; },
     () => api.timersChange(t.id, name !== t.name ? {name, seconds: set} : {seconds: set}), shut);
@@ -5908,14 +5950,13 @@ function cmdTm2(x, id, y) {
     return tSend(key, "add", `${t.name}: ${s > 0 ? "+" : "−"}${Math.abs(s) / 60} min, ${tfmt(want)} to go`,
       () => { const was = t.left; t.left = Math.max(10, t.left + s); t.run = Math.max(t.left, t.run + t.left - was); }, () => api.timersAddTime(t.id, s));
   }
-  /* answering: OK puts the timer back to its own time, stopped (a kitchen timer's recall); +5 MIN runs it five more. Live, the
-     answer takes CraftBeerPi's prompt down on every screen; this one doesn't log it as answered elsewhere */
+  /* answering: OK puts the timer back to its own time, stopped (a kitchen timer's recall). Live, the answer takes
+     CraftBeerPi's prompt down on every screen; this one doesn't log it as answered elsewhere */
   const answer = () => tAnswered(t);
   const heard = !DEMO_MODE && t.prompt, o = heard ? {ok: () => { if (opts.removeAlert) opts.removeAlert(heard); }, fail: () => answered.delete(heard)} : {};
-  if (x !== "ok" && x !== "plus5") return;
+  if (x !== "ok") return;
   if (heard) answered.add(heard);
-  if (x === "ok") return tSend(key, "ok", `${t.name}: alarm answered`, () => { answer(); t.state = "stopped"; t.left = t.run = t.set; }, () => api.timersOk(t.id), o);
-  return tSend(key, "plus5", `${t.name}: 5 more minutes`, () => { answer(); t.state = "running"; t.left = t.run = 300; }, () => api.timersPlus5(t.id), o);
+  return tSend(key, "ok", `${t.name}: alarm answered`, () => { answer(); t.state = "stopped"; t.left = t.run = t.set; }, () => api.timersOk(t.id), o);
 }
 /* UNDO, within 10 s of REMOVE: CraftBeerPi puts the timer back with its id, in its place, as it would be now: one that
    was counting down has counted on meanwhile. Live, its line says the time left in CraftBeerPi's answer. Refused (409:
@@ -6355,7 +6396,7 @@ function liveBanner() {
   const ask = p => {
     const t = promptTimer(p), hold = !!hs && String(p.title || "") === hs.n;
     return t ? {tone: "prompt", title: ut(p.title || t.name), text: ut(p.message || ""), timer: t.id, fresh: isNew(p.id),
-      acts: [{label: "+5 MIN", cmd: `tm2:plus5:${t.id}`, dir: "plus5", sec: true}, {label: "OK", cmd: `tm2:ok:${t.id}`, dir: "ok"}]}
+      acts: [{label: "OK", cmd: `tm2:ok:${t.id}`, dir: "ok"}]}
       : {tone: "prompt", title: ut(p.title || "CraftBeerPi"), text: ut(p.message || ""), fresh: isNew(p.id), acts: p.action.map(a => ({label: String(a.label || "OK").toUpperCase(), cmd: `p:${p.id}:${a.id}`, hold})),
         /* for the mash pH (phOffer): the notification, its title as CraftBeerPi words it, and an OK that got no answer */
         pid: String(p.id), rawTitle: String(p.title || ""), ackFailed: !!(st.phAckFailed && st.phAckFailed.has(String(p.id)))};
@@ -6490,12 +6531,11 @@ function askedBefore(id, words) {
 const startedHere = a => !!(own.start && Date.now() - own.start.at < 10000
   && M.RECIPE.steps.some(s => own.start.ids.includes(s.id) && s.n === ut(a.title)));
 /* an answer given on another screen, in the words an answer here logs, naming the button pressed when CraftBeerPi says
-   which (said). A timer's alarm: "alarm answered",
-   or "5 more minutes" for +5 MIN (told neither, its row shows which); a SpargeStep's question: none, as its step's
+   which (said). A timer's alarm: "alarm answered"; a SpargeStep's question: none, as its step's
    "sparge started" line is its answer; any other: "<title> answered", with ": <button>" */
 function elsewhereLine(a, said) {
   const title = ut(a.title), b = said == null ? "" : String(said).trim();
-  if (M.TIMERS && TIMER_RAN_OUT.test(String(a.message || "").trim())) return `${title}: ${/^\+\s*5\s*min$/i.test(b) ? "5 more minutes" : "alarm answered"}`;
+  if (M.TIMERS && TIMER_RAN_OUT.test(String(a.message || "").trim())) return `${title}: alarm answered`;
   if (spargeQuestion(a)) return null;
   return b ? `${title} answered: ${b}` : `${title} answered`;
 }
@@ -6816,7 +6856,7 @@ const handlers = {
       e.preventDefault(); rdPickStep(e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : -1); return;
     }
     /* Enter in a timer box presses the editor's main button: START for a new timer, SET for a stopped one, DONE otherwise */
-    if ((e.target.id === "tnm" || e.target.id === "tmin") && e.key === "Enter" && st.tedit) {
+    if (["tnm", "tmin", "tsec"].includes(e.target.id) && e.key === "Enter" && st.tedit) {
       e.preventDefault();
       const go = $(".tedit .tgo"), id = e.target.id;
       if (go) { if (go.getAttribute("aria-disabled") === "true") explain(go); else run(go.dataset.cmd); }
@@ -6897,15 +6937,17 @@ const handlers = {
       if (ov) ov.textContent = hltOver(st.swVol.val, swVU());
       return;
     }
-    /* the timer editor's boxes: kept as typed, without redrawing, so the caret stays put */
-    if ((e.target.id === "tnm" || e.target.id === "tmin") && st.tedit) {
+    /* the timer editor's boxes: kept as typed, the box keeping its caret. The names' buttons follow the name in place; a
+       time typed follows at once in the presets and in START, SAVE or SET, greyed while the boxes make none (tePatch) */
+    if (["tnm", "tmin", "tsec"].includes(e.target.id) && st.tedit) {
       if (e.target.id === "tnm") {
         st.tedit.name = e.target.value;
         root.querySelectorAll(".tsug button").forEach((x, i) => x.setAttribute("aria-pressed", String(x.getAttribute("aria-disabled") !== "true" && st.names[i] === e.target.value)));
       } else {
-        const m = parseInt(e.target.value, 10);
-        if (m >= 1 && m <= 300) st.tedit.set = m * 60;
-        root.querySelectorAll(".tpre button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.cmd === `te:min:${st.tedit.set / 60}`)));
+        st.tedit[e.target.id === "tmin" ? "mt" : "st"] = e.target.value;
+        const n = teNums(st.tedit);
+        if (n.m != null && n.s != null) st.tedit.set = n.m * 60 + n.s;
+        tePatch();
       }
       return;
     }

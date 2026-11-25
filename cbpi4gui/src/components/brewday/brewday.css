@@ -470,7 +470,7 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .tmrs[data-editing] .trow:not(.editing) .tsel .tn{font-size:18px}
 :where(html.bd-page) .trow[data-state=done]{border-color:var(--prompt);background:var(--prompt-bg)}
 :where(html.bd-page) .trow[data-state=done] .ts,:where(html.bd-page) .trow[data-state=done] .tt{color:var(--prompt)}
-:where(html.bd-page) .trow[data-state=done] .tbtn{grid-column:1/-1;display:grid;grid-template-columns:1fr 1.4fr}
+:where(html.bd-page) .trow[data-state=done] .tbtn{grid-column:1/-1;display:grid;grid-template-columns:1fr}
 :where(html.bd-page) .trow .tok{background:#f4f6f8;color:#10161c;border-color:#f4f6f8}
 :where(html.bd-page) .trow .tok small{color:#3a4652}
 :where(html.bd-page) .trow .tok:not([aria-disabled=true]):hover{background:#dfe5ea}
@@ -622,12 +622,22 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .tfield label{min-width:62px;font:600 15px/1 var(--cond);letter-spacing:.05em;color:var(--text-2);text-transform:uppercase}
 :where(html.bd-page) .tedit input{min-width:0;min-height:52px;padding:0 12px;border:2px solid #3d7fd0;border-radius:var(--r);background:var(--face);color:var(--text);font:600 22px/1 var(--cond)}
 :where(html.bd-page) .tedit input::placeholder{color:#8a9bad;opacity:1}
-:where(html.bd-page) .tfield.tmin{grid-template-columns:auto 64px minmax(0,1fr) 64px}
-:where(html.bd-page) .tmin input{text-align:center;font-size:28px;font-variant-numeric:tabular-nums}
+/* a stopped or new timer's time: MINUTES and SECONDS side by side, each its label over its −, box and + */
+:where(html.bd-page) .ttime{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+:where(html.bd-page) .ttime .tfield{grid-template-columns:48px minmax(0,1fr) 48px;row-gap:5px;column-gap:6px}
+:where(html.bd-page) .ttime .tfield label{grid-column:1/-1;min-width:0}
+:where(html.bd-page) .ttime input{padding:0;text-align:center;font-size:28px;font-variant-numeric:tabular-nums}
+/* under 400 px the keys are 44 px wide and the figures 24 px, so 300 still fits its box on a 360 px phone */
+@media (max-width:399px){
+:where(html.bd-page) .ttime{column-gap:8px}
+:where(html.bd-page) .ttime .tfield{grid-template-columns:44px minmax(0,1fr) 44px;column-gap:4px}
+:where(html.bd-page) .ttime input{font-size:24px}
+}
 :where(html.bd-page) .tsug,:where(html.bd-page) .tkeys{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+:where(html.bd-page) .tkeys{grid-template-columns:repeat(2,minmax(0,1fr))}
 :where(html.bd-page) .tpre{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:2px}
-:where(html.bd-page) .tedit .cmdbtn{min-height:46px;font-size:17px}
-:where(html.bd-page) .tedit .tmin .cmdbtn{min-height:52px}
+:where(html.bd-page) .tedit .cmdbtn{min-height:48px;font-size:17px}
+:where(html.bd-page) .tedit .ttime .cmdbtn{min-height:52px;padding-left:0;padding-right:0}
 :where(html.bd-page) .tsug .cmdbtn[aria-pressed=true],:where(html.bd-page) .tpre .cmdbtn[aria-pressed=true]{background:#070c11;color:#fff;box-shadow:inset 0 0 0 2px #a9bfd4}
 :where(html.bd-page) .tsug .cmdbtn{padding-left:2px;padding-right:2px}
 :where(html.bd-page) .tsug .cmdbtn .lb{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;overflow-wrap:anywhere;line-height:1.1}
@@ -639,6 +649,9 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .tact .tgo{background:var(--select);border-color:var(--select);color:#fff}
 :where(html.bd-page) .tact .tgo small{color:#fff}
 :where(html.bd-page) .tact .tgo:not([aria-disabled=true]):hover{background:#3477c8}
+/* greyed (no time to send, CraftBeerPi still answering, no connection): the greyed look of the screen's other main buttons */
+:where(html.bd-page) .tact .tgo[aria-disabled=true]{background:var(--panel-2);border-color:var(--edge);color:var(--text-3)}
+:where(html.bd-page) .tact .tgo[aria-disabled=true] small{color:var(--text-3)}
 :where(html.bd-page) .keep.snd.blocked .box{border-color:var(--prompt);background:var(--prompt-bg);box-shadow:none}
 :where(html.bd-page) .keep.snd.blocked .box svg{visibility:hidden}
 :where(html.bd-page) .keep.snd.blocked .kl{color:var(--prompt)}

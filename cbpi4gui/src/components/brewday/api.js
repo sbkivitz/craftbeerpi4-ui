@@ -88,7 +88,8 @@ export const api = {
   timerStart: () => post("/resttimer/start"),
   timerPause: () => post("/resttimer/pause"),
   timerAdd: (seconds) => post("/resttimer/add", { seconds }),
-  // The timers, up to four. Each answers with all of them, as every screen hears them.
+  // The timers, up to four. Each answers with all of them, as every screen hears them. A timer's own time is 1 second
+  // to 300 minutes (core 4.7.7.post74; an older one refuses less than 60 seconds, saying so)
   timersAdd: (name, seconds, start) => post("/timers/", { name, seconds, start }),
   timersChange: (timerId, change) => call("PUT", `/timers/${id(timerId)}`, change),
   timersRemove: (timerId) => call("DELETE", `/timers/${id(timerId)}`),
@@ -100,7 +101,6 @@ export const api = {
   timersPause: (timerId) => post(`/timers/${id(timerId)}/pause`),
   timersAddTime: (timerId, seconds) => post(`/timers/${id(timerId)}/add`, { seconds }),
   timersOk: (timerId) => post(`/timers/${id(timerId)}/ok`),
-  timersPlus5: (timerId) => post(`/timers/${id(timerId)}/plus5`),
   // The temperature graphs' history: each log from `since` on (brewing clock seconds), about `points` readings each.
   // Reading a day of logs can take longer than a command.
   logWindow: (names, since, points) => call("POST", "/log/window", { names, since, points }, 20000),

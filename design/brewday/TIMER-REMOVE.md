@@ -28,7 +28,7 @@ time left. Nothing on the row says so, so he didn't find it.
   and says why: "One timer at a time: close the one that's open first."
 - **The row has two lines:** the name and its state ("of 15:00", "PAUSED · of 15:00", "ready") over the time, REMOVE and
   START or PAUSE. 95 px tall instead of 70.
-- **A timer that has run out doesn't change:** +5 MIN and OK across its row, as today. After OK it's ready, with REMOVE
+- **A timer that has run out:** OK across its row. After OK it's ready, with REMOVE
   and START.
 - **While a timer's box is open,** that timer keeps today's one-line row, with START or PAUSE only. Today's box fits a
   1180 × 860 window with nothing to spare, and a taller row would push its buttons off the bottom. REMOVE is back when
@@ -95,8 +95,8 @@ line says why for 6 s, and LOG gets the command with "failed" and the reason, in
 - UNDO arriving after CraftBeerPi has forgotten the timer (a press still on its way when its 12 seconds ran out): "Stir
   can't be put back now: a removed timer can be put back for 10 seconds." The screen names the timer itself, since
   CraftBeerPi's answer only has its number by then. The row goes.
-- BACK TO, for a timer that ran out meanwhile: "Stir has run out: answer it with OK or +5 MIN." The box closes and the
-  row shows +5 MIN and OK.
+- BACK TO, for a timer that ran out meanwhile: "Stir has run out: answer it with OK." The box closes and the
+  row shows OK.
 
 LOG: "Stir removed, 7:15 to go" (or "Yeast removed" for a ready one), "Stir put back, 7:05 to go", "Stir back to 15:00,
 stopped with 7:12 to go".
