@@ -1719,10 +1719,22 @@ function swLeast() {
   const v = num(I.least);
   return v != null && I.least_from ? {value: v, from: I.least_from, capacity: mine.capacity} : mine;
 }
-/* the mash water as the box and the MashIn row show it, "8.26 gal · 1.5 qt/lb for 20 lb", and its ratio: from the
-   water for the grain where BeerSmith gives it, else from the mash water itself */
-const swMashText = R => mashWaterText({water: num(R.strike_vol), forGrain: num(R.for_grain), vu: swVU(), grain: num(R.grain), mu: swMU(), C: swCU()});
-const swRatio = R => waterRatio(num(R.for_grain) ?? num(R.strike_vol), swVU(), num(R.grain), swMU(), swCU());
+/* BeerSmith's water under the false bottom: its own mash water (kept in recipe.changed once the mash water is changed,
+   on Brew Day or in the recipe editor) less its water for the grain; none without both. recipe.dead can't stand for
+   it, as it is the mash water in force less the water for the grain */
+function swDead(R) {
+  const CH = R.changed && typeof R.changed === "object" ? R.changed : {}, typedW = Array.isArray(R.typed) && R.typed.includes("water");
+  const fg = num(R.for_grain), bs = typedW ? num(CH.strike_vol) : num(R.strike_vol);
+  return fg != null && bs != null ? Math.max(0, bs - fg) : 0;
+}
+/* one rule for the ratio wherever it shows, as the recipe editor has it: the mash water v (the one in force, or one
+   being typed) less BeerSmith's water under the false bottom, against the grain weight in force. Its water for the
+   grain, to two places as the state gives it */
+const swForGrain = (R, v) => v == null ? null : Math.round(Math.max(0, v - swDead(R)) * 100) / 100;
+const swRatioOf = (R, v) => waterRatio(swForGrain(R, v), swVU(), num(R.grain), swMU(), swCU());
+/* the mash water as the box and the MashIn row show it, "8.26 gal · 1.5 qt/lb for 20 lb", and its ratio */
+const swMashText = R => mashWaterText({water: num(R.strike_vol), forGrain: swForGrain(R, num(R.strike_vol)), vu: swVU(), grain: num(R.grain), mu: swMU(), C: swCU()});
+const swRatio = R => swRatioOf(R, num(R.strike_vol));
 /* the figures leave the HLT less than covers its element and coil (CraftBeerPi's warning hlt_low): one short line in
    Note Amber, once, under the strike water box (swHTML) or in the MashIn row's box, until they no longer do; HLT water
    less than the mash water (hlt_under) says that instead, and the sparge water line under the figures leaves it to
@@ -2042,16 +2054,16 @@ function swRecOther(N, v) {
   if (N.vol == null) return `${HLT_WATER.label}: not given yet.`;
   return `${HLT_WATER.label}: ${volText(N.vol, vu)}.${v != null ? ` ${spargeText(N.vol, v, vu)}.` : ""}`;
 }
-/* the mash water being given with a ratio no usual mash has: said, never refused */
+/* the mash water being given with a ratio no usual mash has: said, never refused. The ratio by the one rule (swRatioOf) */
 function swRecWarn(N, v) {
-  return ratioWarning(waterRatio(v, swVU(), num(N.R.grain), swMU(), swCU()), swCU());
+  return ratioWarning(swRatioOf(N.R, v), swCU());
 }
-/* the ratio, typed instead of the mash water: it fills the water from the grain weight, and the water typed shows the
-   ratio it gives. Without a grain weight, what it needs */
+/* the ratio, typed instead of the mash water: it fills the water from the grain weight, BeerSmith's water under the false
+   bottom added, and the water typed shows the ratio it gives. Without a grain weight, what it needs */
 function swRatioHTML(N, v) {
   const g = num(N.R.grain), C = swCU(), u = ratioUnit(C);
   if (g == null) return `<p class="swvo swvq" id="swr-q">The ratio needs the grain weight: give it with GRAIN WEIGHT.</p>`;
-  const q = waterRatio(v, swVU(), g, swMU(), C);
+  const q = swRatioOf(N.R, v);
   return `<p class="swvq"><label for="swrq">or as a ratio, in ${u}</label><input id="swrq" inputmode="decimal" autocomplete="off" value="${q == null ? "" : +q.toFixed(2)}" aria-describedby="swr-q">`
     + `<span id="swr-q">for ${massText(g, swMU())}</span></p>`;
 }
@@ -2244,11 +2256,12 @@ function swList(N) {
   const rec = (k, says) => st.swRec && st.swRec.kind === k && st.swRec.at !== "row" ? swRecHTML(N)
     : `<div class="swyou"><p>${says}</p>${b("cmdbtn", "CHANGE", "", {cmd: `swr:open:${k}`, label: `Change the ${SW_REC[k].name.toLowerCase()} given here`, expanded: false})}</div>`;
   const typedG = N.recTyped.includes("grain"), typedW = N.recTyped.includes("water");
-  /* a figure changed from BeerSmith's in the recipe editor, which keeps BeerSmith's beside it (recipe.changed) */
+  /* a figure changed from BeerSmith's, on Brew Day or in the recipe editor: BeerSmith's own is kept beside it
+     (recipe.changed) and named, "BeerSmith: 8.26 gal" */
   const CH = R.changed && typeof R.changed === "object" ? R.changed : {}, bsW = num(CH.strike_vol), bsG = num(CH.grain);
   const q = swRatio(R), qs = q != null ? ` · ${ratioText(q, swCU())} for ${massText(R.grain, swMU())}` : "", qw = ratioWarning(q, swCU());
-  const given = (typedG ? rec("grain", `Grain weight ${+(+R.grain).toFixed(1)}&nbsp;${swMU()}, ${bsG != null ? `changed from BeerSmith's ${+bsG.toFixed(1)}&nbsp;${swMU()} in the recipe editor` : "given here for this recipe"}.`) : "")
-    + (typedW ? rec("water", `Mash water ${gal(N.gal)}${qs} to the mash tun, ${bsW != null ? `changed from BeerSmith's ${gal(bsW)} in the recipe editor` : "given here for this recipe"}.${qw ? ` ${qw}` : ""}`) : "")
+  const given = (typedG ? rec("grain", `Grain weight ${+(+R.grain).toFixed(1)}&nbsp;${swMU()}${bsG != null ? `. BeerSmith: ${+bsG.toFixed(1)}&nbsp;${swMU()}` : ", given here for this recipe"}.`) : "")
+    + (typedW ? rec("water", `Mash water ${gal(N.gal)}${qs} to the mash tun${bsW != null ? `. BeerSmith: ${gal(bsW)}` : ", given here for this recipe"}.${qw ? ` ${qw}` : ""}`) : "")
     + (N.roomGiven == null ? "" : rec("room", N.roomFrom === "you" ? `Room ${swT(N.room)}, given here while the boil kettle's probe gives no reading a room can have.`
       : `Room ${swT(N.roomGiven)} given here, kept aside: the boil kettle's probe reads the room again${N.room != null ? `, at ${swT(N.room)}` : ""}, so it is used.`));
   const G = new Map((st.sw.guesses || []).filter(x => x && x.name).map(x => [x.name, x])), coil = N.probe === "coil", sp = swStillProbe();
@@ -3657,13 +3670,14 @@ function mwHTML() {
   if (st.swVol && st.swVol.at === "row") return wrap(swVolHTML(N));
   const CH = R.changed && typeof R.changed === "object" ? R.changed : null;
   const typed = k => N.recTyped.includes(k);
-  const from = (k, bs) => typed(k) ? (CH && num(CH[k === "water" ? "strike_vol" : "grain"]) != null ? `changed from BeerSmith's ${bs(num(CH[k === "water" ? "strike_vol" : "grain"]))} in the recipe editor` : "given here for this recipe")
-    : k === "grain" && R.grain_from === "step" ? `${esc(N.mashName)}'s own, on Brew Steps` : "BeerSmith's";
+  /* where a figure comes from, after it: BeerSmith's own named where it was changed from it ("BeerSmith: 8.26 gal") */
+  const from = (k, bs) => { const own = typed(k) && CH ? num(CH[k === "water" ? "strike_vol" : "grain"]) : null;
+    return own != null ? `. BeerSmith: ${bs(own)}` : `, ${typed(k) ? "given here for this recipe" : k === "grain" && R.grain_from === "step" ? `${esc(N.mashName)}'s own, on Brew Steps` : "BeerSmith's"}`; };
   const can = (k, v) => !locked && (v == null || typed(k) || (k === "grain" && R.grain_from === "step") || !!CH);
   const btn = (k, v, cmd, name) => can(k, v) ? b("cmdbtn", v == null ? "GIVE IT" : "CHANGE", "", {cmd, why, label: `${v == null ? "Give" : "Change"} the ${name}`}) : "";
   const w = num(R.strike_vol), g = num(R.grain), q = swRatio(R), qw = ratioWarning(q, swCU());
-  const wSays = w == null ? '<span class="amb">Not given yet.</span>' : `${swMashText(R)}, ${from("water", x => volText(x, vu))}.${!can("water", w) && !locked ? " Import the recipe's BeerSmith file again with UPDATE to change it." : ""}`;
-  const gSays = g == null ? '<span class="amb">Not given yet.</span>' : `${massText(g, mu)}, ${from("grain", x => massText(x, mu))}.`;
+  const wSays = w == null ? '<span class="amb">Not given yet.</span>' : `${swMashText(R)}${from("water", x => volText(x, vu))}.${!can("water", w) && !locked ? " Import the recipe's BeerSmith file again with UPDATE to change it." : ""}`;
+  const gSays = g == null ? '<span class="amb">Not given yet.</span>' : `${massText(g, mu)}${from("grain", x => massText(x, mu))}.`;
   const hSays = N.vol == null ? '<span class="amb">Not given yet.</span>' : `${volText(N.vol, vu)}${(st.sw.inputs || {}).vol_from === "brewstart" ? ", BrewStart's water volume" : ", given here"}.`;
   const row = (label, says, text, button) => `<div class="swyou"><p><b>${label}</b>, ${says}: ${text}</p>${button}</div>`;
   const sparge = N.vol != null && w != null && !swWarns("hlt_under") ? `<p class="swn swsp">${spargeText(N.vol, w, vu)}.</p>` : "";
@@ -8018,18 +8032,19 @@ const handlers = {
       if (ok) ok.textContent = st.swRec.val == null ? "– –" : st.swRec.val.toFixed(q);
       /* the mash water: the ratio it gives, the sparge water it leaves and a ratio no usual mash has follow it in place */
       if (st.swRec.kind === "water") {
-        const N = swNumbers(), r = $("#swrq"), o = $("#swr-o"), w = $("#swr-w"), g = num(N.R.grain);
-        const ratio = waterRatio(st.swRec.val, swVU(), g, swMU(), swCU());
+        const N = swNumbers(), r = $("#swrq"), o = $("#swr-o"), w = $("#swr-w");
+        const ratio = swRatioOf(N.R, st.swRec.val);
         if (r) r.value = ratio == null ? "" : String(+ratio.toFixed(2));
         if (o) o.textContent = swRecOther(N, st.swRec.val);
         if (w) w.textContent = swRecWarn(N, st.swRec.val);
       }
       return;
     }
-    /* the mash water's ratio typed instead: it fills the mash water from the grain weight */
+    /* the mash water's ratio typed instead: it fills the mash water from the grain weight, with BeerSmith's water under
+       the false bottom */
     if (e.target.id === "swrq" && st.swRec && st.swRec.kind === "water") {
       const N = swNumbers(), g = num(N.R.grain), w = waterForRatio(parseFloat(String(e.target.value).replace(",", ".")), g, swMU(), swVU(), swCU());
-      st.swRec.val = w == null ? null : Math.round(w * 100) / 100;
+      st.swRec.val = w == null ? null : Math.round((w + swDead(N.R)) * 100) / 100;
       st.swRec.typed = true;
       const i = $("#swrin"), ok = $("#swrok"), o = $("#swr-o"), warn = $("#swr-w");
       if (i) i.value = st.swRec.val == null ? "" : st.swRec.val.toFixed(2);
