@@ -2053,7 +2053,7 @@ function plateHTML(v) {
       ${LAYOUT === "b" ? auxHTML(v) : ""}
       ${GRAPHS ? graphHTML(v, "f") : ""}
     </div>
-    <p class="dev">${devHTML(v)}</p>${v === "bk" && slayer() ? `<p class="ssline">${slayerLine()}</p>` : ""}
+    <p class="dev">${devHTML(v)}</p>${v === "bk" && slayer() ? `<p class="ssline">${slayerLine()}</p>` : ""}${LEVELS ? `<p class="ssline lvline">${lvLine(v)}</p>` : ""}
     <div class="ctrls${nudge && !own ? " bkpow" : ""}">${lamps}</div>
     ${st.edit && st.edit.v === v ? editorHTML(v) : v === "hlt" && st.v.mt.mode === "auto" ? hermsRowHTML() : own ? `<div class="mstack">${mode}<div class="bksteps" role="group" aria-label="Boil power steps">${steps()}</div></div>` : keep ? `<div class="mstack">${mode}<div class="bkspace"></div></div>` : mode}
     <p class="note">${st.notes[v] || ""}</p>
@@ -4123,8 +4123,9 @@ function renderRig() {
   const vn = $("#vnote-2");
   vn.textContent = setNow ? `SET THEM FOR STEP ${ro + 1} (${RECIPE.steps[ro].n.toUpperCase()})` : out ? `SHOWN FOR STEP ${ro + 1} (${RECIPE.steps[ro].n.toUpperCase()})` : "SHOWN FOR RECIRCULATING";
   vn.classList.toggle("set", setNow);
-  $("#rig-d").textContent = rigDesc(ro, held, setNow, post) + slayerDesc();
+  $("#rig-d").textContent = rigDesc(ro, held, setNow, post) + slayerDesc() + lvDesc();
   renderSlayer(live);
+  renderLevels();
   on("#el-hlt", live && a.hltEl.on); on("#el-bk", live && a.bkEl.on);
   ["hlt", "mt", "bk"].forEach(v => { const n = $("#needle-" + v); if (n) n.setAttribute("transform", `rotate(${needleAngle(st.v[v].pv).toFixed(1)})`); });
 }
@@ -4217,6 +4218,104 @@ function slayerLine() {
   if (ss === "hand") return `Steam Slayer: mister ${misterOn() ? "open" : "closed"} · set by hand`;
   return `Steam Slayer: mister ${st.link === "lost" ? "last " : ""}${misterOn() ? "on" : "off"}`;
 }
+/* the liquid in each vessel (LEVELS.md, proposal): ?levels=tint, a faint tint of the liquid with its surface, or
+   ?levels=line, the surface alone; none, as today, without it. The rig has no level sensors, so every figure is worked
+   out from the recipe and the steps, never measured: its surface is dashed and its figure has "≈". While liquid is on
+   its way (a move, the runoff, the boil-off) the screen can't know where it is, so the range it is somewhere in is
+   hatched, from where it was to where it is going, and nothing moves on its own */
+const LEVELS = (v => ["tint", "line"].includes(v) ? v : "")(new URLSearchParams(location.search).get("levels"));
+/* the vessels' capacities from the Hardware page, gal; without one a vessel shows its figure but no fill */
+const LV_CAP = {hlt: 20, mt: 20, bk: 20};
+/* the element-cover minimum (the mash water guard's figure, an example here), gal; the mash tun has no element */
+const LV_MIN = {hlt: 4, bk: 4};
+/* the recipe's figures (BeerXML through CraftBeerPi's mash numbers): its sparge water, its boil volume and its volume
+   after the boil; and how much a pound of grain adds to the mash, a common rule of thumb (about 0.67 L a kg) */
+const LV_SPARGE = 5.0, LV_BOIL = 7.0, LV_POST = 6.3, LV_GRAIN = 0.08;
+const lvF = g => (Math.round(g * 10) / 10).toFixed(1);
+/* each vessel's contents, from the step list alone. kind: water, mash, wort or grain (spent grain, after the runoff);
+   gal; to, while it is on its way to another figure; from, the words for where the figure comes from. A recipe's first
+   steps decide: BrewStart running means its water is in the HLT; its question to move the strike water means the
+   strike water is on its way; MashIn done means the grain is in; the runoff running means the sparge water and the wort
+   are on their way; the boil running, once it boils, means the wort is boiling off. Moments whose recipe has no
+   BrewStart take its 15 gal once the recipe has begun, as the brewer's recipes all start with it */
+function lvState() {
+  const S = RECIPE.steps, r = st.recipe;
+  if (!r && !st.finished) return {};
+  const begun = st.finished || (r && (r.cur > 0 || stepStatus(0) !== "I"));
+  const at = f => S.findIndex(f), ss = i => i < 0 ? (begun ? "D" : "I") : stepStatus(i);
+  const bs = at(s => s.type === "BrewStart"), mi = at(s => s.k === "mt" && /^mash ?in$/i.test(s.n)), ro = at(s => collectsWort(s)), bo = at(s => s.boil);
+  const bsS = ss(bs), miS = ss(mi), boS = ss(bo), roS = ro < 0 ? (boS === "I" && !(r && r.held) ? "I" : "D") : ss(ro);
+  if (bsS === "I") return {};
+  const W = st.sw && st.sw.vol || SW_VOL0, K = SW_FROM.forGrain + SW_FROM.dead, H1 = W - K, H2 = H1 - LV_SPARGE;
+  const M = K + SW_FROM.grainLb * LV_GRAIN, L = {};
+  if (bsS !== "D") {
+    if (st.banner && st.banner.text === SW_ASK) {
+      L.hlt = {kind: "water", gal: W, to: H1, from: "strike water out"};
+      L.mt = {kind: "water", gal: 0, to: K, from: "strike water in"};
+    } else L.hlt = {kind: "water", gal: W, from: "BrewStart's water"};
+    return L;
+  }
+  const running = roS === "A" || roS === "S";
+  const flowing = running && !(S[ro] && S[ro].type === "SpargeStep" && !(r && r.started));
+  L.hlt = roS === "D" ? {kind: "water", gal: H2, from: "less the sparge water"}
+    : flowing ? {kind: "water", gal: H1, to: H2, from: "sparge water out"} : {kind: "water", gal: H1, from: "less the strike water"};
+  L.mt = roS === "D" ? {kind: "grain", gal: 0, from: "the runoff is over"}
+    : miS === "D" ? {kind: "mash", gal: M, from: `strike water and ${SW_FROM.grainLb} lb of grain`} : {kind: "water", gal: K, from: "the strike water"};
+  if (flowing) L.bk = {kind: "wort", gal: 0, to: LV_BOIL, from: "running off"};
+  else if (roS === "D") {
+    const boiling = (boS === "A" || boS === "S") && r && !r.wait;
+    L.bk = boS === "D" ? {kind: "wort", gal: LV_POST, from: "the recipe's volume after the boil"}
+      : boiling ? {kind: "wort", gal: LV_BOIL, to: LV_POST, from: "boiling off"} : {kind: "wort", gal: LV_BOIL, from: "the recipe's boil volume"};
+  }
+  return L;
+}
+const LV_KIND = {water: "Water", mash: "Mash", wort: "Wort"};
+/* a vessel's figure in words: the phone's line, the drawing's tooltip and its words for screen readers */
+function lvLine(v, L = lvState()) {
+  const o = L[v];
+  if (!o) return "";
+  if (o.kind === "grain") return `Spent grain · ${o.from}`;
+  return `${LV_KIND[o.kind]} ${o.to != null ? `${o.gal ? lvF(o.gal) : "0"} → ≈ ${lvF(o.to)}` : `≈ ${lvF(o.gal)}`} gal · ${o.from}`;
+}
+const lvY = (v, g) => 298 - Math.max(0, Math.min(g, LV_CAP[v])) / LV_CAP[v] * 186;
+function lvSVG(v, o) {
+  if (!o || o.kind === "grain") return "";
+  const k = o.kind === "water" ? "water" : "wort", y = g => r1(lvY(v, g)), to = o.to ?? o.gal;
+  const lo = Math.min(o.gal, to), hi = Math.max(o.gal, to);
+  let s = `<title>${esc(lvLine(v))}. Worked out, not measured.</title>`;
+  if (!LV_CAP[v]) return s;
+  if (LEVELS === "tint" && lo > 0) s += `<rect class="lv-body ${k}" x="-112" y="${y(lo)}" width="224" height="${r1(320 - y(lo))}"/>`;
+  if (hi > lo) {
+    if (LEVELS === "tint") s += `<rect class="lv-band" x="-112" y="${y(hi)}" width="224" height="${r1(y(lo) - y(hi))}" fill="url(#lvh-${k})"/>`;
+    else s += `<path class="lv-top was ${k}" d="M-112 ${y(o.gal)} H112"/>`;
+  }
+  if (to > 0) s += `<path class="lv-top ${k}" d="M-112 ${y(to)} H112"/>`;
+  return s;
+}
+/* the figures in the drawing, on every render; drawn again only when they change */
+function renderLevels() {
+  if (!LEVELS || !$("#lv-hlt")) return;
+  const L = lvState(), lid = $("#ss-lidt") && $("#ss-lidt").textContent;
+  ["hlt", "mt", "bk"].forEach(v => {
+    const o = L[v], g = $("#lv-" + v), html = lvSVG(v, o);
+    if (g.dataset.k !== html) { g.innerHTML = html; g.dataset.k = html; }
+    /* the dome's figure: "≈ 6.7 GAL", "→ ≈ 6.7 GAL" while on its way, SPENT GRAIN; the boil kettle's gives way to the
+       lid's question while the lid reminder waits */
+    const t = $("#lvt-" + v), txt = !o || (v === "bk" && lid) ? "" : o.kind === "grain" ? "SPENT GRAIN" : o.to != null ? `→ ≈ ${lvF(o.to)} GAL` : o.gal > 0 ? `≈ ${lvF(o.gal)} GAL` : "";
+    if (t.textContent !== txt) t.textContent = txt;
+    const m = $("#lvm-" + v), y = o && LV_MIN[v] && LV_CAP[v] ? r1(lvY(v, LV_MIN[v])) : null;
+    const mh = y == null ? "" : `<path class="lv-mtick" d="M-122 ${y} H-100"/><text class="lv-mt" x="-126" y="${r1(y + 5)}">MIN</text>`;
+    if (m.dataset.k !== mh) { m.innerHTML = mh; m.dataset.k = mh; }
+  });
+}
+/* the drawing's words for screen readers */
+function lvDesc() {
+  if (!LEVELS) return "";
+  const L = lvState(), K = {water: "water", mash: "mash", wort: "wort"};
+  const say = o => o.kind === "grain" ? "only spent grain, the runoff over" : o.to != null ? `from ${o.gal ? lvF(o.gal) : "0"} to about ${lvF(o.to)} gallons of ${K[o.kind]}, ${o.from}` : `about ${lvF(o.gal)} gallons of ${K[o.kind]}, ${o.from}`;
+  const parts = ["hlt", "mt", "bk"].map(v => L[v] ? `${VNAME[v].toLowerCase()}, ${say(L[v])}` : null).filter(Boolean);
+  return parts.length ? ` Liquid, worked out from the recipe and its steps, not measured: ${parts.join("; ")}.` : "";
+}
 let rigW = 0, rigRs = 1, rigSs = "";
 function drawRig() {
   /* --rig-r: room left at the drawing's right for + TIMER and SOUND where they can't clear it (tsideCorner) */
@@ -4229,7 +4328,7 @@ function drawRig() {
   const rs = GRAPHS === "face" ? Math.round(Math.min(1.3, Math.max(1, 0.68 / Math.min(h / RIG_H, w / 1200))) * 100) / 100 : 1;
   if (Math.abs(W - rigW) < 4 && rs === rigRs && slayer() === rigSs && $("#rigsvg")) return;
   rigW = W; rigRs = rs; rigSs = slayer();
-  box.innerHTML = rigSVG(LAYOUT === "b" ? "line" : "kettle", W, rs, WP, rigSs);
+  box.innerHTML = rigSVG(LAYOUT === "b" ? "line" : "kettle", W, rs, WP, rigSs, LEVELS);
   renderRig();
   if (TPLACE) tsideCorner();
 }
@@ -6871,6 +6970,12 @@ function load(name) {
     if (v) q.set("slayer", v); else q.delete("slayer");
     a.href = `?${q}#${key}`;
     a.setAttribute("aria-current", v === (QS.get("slayer") || "") ? "true" : "false");
+  });
+  document.querySelectorAll(".mock a[data-levels]").forEach(a => {
+    const q = new URLSearchParams(location.search), v = a.dataset.levels;
+    if (v) q.set("levels", v); else q.delete("levels");
+    a.href = `?${q}#${key}`;
+    a.setAttribute("aria-current", v === LEVELS ? "true" : "false");
   });
   [["simtag", "a"], ["plan", "soft"]].forEach(([p, def]) => document.querySelectorAll(`.mock a[data-${p}]`).forEach(a => {
     const q = new URLSearchParams(location.search), v = a.dataset[p];

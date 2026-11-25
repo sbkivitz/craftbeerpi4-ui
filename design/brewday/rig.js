@@ -72,19 +72,25 @@ ${v.el ? `<rect class="el-cap" x="-96" y="262" width="12" height="12" rx="3"/><r
 }
 
 /* B: line drawing of a vessel. ss: the boil kettle has a steam condenser on its lid (slayerSVG), so its lid is drawn as a
-   lid, a seam across the top of its walls with a rim a little wider than the kettle */
-function vesselB(v, x, ss) {
+   lid, a seam across the top of its walls with a rim a little wider than the kettle. lv: the liquid in it is shown
+   (LEVELS.md, proposal): a group under the coil, element and name, clipped to the shell's inside, that brew-day.js fills
+   (renderLevels); the figure in the dome, the one place clear in all three vessels; and the element-cover minimum's
+   mark across the left wall */
+const SHELL_B = "M-112 286 V112 Q0 56 112 112 V286 Q0 316 -112 286 Z";
+function vesselB(v, x, ss, lv) {
   let dots = "";
   if (v.fb) for (let d = -96; d <= 90; d += 12) dots += `<circle cx="${d}" cy="256" r="2.4"/><circle cx="${d + 6}" cy="265" r="2.4"/>`;
   return `<g class="vessel" transform="translate(${r1(x)} 0)">
 <rect class="v-shell" x="-13" y="70" width="26" height="18"/><path class="v-line" d="M-20 70 H20"/>
-<path class="v-shell" d="M-112 286 V112 Q0 56 112 112 V286 Q0 316 -112 286 Z"/>
+<path class="v-shell" d="${SHELL_B}"/>
+${lv ? `<clipPath id="lvc-${v.id}"><path d="${SHELL_B}"/></clipPath><g class="lv" id="lv-${v.id}" clip-path="url(#lvc-${v.id})"></g><g class="lv-min" id="lvm-${v.id}"></g>` : ""}
 ${ss && v.id === "bk" ? '<path class="v-line ss-lid" id="ss-lid" d="M-120 112 H120"/><text class="tag ss-lidt" id="ss-lidt" y="109"></text>' : ""}
 <path class="v-line" d="M-88 291 V316 M88 291 V316 M-98 316 H-78 M78 316 H98"/>
 <text class="v-name" y="142">${v.name}</text>
 ${v.coil ? `<g class="coil" id="coil">${coilLoops()}</g>` : ""}
 ${v.fb ? `<g class="v-dots">${dots}</g>` : ""}
 ${v.el ? `<path class="element" id="el-${v.id}" d="${zigzag(268)}"/>` : ""}
+${lv ? `<text class="tag lv-t" id="lvt-${v.id}" y="110"></text>` : ""}
 </g>`;
 }
 
@@ -136,7 +142,7 @@ ${rigLine("ln-drain", "mist", [`M${x(137)} 230 V254`], [[k + 137, 246, 90]])}
 <text class="tag ss-st" id="ss-st" x="${x(122)}" y="${yT}" text-anchor="end"></text>
 </g>`;
 }
-function rigSVG(style, W, rs = 1, wpo = "today", ss = "") {
+function rigSVG(style, W, rs = 1, wpo = "today", ss = "", lv = "") {
   const S = RIG_ST[style], g = rigGeom(W), A = style === "kettle";
   const {a, m, k, yTop, ySp, yPump, yLow} = g, n = r1;
   const hRet = S.lidY(g.hltRet - a) + 1, mRet = S.lidY(g.mtRet - m) + 1, bRet = S.lidY(g.bkRet - k) + 1;
@@ -189,14 +195,16 @@ function rigSVG(style, W, rs = 1, wpo = "today", ss = "") {
     whirl = `<g class="ln wrt" id="ln-swirl"><path class="pf" d="${d}"/><path class="pd" d="${d}"/><path class="ch" d="M-7.5 -9 L6 0 L-7.5 9" transform="translate(${n(x2)} ${n(y2)}) rotate(${n(Math.atan2(-ry * Math.cos(t2), rx * Math.sin(t2)) * 180 / Math.PI)})"/></g>`;
   }
   const legs = [10, W / 3 - 8, W * 2 / 3 - 8, W - 26];
-  const defs = `<defs><filter id="glow" x="-20%" y="-80%" width="140%" height="260%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>${A ? `
+  /* a level on its way somewhere between two figures (a move, the runoff, the boil-off): hatched in the liquid's colour */
+  const hatch = k => `<pattern id="lvh-${k}" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><path class="lv-hl ${k}" d="M0 0 V10"/></pattern>`;
+  const defs = `<defs><filter id="glow" x="-20%" y="-80%" width="140%" height="260%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>${lv && !A ? hatch("water") + hatch("wort") : ""}${A ? `
 <linearGradient id="g-body">${bands("#5d6e81 0 .05|#9cacbd .05 .15|#8596a8 .15 .74|#78899c .74 .92|#637487 .92 1")}</linearGradient>
 <linearGradient id="g-lid">${bands("#6e7f92 0 .06|#b3c1ce .06 .2|#9aaaba .2 .78|#8b9bac .78 .94|#76879a .94 1")}</linearGradient>` : ""}</defs>`;
   const stand = A ? `<g class="stand">${legs.map(x => `<rect x="${n(x)}" y="314" width="16" height="76"/><rect x="${n(x - 4)}" y="390" width="24" height="6" rx="2"/>`).join("")}<rect x="10" y="300" width="${n(W - 20)}" height="14"/><rect x="10" y="376" width="${n(W - 20)}" height="14"/></g>
 <g class="stand-hi"><rect x="10" y="300" width="${n(W - 20)}" height="2"/><rect x="10" y="376" width="${n(W - 20)}" height="2"/></g>
 <g class="bolts">${legs.map(x => `<circle cx="${n(x + 8)}" cy="307" r="2.4"/><circle cx="${n(x + 8)}" cy="383" r="2.4"/>`).join("")}</g>` : "";
   const names = A ? RIG_V.map((v, i) => `<text class="k-name" x="${n(g.x[i])}" y="30">${v.name}</text>`).join("") : "";
-  const vessels = RIG_V.map((v, i) => (A ? kettleA : vesselB)(v, g.x[i], ss)).join("\n");
+  const vessels = RIG_V.map((v, i) => (A ? kettleA : vesselB)(v, g.x[i], ss, lv)).join("\n");
   const fits = A ? [[g.hltRet, hRet], [g.mtRet, mRet], [g.bkRet, bRet]].map(([x, y]) => `<rect class="fit" x="${n(x - 10)}" y="${n(y - 8)}" width="20" height="9" rx="2"/>`).join("") : "";
   return `<svg id="rigsvg" class="rig-${style}" viewBox="0 0 ${n(W)} ${RIG_H}" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="rig-t rig-d"${rs !== 1 ? ` style="--rs:${rs}"` : ""}>
 <title id="rig-t">Brewhouse drawing</title>
