@@ -4093,7 +4093,12 @@ function renderAll() {
        then scrolls only as far as the current step needs (keepStepInView), the scroll not taken as one by hand. Live, a
        scroll is kept */
     if (DEMO_MODE) { const l = $("#recipe .steps"); if (l) l.scrollTop = 0; stepSeen = null; }
+    /* the recipe book going (CLOSE, Escape, LOAD, the recipe gone or begun) leaves the page where it is, as the mockup,
+       which writes the column anew, does. Drawn in place, the browser would keep the timers under the book still and
+       scroll the page up by the room the book gave back, so COMPARE PROBES came under the finger that had pressed CLOSE */
+    const bookY = !st.rbOpen && $("#recipe .rbox") ? window.scrollY : null;
     morph($("#recipe"), recipeHTML() + verHTML());
+    if (bookY != null && window.scrollY !== bookY) window.scrollTo(0, bookY);
     if (fid) { const fi = $("#" + fid); if (fi && document.activeElement !== fi) { fi.focus({preventScroll: true}); try { fi.setSelectionRange(...fsel); } catch (_) { /* not a text box now */ } } }
     bsFit();
     pbFit(before);

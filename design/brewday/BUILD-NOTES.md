@@ -6075,7 +6075,10 @@ drawing), Recipe Column (OTHER RECIPE), Layout and The Under Its Plate Rule. The
    closing once CraftBeerPi has it, LOG "Craftbeerpi Test Recipe v4 loaded · confirmed". Over a recipe the book doesn't
    have, LOAD asks first in the box (`loadAskHTML`). Opening it closes BrewStart's box and the column's other boxes;
    Escape and CLOSE close it; UNLOAD and a recipe that begins close it too, and the row goes once a recipe has begun.
-   Brewing by hand, the column's recipe book is as built.
+   However it closes, the page stays where it is, as the mockup's column, written anew, leaves it (`renderAll`'s
+   `bookY`): the screen draws the column in place, where the browser would keep the timers under the book still and
+   scroll the page up by the room the book gave back, so on a phone COMPARE PROBES came under the finger that had
+   pressed CLOSE. Brewing by hand, the column's recipe book is as built.
 7. **Moments for the demo:** `#timers`, `#timer-done`, `#timer-removed`, `#timer-change`, `#mash` and `#hop` with
    timers, any moment with none (the corner), `#other-recipe`, and `?tplace=today&col=today` for the screen as built
    before.
