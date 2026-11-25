@@ -172,19 +172,17 @@ export function createHistory() {
 
   // CraftBeerPi's clock moved while the page is open (the topic "clock": {now, scale, moved}, and when this page heard
   // it, received): a simulator's change of speed sets it back to the computer's time. CraftBeerPi moves its logs'
-  // readings with it, so the graphs keep them: the rows, and the steps' start times, move by as much at once, the rows to
-  // the nearest row, so the line carries on where it was; then the logs are read again, for the line as CraftBeerPi
-  // has it. Whether the move was taken.
+  // readings with it, so the graphs keep them: the rows move by as much at once, to the nearest row, so the line carries
+  // on where it was; then the logs are read again, for the line as CraftBeerPi has it. The steps' start times come
+  // moved in CraftBeerPi's step list (steps), which it sends as it moves them, before this. Whether the move was taken.
   function moved(c) {
     const at = num(c && c.now);
     if (!(at > 0)) return false;
     gen++;
     clk = { srv: at, at: num(c.received) > 0 ? num(c.received) : Date.now(), scale: num(c.scale) > 0 ? num(c.scale) : 1 };
     syncedAt = Date.now();
-    const by = num(c.moved) || 0;
-    starts = starts.map(([e, n]) => [e + by, n]);
     if (!fixed) return true;
-    const rows = Math.round(by / STEP) * STEP;
+    const rows = Math.round((num(c.moved) || 0) / STEP) * STEP;
     if (rows) {
       for (const v of ["hlt", "mt", "bk"]) hist.v[v] = hist.v[v].map((r) => [r[0] + rows, r[1], r[2], r[3]]);
       if (lastT != null) lastT += rows;
