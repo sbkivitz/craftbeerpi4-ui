@@ -43,7 +43,7 @@
 //   reader for every screen, where the mockup has its own timeOfDay, boxText and readTime.
 import { GROUPS, KINDS, TYPES, START } from "./catalog";
 import { call, why as callWhy } from "../brewday/api";
-import { stepModel, bookLine as dayBookLine, cfg as cfgOf, parseLeft, recipeWater, inWords, kettleRoles, hermsLogics, ROLES, declares } from "../brewday/live";
+import { stepModel, bookLine as dayBookLine, cfg as cfgOf, parseLeft, recipeWater, waterLacks, pastWater, brewWords, inWords, kettleRoles, hermsLogics, ROLES, declares } from "../brewday/live";
 import { settingsClockFormat, formatTimeOfDay, formatDayTime, parseTypedTime, halfOfDay, NBSP, TWELVE_HOUR } from "../util/timefmt";
 import { clearKeyboard } from "../util/keyboard";
 // As text, exactly as written (config-overrides.js): recipes.css for the shadow root; recipes-frame.css, the mockup's
@@ -484,24 +484,16 @@ function newestBrewStart() {
 }
 const PAST_WAIT = "Waiting for CraftBeerPi's past brews, for the HLT's water.";
 /* the water of a brew that was brewed, for a new BrewStart on a recipe whose own can't be worked out: the newest past
-   brew in CraftBeerPi's logs and BrewScribe (GET /figures/) whose HLT heating recorded its water (its hlt cell's volume,
-   in the brewery's unit). Asked once, when a new BrewStart first needs it; st.past is "wait" until it answers, then the
-   brew or null. A recipe that was only loaded, or kept in the book, is never where it comes from */
+   brew in CraftBeerPi's logs and BrewScribe (GET /figures/) whose HLT heating recorded its water (pastWater, which Brew
+   Day's + BrewStart shares). Asked once, when a new BrewStart first needs it; st.past is "wait" until it answers, then
+   the brew or null. A recipe that was only loaded, or kept in the book, is never where it comes from */
 async function askPast() {
   if (st.past !== undefined) return;
   st.past = "wait";
   const g = gen, res = await call("GET", "/figures/", undefined, 15000);
   if (g !== gen || !st) return;
-  const data = res.ok && res.data && typeof res.data === "object" ? res.data : {};
-  const brews = (Array.isArray(data.brews) ? data.brews : []).filter(b => b && typeof b === "object").sort((p, q) => (num(q.start) ?? -Infinity) - (num(p.start) ?? -Infinity));
-  const b = brews.find(x => x.cells && x.cells.hlt && num(x.cells.hlt.volume) > 0);
-  st.past = b ? {vol: num(b.cells.hlt.volume), unit: data.vol_unit === "L" || data.vol_unit === "gal" ? data.vol_unit : volUnit(), name: norm(b.name), start: num(b.start)} : null;
+  st.past = pastWater(res.ok ? res.data : null, volUnit());
   schedule();
-}
-// a past brew in words: "Rye Pale Ale, brewed Sat 21 Nov", or "the brew of Sat 21 Nov"
-function brewWords(p) {
-  const d = p.start != null ? new Date(p.start * 1000) : null, day = d ? `${WEEK[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}` : "";
-  return p.name ? `${p.name}${day ? `, brewed ${day}` : ""}` : day ? `the brew of ${day}` : "an earlier brew";
 }
 /* whether a new BrewStart's water can't come from the recipe it joins: no BeerSmith mash figures, or no Grain absorption */
 const waterFromPast = () => !recipeWater(recipeNumbers(), C("GRAIN_ABSORPTION"), D.unit);
@@ -542,9 +534,7 @@ function brewStartProps(ed) {
   const got = [props.Heat_Kettle && nameOf(D.kettles, props.Heat_Kettle) && `the ${nameOf(D.kettles, props.Heat_Kettle)}`, num(props.Heater_Watts) != null && `its ${fmt(num(props.Heater_Watts))} W element`,
     props.Campden_Reminder === "Yes" && "the Campden reminder"].filter(Boolean);
   const from = src && got.length ? `Filled in from ${src.from}, the newest recipe with a BrewStart: ${andList(got)}.` : "No recipe has a BrewStart yet, so the element is blank.";
-  const lacks = !numbers ? "this recipe has no BeerSmith mash figures to work it out from"
-    : num(C("GRAIN_ABSORPTION")) == null ? "CraftBeerPi has no Grain absorption setting to work this recipe's out with"
-    : "this recipe's BeerSmith figures lack the volume before the boil or the grain's weight";
+  const lacks = waterLacks(numbers, C("GRAIN_ABSORPTION"));
   const water = w ? ` The water, ${v1(w.total)} ${w.unit}, is what this recipe needs, worked out from the recipe file: ${v1(w.before)} ${w.unit} before the boil, and ${v1(w.kept)} ${w.unit} the grain keeps (Grain absorption in Settings, ${w.rate})${w.lost ? `, and ${v1(w.lost)} ${w.unit} lost under the mash` : ""}.`
     : past ? ` The water, ${v1(past.vol)} ${past.unit}, is what the HLT heated for ${brewWords(past)}, the last brew that recorded it: ${lacks}.`
     : ` No water filled in: ${lacks}, and ${st.past === "wait" ? "CraftBeerPi's past brews haven't come yet" : "no past brew recorded the HLT's water"}. Give it under The water, or in Brew Day's strike water box.`;

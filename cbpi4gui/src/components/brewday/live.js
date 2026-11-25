@@ -242,6 +242,37 @@ export function recipeWater(mn, absorption, C) {
     rate: `${a} ${F ? "gal/lb" : "L/kg"}` };
 }
 
+// Why a recipe's own water can't be worked out (recipeWater gives none), in the words of a new BrewStart's note on the
+// recipe pages and of Brew Day's BrewStart box alike.
+export function waterLacks(mn, absorption) {
+  return !mn ? "this recipe has no BeerSmith mash figures to work it out from"
+    : num(absorption) == null ? "CraftBeerPi has no Grain absorption setting to work this recipe's out with"
+    : "this recipe's BeerSmith figures lack the volume before the boil or the grain's weight";
+}
+
+// The water of a brew that was brewed, for a new BrewStart on a recipe whose own can't be worked out: of CraftBeerPi's
+// past brews (GET /figures/, from its logs and BrewScribe, `data`), the newest whose HLT heating recorded its water (its
+// hlt cell's volume, in the answer's vol_unit, else vu). A recipe that was only loaded, or kept in the book, is never
+// one of them. The recipe pages and Brew Day's + BrewStart take it the same way.
+// -> {vol, unit, name, start (seconds)}, or null
+export function pastWater(data, vu) {
+  const d = data && typeof data === "object" ? data : {};
+  const brews = (Array.isArray(d.brews) ? d.brews : []).filter((b) => b && typeof b === "object")
+    .sort((p, q) => (num(q.start) ?? -Infinity) - (num(p.start) ?? -Infinity));
+  const b = brews.find((x) => x.cells && x.cells.hlt && num(x.cells.hlt.volume) > 0);
+  if (!b) return null;
+  return { vol: num(b.cells.hlt.volume), unit: d.vol_unit === "L" || d.vol_unit === "gal" ? d.vol_unit : vu,
+    name: b.name == null ? "" : String(b.name).trim(), start: num(b.start) };
+}
+
+const WEEKDAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTH = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+// A past brew (pastWater) in words: "Rye Pale Ale, brewed Sat 21 Nov", or "the brew of Sat 21 Nov".
+export function brewWords(p) {
+  const d = p.start != null ? new Date(p.start * 1000) : null, day = d ? `${WEEKDAY[d.getDay()]} ${d.getDate()} ${MONTH[d.getMonth()]}` : "";
+  return p.name ? `${p.name}${day ? `, brewed ${day}` : ""}` : day ? `the brew of ${day}` : "an earlier brew";
+}
+
 // A length of time in words: "under a minute", "20 min", "9 h 35 min".
 export const durWords = (sec) => {
   const m = Math.round(sec / 60);

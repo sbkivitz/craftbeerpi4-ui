@@ -84,6 +84,10 @@ export const api = {
   brewDayReading: (reading) => post("/brewscribe/api/brew-day/readings", reading),
   recipes: () => get("/recipe/"),
   recipe: (file) => get(`/recipe/${id(file)}`),
+  // CraftBeerPi's past brews and their figures, from its logs and BrewScribe ({brews: [{name, start, cells: {hlt:
+  // {volume}}}], vol_unit}), as the Figures page reads them: for a new BrewStart's water where the recipe can't give it.
+  // Working them out can take longer than a command
+  figures: () => call("GET", "/figures/", undefined, 15000),
   brew: (file) => post(`/recipe/${id(file)}/brew`),
   timerStart: () => post("/resttimer/start"),
   timerPause: () => post("/resttimer/pause"),

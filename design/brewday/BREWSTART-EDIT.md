@@ -16,8 +16,10 @@ BrewStart step on Brew Day and edit it there, instead of going into the recipe e
   for the batch at the homebrew store. If I end up having bulk grains in the garage, then it will be at garage
   temperature. I don't know yet." The night before, with the BrewStart edit, is the natural time; the strike water
   box's GRAIN stays for a change on brew morning.
-- A new BrewStart's water is filled in, never typed (Robin's rule: what the recipe needs, else the last brew's, else
-  blank and Brew Day asks).
+- A new BrewStart's water is filled in, never typed, by the recipe pages' rule (RECIPES.md, decision 13): what the
+  recipe needs, worked out from its BeerSmith figures; else the water of the newest brew that was brewed and recorded
+  it, the box naming that brew and its day and saying why the recipe's own can't be worked out; never the water of a
+  recipe that was only loaded or kept in the book. With neither, it is left blank and the box says so.
 
 ## What changes
 
@@ -55,7 +57,12 @@ COMPARE PROBES step aside while it is open. From the top:
    forecast "HLT WATER in the strike water box changes the water too." The box is absent on some recipes (the mash
    tun's first step not MashIn, or the mash tun not run by PID_HERMS), so ALL SETTINGS is the one place always named.
    With no water figure: "How much water isn't known yet: give it with ALL SETTINGS, or HLT WATER in the strike water
-   box, before you START.", without the strike water box where it isn't there.
+   box, before you START.", without the strike water box where it isn't there. For a new BrewStart (+ BrewStart), the
+   water as the recipe pages fill it: "…heats 25.4 gal to 126.0 °F, worked out from the recipe."; "…heats 15 gal to
+   126.0 °F, the water the HLT heated for Rye Pale Ale, brewed Sat 21 Nov, the last brew that recorded it: this recipe
+   has no BeerSmith mash figures to work it out from."; or with neither, "How much water isn't known yet: this recipe
+   has no BeerSmith mash figures to work it out from, and no past brew recorded the HLT's water. Give it with ALL
+   SETTINGS…". ADD BREWSTART waits while CraftBeerPi's past brews come.
 5. **SET** and **CANCEL**, kept in view. SET's hint says what it sets ("ready by 07:00 Sat"). LOG: "BrewStart: ready by
    06:30 Sat 21 Nov, was 07:00 Sat · grain indoors at 68.0 °F".
 6. **ALL SETTINGS**, under SET and CANCEL and kept in view with them, as tall as they are, hint "every setting, on Brew
@@ -206,7 +213,7 @@ the night before); the time in the title bar.
 | Change a BrewStart that hasn't started: its time and day by `PUT /step2/{id}` with its settings, as the old form does; its grain by `POST /step2/strike/grain`, as the strike water box's GRAIN does, which also works while BrewStart waits | Nothing new |
 | **New: where the grain is, for this brew** ("garage" or "indoors"), kept with the loaded steps and left out of the book, so a blank Grain_Temp (the garage) can be told from "not asked yet" on every screen. `POST /step2/strike/grain` takes it | Server (core post59, being built: `grain_place` in the brew steps' basic data; `{"grain": null, "place": "garage"}` for the garage, a figure for indoors) |
 | Add BrewStart as step 1: `POST /step2/` with `index` 0 (Robin's change 6, core post58) | Being built |
-| A new BrewStart's water: `recipeWater()` from `mash_numbers` (Robin's change 7) | Planned; until then the last brew's |
+| A new BrewStart's water: `recipeWater()` from `mash_numbers`, else the newest brewed brew's from CraftBeerPi's past brews (`GET /figures/`, `pastWater()`), else blank; the same code as the recipe pages' (`brewday/live.js`) | React UI; the past brews from core's figures |
 | **BrewStart heats the HLT itself** with Ready by: the HLT's target and AUTO at its heating start, holding and asking for the water to be moved, the HLT's AUTO off on NEXT; with a strike water step on the HLT after it, handing over as soon as heating is due | BrewStart 1.3.0 (core helper, being built) |
 | A waiting BrewStart takes a new time: `POST /step2/action/{id}` with `change_time`, as `PUT /step2/{id}` is refused (409) while it waits. It plans again from the water as it is and says so in its words; with too little time left for the heating, it hands over at once. The grain and the water already change while it waits, through the strike water box | BrewStart 1.2.0.post10, on 8000 and 8012 |
 | SAVE TO BOOK: BrewStart's date back to Tomorrow, the strike temperature back to before the first USE, no grain figure (Robin's change 8, asked of Brett) | Server (the book's copy, `book_data()`) |

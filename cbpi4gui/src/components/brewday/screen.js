@@ -65,7 +65,7 @@ import { rigSVG, RIG_H } from "./rig";
 import * as DEMO from "./demo";
 import * as SWD from "./strike-demo";
 import { api, why as failWhy } from "./api";
-import { model, num, parseLeft, bookLine, isHerms, unitText, ROLES, cfg, timerNames, recipeWater, inWords, durWords, GAL_L } from "./live";
+import { model, num, parseLeft, bookLine, isHerms, unitText, ROLES, cfg, timerNames, recipeWater, waterLacks, pastWater, brewWords, inWords, durWords, GAL_L } from "./live";
 import { play as playSound, soundOf, DEFAULT_SOUND, SOUNDS } from "./alarm";
 import { GSPANS, GSAY, graphHTML, graphSVG, graphETA } from "./graphs";
 import { createHistory } from "./history";
@@ -2612,7 +2612,7 @@ function bsWaterOf(B) {
     : {kn: DEMO.KNAME.hlt, watts: DEMO.SW_WATTS, temp: bsNewTemp(), vol: DEMO.SW_NEED, volU: "gal", from: "recipe"};
   if (s) { const W = s.water || {}; return {kn: W.kn || bsHltName(), watts: W.watts, temp: W.temp, vol: W.vol, volU: W.volU || "gal"}; }
   const F = B.fill || {};
-  return {kn: F.kn || bsHltName(), watts: F.watts, temp: bsNewTemp(), vol: F.vol ?? null, volU: F.volU || "gal", from: F.from};
+  return {kn: F.kn || bsHltName(), watts: F.watts, temp: bsNewTemp(), vol: F.vol ?? null, volU: F.volU || "gal", from: F.from, past: F.past, lacks: F.lacks};
 }
 /* the box's time in words, or that it has passed (past), or that it is too soon to wait for, so SET starts the heating
    (soon); null while what's typed isn't a time (B.m, the time the box stands for) */
@@ -2628,10 +2628,11 @@ function bsSays(B) {
   const stops = !B.neu && B.kind === "start" && bsRuns() && st.recipe.bsHeat && bsKind(S[bi]) !== "start" ? `SET stops BrewStart's heating: the ${bsWaterOf(B).kn}'s AUTO goes off. ` : "";
   return {past: false, text: B.kind === "start" ? `${stops}${nx ? nx.n : "The next step"} starts at ${when}` : `The ${bsWaterOf(B).kn}'s water is hot by ${when}`};
 }
-/* the water, last in the box: what BrewStart heats, a fact here; a new one's worked out from the recipe, or the last
-   brew's where the recipe doesn't give it. It says where it changes: ALL SETTINGS always, and the strike water box
-   only where that box is on the screen and offers the water (swWaterAt). Under it, where the HLT's capacity is known
-   and the water is more (hltOver) */
+/* the water, last in the box: what BrewStart heats, a fact here. A new one's is the recipe pages' (bsFillOf): worked
+   out from the recipe; else the water of the newest brew that was brewed and recorded it, saying which brew and why
+   the recipe's own can't be worked out; else none, saying both. It says where it changes: ALL SETTINGS always, and the
+   strike water box only where that box is on the screen and offers the water (swWaterAt). Under it, where the HLT's
+   capacity is known and the water is more (hltOver) */
 function swWaterAt() {
   if (!swPhase() || !st.sw) return "";
   const N = swNumbers();
@@ -2639,8 +2640,9 @@ function swWaterAt() {
 }
 function bsWater(B) {
   const w = bsWaterOf(B), U = M.U, el = `The ${esc(w.kn)}'s ${w.watts ? `${w.watts} W ` : ""}element heats`, to = w.temp == null ? "" : ` to ${w.temp.toFixed(1)} ${U}`, sw = swWaterAt();
-  if (w.vol == null) return `<p class="bswat">${el} the water${to}. <b>How much water isn't known yet</b>: give it with ALL SETTINGS${sw ? `, or ${sw},` : ""} before you START.</p>`;
-  if (B.neu) return `<p class="bswat">${el} ${+w.vol.toFixed(2)} ${w.volU}${to}, ${w.from === "last" ? "the last brew's water" : "worked out from the recipe"}.</p>${hltOverHTML(w.vol, w.volU)}`;
+  const none = B.neu && w.lacks ? `${w.lacks}, and no past brew recorded the HLT's water. Give it` : "give it";
+  if (w.vol == null) return `<p class="bswat">${el} the water${to}. <b>How much water isn't known yet</b>: ${none} with ALL SETTINGS${sw ? `, or ${sw},` : ""} before you START.</p>`;
+  if (B.neu) return `<p class="bswat">${el} ${+w.vol.toFixed(2)} ${w.volU}${to}, ${w.from === "past" && w.past ? `the water the HLT heated for ${esc(brewWords(w.past))}, the last brew that recorded it: ${w.lacks}` : "worked out from the recipe"}.</p>${hltOverHTML(w.vol, w.volU)}`;
   return `<p class="bswat">${el} ${+w.vol.toFixed(2)} ${w.volU}${to}. ALL SETTINGS changes them.${sw ? ` ${sw[0].toUpperCase()}${sw.slice(1)} changes the water too.` : ""}</p>${hltOverHTML(w.vol, w.volU)}`;
 }
 /* how much the HLT holds, in the volume unit vu ("gal" or "L"), where the Hardware page gives it (CraftBeerPi's kettle
@@ -3212,26 +3214,35 @@ async function bsSendLive(dir, label, calls, B) {
   renderAll();
   if (onward) bsAllGo(B);
 }
-/* a new BrewStart's settings, as the recipe pages fill one: Ready by, with the HLT, its element and the Campden choice of
-   the newest BrewStart in the Recipe Book (src); the water this recipe needs, worked out from its mash numbers
-   (recipeWater: GRAIN_ABSORPTION), else the newest BrewStart's, the last brew's; the temperature of its first
-   MashInStep. The time and the day are the box's; NotifyBefore blank, AutoNext Yes */
-function bsFillOf(src) {
-  const q = (src && src.props) || {}, basic = (last && last.basic) || {}, C = M.C === "F" ? "F" : "C";
-  const w = recipeWater(basic.mash_numbers, cfg(last && last.config, "GRAIN_ABSORPTION"), C), T = bsNewTemp();
+/* the recipe on Brew Day's own water, worked out from its mash numbers (recipeWater: GRAIN_ABSORPTION), or null; and
+   why not (waterLacks) */
+function bsOwnWater() {
+  const mn = ((last && last.basic) || {}).mash_numbers, a = cfg(last && last.config, "GRAIN_ABSORPTION");
+  const w = recipeWater(mn, a, M.C === "F" ? "F" : "C");
+  return {w, lacks: w ? "" : waterLacks(mn, a)};
+}
+/* a new BrewStart's settings, as the recipe pages fill one (RECIPES.md, decision 13): Ready by, with the HLT, its
+   element and the Campden choice of the newest BrewStart in the Recipe Book (src), which belong to the rig; the water
+   this recipe needs, else the water of the newest brew that was brewed and recorded it (past, pastWater), else none:
+   never the water of a recipe that was only loaded or kept in the book. The temperature of its first MashInStep. The
+   time and the day are the box's; NotifyBefore blank, AutoNext Yes */
+function bsFillOf(src, past = null) {
+  const q = (src && src.props) || {}, C = M.C === "F" ? "F" : "C", {w, lacks} = bsOwnWater(), T = bsNewTemp();
   const kettle = q.Heat_Kettle || (M.K && M.K.hlt ? M.K.hlt.id : "");
-  const vol = w ? Math.round(w.total * 10) / 10 : num(q.Volume), volU = w ? w.unit : q.Volume_Unit || (C === "F" ? "gal" : "L");
+  const p = w ? null : past, vol = w ? Math.round(w.total * 10) / 10 : p ? Math.round(p.vol * 10) / 10 : null, volU = w ? w.unit : p ? p.unit : C === "F" ? "gal" : "L";
   const props = {Timing: "Ready by", Mode: "Date", StartDate: "", StartTime: "", Heat_Kettle: kettle, Ready_Temp: T != null ? T : q.Ready_Temp ?? "",
     Volume: vol ?? "", Volume_Unit: volU, Grain_Temp: "", Heater_Watts: q.Heater_Watts ?? "", Campden_Reminder: q.Campden_Reminder || "No", NotifyBefore: "", AutoNext: "Yes"};
   const k = ((last && last.kettles) || []).find(x => x && x.id === kettle), watts = num(q.Heater_Watts);
-  return {props, kn: k && k.name ? String(k.name) : bsHltName(), watts: watts > 0 ? watts : null, vol: vol ?? null, volU, from: w ? "recipe" : vol != null ? "last" : null};
+  return {props, kn: k && k.name ? String(k.name) : bsHltName(), watts: watts > 0 ? watts : null, vol, volU, from: w ? "recipe" : p ? "past" : null, past: p, lacks};
 }
-/* the newest BrewStart in the Recipe Book, for a new one's settings: every recipe read, newest first. Until they are in,
+/* the newest BrewStart in the Recipe Book, for a new one's settings: every recipe read, newest first; and where the
+   recipe on Brew Day can't give its water, CraftBeerPi's past brews (GET /figures/), read alongside. Until they are in,
    ADD BREWSTART waits; a read that fails leaves the settings blank where they would come from it */
 async function bsFillLoad(B) {
   const g = gen;
   B.fillBusy = true;
-  let src = null;
+  let src = null, past = null;
+  const pastRead = bsOwnWater().w ? null : api.figures().then(r => pastWater(r.ok ? r.data : null, M.C === "F" ? "gal" : "L"), () => null);
   try {
     const res = await api.recipes();
     if (g !== gen) return;
@@ -3245,8 +3256,9 @@ async function bsFillLoad(B) {
       }
     }
   } catch (e) { src = null; }
+  if (pastRead) past = await pastRead;
   if (g !== gen || st.bs !== B) return;
-  B.fill = bsFillOf(src); B.fillBusy = false;
+  B.fill = bsFillOf(src, past); B.fillBusy = false;
   renderAll();
 }
 /* BrewStart's row says when it's ready by and its water: "126 °F · ready by 7:00 AM Sat · 15 gal". It is the way to its
