@@ -10,7 +10,7 @@
 // check-many, check-noanswer, check-noprobe, check-slow and check-unsure, and the strike water's sw-plan, sw-forecast,
 // sw-volume, sw-grain-edit, sw-grain, sw-hot, sw-used, sw-backhot, sw-working, sw-working-open, sw-reworking, sw-levers,
 // sw-refused, sw-refused-moved, sw-failed, sw-tunprobe, sw-wait, sw-heat, sw-move, sw-late, sw-doughin, sw-hand,
-// sw-novol, sw-missing, sw-missing-steps, sw-noprobe, sw-grain-bad, sw-interval, sw-typed, sw-room and sw-asks, the
+// sw-novol, sw-missing, sw-missing-steps, sw-give, sw-noprobe, sw-grain-bad, sw-interval, sw-typed, sw-room and sw-asks, the
 // vessels' bs-over, sw-hw and
 // sw-over, the one clock's sim-clock,
 // sim-clock-1x, sim-speed and sim-reset-all, the timers' timer-change, timer-removed, timer-secs and timer-zero, the boil kettle's MANUAL's bk-hand, bk-hand-off and
@@ -1099,7 +1099,8 @@ const SCENES = {
      and the HLT heating the strike water on its own AUTO. With a number missing: #sw-novol,
      BrewStart without a water volume; #sw-missing, a recipe imported before CraftBeerPi kept BeerSmith's mash figures
      (core post55), as every recipe in the rig's book is, its MashIn with a grain weight (swd.stepGrain);
-     #sw-missing-steps, a recipe built on Brew Steps, with no grain weight either;
+     #sw-missing-steps, a recipe built on Brew Steps, with no grain weight either; #sw-give, the same with GIVE THEM
+     pressed;
      #sw-noprobe, the boil kettle's probe giving no reading; #sw-grain-bad, BrewStart's grain temperature saved on Brew
      Steps as 150 °F; #sw-interval, the mash tun's control interval set to 2.5 s. Figures given in the box: #sw-typed, a
      recipe built on Brew Steps, its grain weight and mash water given there, FORECAST opened; #sw-room, the boil
@@ -1179,6 +1180,7 @@ const SCENES = {
   "sw-novol": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.vol = null; return s; },
   "sw-missing": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); Object.assign(s.swd, {from: null, stepGrain: true}); return s; },
   "sw-missing-steps": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.from = null; return s; },
+  "sw-give": () => Object.assign(SCENES["sw-missing-steps"](), {base: "sw-missing-steps", open: {swOpen: true}}),
   "sw-noprobe": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.v.bk.pv = null; s.pb.none.bk = 300; return Object.assign(s, {pbLast: {bk: 61.4}, gap: {bk: 300}}); },
   "sw-grain-bad": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.grain = 150; return s; },
   /* the strike water step's temperature typed on Brew Steps as 185 °F, and USE pressed at 21:12:31. The model's
