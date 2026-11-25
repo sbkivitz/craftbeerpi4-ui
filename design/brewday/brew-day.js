@@ -1627,13 +1627,14 @@ function spdCmd(x, y) {
   if (v === st.sim.scale) return spdClose();
   st.spdPend = v; renderAll();
   timers.push(setTimeout(() => {
-    const was = st.sim.scale, shift = Math.round((Date.parse(day0() + "T00:00:00Z") - Date.parse(st.sim.pc + "T00:00:00Z")) / 86400000);
+    const was = st.sim.scale, wasT = st.t, shift = Math.round((Date.parse(day0() + "T00:00:00Z") - Date.parse(st.sim.pc + "T00:00:00Z")) / 86400000);
     st.spdPend = null;
     st.events.forEach(e => { e[5] = (e[5] || 0) + shift; });
     st.sim = Object.assign({}, st.sim, {scale: v, day0: st.sim.pc});
     st.t = spdPcT();
-    /* the core archives the sensor logs written ahead of the clock, so the graphs start again from now */
-    if (st.hist) { ["hlt", "mt", "bk"].forEach(k => { const r = st.hist.v[k], l = r[r.length - 1]; st.hist.v[k] = l ? [[st.t - 10, ...l.slice(1)], [st.t, ...l.slice(1)]] : []; }); st.hist.start = st.t - 10; st.hist.steps = []; }
+    /* the core moves the sensor logs' readings with its clock, so the graphs keep them and carry on from them: a row's
+       time counts from its day's midnight, so it moves as far as the clock did from one day to the other */
+    if (st.hist) { const by = Math.round((st.t - wasT) / 10) * 10; ["hlt", "mt", "bk"].forEach(k => { st.hist.v[k] = st.hist.v[k].map(r => [r[0] + by, ...r.slice(1)]); }); st.hist.start += by; st.hist.steps = st.hist.steps.map(([t, n]) => [t + by, n]); }
     const said = `CraftBeerPi's clock is back to this computer's time, ${spdPc()}, now running ${v}× (was ${was}×).`;
     logEvent(`Clock: ${said}`, "from CraftBeerPi", "");
     say(said);

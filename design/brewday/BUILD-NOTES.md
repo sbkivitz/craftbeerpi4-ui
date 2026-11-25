@@ -6871,8 +6871,8 @@ it open:
 - **The chooser's sentence** follows CLOCK_FORMAT, so it reads as the core's notice will; the title bar's time stays
   24-hour until the 12-hour build.
 - **Escape** closes the box first whenever focus is in it or on SPEED.
-- The core's notice in LOG can be longer than the mockup's: it adds what it archived ("The sensor logs written ahead
-  of it, up to …, were archived so the graphs start again from now - zipped (…) and moved to …").
+- The core's notice in LOG can be longer than the mockup's: when the clock moved, it adds "The graphs keep the readings so
+  far, moved with the clock, and carry on from them."
 
 ## A timer's time in minutes and seconds, and its alarm's one answer, OK
 
