@@ -143,6 +143,9 @@ const WAITING_FOR_YOU = "WAITING FOR YOU";
    BREWDAY_TIMER_NAMES, sent with the timers as `names`. TNAMES is its default, which the demo offers; TNLEN a name's
    length; TNMAX how many buttons the editor has room for: two rows of three */
 const TMAX = 4, TPRE = [5, 10, 15, 20, 30, 60], TMINS = 300, TSECS = 5;
+/* a removed timer can be put back for TUNDO real seconds, as CraftBeerPi offers it (TimersController.UNDO_FOR); CraftBeerPi
+   keeps it 2 s more for an UNDO still on its way (UNDO_GRACE) */
+const TUNDO = 5;
 const TNAMES = ["Hop stand", "Yeast", "Vorlauf"], TNLEN = 24, TNMAX = 6;
 const tfmt = DEMO.tfmt;
 // SOUND, for the timers and CraftBeerPi's alerts, on this device only: the phone can stay quiet while the monitor beeps
@@ -5530,7 +5533,7 @@ function timersHTML() {
   if (tHere() !== "col") return "";
   const off = st.link === "lost" ? PAUSED : "", T = st.tmrs, e = st.tedit;
   const rows = T.map(t => trowHTML(t, off) + (e && e.id === t.id ? teditHTML(off) : ""));
-  /* a timer just removed keeps its place for 10 s, with UNDO where its buttons were (tgoneHTML). While its REMOVE is on
+  /* a timer just removed keeps its place for TUNDO seconds, with UNDO where its buttons were (tgoneHTML). While its REMOVE is on
      its way, a CraftBeerPi that has already said it's gone still has its row here, REMOVING…, so nothing below moves */
   const g = st.tgone;
   if (g && !(g.sending && T.some(t => t.id === g.t.id))) rows.splice(Math.min(g.idx, rows.length), 0, g.sending ? trowHTML(g.t, off) : tgoneHTML(g, off));
@@ -5540,7 +5543,7 @@ function timersHTML() {
   const plus = tplusHTML(off, "tplus2");
   return `<section class="tmrs" id="tmrs" aria-labelledby="tmrs-h"${e ? " data-editing" : ""}><div class="thead"><h3 id="tmrs-h">Timers</h3><div class="thr">${soundHTML()}${plus}</div></div>${rows.join("")}${e && e.id == null ? teditHTML(off) : ""}<p class="note">${esc(st.notes.t || "")}</p></section>`;
 }
-/* a timer just removed, for 10 s: its row keeps its place and height, so the timers under it don't move under a reaching
+/* a timer just removed, for TUNDO seconds: its row keeps its place and height, so the timers under it don't move under a reaching
    hand, and UNDO takes the place of both its buttons, so a second tap on REMOVE puts it back rather than reaching
    anything else. Then the row goes. Only on the screen where REMOVE was pressed: other screens simply lose the timer */
 function tgoneHTML(g, off) {
@@ -5693,7 +5696,7 @@ function tchipHTML(t, off, mode) {
   return `<div class="tchip" data-mode="${mode}" data-state="${t.state}" id="tc-${t.id}"${tSoon(t) ? " data-soon" : ""}${back ? " data-back" : ""}><button type="button" class="tcsel" data-cmd="te:open:${t.id}" aria-expanded="${editing}" aria-label="${esc(tSaid(t))}. Change it"${off ? ` aria-disabled="true" data-why="${off}"` : ""}><span class="tn">${esc(t.name)}</span><span class="ts">${word}</span><span class="tt" id="tct-${t.id}">${done ? tUpText(t) : tfmt(t.left)}</span></button>${btns ? `<span class="tcx">${btns}</span>` : ""}${back ? `<p class="toff" aria-hidden="true">${tOff(t)}</p>` : ""}${live ? `<span class="bar"><i id="tcbar-${t.id}" style="width:${tPct(t)}%"></i></span>` : ""}</div>`;
 }
 /* a timer just removed, as a row of the same size in its place: its name and "removed", in Dim Steel, and UNDO, for its
-   10 real seconds, whatever the rows around it hold, as it is the only way back */
+   TUNDO real seconds, whatever the rows around it hold, as it is the only way back */
 function tcgoneHTML(g, off, mode) {
   const p = st.pend["t:" + g.t.id];
   const undo = b("cmdbtn tundo", p ? "SENDING…" : "UNDO", "put it back", {cmd: `tm2:undo:${g.t.id}`, label: p ? "" : `Undo: put ${g.t.name} back`, why: off || (p ? WAIT : "")});
@@ -5929,7 +5932,7 @@ function cmdTm2(x, id, y) {
   if (x === "undo") return tUndo(+id);
   const t = tById(+id), key = "t:" + id;
   if (!t || st.pend[key]) return;
-  /* REMOVE on the row: one tap, no question, in any state but a run-out one. The row keeps its place for 10 real seconds
+  /* REMOVE on the row: one tap, no question, in any state but a run-out one. The row keeps its place for TUNDO real seconds
      with UNDO (tgoneHTML), its height and its buttons' width measured as REMOVE is pressed, so nothing under it moves */
   if (x === "rm") {
     if (t.state === "done") return;
@@ -5958,10 +5961,10 @@ function cmdTm2(x, id, y) {
   if (heard) answered.add(heard);
   return tSend(key, "ok", `${t.name}: alarm answered`, () => { answer(); t.state = "stopped"; t.left = t.run = t.set; }, () => api.timersOk(t.id), o);
 }
-/* UNDO, within 10 s of REMOVE: CraftBeerPi puts the timer back with its id, in its place, as it would be now: one that
+/* UNDO, within TUNDO seconds of REMOVE: CraftBeerPi puts the timer back with its id, in its place, as it would be now: one that
    was counting down has counted on meanwhile. Live, its line says the time left in CraftBeerPi's answer. Refused (409:
    four timers, or another of its name, both made on another screen meanwhile), CraftBeerPi's sentence, and the row stays
-   for the rest of its 10 s; too late (404, after CraftBeerPi's 12 s), the screen names the timer, as CraftBeerPi has only
+   for the rest of its TUNDO seconds; too late (404, after CraftBeerPi's 7 s), the screen names the timer, as CraftBeerPi has only
    its number by then, and the row goes */
 function tUndo(id) {
   const g = st.tgone;
@@ -5984,7 +5987,7 @@ function tUndo(id) {
       logEvent(line, "confirmed", "ok"); say(line + ": confirmed");
     },
     fail: res => { if (res.status === 404 && st.tgone === g) st.tgone = null; },
-    why: res => res.status === 404 ? `${t.name} can't be put back now: a removed timer can be put back for 10 seconds.`
+    why: res => res.status === 404 ? `${t.name} can't be put back now: a removed timer can be put back for ${TUNDO} seconds.`
       : res.status === 409 && res.data && res.data.error ? String(res.data.error) : ""
   });
 }
@@ -6066,9 +6069,9 @@ function tmTick() {
   }
   if (st.tmrs.filter(tSoon).map(t => t.id).join() !== soon0) changed = true;
   if (!st.banner) { const d = st.tmrs.find(t => t.state === "done"); if (d) { st.banner = DEMO.tBanner(d, st.tmrs); changed = true; } }
-  /* a removed timer's row goes 10 real seconds after REMOVE, at any speed of CraftBeerPi's clock, unless its UNDO is on
+  /* a removed timer's row goes TUNDO real seconds after REMOVE, at any speed of CraftBeerPi's clock, unless its UNDO is on
      its way. At 1× CraftBeerPi's seconds are real ones, so they count it, as in a moment set up with no real time */
-  const g0 = st.tgone, gone = g0 && (SC() !== 1 && g0.real != null ? Date.now() - g0.real >= 10000 : st.t - g0.at >= 10);
+  const g0 = st.tgone, gone = g0 && (SC() !== 1 && g0.real != null ? Date.now() - g0.real >= TUNDO * 1000 : st.t - g0.at >= TUNDO);
   if (gone && !st.pend["t:" + g0.t.id]) { st.tgone = null; changed = true; }
   if (changed) renderAll();
   else { const m = $("#tml-t"); if (m) m.innerHTML = tmlText(); }
@@ -6121,9 +6124,9 @@ function liveTmTick() {
     else if (t.state === "done") tmUp(t);
   }
   const m = $("#tml-t"); if (m) m.innerHTML = tmlText();
-  // a removed timer's row goes 10 real seconds after CraftBeerPi took it, unless its UNDO is on its way
+  // a removed timer's row goes TUNDO real seconds after CraftBeerPi took it, unless its UNDO is on its way
   const g = st.tgone;
-  if (g && !g.sending && Date.now() - g.real >= 10000 && !st.pend["t:" + g.t.id]) { st.tgone = null; renderAll(); }
+  if (g && !g.sending && Date.now() - g.real >= TUNDO * 1000 && !st.pend["t:" + g.t.id]) { st.tgone = null; renderAll(); }
   /* a timer getting to 3:00 to go, or back over it: its row beside the drawing is drawn again, its time bigger */
   else if (st.tmrs.filter(tSoon).map(t => t.id).join() !== soon0) renderAll();
   alarmCheck();

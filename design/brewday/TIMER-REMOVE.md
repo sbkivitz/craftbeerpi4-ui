@@ -15,9 +15,9 @@ time left. Nothing on the row says so, so he didn't find it.
 
 - **REMOVE on every timer's row,** beside START or PAUSE, in the same place whatever the timer is doing: counting down,
   paused or ready. One tap, and no question.
-- **For 10 seconds the row stays where it was,** saying "removed", with UNDO where its two buttons were. UNDO puts the
+- **For 5 seconds the row stays where it was,** saying "removed", with UNDO where its two buttons were. UNDO puts the
   timer back as it was, in its place; one that was counting down has counted on meanwhile, as if it had never gone.
-  After 10 seconds the row goes. They're 10 real seconds, however fast a simulator's brewing clock runs.
+  After 5 seconds the row goes. They're 5 real seconds, however fast a simulator's brewing clock runs.
 - **PAUSE stays as it is:** the count stops and the time is kept.
 - **BACK TO 15:00 in the timer's box** (opened by tapping its name, as today), while it counts down or is paused. The
   timer goes back to its full time, stopped, ready to START again: what OK does after its alarm, and what a kitchen
@@ -44,7 +44,7 @@ time left. Nothing on the row says so, so he didn't find it.
 2. **No question first.** Today a timer with time left asks "Remove Stir? It has 7:12 left." A question asked every
    time turns into a habit of pressing yes without reading (DESIGN.md: no "Are you sure?" before a change that one tap
    undoes). UNDO makes a slip cheap instead: the wrong row's REMOVE with a wet finger, or a double tap.
-3. **The row keeps its place for 10 seconds.** If it vanished at once, the timer below would move up under a hand that
+3. **The row keeps its place for 5 seconds.** If it vanished at once, the timer below would move up under a hand that
    is still reaching, and a second tap would land on that timer's REMOVE. With the row's place and height kept, and
    UNDO across both buttons' room, a second tap puts the timer back.
 4. **REMOVE is quieter than START or PAUSE.** Look-alike buttons side by side invite the wrong one. REMOVE has Soft
@@ -80,20 +80,20 @@ proposal, and it builds on this row.
 |---|---|
 | The two-line row, REMOVE, the removed row with UNDO, + TIMER in the heading, BACK TO in the box | React UI (`brewday`'s timers) |
 | BACK TO: a timer counting down or paused goes back to its own time, stopped. Built in core 4.7.7.post52 (a5ee2266): `POST /timers/{id}/reset`. A stopped timer is left as it is; one that has run out is refused (409) | Server (`timers_controller.py`, `http_timers.py`) |
-| UNDO: a removed timer put back on request as it was, with its id and in its place, as it would be now: one counting down has counted on, and one whose time came meanwhile comes back run out and ringing. Built in core 4.7.7.post52: `POST /timers/{id}/undo`. CraftBeerPi keeps a removed timer 12 real seconds (the screen's 10, plus 2 for a press still on its way, and never fewer brewing seconds), then forgets it. Removing needs nothing new | Server (the same files) |
+| UNDO: a removed timer put back on request as it was, with its id and in its place, as it would be now: one counting down has counted on, and one whose time came meanwhile comes back run out and ringing. Built in core 4.7.7.post52: `POST /timers/{id}/undo`. CraftBeerPi keeps a removed timer 7 real seconds (the screen's 5, plus 2 for a press still on its way, and never fewer brewing seconds), then forgets it. Removing needs nothing new | Server (the same files) |
 | Nothing | Dashboard layout files |
 
-On other screens a removed timer simply goes, as it does today: the row that stays for 10 seconds is for the hand on the
+On other screens a removed timer simply goes, as it does today: the row that stays for 5 seconds is for the hand on the
 screen where REMOVE was pressed. UNDO there puts it back on every screen.
 
 When CraftBeerPi refuses, which only happens when another screen has changed the timers meanwhile, the timers' own note
 line says why for 6 s, and LOG gets the command with "failed" and the reason, in light red, as a failed command's:
 
 - UNDO, with four timers now: "Four timers at most. Remove one to put Stir back." With another timer of its name now:
-  "Another timer is called Stir now. Rename it to put Stir back." In both, the removed row stays until its 10 seconds
+  "Another timer is called Stir now. Rename it to put Stir back." In both, the removed row stays until its 5 seconds
   are up, so UNDO can be pressed again once the clash is gone.
-- UNDO arriving after CraftBeerPi has forgotten the timer (a press still on its way when its 12 seconds ran out): "Stir
-  can't be put back now: a removed timer can be put back for 10 seconds." The screen names the timer itself, since
+- UNDO arriving after CraftBeerPi has forgotten the timer (a press still on its way when its 7 seconds ran out): "Stir
+  can't be put back now: a removed timer can be put back for 5 seconds." The screen names the timer itself, since
   CraftBeerPi's answer only has its number by then. The row goes.
 - BACK TO, for a timer that ran out meanwhile: "Stir has run out: answer it with OK." The box closes and the
   row shows OK.

@@ -57,7 +57,7 @@ marked, and one question, and for both answers to be worked out together.
 - **A timer shown smaller is a tile:** its name and state word ("paused", "ready") over its time, with its bar along
   the foot, 48 px tall. Tapped, it opens the timer's box, which then has what the tile lacks: REMOVE, and START or
   PAUSE. A tile in its last 3 minutes shows its time bigger. One that has run out is amber and pulses, as its row does,
-  with its alarm in the title bar as now. One just removed keeps its place for 10 real seconds, with UNDO.
+  with its alarm in the title bar as now. One just removed keeps its place for 5 real seconds, with UNDO.
 - **REMOVE with UNDO, BACK TO in the box and + TIMER** work as approved (TIMER-REMOVE.md).
 - **OTHER RECIPE** sits beside COMPARE PROBES on a recipe not begun, as in RECIPE-COLUMN.md.
 

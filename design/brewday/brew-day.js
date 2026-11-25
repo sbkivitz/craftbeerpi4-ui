@@ -552,7 +552,7 @@ const SCENES = {
   /* Stir's editor while it counts down: its time left changes at once, and BACK TO 15:00 is there, as REMOVE is on the
      row. As built before (?trow=today), with REMOVE */
   "timer-change": () => Object.assign(SCENES.timers(), {open: {tedit: {id: 1, name: "Stir", ph: "Stir", set: 15 * 60}}}),
-  /* Stir removed 3 s ago, at 14:32:28 with 7:15 to go: its row keeps its place for 10 s, with UNDO. As built before
+  /* Stir removed 3 s ago, at 14:32:28 with 7:15 to go: its row keeps its place for 5 s, with UNDO. As built before
      (?trow=today), removing a timer with time left asks first, in its editor */
   "timer-removed": () => {
     const s = SCENES.timers(), t = s.tmrs[0];
@@ -5309,6 +5309,9 @@ function cmdTimer(x) {
    view at once, a finished one pulses and counts up until it is answered, and OK puts it back to its own time, ready
    to start again. SOUND belongs to each screen: its timers and CraftBeerPi's alerts. */
 const TMAX = 4, TPRE = [5, 10, 15, 20, 30, 60], TMINS = 300, TSECS = 5;
+/* a removed timer can be put back for TUNDO real seconds, as CraftBeerPi offers it (TimersController.UNDO_FOR); CraftBeerPi
+   keeps it 2 s more for an UNDO still on its way (UNDO_GRACE) */
+const TUNDO = 5;
 /* the names to pick come from CraftBeerPi's BREWDAY_TIMER_NAMES setting, sent with the timers as `names`, so the usual
    names are set up once; the editor offers them as buttons, and the name box takes any other name as well. TNAMES is
    its default; TNLEN a name's length; TNMAX how many buttons the editor has room for: two rows of three */
@@ -5366,7 +5369,7 @@ function timersHTML() {
     if (FOLD && st.tfold === "line" && !st.tfOpen && !e) return tstripHTML();
     if (FOLD && st.tfold === "small") return tsmallHTML(off);
     const rows = T.map(t => trowHTML(t, off) + (e && e.id === t.id ? teditHTML(off) : ""));
-    /* a timer just removed keeps its place for 10 s, with UNDO where its buttons were (tgoneHTML) */
+    /* a timer just removed keeps its place for TUNDO seconds, with UNDO where its buttons were (tgoneHTML) */
     const g = st.tgone;
     if (g) rows.splice(Math.min(g.idx, rows.length), 0, tgoneHTML(g, off));
     /* + TIMER in the heading, beside SOUND, rather than a row of its own under the timers: it costs the step list nothing.
@@ -5417,7 +5420,7 @@ function tstripHTML() {
   const said = T.map(t => `${t.name}: ${t.state === "done" ? "time's up" : t.state === "stopped" ? "ready" : `${tfmt(t.left)} left${t.state === "paused" ? ", paused" : ""}`}`).join("; ");
   return `<section class="tmrs tfold" id="tmrs"${done ? ' data-state="done"' : ""}><button type="button" class="tstrip" data-cmd="tf:open" aria-expanded="false" aria-label="Timers. ${esc(said)}. Open them"><span class="tl">TIMERS</span><span class="tsi">${items.join("")}</span><span class="tso">OPEN</span></button></section>`;
 }
-/* a timer just removed, for 10 s: its row keeps its place and height, so the timers under it don't move under a reaching
+/* a timer just removed, for TUNDO seconds: its row keeps its place and height, so the timers under it don't move under a reaching
    hand, and UNDO takes the place of both its buttons, so a second tap on REMOVE puts it back rather than reaching
    anything else. Then the row goes */
 function tgoneHTML(g, off) {
@@ -5454,7 +5457,7 @@ function tchipHTML(t, off, mode) {
   return `<div class="tchip" data-mode="${mode}" data-state="${t.state}" id="tc-${t.id}"${tSoon(t) ? " data-soon" : ""}${back ? " data-back" : ""}><button type="button" class="tcsel" data-cmd="te:open:${t.id}" aria-expanded="${editing}" aria-label="${esc(tSaid(t))}. Change it"${off ? ` aria-disabled="true" data-why="${off}"` : ""}><span class="tn">${esc(t.name)}</span><span class="ts">${word}</span><span class="tt" id="tct-${t.id}">${done ? tUpText(t) : tfmt(t.left)}</span></button>${btns ? `<span class="tcx">${btns}</span>` : ""}${back ? `<p class="toff" aria-hidden="true">${tOff(t)}</p>` : ""}${live ? `<span class="bar"><i id="tcbar-${t.id}" style="width:${tPct(t)}%"></i></span>` : ""}</div>`;
 }
 /* a timer just removed, as a chip of the same size in its place: its name over "removed", in Dim Steel, and UNDO, for its
-   10 real seconds, whatever the chips around it hold, as it is the only way back */
+   TUNDO real seconds, whatever the chips around it hold, as it is the only way back */
 function tcgoneHTML(g, off, mode) {
   const p = st.pend["t:" + g.t.id];
   const undo = b("cmdbtn tundo", p ? "SENDING…" : "UNDO", "put it back", {cmd: `tm2:undo:${g.t.id}`, label: p ? "" : `Undo: put ${g.t.name} back`, why: off || (p ? WAIT : "")});
@@ -5859,7 +5862,7 @@ function cmdTm2(x, id, y) {
   if (x === "undo") return tUndo(+id);
   const t = tById(+id), key = "t:" + id;
   if (!t) return;
-  /* REMOVE on the row: one tap, no question, in any state but a run-out one. The row keeps its place for 10 real
+  /* REMOVE on the row: one tap, no question, in any state but a run-out one. The row keeps its place for TUNDO real
      seconds with UNDO (tgoneHTML) */
   if (x === "rm") {
     const live = t.state === "running" || t.state === "paused";
@@ -5882,7 +5885,7 @@ function cmdTm2(x, id, y) {
   const answer = () => tAnswered(t);
   if (x === "ok") return send(key, "ok", `${t.name}: alarm answered`, () => { answer(); t.state = "stopped"; t.left = t.run = t.set; });
 }
-/* UNDO, within 10 s of REMOVE: CraftBeerPi puts the timer back as it was, in its place. One that was counting down has
+/* UNDO, within TUNDO seconds of REMOVE: CraftBeerPi puts the timer back as it was, in its place. One that was counting down has
    counted on meanwhile, as if it had never gone */
 function tUndo(id) {
   const g = st.tgone;
@@ -5970,10 +5973,10 @@ function tmTick() {
   }
   if (chips && st.tmrs.filter(tSoon).map(t => t.id).join() !== soon0) changed = true;
   if (!st.banner) { const d = st.tmrs.find(t => t.state === "done"); if (d) { st.banner = tBanner(d); changed = true; } }
-  /* a removed timer's row goes 10 real seconds after REMOVE, at any speed of CraftBeerPi's clock, unless its UNDO is on
-     its way. CraftBeerPi keeps the timer 12 real seconds, for a press still on its way (TimersController.UNDO_FOR and
+  /* a removed timer's row goes TUNDO real seconds after REMOVE, at any speed of CraftBeerPi's clock, unless its UNDO is on
+     its way. CraftBeerPi keeps the timer 7 real seconds, for a press still on its way (TimersController.UNDO_FOR and
      UNDO_GRACE). At 1× CraftBeerPi's seconds are real ones, so they count it, as in a moment set up with no real time */
-  const g0 = st.tgone, gone = g0 && (SC() !== 1 && g0.real != null ? Date.now() - g0.real >= 10000 : st.t - g0.at >= 10);
+  const g0 = st.tgone, gone = g0 && (SC() !== 1 && g0.real != null ? Date.now() - g0.real >= TUNDO * 1000 : st.t - g0.at >= TUNDO);
   if (gone && !st.pend["t:" + st.tgone.t.id]) { st.tgone = null; changed = true; }
   if (changed) renderAll();
   else { const m = $("#tml-t"); if (m) m.innerHTML = tmlText(); }
@@ -6503,7 +6506,7 @@ const COL = TIMERS === "new" && QS.get("col") !== "today" ? "new" : "today";
 const FOLD = COL === "new" && QS.get("col") === "new";
 document.documentElement.dataset.col = COL;
 /* the timer's row: by default (TIMER-REMOVE.md, approved on 22 Nov) REMOVE on every row beside START or PAUSE, one tap,
-   with UNDO in its place for 10 real seconds; BACK TO its own time in its editor; + TIMER in the section's heading.
+   with UNDO in its place for 5 real seconds; BACK TO its own time in its editor; + TIMER in the section's heading.
    ?trow=today is the row as built before, with the timers in the column; timers.html compares the two */
 const TROW = TIMERS === "new" && (QS.get("trow") !== "today" || FOLD) ? "new" : "today";
 document.documentElement.dataset.trow = TROW;

@@ -5592,15 +5592,15 @@ reasons and the measurements. CraftBeerPi has everything it needs since core 4.7
    `.trow.tgone .tundo`): only on the screen where REMOVE was pressed.
    - It keeps the row's height and its buttons' width, measured as REMOVE is pressed, so the timer below doesn't move.
    - On Panel Slate: the name and "removed" in Dim Steel, and UNDO ("put it back") where the two buttons were.
-   - It goes 10 real seconds after REMOVE (`Date.now()`, at any speed of CraftBeerPi's clock), unless UNDO is on its
+   - It goes 5 real seconds after REMOVE (`Date.now()`, at any speed of CraftBeerPi's clock), unless UNDO is on its
      way. Other screens simply lose the timer.
 5. **UNDO** (`tUndo`): `POST /timers/{id}/undo` (`api.js` has no call for it yet). CraftBeerPi puts the timer back
    with its id, in its place, as it would be now. LOG: "Stir put back, 7:05 to go".
    - 409, with CraftBeerPi's sentence, shown in the timers' note line for 6 s, and LOG has the command "failed" with
      it, in light red: "Four timers at most. Remove one to put Stir back." or "Another timer is called Stir now. Rename
-     it to put Stir back." The removed row stays for the rest of its 10 seconds, so UNDO can be pressed again.
-   - 404, after CraftBeerPi's 12 seconds: the screen names the timer itself, as CraftBeerPi's answer has only its
-     number by then: "Stir can't be put back now: a removed timer can be put back for 10 seconds." The row goes.
+     it to put Stir back." The removed row stays for the rest of its 5 seconds, so UNDO can be pressed again.
+   - 404, after CraftBeerPi's 7 seconds: the screen names the timer itself, as CraftBeerPi's answer has only its
+     number by then: "Stir can't be put back now: a removed timer can be put back for 5 seconds." The row goes.
 6. **BACK TO 15:00 in the editor** (`teditHTML`, `cmdTe` "reset"), while the timer counts down or is paused, hint
    "ready to start again": `POST /timers/{id}/reset` (no call for it in `api.js` yet either). The editor stays open,
    now a stopped timer's (CANCEL, SET), so a name typed and not yet saved is kept. LOG: "Stir back to 15:00, stopped
@@ -6050,7 +6050,7 @@ drawing), Recipe Column (OTHER RECIPE), Layout and The Under Its Plate Rule. The
      1920 px wide.
    - A timer that has run out: its row Dark Amber Wash with a 2 px Prompt Amber edge drawn inside, TIME'S UP and the
      time counting up in Prompt Amber, OK; it pulses, and its alarm is in the title bar as now. A timer just removed:
-     its row for 10 s with its name, "removed" and UNDO.
+     its row for 5 s with its name, "removed" and UNDO.
    - Rows that don't all fit scroll inside the column (`.tsl`, `overflow-y: auto`, `overscroll-behavior: contain`),
      which keeps its scroll place when the screen is drawn again. Where the next row would show all but its last
      12 px, the list is cut at half that row's height, so it reads as cut (`TSIDE_CUT`); less, and it stays as it is.
@@ -6918,6 +6918,15 @@ bar's alarm, on a monitor and on a phone. A running or paused timer's editor has
 - `#timer-zero`: the same editor at 0 minutes 0 seconds, SAVE and START greyed.
 - `#timer-done`, `#timer-back-done` and `#timer-back-unknown`: the alarm with OK alone, and OK across the row.
 - `#timer-change`: −1 MIN and +1 MIN.
+
+## A removed timer's UNDO: 5 seconds
+
+- REMOVE keeps the timer's row in its place, saying "removed", with UNDO, for 5 real seconds at any speed of
+  CraftBeerPi's clock (screen.js and brew-day.js `TUNDO`); then the row goes.
+- CraftBeerPi offers UNDO for the same 5 seconds (TimersController `UNDO_FOR`) and keeps the timer 2 seconds more
+  (`UNDO_GRACE`), 7 in all, for an UNDO still on its way. Later, `POST /timers/{id}/undo` answers 404, "There is no
+  timer 1 to put back: a removed timer can be put back for 5 seconds.", and the screen says "Stir can't be put back
+  now: a removed timer can be put back for 5 seconds."
 
 ## Open questions about the drawing
 

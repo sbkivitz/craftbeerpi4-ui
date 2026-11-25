@@ -501,7 +501,7 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .tmrs[data-editing] .tr2:not(.editing){grid-template-rows:auto}
 :where(html.bd-page) .tmrs[data-editing] .tr2:not(.editing) .tsel{grid-row:1;grid-template-rows:auto;min-height:44px}
 :where(html.bd-page) .tmrs[data-editing] .tr2:not(.editing) .tsel .tt{grid-column:2;grid-row:1}
-/* a timer just removed, for 10 s: its place and height kept, on Panel Slate, its name and "removed" in Dim Steel, and
+/* a timer just removed, for 5 s: its place and height kept, on Panel Slate, its name and "removed" in Dim Steel, and
    UNDO where its two buttons were */
 :where(html.bd-page) .trow.tgone{grid-template-rows:auto 56px;row-gap:2px;min-height:95px;background:var(--panel)}
 :where(html.bd-page) .tgone .tgn{grid-column:1;grid-row:1/3;display:grid;align-content:center;gap:4px;margin:0;padding:0 8px;color:var(--text-3)}

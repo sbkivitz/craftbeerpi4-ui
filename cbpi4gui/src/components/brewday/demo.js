@@ -698,7 +698,7 @@ const SCENES = {
   /* Stir's editor while it counts down: its time left changes at once, and BACK TO 15:00 is there, as REMOVE is on the
      row */
   "timer-change": () => Object.assign(SCENES.timers(), {open: {tedit: {id: 1, name: "Stir", ph: "Stir", set: 15 * 60}}}),
-  /* Stir removed 3 s ago, at 14:32:28 with 7:15 to go: its row keeps its place for 10 s, with UNDO */
+  /* Stir removed 3 s ago, at 14:32:28 with 7:15 to go: its row keeps its place for 5 s, with UNDO */
   "timer-removed": () => {
     const s = SCENES.timers(), t = s.tmrs[0];
     s.tmrs = s.tmrs.slice(1);
