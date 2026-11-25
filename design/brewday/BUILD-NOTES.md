@@ -7365,6 +7365,18 @@ as the screen's `patchNode` keeps it: while BrewStart heats, the mockup redraws 
   still the current step, HEATING with "change", LOG with the change confirmed and nothing about the heating stopping,
   focus back on the row.
 
+### Built (web UI 0.5.1.a3.post76)
+
+- `screen.js`: the demo's `bsSet` gives HEAT NOW's focus back with `bsBack(B.from)`, and `bsSendLive` takes the same
+  `bsBack` for HEAT NOW as for every other SET; BrewStart's notice is still spoken and in LOG. With AND GO, Brew Steps
+  opens as before.
+- Start at while BrewStart heats: already as above. Live, SET sends Start at by BrewStart's `change_settings`, and on a
+  server of its own with BrewStart 1.3.0.post9 the HLT stays in AUTO at BrewStart's temperature and heating, BrewStart
+  stays the current step, HEATING, LOG has the change confirmed and nothing about the heating stopping, and focus goes
+  back to the row.
+- Checked: test_ui_brewstart_live.py (HEAT NOW: the box closed, focus on BrewStart's row, HEATING with "change");
+  test_e2e_brewday_readings.py (START AT INSTEAD while BrewStart heats, then SET, as above).
+
 ## In a box GIVE THEM opened, USE and CLOSE keep their halves: ready to build (25 Nov)
 
 From the build (web UI post67): once the last figure is given, the open box turns into a forecast's, and CLOSE narrowed
@@ -7402,6 +7414,15 @@ New moment `#sw-gave`: `#sw-typed` (the recipe's figures given) open as GIVE THE
   element on its page.
 - `files\gave_sizes.py` (new): 22 checks, all passing. `#sw-gave` at 11 sizes from 2000 × 1000 to 360 × 740, USE and
   CLOSE in halves on one line, then BACK TO the same.
+
+### Built (web UI 0.5.1.a3.post76)
+
+- `screen.js`: `swGiveOpen`; `sw:more` opening the box from the asking row sets `st.swOpen` to "give", and every way
+  of closing it leaves it false; `swHTML`'s row with a forecast is `.swa.two` while the box is open that way. The demo
+  has `#sw-give-open` (was `#sw-give`) and `#sw-gave`.
+- Checked: test_ui_brewday_identity.py (`#sw-give-open` and `#sw-gave` at seven sizes; GIVE THEM, the figures' CLOSE,
+  GRAIN WEIGHT from the figures and `#sw-gave`'s CLOSE pressed); test_ui_strike_live.py (the last figure given, USE
+  and CLOSE still in GIVE THEM's halves with every edge where it was; FORECAST opened afterwards, two thirds and one).
 
 ## The liquid in each vessel: ready to build (25 Nov)
 
@@ -7498,6 +7519,41 @@ them is taken as BrewScribe takes it (`lvReads`, through `rdApply`), so the remi
 - `slayer_check` 102, `bs_presses` 293, `sw7_presses` 28, `sw8_presses` 38, `wk_presses` 17, `unload_presses` 61,
   `tm2_presses` 72: all passing. `tm2_presses` expected +5 MIN on a run-out timer, which went with the alarm's one
   answer, OK (above); the check now expects OK alone.
+
+### Built (web UI 0.5.1.a3.post76, core 4.7.7.post93)
+
+- **When:** a CraftBeerPi setting, "Show liquid levels on Brew Day" (`BREWDAY_LEVELS`, Yes or No), Yes by default, in
+  Settings' Timers and alerts, the group for what Brew Day shows and plays (design/settings). No turns the levels off
+  completely: nothing drawn, no line on a phone, and Brew Day asks BrewScribe only for a reminder, as before. A
+  CraftBeerPi without the setting shows them, once its settings are in. The demo has them where the mockup does, a
+  moment's own or `?levels=tint`, which stands for the setting.
+- The drawing, the figures, READ, MIN, the words and the phone's lines as above: `rig.js` the mockup's own; `screen.js`
+  the mockup's block (`lvState` to `lvDesc`), `renderLevels` and `lvDesc` in `renderRig`, the phone's line in
+  `plateHTML`; brewday.css the mockup's rules, after the Steam Slayer's.
+- The figures live, all CraftBeerPi's: BrewStart's water, the mash water and the grain from the strike water helper
+  (`GET /step2/strike`, for the recipe loaded); the sparge water as the recipe's water less the mash water, and the
+  boil volume, from the recipe's mash numbers (the recipe's water worked out as a new BrewStart's is, with
+  GRAIN_ABSORPTION); each kettle's capacity and least water from the Hardware page, the HLT's least as the helper
+  reports it. In the brewery's unit: gal, or L on a °C brewery ("≈ 26.5 L", "litres"). Where a figure is missing, the
+  vessel it decides shows nothing rather than a guess, and an HLT reading isn't worked forward past a move whose figure
+  is missing.
+- CraftBeerPi keeps no volume after the boil yet, so from the boil's start the boil kettle keeps the boil volume,
+  "Wort ≈ 7.0 gal · before the boil-off", and a volume read before the boil is kept, "read 7.2, before the boil-off".
+  The boil-off comes once CraftBeerPi keeps the volume after the boil.
+- READ: `rdClean` keeps `vessel_volumes` as above; `phPoll` asks every 15 s while a recipe is loaded, with the levels
+  on, where BrewScribe is installed (its tab is there); after a SAVE, `phHad` and the demo's BrewScribe put the reading
+  into `vessel_volumes` at once (`rdApply`'s `vvSet` and `vvItem`), read now (the PC's time live, the moment's clock in
+  the demo), in the kettle with the reminder's vessel's name. "read at" names the day where it isn't today by
+  CraftBeerPi's clock.
+- The demo has the thirteen `#lv-…` moments, and `?lsens=hlt,bk` as the mockup's. No level sensors live yet.
+- Checked: test_ui_brewday_identity.py (the thirteen `#lv-…` moments at seven sizes, ten of the day's moments with
+  `?levels=tint` at four, and every other moment as before, without the levels); test_ui_levels_live.py (new: the
+  setting, Yes by default; the asks every 15 s with no reminder up; a volume typed on BrewScribe's page READ at the next
+  ask, in litres too; what Brew Day can't use dropped; READ worked forward as an estimate once the strike water moved;
+  no answer, then 404; No: nothing drawn and no ask in 35 s; Yes again); test_e2e_brewday_readings.py (a brew walked
+  with BrewScribe 0.1.0.dev60: the strike water's volume READ as SAVE is answered, worked forward while it moves and an
+  estimate once moved; the HLT's level after the sparge, the boil kettle's volumes before and after the boil and the
+  final volume, each READ).
 
 ## BrewStart's row: fewer words, and the lines under a step's name across the row: ready to build (25 Nov)
 

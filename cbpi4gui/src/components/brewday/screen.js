@@ -66,7 +66,14 @@
 //   kettle's condenser_name. A mister set by hand is shown from what the boil step keeps (the lid reminder's DONE, the
 //   turn-off reminder's DONE), and CraftBeerPi's two reminders are told by their kind, not their words. ALL OFF switches
 //   a switched mister off too, as CraftBeerPi keeps it on after the boil until the wort has cooled.
-import { rigSVG, RIG_H } from "./rig";
+// - The liquid in each vessel (design/brewday LEVELS.md) shows while CraftBeerPi's BREWDAY_LEVELS isn't No (Yes is its
+//   default), where the mockup has it behind ?levels=tint; off, nothing is drawn and BrewScribe is asked only for a
+//   reminder, as before. Its figures are CraftBeerPi's: BrewStart's water, the mash water and the grain from the strike
+//   water helper, the sparge water and the boil volume from the recipe's mash numbers, each kettle's capacity and least
+//   water from the Hardware page; where one is missing, the vessel it decides shows nothing rather than a guess.
+//   CraftBeerPi has no volume after the boil yet, so from the boil's start the boil kettle keeps the boil volume, said
+//   as before the boil-off. There are no level sensors yet.
+import { rigSVG, RIG_H, r1 } from "./rig";
 import * as DEMO from "./demo";
 import * as SWD from "./strike-demo";
 import { api, why as failWhy } from "./api";
@@ -77,7 +84,7 @@ import { createHistory } from "./history";
 import { settingsClockFormat, formatTimeOfDay, timeParts, parseTypedTime, TWELVE_HOUR, TWENTY_FOUR_HOUR } from "../util/timefmt";
 import { clearKeyboard } from "../util/keyboard";
 import { MASH_WATER, HLT_WATER, leastWater, hltLowText, hltUnderText, spargeText,
-  waterRatio, waterForRatio, ratioText, ratioUnit, ratioWarning, mashWaterText, volText, massText } from "../util/mashwater";
+  waterRatio, waterForRatio, ratioText, ratioUnit, ratioWarning, mashWaterText, volText, massText, KG_PER_LB, LEAST_SHARE } from "../util/mashwater";
 // As text, exactly as written (config-overrides.js): the CSS pipeline would rewrite the mockup's colours.
 import BREWDAY_CSS from "./brewday.css";
 import EXTRA_CSS from "./brewday-extra.css";
@@ -244,7 +251,7 @@ const setText = (el, s) => { if (el && el.textContent !== s) el.textContent = s;
 // One screen at a time, as in the mockup: its state lives here. gen tells a command that finishes after the
 // screen has gone (or been opened again) to keep its answer to itself.
 let root = null, DEMO_MODE = false, opts = {}, gen = 0, PAGE = "";
-let st, M, timers = [], noteTimers = {}, hold = null, toastT = 0, raf = 0, rigW = 0, rigRs = 1, rigSs = "", teardown = () => {};
+let st, M, timers = [], noteTimers = {}, hold = null, toastT = 0, raf = 0, rigW = 0, rigRs = 1, rigSs = "", rigLv = "", teardown = () => {};
 // heldOn: the recipe the hold that is running its command now began on (holdStart, recipeOn)
 let heldOn = null;
 let last = null, everConnected = false, book = [], bookBusy = false, bookAgain = false, bookShown = false;
@@ -1094,7 +1101,7 @@ function plateHTML(v) {
       ${LAYOUT === "b" ? auxHTML(v) : ""}
       ${GRAPHS ? graphHTML(G(), v, "f") : ""}
     </div>
-    <p class="dev">${devHTML(v)}</p>${v === "bk" && slayer() ? `<p class="ssline">${slayerLine()}</p>` : ""}
+    <p class="dev">${devHTML(v)}</p>${v === "bk" && slayer() ? `<p class="ssline">${slayerLine()}</p>` : ""}${lvMode() ? `<p class="ssline lvline">${esc(lvLine(v))}</p>` : ""}
     <div class="ctrls${nudge && !own ? " bkpow" : ""}">${lamps}</div>
     ${st.edit && st.edit.v === v ? editorHTML(v) : v === "hlt" && hermsOn() ? hermsRowHTML() : steps ? `<div class="mstack">${mode}${steps}</div>` : mode}
     <p class="note">${esc(st.notes[v] || "")}</p>
@@ -1973,6 +1980,12 @@ function swGiveDet(N) {
   const B = swMissBits(N);
   return `<div class="swdet swgive" id="sw-give"><p class="swl">${B.says}</p>${B.ask}<div class="swa two">${B.hlt}${B.grain}</div>${B.sparge}</div>`;
 }
+/* the closed box is the one row with GIVE THEM (or GIVE IT) in FORECAST's place */
+function swGiveOpen() {
+  if (!st.sw) return false;
+  const N = swNumbers();
+  return !(N.ok || N.wait) && swGives(N).length > 0 && !swEditing();
+}
 /* the figures CraftBeerPi can't have without the brewer, given here: the recipe's grain weight and its strike water to
    the mash tun (the mash water), kept with the loaded recipe (POST /step2/strike/recipe), and the room's temperature
    for this brew, which stands for the room while the boil kettle's probe gives no reading a room can have (POST
@@ -2508,7 +2521,10 @@ function swBoxHTML() {
   const line = reads ? `<p class="swl swmt">The Mash Tun's ${swT(mt.pv)} isn't the mash: with the pump stopped, its probe reads ${cools ? "the still water at the coil's outlet" : "the water left in the HLT's coil"}.</p>` : "";
   const wk = N.work ? `<p class="swl swwk"><span>${swWorkSays(N)}</span></p>` : "";
   const more = b("cmdbtn swmore", open ? "CLOSE" : "FORECAST", open ? "the forecast" : "in detail", {cmd: "sw:more", expanded: open, controls: open ? "sw-det" : ""});
-  const head = head0(N, `${line}<div class="swa${act ? "" : " one"}">${act}${more}</div>${wk}`);
+  /* USE takes two thirds and FORECAST one; in a box GIVE THEM opened, USE and CLOSE stay in GIVE THEM's halves until it
+     closes, so the edge between them doesn't move as CraftBeerPi takes the last figure, while the hand is still in the
+     box (STRIKE-WATER.md decision 19) */
+  const head = head0(N, `${line}<div class="swa${act ? (open && st.swOpen === "give" ? " two" : "") : " one"}">${act}${more}</div>${wk}`);
   if (!open) return `<section class="${cls}" aria-label="Strike water">${head}</section>`;
   if (N.wait) return `<section class="${cls} open" aria-label="Strike water">${head}<div class="swdet" id="sw-det">`
     + `<p class="swn">The chart, and where the mash lands, come once USE is worked out. These are the numbers it is worked out from.</p>${swList(N)}</div></section>`;
@@ -3312,7 +3328,8 @@ function bsCmd(x, y) {
    saved as a date (never Today or Tomorrow, which BrewStart counts from START), with the time and the kind; a new grain
    answer has CraftBeerPi work USE out again, as the strike water box's GRAIN does. While BrewStart waits it plans again
    at once (change_time): STARTS for the new time, and its notification in its words; HEAT NOW, a time too soon to wait
-   for, has it start heating the HLT at once (bsHeat), and focus goes to LOG, where its notice comes. Asked for by ALL
+   for, has it start heating the HLT at once (bsHeat), its notice spoken and in LOG, and focus goes back where the box was
+   opened from, BrewStart's row (a button while it heats, HEATING with "change") or USE, as after any SET. Asked for by ALL
    SETTINGS' SET AND GO (B.then "all"), Brew Steps opens once it has gone through (bsAllGo). ADD
    BREWSTART puts a new BrewStart in as step 1 (bsAdd, bsAddLive) */
 function bsSet() {
@@ -3362,7 +3379,7 @@ function bsSet() {
           logEvent(due, "from CraftBeerPi", "");
           bsHeat(s);
           say(due);
-          if (B.then !== "all") setTimeout(() => $("#event .logbtn")?.focus({preventScroll: true}), 0);
+          if (B.then !== "all") bsBack(B.from);
         });
         if (B.then === "all") bsAllGo(B);
         return;
@@ -3497,7 +3514,7 @@ function bsAddLive(B, o) {
 }
 /* BrewStart's SET and ADD BREWSTART go to CraftBeerPi as one or two calls in turn, with SETTING… or ADDING… until the last
    answers, as exec sends one command. All through: one LOG line (label), and the box closes, focus going back where it
-   was opened from, or to LOG after HEAT NOW, where BrewStart's notice comes; for SET AND GO, on to Brew Steps
+   was opened from, HEAT NOW too (BrewStart's notice is spoken and in LOG); for SET AND GO, on to Brew Steps
    (bsAllGo). A call CraftBeerPi refuses
    (c.refused gives its words) is said under the box for 6 s, and the box stays open; BrewStart's change_time logs it as
    failed too (c.logs). One with no answer, or another error, is a failed command: LOG says so in light red, and the
@@ -3519,8 +3536,7 @@ async function bsSendLive(dir, label, calls, B) {
   if (i === calls.length) {
     if (st.bs === B) {
       st.bsOpen = false; st.bs = null;
-      if (!onward && B.soon) timers.push(setTimeout(() => { if (root) $("#event .logbtn")?.focus({preventScroll: true}); }, 0));
-      else if (!onward) bsBack(B.from === "new" ? "row" : B.from);
+      if (!onward) bsBack(B.from === "new" ? "row" : B.from);
     }
     if (st.alarm && st.alarm.cmd === "bs:again") st.alarm = null;
     logEvent(label, "confirmed", "ok"); say(`${label}: confirmed`);
@@ -3896,8 +3912,9 @@ function renderRig() {
   const vn = $("#vnote-2");
   setText(vn, setNow ? `SET THEM FOR STEP ${ro + 1} (${M.RECIPE.steps[ro].n.toUpperCase()})` : out ? `SHOWN FOR STEP ${ro + 1} (${M.RECIPE.steps[ro].n.toUpperCase()})` : "SHOWN FOR RECIRCULATING");
   vn.classList.toggle("set", setNow);
-  setText($("#rig-d"), rigDesc(ro, held, setNow, post) + slayerDesc());
+  setText($("#rig-d"), rigDesc(ro, held, setNow, post) + slayerDesc() + lvDesc());
   renderSlayer(live);
+  renderLevels();
   on("#el-hlt", live && a.hltEl.on); on("#el-bk", live && a.bkEl.on);
   ["hlt", "mt", "bk"].forEach(v => { const n = $("#needle-" + v); if (n && st.v[v].pv != null) n.setAttribute("transform", `rotate(${needleAngle(st.v[v].pv).toFixed(1)})`); });
 }
@@ -3972,6 +3989,346 @@ function slayerLine() {
   if (ss === "hand") return `${esc(ssCap())}: mister ${misterOn() ? "open" : "closed"} · set by hand`;
   return `${esc(ssCap())}: mister ${st.link === "lost" ? "last " : ""}${misterOn() ? "on" : "off"}`;
 }
+/* ---------- the liquid in each vessel (design/brewday LEVELS.md) ----------
+   Shown while M.LV is "tint": live, while CraftBeerPi's BREWDAY_LEVELS isn't No (Yes is its default; a CraftBeerPi
+   without the setting shows them too, once its settings are in); in the demo, a moment's own (the #lv-… moments) or
+   ?levels=tint, the mockup's flag. Off, nothing is drawn, no line is added on a phone and BrewScribe is asked nothing
+   more: the screen is as it was without them. The rig has no level sensors, so a figure is worked out from the recipe
+   and the steps unless a volume was typed into BrewScribe: worked out, its surface is dashed and its figure has "≈".
+   While liquid is on its way (a move, the runoff, the boil-off) the screen can't know where it is, so the range it is
+   somewhere in is hatched, from where it was to where it is going, and nothing moves on its own. Where CraftBeerPi
+   lacks a figure a vessel's state needs, that vessel shows nothing for it rather than a guess */
+const lvMode = () => (M && M.LV) || "";
+/* the brewery's volume unit, as the Hardware page keeps a kettle's figures (util/mashwater.js leastWater): gal on a °F
+   brewery, L on a °C one; a figure in another ("gal" or "L") in it; and its words */
+const lvU = () => M.U === "°C" ? "L" : "gal";
+const lvTo = (x, from) => x == null ? null : from === lvU() ? x : lvU() === "L" ? x * GAL_L : x / GAL_L;
+const lvUnitSay = () => lvU() === "L" ? "litres" : "gallons";
+const lvPos = x => { const n = num(x); return n != null && n > 0 ? n : null; };
+/* a kettle's figures from the Hardware page: live, CraftBeerPi's kettle; in the demo, a moment's st.vessels, which with
+   the levels are laid over the mockup's examples (DEMO.LV_HW). Its capacity scales the fill: without one a vessel shows
+   its figure but no fill and no MIN */
+const lvK = v => (DEMO_MODE ? (st.vessels || {})[v] : M.K && M.K[v]) || {};
+const lvCap = v => lvPos(lvK(v).capacity);
+/* MIN, the least water over a kettle's element and coil (Least water on the Hardware page): the HLT's as the strike
+   water helper has it (GET /step2/strike: its own, else 15% of its capacity, else 3 gal or 11.4 L); another kettle's
+   only when its own is set */
+function lvLeast(v) {
+  if (v === "hlt") {
+    const L = swLeast(), from = swVU();
+    return Object.assign({}, L, {value: lvTo(L.value, from), capacity: L.capacity == null ? null : lvTo(L.capacity, from)});
+  }
+  const own = lvPos(lvK(v).min_water);
+  return own == null ? null : {value: Math.round(own * 100) / 100, from: "hardware", capacity: lvCap(v)};
+}
+/* how much a pound of grain adds to the mash, a common rule of thumb (about 0.67 L a kg) */
+const LV_GRAIN = 0.08;
+const lvF = g => (Math.round(g * 10) / 10).toFixed(1);
+/* where MIN comes from, for its title */
+function lvLeastFrom(least, vu) {
+  if (!least || least.from === "hardware") return "its least water on the Hardware page";
+  if (least.from === "capacity") return `${Math.round(LEAST_SHARE * 100)}% of its ${least.capacity != null ? `${+(+least.capacity).toFixed(2)} ${vu} ` : ""}capacity, until its least water is set on the Hardware page`;
+  return `a cautious ${+(+least.value).toFixed(2)} ${vu}, as the Hardware page gives neither its least water nor its capacity`;
+}
+/* the figures the levels are worked out from, in the brewery's unit, null where CraftBeerPi hasn't one. The HLT's water
+   (W: BrewStart's, or the one given on Brew Day), the strike water to the mash tun with the tun's dead space (K: the
+   mash water) and the grain, from the strike water helper (GET /step2/strike) for the recipe loaded; the mash (K and
+   the grain); the sparge water, the recipe's water less the mash water (recipeWater: its boil volume, what the grain
+   keeps by GRAIN_ABSORPTION and what is lost under the mash), and its boil volume (BeerSmith's BOIL_SIZE), from its
+   mash numbers. CraftBeerPi has no volume after the boil yet (post). The demo's are the mockup's: Test Recipe v5's
+   15 gal of BrewStart's water, 8.26 gal of strike water, 20 lb of grain, 5.00 gal of sparge water and a 7.00 gal boil,
+   6.3 gal after it */
+function lvFig() {
+  if (DEMO_MODE) {
+    const F = DEMO.SW_FROM, K = F.forGrain + F.dead;
+    return {W: (st.swd && st.swd.vol) || DEMO.SW_VOL0, K, mash: K + F.grainLb * LV_GRAIN, grain: `${F.grainLb} lb`, sparge: 5.0, boil: 7.0, post: 6.3};
+  }
+  const S = st.sw && swSameRecipe(st.sw) ? st.sw : null, R = (S && S.recipe) || {}, I = (S && S.inputs) || {};
+  const vu = swVU(), mu = swMU(), W = lvTo(lvPos(I.vol), vu), K = lvTo(lvPos(R.strike_vol), vu), g = lvPos(R.grain);
+  const kg = g == null ? null : mu === "kg" ? g : g * KG_PER_LB;
+  const mash = K == null || kg == null ? null : K + lvTo(kg / KG_PER_LB * LV_GRAIN, "gal");
+  const mn = ((last && last.basic) || {}).mash_numbers, w = recipeWater(mn, cfg(last && last.config, "GRAIN_ABSORPTION"), M.C === "F" ? "F" : "C");
+  const total = w ? lvTo(w.total, w.unit === "L" ? "L" : "gal") : null, sparge = total != null && K != null && total - K > 0 ? total - K : null;
+  return {W, K, mash, grain: g == null ? "" : `${+g.toFixed(1)} ${mu}`, sparge, boil: lvTo(lvPos(mn && mn.boil_l), "L"), post: null};
+}
+/* the recipe's steps all done: live, CraftBeerPi keeps them so until a recipe is loaded or reset; in the demo, a
+   moment's finished flag */
+const lvDone = () => DEMO_MODE ? !!st.finished : M.RECIPE.steps.length > 0 && M.RECIPE.steps.every(s => s.status === "D");
+/* each vessel's contents, from the step list alone. kind: water, mash, wort or grain (spent grain, after the runoff);
+   gal, its amount in the brewery's unit; to, while it is on its way to another figure; from, the words for where the
+   figure comes from. A recipe's first steps decide: BrewStart running means its water is in the HLT; its hold, asking
+   for the strike water to be moved, means the strike water is on its way; MashIn done means the grain is in; the runoff
+   running means the sparge water and the wort are on their way; the boil running, once it boils, means the wort is
+   boiling off. A recipe without BrewStart takes the HLT's water once it has begun. The point of the day this is (P, for
+   the volumes read in BrewScribe, lvRead): -1, the recipe loaded and BrewStart not yet running; 0, BrewStart's water
+   in the HLT; 1, the strike water on its way; 2, the mash; 3, the sparge water and the wort on their way; 4, the runoff
+   over; 5, boiling; 6, the boil over */
+function lvState() {
+  const S = M.RECIPE.steps, r = st.recipe, fin = lvDone();
+  if (!r && !fin) return {};
+  const begun = fin || (r && (r.cur > 0 || stepStatus(0) !== "I"));
+  const at = f => S.findIndex(f), ss = i => i < 0 ? (begun ? "D" : "I") : stepStatus(i);
+  const bs = at(s => s.type === "BrewStart"), mi = at(s => s.k === "mt" && (s.type === "MashInStep" || /^mash ?in$/i.test(s.n))), ro = at(s => collectsWort(s)), bo = at(s => s.boil);
+  const bsS = ss(bs), miS = ss(mi), boS = ss(bo), roS = ro < 0 ? (boS === "I" && !(r && r.held) ? "I" : "D") : ss(ro);
+  const F = lvFig();
+  if (bsS === "I") return lvRead({}, -1, F);
+  const W = F.W, K = F.K, H1 = W != null && K != null ? W - K : null, H2 = H1 != null && F.sparge != null ? H1 - F.sparge : null, L = {};
+  if (bsS !== "D") {
+    /* BrewStart holding the strike water hot asks for it to be moved (an older recipe's strike water step asks in its
+       own words, SW_ASK) */
+    if ((r && r.bsHeat === "holding") || (st.banner && st.banner.text === DEMO.SW_ASK)) {
+      if (H1 != null) L.hlt = {kind: "water", gal: W, to: H1, from: "strike water out"};
+      if (K != null) L.mt = {kind: "water", gal: 0, to: K, from: "strike water in"};
+      return lvRead(L, 1, F);
+    }
+    if (W != null) L.hlt = {kind: "water", gal: W, from: "BrewStart's water"};
+    return lvRead(L, 0, F);
+  }
+  const running = roS === "A" || roS === "S";
+  const flowing = running && !(S[ro] && S[ro].type === "SpargeStep" && !(r && r.started));
+  let P = roS === "D" ? 4 : flowing ? 3 : 2;
+  const hlt = roS === "D" ? H2 != null && {kind: "water", gal: H2, from: "less the sparge water"}
+    : flowing ? H2 != null && {kind: "water", gal: H1, to: H2, from: "sparge water out"} : H1 != null && {kind: "water", gal: H1, from: "less the strike water"};
+  if (hlt) L.hlt = hlt;
+  const mt = roS === "D" ? {kind: "grain", gal: 0, from: "the runoff is over"}
+    : miS === "D" ? F.mash != null && {kind: "mash", gal: F.mash, from: `strike water and ${F.grain} of grain`} : K != null && {kind: "water", gal: K, from: "the strike water"};
+  if (mt) L.mt = mt;
+  if (flowing) { if (F.boil != null) L.bk = {kind: "wort", gal: 0, to: F.boil, from: "running off"}; }
+  else if (roS === "D") {
+    const boiling = (boS === "A" || boS === "S") && r && !r.wait;
+    if (boS === "D") P = 6; else if (boiling) P = 5;
+    /* with no volume after the boil, the boil volume, said as before the boil-off, from the boil's start */
+    const pre = F.boil != null && {kind: "wort", gal: F.boil, from: "before the boil-off"};
+    const bk = boS === "D" ? (F.post != null ? {kind: "wort", gal: F.post, from: "the recipe's volume after the boil"} : pre)
+      : boiling ? (F.post != null && F.boil != null ? {kind: "wort", gal: F.boil, to: F.post, from: "boiling off"} : pre)
+      : F.boil != null && {kind: "wort", gal: F.boil, from: "the recipe's boil volume"};
+    if (bk) L.bk = bk;
+  }
+  return lvRead(L, P, F);
+}
+/* a volume typed into BrewScribe (LEVELS.md). BrewScribe's answer to GET /brewscribe/api/brew-day/readings (Brew Day's
+   copy, st.scribe) gives in vessel_volumes the newest volume read in each vessel that still stands in its open log
+   (BrewScribe 0.1.0.dev60), in its volume_unit. Each says what its vessel held at the point of the day its stage names,
+   whenever it was typed (a strike water volume typed after the move still says what the HLT held before it); the HLT's
+   levels around the sparge say so by their reading */
+const LV_AT = {strike_water: 0, mash: 2, mash_start: 2, mash_end: 2, first_runnings: 3, last_runnings: 3, pre_boil: 4, boil: 5, post_boil: 6, transfer: 6};
+const lvAt = R => R.reading === "level_before" ? 2 : R.reading === "level_after" ? 4 : LV_AT[R.stage];
+/* where liquid moves in or out of each vessel, at the point of the day it moves: out by a recipe figure (out, from the
+   figures; null where CraftBeerPi hasn't it), with the words for it on its way and gone; or to a figure the recipe sets
+   (to: the strike water into the mash tun, the runoff leaving it spent grain and filling the boil kettle to the boil
+   volume), which a reading before it can't change */
+const LV_MOVES = {
+  hlt: {1: {out: F => F.K, going: "strike water out", gone: "strike water"}, 3: {out: F => F.sparge, going: "sparge water out", gone: "sparge water"}},
+  mt: {1: {to: true}, 3: {to: true}},
+  bk: {3: {to: true}, 5: {out: F => F.boil != null && F.post != null ? F.boil - F.post : null, going: "boiling off", gone: "boil-off"}}};
+/* the kettles' CraftBeerPi ids, which BrewScribe saves with a reading (vessel_id), and their names; a reading saved
+   without an id counts as its vessel name's */
+const lvId = v => DEMO_MODE ? DEMO.KID[v] : M.K && M.K[v] ? M.K[v].id : null;
+const lvName = v => DEMO_MODE ? DEMO.KNAME[v] : M.K && M.K[v] ? String(M.K[v].name ?? "") : null;
+const lvReadOf = (A, v) => ((A && A.vessel_volumes) || []).find(x => x.vessel_id ? x.vessel_id === lvId(v) : x.vessel === lvName(v));
+/* a reading BrewScribe has just taken, put into Brew Day's copy of its answer (phHad) and the demo's BrewScribe
+   (rdTake) at once, vessel_volumes too, so READ shows as SAVE is answered; the next ask replaces it with BrewScribe's
+   own. Read now: the moment's clock in the demo, the PC's live, as BrewScribe keeps it; in the vessel the reminder names,
+   with its CraftBeerPi id where a kettle has that name */
+function lvTaken() {
+  if (DEMO_MODE) return {at: DEMO.lvIso(st.t)};
+  return {at: new Date().toISOString(), vid: ves => { const v = ROLES.find(k => M.K && M.K[k] && String(M.K[k].name) === ves); return {vessel_id: v ? M.K[v].id : null, vessel: ves}; }};
+}
+/* its volume in the brewery's unit: BrewScribe gives it in its own volume_unit, which can be litres on a °F brewery */
+const lvGal = R => lvTo(R.value, R.unit === "l" ? "L" : "gal");
+/* when it was read, in CraftBeerPi's clock format ("3:42 PM"), with the day's short name when it wasn't today by
+   CraftBeerPi's clock (the demo's today is the mockup's, 25 Nov). It is the PC's time BrewScribe kept, so on a
+   simulator running faster than real time it isn't the simulator's clock */
+function lvWhen(R) {
+  const d = new Date(R.read_at);
+  if (Number.isNaN(+d)) return "";
+  const c = DEMO_MODE ? null : clockNow(), today = DEMO_MODE ? ymdOf(new Date(2026, 10, 25)) : c ? c.ymd : ymdOf(new Date());
+  const day = ymdOf(d) === today ? "" : `${d.toLocaleDateString("en-US", {weekday: "short"})} `;
+  return day + tod(d.getHours() * 3600 + d.getMinutes() * 60);
+}
+/* a volume read in BrewScribe in place of the estimate, by the brewer's choice: while nothing has moved in or out of its
+   vessel since the point it describes, it stands as READ; from then on the estimate works forward from it, by the
+   recipe's figures for each move. A reading for a point the steps haven't reached yet (typed ahead, or a recipe started
+   again) isn't used. One taken while liquid was on its way says where it was then: it stands until that move is over,
+   and the vessel goes back to the estimate after it, as it does after a move to a figure the recipe sets. Where the
+   recipe's figure for a move isn't known, an HLT reading isn't worked forward past it; the boil kettle's is kept, said
+   as before the boil-off */
+function lvRead(L, P, F) {
+  const A = st.scribe;
+  ["hlt", "mt", "bk"].forEach(v => {
+    const R = lvReadOf(A, v), p = R && lvAt(R);
+    if (p == null || p > Math.max(P, 0)) return;
+    const o = L[v], Mv = LV_MOVES[v], gal = lvGal(R), kind = o && o.kind !== "grain" ? o.kind : LV_VKIND[v];
+    const read = {gal, at: lvWhen(R), text: R.text, stage: R.stage_name, corrected: !!R.corrected};
+    const after = Object.keys(Mv).map(Number).filter(m => m > p && m <= P);
+    if (Mv[p] ? P <= p : !after.length) {
+      const to = Mv[p] && o && o.to != null && (o.to - o.gal) * (o.to - gal) > 0 && Math.abs(o.to - gal) >= 0.05 ? o.to : undefined;
+      L[v] = {kind, gal, to, from: o && to != null ? o.from : "", read, stand: true};
+      return;
+    }
+    if (Mv[p] || after.some(m => Mv[m].to)) return;
+    let g = gal;
+    const gone = [];
+    for (const m of after) {
+      const out = Mv[m].out(F);
+      if (out == null) {
+        if (v === "bk") L[v] = {kind, gal: g, from: `read ${lvF(gal)}, before the ${Mv[m].gone}`, read};
+        return;
+      }
+      const end = Math.max(0, g - out);
+      if (m === P) { L[v] = {kind, gal: g, to: end, from: `read ${lvF(gal)}, ${Mv[m].going}`, read}; return; }
+      g = end; gone.push(Mv[m].gone);
+    }
+    L[v] = {kind, gal: g, from: `read ${lvF(gal)}, less the ${gone.length > 1 ? "strike and sparge water" : gone[0]}`, read};
+  });
+  return L;
+}
+/* a level sensor per vessel (LEVELS.md): none on the rig yet, perhaps later, so live there are none (M.LSENS). The
+   Hardware page would name a vessel's sensor, a CraftBeerPi sensor that reads its volume; in the demo a moment's lsens,
+   or ?lsens=hlt,mt,bk. Its reading: a moment's lvm (null for a sensor with no reading), else a stand-in, the estimate's
+   figure (midway while it moves). A reading is drawn solid and its figure has no "≈"; the estimate stays dashed beside
+   it. A reading and the estimate differ when the reading is more than a quart (about 1 L) from the estimate's figure,
+   or outside the range a move is in */
+const lvAgree = () => lvU() === "L" ? 1 : 0.25;
+const LV_VKIND = {hlt: "water", mt: "water", bk: "wort"};
+function lvMeas(v, o) {
+  if (!(M.LSENS || []).includes(v)) return null;
+  const g = st.lvm && v in st.lvm ? st.lvm[v] : !o || o.kind === "grain" ? 0 : o.to != null ? Math.round((o.gal + o.to) * 5) / 10 : o.gal;
+  return g == null ? {none: true} : {gal: g, live: st.link !== "lost"};
+}
+/* how far a reading is from the estimate: 0 when they agree */
+function lvDiff(o, g) {
+  if (!o || o.kind === "grain") return 0;
+  const lo = Math.min(o.gal, o.to ?? o.gal), hi = Math.max(o.gal, o.to ?? o.gal), d = g < lo ? g - lo : g > hi ? g - hi : 0;
+  return Math.abs(d) > lvAgree() ? d : 0;
+}
+/* a vessel's estimate (o, as lvState gives it), its reading (m), whether its sensor has no reading (none), and the
+   estimate that can be drawn (est: not spent grain) */
+function lvView(v, L) {
+  const o = L[v], r = lvMeas(v, o);
+  return {o, m: r && !r.none ? r : null, none: !!(r && r.none), est: o && o.kind !== "grain" ? o : null};
+}
+const LV_KIND = {water: "Water", mash: "Mash", wort: "Wort"};
+const lvLess = d => `${lvF(Math.abs(d))} ${d < 0 ? "less" : "more"}`;
+/* a vessel's figure in words: the phone's line, the drawing's tooltip */
+function lvLine(v, L = lvState()) {
+  const {o, m, none, est} = lvView(v, L), u = lvU();
+  if (m) {
+    const name = est ? LV_KIND[est.kind] : o ? "Spent grain:" : LV_KIND[LV_VKIND[v]];
+    if (!m.live) return `${name} last reading ${lvF(m.gal)} ${u}`;
+    if (!est) return m.gal < 0.05 ? (o ? "Spent grain · no liquid measured" : "Empty · measured") : `${name} ${lvF(m.gal)} ${u} measured`;
+    if (est.to != null) return `${name} ${lvF(m.gal)} ${u} measured → ≈ ${lvF(est.to)} · ${est.from}`;
+    const d = lvDiff(est, m.gal);
+    /* a volume read in BrewScribe beside the sensor is said as read, not as the estimate */
+    if (est.stand) return `${name} ${lvF(m.gal)} ${u} measured · read ${lvF(est.gal)}${est.read.at ? ` at ${est.read.at}` : ""}${d ? `, ${lvLess(d)}` : ""}`;
+    return `${name} ${lvF(m.gal)} ${u} measured · estimate ≈ ${lvF(est.gal)}${d ? `, ${lvLess(d)}` : ""}`;
+  }
+  if (!o) return none ? "Level sensor: no reading" : "";
+  if (o.kind === "grain") return `Spent grain · ${o.from}`;
+  /* read in BrewScribe: its figure with no "≈", and when it was read */
+  if (o.stand) return `${LV_KIND[o.kind]} ${lvF(o.gal)}${o.to != null ? ` → ≈ ${lvF(o.to)}` : ""} ${u} · read${o.read.at ? ` at ${o.read.at}` : " in BrewScribe"}${o.to != null ? `, ${o.from}` : ""}`;
+  return `${LV_KIND[o.kind]} ${o.to != null ? `${o.gal ? lvF(o.gal) : "0"} → ≈ ${lvF(o.to)}` : `≈ ${lvF(o.gal)}`} ${u} · ${none ? "level sensor: no reading" : o.from}`;
+}
+const lvY = (v, g) => 298 - Math.max(0, Math.min(g, lvCap(v))) / lvCap(v) * 186;
+/* READ's mark: a small pointer on the inside of the vessel's right wall at the surface read, as a hand mark beside a
+   sight glass, so a volume read differs in shape from a measured surface (solid, no mark) and the estimate (dashed) */
+const lvMark = (k, y) => `<path class="lv-rm ${k}" d="M112 ${r1(y - 8)} L96 ${y} L112 ${r1(y + 8)} Z"/>`;
+function lvSVG(v, V) {
+  const {o, m, est} = V, y = g => r1(lvY(v, g));
+  if (!est && !m) return "";
+  const k = (est ? est.kind : LV_VKIND[v]) === "water" ? "water" : "wort";
+  const rd = est && est.read, when = rd ? `${rd.at ? ` at ${rd.at}` : ""} in BrewScribe${rd.corrected ? ", corrected there" : ""}` : "";
+  const why = m ? (m.live ? `. Measured by its level sensor${est ? (est.stand ? `; the line with the mark is the volume read${when}` : "; the dashed line is the estimate") : ""}.` : ". The last reading before the connection was lost.")
+    : est.stand ? `. Typed into BrewScribe${rd.corrected ? " and corrected there" : ""}, not measured: it stands until liquid next moves in or out.`
+    : rd ? `. Worked out from the ${lvF(rd.gal)} ${lvU()} read${when}, not measured.` : ". Worked out, not measured.";
+  let s = `<title>${esc(lvLine(v))}${why}</title>`;
+  if (!lvCap(v)) return s;
+  /* measured: the tint to the reading, and its surface solid; beside it the estimate's surface (where a move is going)
+     dashed, or a volume read in BrewScribe, solid with its mark, with no tint or hatching of their own. With no
+     connection the last reading's surface is in the drawing's steel, with no tint */
+  if (m) {
+    if (m.live && m.gal > 0) s += `<rect class="lv-body ${k}" x="-112" y="${y(m.gal)}" width="224" height="${r1(320 - y(m.gal))}"/>`;
+    if (est && est.stand && est.gal > 0) s += `<path class="lv-top read ${k}" d="M-112 ${y(est.gal)} H112"/>${lvMark(k, y(est.gal))}`;
+    const e = est ? (est.stand ? est.to : est.to ?? est.gal) : 0;
+    if (e > 0) s += `<path class="lv-top ${k}" d="M-112 ${y(e)} H112"/>`;
+    if (m.gal > 0) s += `<path class="lv-top meas ${m.live ? k : "stale"}" d="M-112 ${y(m.gal)} H112"/>`;
+    return s;
+  }
+  const to = o.to ?? o.gal, lo = Math.min(o.gal, to), hi = Math.max(o.gal, to);
+  if (lo > 0) s += `<rect class="lv-body ${k}" x="-112" y="${y(lo)}" width="224" height="${r1(320 - y(lo))}"/>`;
+  if (hi > lo) s += `<rect class="lv-band" x="-112" y="${y(hi)}" width="224" height="${r1(y(lo) - y(hi))}" fill="url(#lvh-${k})"/>`;
+  /* read: its surface solid with its mark, where it was read; worked out: dashed. While on its way, the dashed surface
+     is where it is going */
+  if (o.stand) {
+    if (o.gal > 0) s += `<path class="lv-top read ${k}" d="M-112 ${y(o.gal)} H112"/>${lvMark(k, y(o.gal))}`;
+    if (o.to != null && o.to > 0) s += `<path class="lv-top ${k}" d="M-112 ${y(o.to)} H112"/>`;
+  } else if (to > 0) s += `<path class="lv-top ${k}" d="M-112 ${y(to)} H112"/>`;
+  return s;
+}
+/* the dome's figure. Worked out: "≈ 6.7 GAL", "→ ≈ 6.7 GAL" while on its way, SPENT GRAIN. Read in BrewScribe:
+   "15.4 GAL READ", also while still on its way (the dashed surface above shows where to; the dome has no room for
+   both). Measured: "6.4 GAL", with the estimate (or the volume read) beside it only when they differ ("6.4 GAL ·
+   ≈ 7.0", "6.4 · READ 6.9"), "3.1 → ≈ 7.0 GAL" while on its way, EMPTY, and "LAST 6.4 GAL" with no connection. A
+   sensor with no reading: the estimate's. L on a °C brewery */
+function lvDome(V) {
+  const {o, m, est} = V, U = lvU().toUpperCase();
+  if (m) {
+    if (!m.live) return `LAST ${lvF(m.gal)} ${U}`;
+    if (est && est.to != null) return `${lvF(m.gal)} → ≈ ${lvF(est.to)} ${U}`;
+    if (m.gal < 0.05 && !est) return o ? "SPENT GRAIN" : "EMPTY";
+    return est && lvDiff(est, m.gal) ? (est.stand ? `${lvF(m.gal)} · READ ${lvF(est.gal)}` : `${lvF(m.gal)} ${U} · ≈ ${lvF(est.gal)}`) : `${lvF(m.gal)} ${U}`;
+  }
+  if (!o) return "";
+  if (o.stand) return `${lvF(o.gal)} ${U} READ`;
+  return o.kind === "grain" ? "SPENT GRAIN" : o.to != null ? `→ ≈ ${lvF(o.to)} ${U}` : o.gal > 0 ? `≈ ${lvF(o.gal)} ${U}` : "";
+}
+/* the figures in the drawing, on every render; drawn again only when they change */
+function renderLevels() {
+  if (!lvMode() || !$("#lv-hlt")) return;
+  const L = lvState(), lid = $("#ss-lidt") && $("#ss-lidt").textContent, u = lvU();
+  ["hlt", "mt", "bk"].forEach(v => {
+    const V = lvView(v, L), g = $("#lv-" + v), html = lvSVG(v, V);
+    if (!g) return;
+    if (g.dataset.k !== html) { g.innerHTML = html; g.dataset.k = html; }
+    /* the boil kettle's figure gives way to the lid's question while the lid reminder waits */
+    const t = $("#lvt-" + v), txt = v === "bk" && lid ? "" : lvDome(V);
+    if (t.textContent !== txt) t.textContent = txt;
+    /* MIN, the kettle's least water, with where it comes from; never coloured or alarmed, whatever is under it */
+    const least = (V.o || V.m) && lvCap(v) ? lvLeast(v) : null, m = $("#lvm-" + v), y = least ? r1(lvY(v, least.value)) : null;
+    const mh = y == null ? "" : `<title>MIN ${lvF(least.value)} ${u}, the least water over the element: ${esc(lvLeastFrom(least, u))}</title><path class="lv-mtick" d="M-122 ${y} H-100"/><text class="lv-mt" x="-126" y="${r1(y + 5)}">MIN</text>`;
+    if (m.dataset.k !== mh) { m.innerHTML = mh; m.dataset.k = mh; }
+  });
+}
+/* the drawing's words for screen readers */
+function lvDesc() {
+  if (!lvMode()) return "";
+  const L = lvState(), K = {water: "water", mash: "mash", wort: "wort"}, us = lvUnitSay();
+  const when = o => `read${o.read.at ? ` at ${o.read.at}` : ""} in BrewScribe`;
+  const say = o => o.kind === "grain" ? "only spent grain, the runoff over"
+    : o.stand ? `${lvF(o.gal)} ${us} of ${K[o.kind]}, ${when(o)}${o.to != null ? `, on its way to about ${lvF(o.to)}` : ""}`
+    : o.to != null ? `from ${o.gal ? lvF(o.gal) : "0"} to about ${lvF(o.to)} ${us} of ${K[o.kind]}, ${o.from}` : `about ${lvF(o.gal)} ${us} of ${K[o.kind]}, ${o.from}`;
+  let measured = false, read = false;
+  const parts = ["hlt", "mt", "bk"].map(v => {
+    const {o, m, none, est} = lvView(v, L), name = M.VNAME[v].toLowerCase();
+    if (o && o.read) read = true;
+    if (m) {
+      measured = true;
+      if (!m.live) return `${name}, ${lvF(m.gal)} ${us} at its last reading, before the connection was lost`;
+      if (m.gal < 0.05 && !est) return `${name}, ${o ? "no liquid with the spent grain" : "empty"}, measured`;
+      const s = `${name}, ${lvF(m.gal)} ${us} ${est ? `of ${K[est.kind]}` : o ? "with the spent grain" : `of ${K[LV_VKIND[v]]}`}, measured`;
+      if (!est) return s;
+      if (est.to != null) return `${s}, on its way to about ${lvF(est.to)}`;
+      const d = lvDiff(est, m.gal), what = est.stand ? `${lvF(est.gal)} ${us} were ${when(est)}` : `the estimate is about ${lvF(est.gal)}`;
+      return `${s}; ${what}${d ? `, so ${lvF(Math.abs(d))} ${us} ${d < 0 ? "less" : "more"} than expected` : ""}`;
+    }
+    if (!o) return none ? `${name}, its level sensor has no reading` : null;
+    return `${name}, ${say(o)}${none ? ", worked out, as its level sensor has no reading" : ""}`;
+  }).filter(Boolean);
+  if (!parts.length) return "";
+  const typed = read ? ", or from a volume read in BrewScribe where it says so" : "";
+  return measured ? ` Liquid in each vessel, measured where it has a level sensor, otherwise worked out from the recipe and its steps${typed}: ${parts.join("; ")}.`
+    : ` Liquid, worked out from the recipe and its steps${typed}, not measured: ${parts.join("; ")}.`;
+}
 function drawRig() {
   if (!root) return;
   /* --rig-r: room left at the drawing's right for + TIMER and SOUND where they can't clear it (tsideCorner) */
@@ -3980,10 +4337,10 @@ function drawRig() {
   const W = Math.max(1200, Math.round(RIG_H * w / h));
   /* with graphs in the faceplates the drawing gets shorter, so its labels grow to stay readable (up to 1.3 times) */
   const rs = GRAPHS === "face" ? Math.round(Math.min(1.3, Math.max(1, 0.68 / Math.min(h / RIG_H, w / 1200))) * 100) / 100 : 1;
-  if (Math.abs(W - rigW) < 4 && rs === rigRs && slayer() === rigSs && $("#rigsvg")) return;
-  rigW = W; rigRs = rs; rigSs = slayer();
+  if (Math.abs(W - rigW) < 4 && rs === rigRs && slayer() === rigSs && lvMode() === rigLv && $("#rigsvg")) return;
+  rigW = W; rigRs = rs; rigSs = slayer(); rigLv = lvMode();
   // after the boil, the wort pump at the boil kettle on its loop through the chiller (the mockup's ?wp=chill)
-  box.innerHTML = rigSVG(LAYOUT === "b" ? "line" : "kettle", W, rs, "chill", rigSs);
+  box.innerHTML = rigSVG(LAYOUT === "b" ? "line" : "kettle", W, rs, "chill", rigSs, rigLv);
   renderRig();
   tsideCorner();
 }
@@ -4124,8 +4481,9 @@ function renderAll() {
   if (PAGE) return;
   keepStepInView();
   tPlaceFit();
-  // the boil kettle's condenser fitted or taken off (the Hardware page), or its mister's switch named: drawn again
-  if (slayer() !== rigSs && $("#rigsvg")) drawRig();
+  // the boil kettle's condenser fitted or taken off (the Hardware page), or its mister's switch named, or the levels turned
+  // on or off (Settings): drawn again
+  if ((slayer() !== rigSs || lvMode() !== rigLv) && $("#rigsvg")) drawRig();
   renderRig();
   /* with no timers: + TIMER and SOUND placed clear of the drawing as it now reads */
   tsideCorner();
@@ -5104,9 +5462,9 @@ function phAsk() {
   Object.assign(st, {scribeAsking: who, scribeTried: who, scribeAt: Date.now()});
   const took = A => {
     st.scribeAsking = null;
-    const was = phView();
+    const was = phView(), vv = lvVV();
     st.scribe = rdClean(A); st.scribeSeen = who;
-    if (phView() !== was) renderAll();
+    if (phView() !== was || lvVV() !== vv) renderAll();
   };
   if (DEMO_MODE) {
     const none = st.scribeMock.get === "none";
@@ -5126,12 +5484,18 @@ function phAsk() {
 }
 /* what the screen shows from BrewScribe for the reminder in the title bar */
 function phView() { const o = phOffer(); return o ? JSON.stringify([o.A.log, o.A.why_not, o.A.temperature_unit, o.A.volume_unit, o.A.volume_label, o.rem]) : ""; }
+/* and the volumes read in each vessel, while the levels show them */
+const lvVV = () => lvMode() && st.scribe ? JSON.stringify(st.scribe.vessel_volumes || []) : "";
 /* every real second: while a reminder BrewScribe names is up, or one it hasn't answered for, Brew Day asks again every
-   15 s, so a reading saved on BrewScribe's page shows here too */
+   15 s, so a reading saved on BrewScribe's page shows here too. With the levels on, it asks every 15 s while a recipe is
+   loaded, reminder or not, where BrewScribe is installed (its tab), so a volume typed on BrewScribe's page shows within
+   15 s; with them off, only for a reminder, as before */
+const scribeHere = () => !!(root && root.querySelector('.tabs a[data-tab="BrewScribe"]'));
 function phPoll() {
-  if (!st || !("scribe" in st)) return;
+  if (!st || !("scribe" in st) || st.scribeAsking || st.link === "lost") return;
   const x = st.banner, who = phWho(x);
-  if (who == null || x.tone !== "prompt" || x.timer != null || st.scribeAsking || st.link === "lost" || (st.scribeSeen === who && !phOffer(x))) return;
+  const rem = who != null && x.tone === "prompt" && x.timer == null && !(st.scribeSeen === who && !phOffer(x));
+  if (!rem && !(lvMode() && M.RECIPE && M.RECIPE.steps.length && scribeHere())) return;
   if (Date.now() - st.scribeAt >= PH_ASK * 1000) phAsk();
 }
 /* RECORD pH: the box opens under the reminder, LOG's list closing (one at a time), the pH empty and focus in it with its
@@ -5292,7 +5656,7 @@ function phHad(b, res) {
     if (!st.scribe) return;
     const said = res && Array.isArray(res.saved) ? res.saved : [];
     b.readings.forEach(r => {
-      try { DEMO.rdApply(st.scribe, b.title, r); } catch (_) { return; } /* a copy it can't follow waits for the next ask */
+      try { DEMO.rdApply(st.scribe, b.title, r, lvTaken()); } catch (_) { return; } /* a copy it can't follow waits for the next ask */
       const s = said.find(y => y && y.entry_id === r.entry_id && typeof y.text === "string");
       if (s && r.kind !== "level" && r.kind !== "sparge_water") st.scribe.reminders.forEach(m => m.readings.filter(y => y.kind === r.kind && y.saved && y.saved.entry_id === r.entry_id).forEach(y => { y.saved.text = s.text; }));
     });
@@ -5436,6 +5800,13 @@ function rdClean(A) {
   return Object.assign({}, A, {log: obj(A.log) && str(A.log.day_id) ? A.log : null, why_not: str(A.why_not) ? A.why_not : null,
     temperature_unit: A.temperature_unit === "f" || A.temperature_unit === "c" ? A.temperature_unit : null,
     volume_unit: vu, volume_label: vu ? (str(A.volume_label) && A.volume_label.trim() ? A.volume_label : l ? "L" : "gal") : null,
+    /* the volume read in each vessel (BrewScribe 0.1.0.dev60), for the levels: each only with a vessel (its kettle's id or
+       name), a figure of 0 or more in us_gal or l, a time it was read, a stage and one of the readings the levels know;
+       anything else is dropped, so an older BrewScribe means no READ, never a broken drawing */
+    vessel_volumes: (Array.isArray(A.vessel_volumes) ? A.vessel_volumes : []).filter(x => obj(x) && (str(x.vessel_id) || str(x.vessel)) && num(x.value) && x.value >= 0
+      && (x.unit === "us_gal" || x.unit === "l") && str(x.read_at) && !Number.isNaN(Date.parse(x.read_at)) && str(x.stage)
+      && ["volume", "level_before", "level_after"].includes(x.reading))
+      .map(x => Object.assign({}, x, {vessel_id: str(x.vessel_id) && x.vessel_id ? x.vessel_id : null, vessel: str(x.vessel) ? x.vessel : null})),
     reminders: A.reminders.filter(m => obj(m) && str(m.title) && str(m.stage_name)).map(m => {
       const kinds = new Set();
       const readings = (Array.isArray(m.readings) ? m.readings : []).map(one).filter(r => r && !kinds.has(r.kind) && kinds.add(r.kind));
@@ -5806,7 +6177,7 @@ function rdTake(b) {
   if (!S.log) return [409, {error: S.why_not, reason: "no_open_log"}];
   if (S.log.day_id !== b.day_id) return [409, {error: "BrewScribe's open log has changed, so this reading wasn't saved. Check BrewScribe's page, then try again.", reason: "log_changed"}];
   if (rem.vessel_problem) return [409, {error: `${rem.vessel_problem} This reading wasn't saved: record it on BrewScribe's page.`, reason: "vessel_unknown"}];
-  return [201, ok(L.map((r, i) => { if (SM.ids[r.entry_id] == null) { SM.ids[r.entry_id] = keys[i]; said[r.entry_id] = DEMO.rdApply(S, b.title, r); } return said[r.entry_id]; }))];
+  return [201, ok(L.map((r, i) => { if (SM.ids[r.entry_id] == null) { SM.ids[r.entry_id] = keys[i]; said[r.entry_id] = DEMO.rdApply(S, b.title, r, lvTaken()); } return said[r.entry_id]; }))];
 }
 function cmdLoad(i) {
   if (i !== 0) { renderAll(); return toast(`Mockup: only Test Recipe v5 is filled in here. On the real screen, LOAD sends ${M.BOOK[i].n} to Brew Steps, as the Recipe Book does today.`); }
@@ -6853,7 +7224,9 @@ function run(cmd) {
     case "rb": st.rbOpen = x === "open"; st.confirmLoad = null; if (st.rbOpen) { st.cmpOpen = false; if (!DEMO_MODE) loadBook(); } return renderAll();
     /* the strike water box: USE, BACK TO, USE waiting for the grain (where), and FORECAST or CLOSE, one button that opens
        and closes the details; closing them closes a small box open in them. BrewStart's row, + BrewStart and its box */
-    case "sw": if (x === "use") return swUse(); if (x === "back") return swBack(); if (x === "where") return swWhere(); st.swOpen = x === "more" ? !st.swOpen : x === "open"; if (!st.swOpen) { st.swVol = null; st.swGrain = null; st.swRec = null; } return renderAll();
+    /* opened by GIVE THEM (swGiveOpen), the box remembers it ("give"), so USE and CLOSE keep GIVE THEM's halves until it
+       closes, even once the forecast takes the figures' place */
+    case "sw": if (x === "use") return swUse(); if (x === "back") return swBack(); if (x === "where") return swWhere(); st.swOpen = x === "more" ? (st.swOpen ? false : swGiveOpen() ? "give" : true) : x === "open"; if (!st.swOpen) { st.swVol = null; st.swGrain = null; st.swRec = null; } return renderAll();
     case "swv": return swVol(x, y);
     case "swg": return swGrain(x, y);
     case "swr": return swRec(x, y);
@@ -7916,7 +8289,7 @@ export function createBrewDay(el, o = {}) {
   let kept = null;
   if (!DEMO_MODE) { try { kept = localStorage.getItem(GSPAN_KEY); } catch (e) { /* private mode */ } }
   for (const s of [o.span, kept]) if (GSPANS.some(x => x[0] === s)) { gSpan = s; break; }
-  rigRs = 1; rigSs = ""; H = null;
+  rigRs = 1; rigSs = ""; rigLv = ""; H = null;
   root.innerHTML = skeleton(DEMO_MODE, PAGE);
   // the name: the demo's (?name= tries another, as in the mockup); live, CraftBeerPi's once its settings arrive (applyLive)
   brewery = null;
@@ -7965,6 +8338,12 @@ export function createBrewDay(el, o = {}) {
     const open = st.open, base = st.base || key;
     delete st.open; delete st.base;
     Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, logOpen: false, pbOpen: false, cmpOpen: false, rbOpen: false, swOpen: false, swVol: null, swGrain: null, swRec: null, bsOpen: false, bs: null, spdOpen: false, spdPend: null, svAsk: false, svPend: {}, svIn: {}}, open);
+    /* the liquid in each vessel (LEVELS.md): the moment's own (the #lv-… moments) or ?levels=tint (?levels=line, a look
+       not chosen, too), as the mockup's flag; its level sensors, the moment's or ?lsens=hlt,bk. With the levels, the
+       kettles' Hardware page figures are the mockup's examples (DEMO.LV_HW) under any the moment gives */
+    M.LV = st.levels || (["tint", "line"].includes(o.levels) ? "tint" : "");
+    M.LSENS = st.lsens || String(o.lsens || "").split(",").filter(x => ["hlt", "mt", "bk"].includes(x));
+    if (M.LV) st.vessels = Object.fromEntries(Object.keys(DEMO.LV_HW).map(v => [v, Object.assign({}, DEMO.LV_HW[v], (st.vessels || {})[v])]));
     /* BrewScribe as the moment has it, and Brew Day's copy of its answer (phLoad) */
     phLoad();
     /* the strike water box: CraftBeerPi's answer for the moment's numbers, worked out already, unless the moment has it

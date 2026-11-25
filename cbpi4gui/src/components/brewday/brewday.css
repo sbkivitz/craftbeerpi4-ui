@@ -925,6 +925,23 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .rig-line .ss-st.run{fill:var(--run)}
 :where(html.bd-page) .rig-line .ss-act{fill:#1b2833;stroke:#b9c6d2;stroke-width:2.5}
 :where(html.bd-page) .rig-line .slayer.lit .ss-act{stroke:var(--liquor)}
+/* the liquid in each vessel (LEVELS.md): a faint tint of the liquor's or the wort's colour, under everything else in the
+   vessel; its surface dashed, as a figure worked out; the range it is somewhere in, while on its way, hatched. Quiet: no
+   edge brighter than the drawing's steel, so it never reads as a prompt's amber. A volume read in BrewScribe: its surface
+   solid, as thin as the estimate's, with READ's mark on the right wall. A level sensor's reading: its surface solid and a
+   little stronger; with no connection the last reading's surface in the drawing's steel */
+:where(html.bd-page) .rig-line .lv-body.water{fill:rgb(70 184 234/.13)}:where(html.bd-page) .rig-line .lv-body.wort{fill:rgb(233 179 59/.11)}
+:where(html.bd-page) .rig-line .lv-top{fill:none;stroke-width:2.5;stroke-dasharray:9 6}
+:where(html.bd-page) .rig-line .lv-top.water{stroke:rgb(70 184 234/.62)}:where(html.bd-page) .rig-line .lv-top.wort{stroke:rgb(233 179 59/.55)}
+:where(html.bd-page) .rig-line .lv-top.read{stroke-dasharray:none}
+:where(html.bd-page) .rig-line .lv-rm{stroke:none}:where(html.bd-page) .rig-line .lv-rm.water{fill:rgb(70 184 234/.85)}:where(html.bd-page) .rig-line .lv-rm.wort{fill:rgb(233 179 59/.8)}
+:where(html.bd-page) .rig-line .lv-top.meas{stroke-dasharray:none;stroke-width:3}
+:where(html.bd-page) .rig-line .lv-top.meas.water{stroke:rgb(70 184 234/.9)}:where(html.bd-page) .rig-line .lv-top.meas.wort{stroke:rgb(233 179 59/.85)}
+:where(html.bd-page) .rig-line .lv-top.meas.stale{stroke:#7d8fa2}
+:where(html.bd-page) .rig-line .lv-hl{stroke-width:2.5}:where(html.bd-page) .rig-line .lv-hl.water{stroke:rgb(70 184 234/.32)}:where(html.bd-page) .rig-line .lv-hl.wort{stroke:rgb(233 179 59/.3)}
+:where(html.bd-page) .rig-line .lv-t{text-anchor:middle;font-size:16px}:where(html.bd-page)[data-graphs] .rig-line .tag.lv-t{font-size:calc(16px * min(var(--rs,1),1.1))}
+:where(html.bd-page) .rig-line .lv-mtick{stroke:#7d8fa2;stroke-width:2}
+:where(html.bd-page) .rig-line .lv-mt{font:600 15px var(--cond);letter-spacing:.06em;fill:var(--text-3);text-anchor:end}
 :where(html.bd-page) .ssline{display:none;margin:-4px 0 0;font:500 15px/1.3 var(--cond);letter-spacing:.04em;color:var(--text-2)}
 :where(html.bd-page) .rig-line #ln-swirl:not(.on){display:none}
 :where(html.bd-page) .rig-line #ln-swirl .pf{stroke-width:3.5}

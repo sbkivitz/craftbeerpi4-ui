@@ -10,7 +10,7 @@
 // check-many, check-noanswer, check-noprobe, check-slow and check-unsure, and the strike water's sw-plan, sw-forecast,
 // sw-volume, sw-grain-edit, sw-grain, sw-hot, sw-used, sw-backhot, sw-working, sw-working-open, sw-reworking, sw-levers,
 // sw-refused, sw-refused-moved, sw-failed, sw-tunprobe, sw-wait, sw-heat, sw-move, sw-late, sw-doughin, sw-hand,
-// sw-novol, sw-missing, sw-missing-steps, sw-give, sw-noprobe, sw-grain-bad, sw-interval, sw-typed, sw-room and sw-asks, the
+// sw-novol, sw-missing, sw-missing-steps, sw-give-open, sw-gave, sw-noprobe, sw-grain-bad, sw-interval, sw-typed, sw-room and sw-asks, the
 // vessels' bs-over, sw-hw and
 // sw-over, the one clock's sim-clock,
 // sim-clock-1x, sim-speed and sim-reset-all, the timers' timer-change, timer-removed, timer-secs and timer-zero, the boil kettle's MANUAL's bk-hand, bk-hand-off and
@@ -18,7 +18,9 @@
 // ph-fail, ph-slow, ph-noclose and ph-other, other-recipe, and BrewScribe's readings' rd-strike, rd-level, rd-first,
 // rd-first-bx, rd-first-nofactor, rd-first-noatc, rd-looks-sg, rd-nounit, rd-last, rd-last-all, rd-sparge,
 // rd-sparge-nolevel, rd-sparge-volume, rd-sparge-bad, rd-preboil, rd-postboil, rd-partial, rd-saved, rd-fail and
-// rd-final, and the Steam Slayer's ss-heat, ss-ask, ss-on, ss-sag, ss-after, ss-cool, ss-cooled and ss-switched) runs on
+// rd-final, the Steam Slayer's ss-heat, ss-ask, ss-on, ss-sag, ss-after, ss-cool, ss-cooled and ss-switched, and the liquid
+// in each vessel's lv-sensor-night, lv-sensor, lv-sensor-diff, lv-sensor-lost, lv-sensor-none, lv-read-strike, lv-read-move,
+// lv-read-sparge, lv-read-last, lv-read-boil, lv-read-hop, lv-read-after and lv-read-sensor) runs on
 // this, so it can be compared with the mockup pixel for pixel.
 import { swModel, SW_MORNING, SW_LEVER_S } from "./strike-demo";
 import { bsHoldWords } from "./live";
@@ -171,7 +173,7 @@ function scribeDay(log = true) {
   const rem = (title, stage, name, v, readings, focus = readings[0].kind) => ({title, stage, stage_name: name, vessel: log ? v : null, vessel_problem: null,
     page: `/brewscribe/#stage=${stage}&focus=${focus}`, readings});
   const last = title => rem(title, "transfer", "Final volume / transfer", KNAME.bk, [vol("volume", "Volume", true, null), grav(true)]);
-  return {log: log ? {day_id: SCRIBE_DAY, name: RECIPE.name} : null, why_not: log ? null : PH_NOLOG, temperature_unit: "f", volume_unit: "us_gal", volume_label: "gal",
+  return {log: log ? {day_id: SCRIBE_DAY, name: RECIPE.name} : null, why_not: log ? null : PH_NOLOG, temperature_unit: "f", volume_unit: "us_gal", volume_label: "gal", vessel_volumes: [],
     reminders: [rem(PH_Q[0].title, "mash_start", "Early mash", KNAME.mt, [rd("optional")]), rem(PH_Q[1].title, "mash_end", "End of mash", KNAME.mt, [rd("asked")]),
       rem(RD_Q[0].title, "strike_water", "HLT water prep", KNAME.hlt, [vol("volume", "Volume", true, null)]),
       rem(RD_Q[1].title, "sparge_water", "Sparge water", KNAME.hlt, [vol("level", "HLT level before the sparge", true, null)], "level-before"),
@@ -202,26 +204,58 @@ function rdSaid(rem, kind, texts) {
   const where = `(${rem.stage_name}, ${rem.vessel})`;
   return kind === "level" ? `${texts[0]} kept in BrewScribe until the level after ${where}` : kind === "sparge_water" ? `Sparge water ${texts[0]} saved in BrewScribe ${where}` : `${rdJoin(texts)} saved in BrewScribe ${where}`;
 }
+/* BrewScribe's vessel_volumes (its contract, section 9), as the demo's BrewScribe keeps it: every volume read that still
+   stands (_vv), and in the answer the newest in each vessel, newest first. A level before the sparge stands while
+   BrewScribe keeps it. add: a reading taken; drop: the ones it ends */
+function vvSet(S, add, drop) {
+  S._vv = (S._vv || (S.vessel_volumes || []).slice()).filter(x => !(drop && drop(x)));
+  if (add) S._vv.unshift(add);
+  const seen = new Set();
+  S.vessel_volumes = S._vv.slice().sort((a, b) => b.read_at.localeCompare(a.read_at)).filter(x => { const k = x.vessel_id || x.vessel; if (seen.has(k)) return false; seen.add(k); return true; });
+}
+const VV_STAGE = {strike_water: "HLT water prep", mash: "Mash", sparge_water: "Sparge water", first_runnings: "First runnings", last_runnings: "Last runnings", pre_boil: "Before boil", boil: "Boil", post_boil: "After boil", transfer: "Final volume / transfer"};
+const VV_TITLE = {strike_water: 0, level_before: 1, last_runnings: 3, level_after: 4, pre_boil: 5, post_boil: 6, transfer: 7};
+/* the mockup's kettles' CraftBeerPi ids, which BrewScribe saves with a reading (vessel_id) */
+const KID = {hlt: "Rt8LmQ2xWv5NcJ3hYkPa9e", mt: "Qp4sVb7NcX2mLk9TwRe6Hd", bk: "Kn5cWBeK3V7H4gpKpBhUBd"};
+/* a time on the mockup's clock (seconds of the day) as BrewScribe's read_at, on 25 Nov 2026; vvClock, when a moment's
+   reading was taken (lvReads) */
+const lvIso = t => new Date(2026, 10, 25, 0, 0, Math.round(t) % 86400).toISOString();
+let vvClock = null;
+const vvUUID = () => (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") ? crypto.randomUUID()
+  : "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+/* one of vessel_volumes' items: ves, a kettle's name; at, when it was read; vid, the kettle's id and name for a name
+   (the demo's by KNAME and KID; live, CraftBeerPi's kettles), the HLT's for a name it doesn't know */
+const vvVessel = ves => { const v = Object.keys(KNAME).find(k => KNAME[k] === ves) || "hlt"; return {vessel_id: KID[v], vessel: KNAME[v]}; };
+function vvItem(S, ves, value, unit, stage, reading, at, vid = vvVessel) {
+  const q = VV_TITLE[reading === "volume" ? stage : reading];
+  return Object.assign(vid(ves), {value, unit, text: rdAmt({value, unit}, S), typed: {value, unit}, read_at: at,
+    stage, stage_name: VV_STAGE[stage], title: q == null ? null : RD_Q[q].title, reading, entry_id: vvUUID(), corrected: false, source: "brew_day"});
+}
 /* a reading BrewScribe has taken, in an answer's shape (the demo's BrewScribe, or Brew Day's copy of an answer): it
    becomes the one standing in its stage, on every reminder for that stage (the last reminder's older title too). A
    level is kept, not saved: the sparge water reminder works from it until the sparge water is saved, which takes it,
    and is then that reading's level before. A level kept in another unit than BrewScribe's volume_unit isn't offered to
-   work from, as nothing is converted. A gravity's pair becomes the one to start in. Returns the reading's words */
-function rdApply(S, title, r) {
+   work from, as nothing is converted. A gravity's pair becomes the one to start in. A volume, a level before the sparge
+   and the level after it go into vessel_volumes too, read at o.at (else at the moment's vvClock, as the mockup's), in the vessel
+   o.vid names. Returns the reading's words */
+function rdApply(S, title, r, o = {}) {
   const rem = S.reminders.find(x => x.title === title), rd = rem && rem.readings.find(x => x.kind === r.kind);
   if (!rd) return "";
   const at = new Date().toISOString(), ves = rem.vessel || "HLT", all = k => S.reminders.flatMap(x => x.readings).filter(x => x.kind === k);
   const amt = v => rdAmt({value: v, unit: r.unit}, S);
+  const readAt = o.at || lvIso(vvClock ?? 0), unit = r.unit || S.volume_unit;
+  const item = (value, stage, reading) => vvItem(S, ves, value, unit, stage, reading, readAt, o.vid);
   let saved;
   if (r.kind === "ph") saved = {entry_id: r.entry_id, value: r.value, text: `pH ${r.value.toFixed(rd.decimals ?? 2)}`, occurred_at: at};
   else if (r.kind === "gravity") {
     const c = rd.choices.find(x => x.instrument === r.instrument && x.scale === r.scale);
     saved = {entry_id: r.entry_id, value: r.value, instrument: r.instrument, scale: r.scale, text: `${r.value.toFixed(c.decimals)} ${c.label}`, occurred_at: at};
     all("gravity").forEach(x => rdChosen(x, r));
-  } else if (r.kind === "volume") saved = {entry_id: r.entry_id, value: r.value, unit: r.unit, text: amt(r.value), occurred_at: at};
+  } else if (r.kind === "volume") { saved = {entry_id: r.entry_id, value: r.value, unit: r.unit, text: amt(r.value), occurred_at: at}; vvSet(S, item(r.value, rem.stage, "volume")); }
   else if (r.kind === "level") {
     saved = {value: r.value, unit: r.unit, text: `${ves} ${amt(r.value)} before the sparge`};
     all("sparge_water").forEach(x => { x.level_before = r.unit === S.volume_unit ? {value: r.value, text: amt(r.value)} : null; });
+    vvSet(S, item(r.value, "sparge_water", "level_before"), x => x.reading === "level_before");
   } else {
     const levels = r.level_after != null, before = levels ? r.level_before ?? rd.level_before.value : null, dec = (r.unit || S.volume_unit) === "l" ? 1 : 2;
     const value = levels ? Number((before - r.level_after).toFixed(dec)) : r.value;
@@ -229,10 +263,33 @@ function rdApply(S, title, r) {
       text: levels ? `${amt(value)} (${ves} ${before.toFixed(dec)} → ${r.level_after.toFixed(dec)})` : amt(value), occurred_at: at};
     all("sparge_water").forEach(x => { x.level_before = null; });
     all("level").forEach(x => { x.saved = levels ? {value: before, unit: r.unit, text: `${ves} ${amt(before)} before the sparge`} : null; });
+    /* the level kept goes; the level after stands in the HLT, while a sparge water typed as one volume is the water used,
+       not a level, so the HLT's newest reading is again one from before the sparge */
+    vvSet(S, levels ? item(r.level_after, "sparge_water", "level_after") : null, x => x.reading === "level_before");
   }
   S.reminders.filter(x => x.stage === rem.stage).forEach(x => x.readings.filter(y => y.kind === r.kind).forEach(y => { y.saved = Object.assign({}, saved); }));
   return saved.text;
 }
+/* a moment's readings typed into BrewScribe's reminders, each [which, value, minutes before the moment], taken in turn
+   as BrewScribe takes them (rdApply), so the reminders say saved too: the strike water's volume, the HLT's levels before
+   and after the sparge, the last runnings' volume, and the boil kettle's volumes before and after the boil. With the
+   tint (levels) */
+const LV_RD = {strike: [0, "volume"], before: [1, "level"], last: [3, "volume"], hltafter: [4, "sparge_water"], pre: [5, "volume"], after: [6, "volume"]};
+const LV_READ_BOIL = [["strike", 15.4, 330], ["before", 6.9, 60], ["last", 6.6, 30], ["hltafter", 1.6, 25], ["pre", 7.2, 5]];
+function lvReads(s, list) {
+  const S = s.bscribe || scribeDay();
+  list.forEach(([k, value, ago]) => {
+    const [q, kind] = LV_RD[k];
+    vvClock = s.t - ago * 60;
+    rdApply(S, RD_Q[q].title, kind === "sparge_water" ? {kind, unit: "us_gal", level_after: value, entry_id: vvUUID()} : {kind, value, unit: "us_gal", entry_id: vvUUID()});
+  });
+  vvClock = null;
+  return Object.assign(s, {levels: "tint", bscribe: S});
+}
+/* the kettles' Hardware page figures the levels use, gal, examples in the mockup (a moment's st.vessels is laid over
+   them): each capacity, which scales the fill, and the boil kettle's least water. The HLT has no least water set, so its
+   MIN is 15% of its capacity, as the strike water helper works it out */
+const LV_HW = {hlt: {capacity: 20}, mt: {capacity: 20}, bk: {capacity: 20, min_water: 4}};
 /* a reading's content, so the same reading sent again keeps its entry_id */
 const phKey = (day, title, v, t, u) => JSON.stringify([day, title, v, t, u]);
 /* the mash pH moments, the #mash day. MashIn was confirmed at 13:27:05, so "Check mash pH" went up at 13:42:05, in
@@ -340,7 +397,7 @@ function rdRefr(s, refr = SCRIBE_REFR) {
   }));
   return s;
 }
-export { PH_Q, phBanner, scribeDay, phKey, PH_NOLOG, PH_SLOW, RD_Q, rdBanner, rdChosen, rdJoin, rdAmt, rdSaid, rdApply };
+export { PH_Q, phBanner, scribeDay, phKey, PH_NOLOG, PH_SLOW, RD_Q, rdBanner, rdChosen, rdJoin, rdAmt, rdSaid, rdApply, KID, lvIso, LV_HW };
 const SCENES = {
   mash,
   hop: () => Object.assign(mash(), {
@@ -917,6 +974,41 @@ const SCENES = {
     s.events.splice(1, 0, ["15:25:02", `${LID_Q.title} answered: Done`, "confirmed", "ok"], ["15:24:10", `${LID_Q.title}: ${LID_Q.text}`, "answered", ""]);
     return s;
   },
+  /* a level sensor (LEVELS.md; none on the rig yet), on the HLT and the boil kettle, with the tint.
+     #lv-sensor-night: #sw-plan, the night before: the HLT measured at 15.0 gal, which the estimate can't know until
+     BrewStart runs, the boil kettle empty. #lv-sensor: #sparge-run: the HLT at 4.2 gal on its way to about 1.7, the boil
+     kettle at 3.1 on its way to about 7.0. #lv-sensor-diff: #boil-hold: the boil kettle at 6.4 gal where the estimate
+     is about 7.0; the HLT at 1.8, within a quart of its 1.7. #lv-sensor-lost: the same, the connection lost 48 s ago.
+     #lv-sensor-none: the boil kettle's sensor with no reading */
+  "lv-sensor-night": () => Object.assign(SCENES["sw-plan"](), {levels: "tint", lsens: ["hlt", "bk"], lvm: {hlt: 15.0, bk: 0}}),
+  "lv-sensor": () => Object.assign(SCENES["sparge-run"](), {levels: "tint", lsens: ["hlt", "bk"], lvm: {hlt: 4.2, bk: 3.1}}),
+  "lv-sensor-diff": () => Object.assign(SCENES["boil-hold"](), {levels: "tint", lsens: ["hlt", "bk"], lvm: {hlt: 1.8, bk: 6.4}}),
+  "lv-sensor-lost": () => {
+    const s = SCENES["lv-sensor-diff"]();
+    s.link = "lost"; s.age = 48;
+    s.banner = {tone: "alarm", title: "No connection", text: "Readings are {age} s old. Trying again every 5 s. Controls are paused until CraftBeerPi answers."};
+    s.events.unshift([hhmmss(s.t - 48), "Connection to CraftBeerPi lost", "trying again", "bad"]);
+    return s;
+  },
+  "lv-sensor-none": () => Object.assign(SCENES["boil-hold"](), {levels: "tint", lsens: ["hlt", "bk"], lvm: {hlt: 1.8, bk: null}}),
+  /* volumes read in BrewScribe (LEVELS.md), with the tint: Test Recipe v5's day as the brewer reads it, each typed into
+     a BrewScribe reminder (Brew Day's readings box or BrewScribe's page) some minutes before the moment.
+     #lv-read-strike: #sw-heat, BrewStart heating, the strike water read at 15.4 gal in the HLT: 15.4 GAL READ.
+     #lv-read-move: #sw-move, the strike water on its way: the HLT 15.4 → ≈ 7.1, worked forward from the reading.
+     #lv-read-sparge: #sparge-run, the HLT's level before the sparge read at 6.9: 6.9 → ≈ 1.9 as the sparge water goes.
+     #lv-read-last: the same, with the last runnings' volume read at 6.6 in the boil kettle: 6.6 READ → ≈ 7.0.
+     #lv-read-boil: #boil-hold, the HLT's level after the sparge 1.6 and the volume before the boil 7.2: both READ, the
+     HLT under its MIN. #lv-read-hop: #hop, boiling: the boil kettle 7.2 → ≈ 6.5, worked forward. #lv-read-after:
+     #whirlpool, the volume after the boil read at 6.4: 6.4 GAL READ. #lv-read-sensor: #lv-sensor-diff with the volume
+     before the boil read at 6.9: the sensor's 6.4 beside it, 6.4 GAL · READ 6.9 */
+  "lv-read-strike": () => lvReads(SCENES["sw-heat"](), [["strike", 15.4, 49]]),
+  "lv-read-move": () => lvReads(SCENES["sw-move"](), [["strike", 15.4, 59]]),
+  "lv-read-sparge": () => lvReads(SCENES["sparge-run"](), [["strike", 15.4, 290], ["before", 6.9, 9]]),
+  "lv-read-last": () => lvReads(SCENES["sparge-run"](), [["strike", 15.4, 290], ["before", 6.9, 9], ["last", 6.6, 1]]),
+  "lv-read-boil": () => lvReads(SCENES["boil-hold"](), LV_READ_BOIL),
+  "lv-read-hop": () => lvReads(SCENES.hop(), LV_READ_BOIL.map(x => [x[0], x[1], x[2] + 40])),
+  "lv-read-after": () => lvReads(SCENES.whirlpool(), LV_READ_BOIL.map(x => [x[0], x[1], x[2] + 75]).concat([["after", 6.4, 3]])),
+  "lv-read-sensor": () => lvReads(SCENES["lv-sensor-diff"](), [["pre", 6.9, 6]]),
   "sim-speed": () => Object.assign(SCENES["sim-clock"](), {open: {spdOpen: true}}),
   "sim-reset-all": () => Object.assign(SCENES["sim-clock"](), {open: {spdOpen: true, svAsk: true}}),
   "unload-held": () => Object.assign(SCENES["boil-hold"](), {base: "boil-hold", open: {confirmUnload: true}}),
@@ -1099,8 +1191,9 @@ const SCENES = {
      and the HLT heating the strike water on its own AUTO. With a number missing: #sw-novol,
      BrewStart without a water volume; #sw-missing, a recipe imported before CraftBeerPi kept BeerSmith's mash figures
      (core post55), as every recipe in the rig's book is, its MashIn with a grain weight (swd.stepGrain);
-     #sw-missing-steps, a recipe built on Brew Steps, with no grain weight either; #sw-give, the same with GIVE THEM
-     pressed;
+     #sw-missing-steps, a recipe built on Brew Steps, with no grain weight either; #sw-give-open, the same with GIVE THEM
+     pressed (not #sw-give, the open box's own id); #sw-gave, #sw-typed's figures given there, USE and CLOSE in GIVE THEM's
+     halves;
      #sw-noprobe, the boil kettle's probe giving no reading; #sw-grain-bad, BrewStart's grain temperature saved on Brew
      Steps as 150 °F; #sw-interval, the mash tun's control interval set to 2.5 s. Figures given in the box: #sw-typed, a
      recipe built on Brew Steps, its grain weight and mash water given there, FORECAST opened; #sw-room, the boil
@@ -1180,7 +1273,8 @@ const SCENES = {
   "sw-novol": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.vol = null; return s; },
   "sw-missing": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); Object.assign(s.swd, {from: null, stepGrain: true}); return s; },
   "sw-missing-steps": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.from = null; return s; },
-  "sw-give": () => Object.assign(SCENES["sw-missing-steps"](), {base: "sw-missing-steps", open: {swOpen: true}}),
+  "sw-give-open": () => Object.assign(SCENES["sw-missing-steps"](), {base: "sw-missing-steps", open: {swOpen: "give"}}),
+  "sw-gave": () => Object.assign(SCENES["sw-typed"](), {base: "sw-typed", open: {swOpen: "give"}}),
   "sw-noprobe": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.v.bk.pv = null; s.pb.none.bk = 300; return Object.assign(s, {pbLast: {bk: 61.4}, gap: {bk: 300}}); },
   "sw-grain-bad": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.grain = 150; return s; },
   /* the strike water step's temperature typed on Brew Steps as 185 °F, and USE pressed at 21:12:31. The model's
@@ -1735,7 +1829,7 @@ function history(scene, now, x) {
 }
 
 export { RECIPE, SPARGE_STEP, BIG_ADDS, VNAME, KNAME, PROBE, VACT, ACT, HERMS_DELTA, BOIL_TH, BOOK, BOOK_STEPS, SCENES, history, noTargetBanner, pauseBanner, spargeBanner, boilHoldBanner, boilStartLine, tfmt, tBanner, byHandBanner, versions,
-  SW_STEPS, SW_ASK, swStartAt, swPlanLine, SW_PLAN0, SW_VOL0, SW_WATTS, SW_NEED, SW_RATE, SW_SPARE, SW_GRAIN_KG };
+  SW_STEPS, SW_ASK, SW_FROM, swStartAt, swPlanLine, SW_PLAN0, SW_VOL0, SW_WATTS, SW_NEED, SW_RATE, SW_SPARE, SW_GRAIN_KG };
 
 // Not the mockup's: two moments of the screen's own, for checking how the title bar holds what CraftBeerPi
 // really asks. Not compared with the mockup.

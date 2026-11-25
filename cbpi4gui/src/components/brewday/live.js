@@ -352,6 +352,11 @@ export function model(snap) {
     BKHAND: BKNEW && declares(snap.logic, K.bk.type, "heat_by_hand_at_boil_power"),
     BOIL_TH: boilThreshold(K.bk, C, BKNEW),
     SS, SS_NAME, MISTER: SS === "switched" ? mister.id : null,
+    // the liquid in each vessel on Brew Day (design/brewday LEVELS.md): CraftBeerPi's BREWDAY_LEVELS, shown unless it is
+    // No (Yes is its default, and a CraftBeerPi without the setting shows them too), none until the settings are in. No
+    // vessel has a level sensor yet
+    LV: snap.config && Object.keys(snap.config).length && String(cfg(snap.config, "BREWDAY_LEVELS") ?? "Yes") !== "No" ? "tint" : "",
+    LSENS: [],
     // a waiting BrewStart takes a new day and time: one that declares change_time (1.2.0.post10), read from the step
     // types as BoilPower's markers are from the logic types. An older one can't, so its time is greyed while it waits
     BSRETIME: declares(snap.stepTypes, "BrewStart", "change_time"),

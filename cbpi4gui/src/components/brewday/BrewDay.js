@@ -78,6 +78,10 @@ const BrewDay = () => {
       clock: qs.get("clock"),
       // with ?demo=, ?slayer=hand or ?slayer=switched adds the boil kettle's steam condenser to any moment, as the mockup's does
       slayer: qs.get("slayer"),
+      // with ?demo=, ?levels=tint adds the liquid in each vessel to any moment, and ?lsens=hlt,bk level sensors on those
+      // vessels, as the mockup's do
+      levels: qs.get("levels"),
+      lsens: qs.get("lsens"),
       navigate: (path, options) => go.current(path, options),
       removeAlert: (id) => remove(id),
     });

@@ -1304,6 +1304,11 @@
         "section": "components"
       },
       {
+        "name": "The Three Kinds Of Figure Rule",
+        "body": "A figure the screen works out, one the brewer typed and one a sensor measures never look alike, in shape and in words, never by colour alone. The liquid in each vessel worked out from the recipe and its steps has a dashed surface and \"≈\"; a volume typed into BrewScribe has a solid surface as thin, a pointer on the vessel's right wall and READ, and says when it was read; a level sensor's reading (none on the rig yet) a solid, stronger surface with no pointer. A reading stands only until liquid next moves in or out of its vessel, then the screen works forward from it and says so. None of them is ever alarmed: MIN is a quiet mark, since stopping an element is the mash water guard's job, not the drawing's.",
+        "section": "components"
+      },
+      {
         "name": "The Hoses Rule",
         "body": "When a hose has to move, CraftBeerPi switches its pump off, not the screen: the wort pump as a SpargeStep starts, the HLT pump as the sparge water is ready and the step asks \"Sparge started\", the HLT pump as the runoff ends (the wort pump runs on, draining the mash tun), and whichever still runs as the boil starts. The screen shows the lamp go to OFF and says why in CraftBeerPi's own words: the sparge question names the pumps that are off (\"…ready at 168 °F, and both pumps are off.\"), and the event line carries CraftBeerPi's notification word for word. The brewer starts the pumps again by hand. The request, on 11 Nov, was \"Any time I need to change hoses or \"valves\" that respective pump should be off\".",
         "section": "components"

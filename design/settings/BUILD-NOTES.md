@@ -375,3 +375,15 @@ Checked:
 - `port.mjs` (main's) on a scratch copy: `catalog.js` differs from the product's in line 30 only, and `settings.css`, `settings-frame.css` and `demo-data.js` don't differ at all.
 
 Changed in the worktree: `proposal\settings.js` (that one entry), `GROUPING.md` and this file.
+
+## Show liquid levels on Brew Day: built with web UI 0.5.1.a3.post76 and core 4.7.7.post93
+
+The liquid in each vessel on Brew Day (design/brewday LEVELS.md) has an off switch, as its build note asks: a CraftBeerPi setting, BREWDAY_LEVELS, Yes or No, Yes by default, which ConfigUpdate adds where it is missing and keeps once saved. `M.BREWDAY_LEVELS`:
+
+- `n`: "Show liquid levels on Brew Day";
+- `h`: "A faint tint of the liquid in each vessel in the brew-day screen's drawing, worked out from the recipe and its steps, or a volume typed into BrewScribe, marked READ. No shows none, and Brew Day doesn't ask BrewScribe for the volumes.";
+- `syn`: "level levels volume liquid tint vessel read".
+
+Where it shows: the last row of Timers and alerts, the group for what Brew Day shows and plays, a Yes and No switch as every Yes/No setting has. `settings-data.js` has it as core post93 adds it, so the mockup's pages and the build show the same row. `port.mjs` carries it: `catalog.js` gains the entry and the group's row, `demo-data.js` the setting, and nothing else changes.
+
+Changed: `settings.js` (the entry and the group's row), `settings-data.js`, `GROUPING.md` and this file.

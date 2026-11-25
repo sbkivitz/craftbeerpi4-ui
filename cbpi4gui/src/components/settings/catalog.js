@@ -53,6 +53,7 @@ export function catalog(F) {
     BREWDAY_ALARM_SOUND: {n: "Timer alarm sound", ctl: "sound", order: ["kitchen", "alarm", "high", "soft"], h: "What the brew-day screen plays when a timer runs out, every 3 seconds until you answer it. For a new hop alert, question or error, the screen plays just the first two beeps, once.", syn: "sound beep alarm kitchen high ping"},
     PLAY_BUZZER: {n: "Buzzer for notifications", h: "The browser beeps when a notification arrives, on every page but Brew Day and Settings. Those two play Brew Day's own two beeps instead: only for an alert, a question or an error, and only with Brew Day's SOUND on.", syn: "sound beep"},
     NOTIFY_ON_ERROR: {n: "Warnings and errors as notifications", h: "When CraftBeerPi logs a warning or an error.", syn: "log error notify"},
+    BREWDAY_LEVELS: {n: "Show liquid levels on Brew Day", h: "A faint tint of the liquid in each vessel in the brew-day screen's drawing, worked out from the recipe and its steps, or a volume typed into BrewScribe, marked READ. No shows none, and Brew Day doesn't ask BrewScribe for the volumes.", syn: "level levels volume liquid tint vessel read"},
 
     CSVLOGFILES: {n: "Save readings to log files", restart: "on", h: "Each probe's readings, as CSV files.", syn: "csv logging sensor data"},
     SENSOR_LOG_MAX_BYTES: {n: "Largest log file", unit: "bytes", wide: 1, dep: {on: "CSVLOGFILES", is: "Yes"}, restart: "next", h: "Then it starts a new one.", calc: "size"},
@@ -107,7 +108,7 @@ export const G = [
   {id: "cool", name: "Whirlpool and cooling", sum: "The whirlpool hops and cooling the wort",
     parts: [{h: "In imported recipes", rows: ["steps_whirlpool_temp", "steps_cooldown", "steps_cooldown_temp", "steps_cooldown_sensor", "steps_cooldown_actor"]}]},
   {id: "timers", name: "Timers and alerts", sum: "What you see and hear while you brew",
-    parts: [{rows: ["BREWDAY_TIMER_NAMES", "BREWDAY_ALARM_SOUND", "PLAY_BUZZER", "NOTIFY_ON_ERROR"]}]},
+    parts: [{rows: ["BREWDAY_TIMER_NAMES", "BREWDAY_ALARM_SOUND", "PLAY_BUZZER", "NOTIFY_ON_ERROR", "BREWDAY_LEVELS"]}]},
   /* only where the phone alerts plugin is installed (needs). Its index line and header say whether alerts are on
      (state). how: the setup steps that aren't settings, each a row of its own: go, links to open in a new tab; test,
      the test's buttons. A part with steps numbers its rows, the chosen service's only; off: what a part's note says

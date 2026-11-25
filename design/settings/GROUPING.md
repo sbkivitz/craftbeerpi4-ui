@@ -94,6 +94,7 @@ Counts below are the simulator's 51 visible settings plus Brett's two new ones (
 | 2 | Timer alarm sound *new* | BREWDAY_ALARM_SOUND | Kitchen timer / Alarm / High beep / Soft ping |
 | 3 | Buzzer for notifications | PLAY_BUZZER | yes / no |
 | 4 | Warnings and errors as notifications | NOTIFY_ON_ERROR | yes / no |
+| 5 | Show liquid levels on Brew Day *new* | BREWDAY_LEVELS | yes / no (yes by default) |
 
 ## 7. Phone alerts — a buzz on your phone when the brew-day screen beeps *new, approved 20 Nov*
 

@@ -2,8 +2,9 @@
 // mockup and run it again.
 /* A snapshot of the simulator's settings (CBPI_CONFIG) from http://127.0.0.1:8000/config/ (cbpi4 4.7.7.post36), with
    AddMashOutStep and BREWDAY_ALARM_SOUND as port 8012 serves them at cbpi4 4.7.7.post37, the phone alerts' twelve
-   settings and the plugin's hidden version as it serves them at cbpi4 4.7.7.post47 with cbpi4-PushOver 0.0.10.post2
-   (each of these marked new: true), and the simulator's kettles, switches, probes and step types (CBPI_THINGS).
+   settings and the plugin's hidden version as it serves them at cbpi4 4.7.7.post47 with cbpi4-PushOver 0.0.10.post2,
+   and BREWDAY_LEVELS as cbpi4 4.7.7.post93 adds it (each of these marked new: true), and the simulator's kettles,
+   switches, probes and step types (CBPI_THINGS).
    Generated; do not edit by hand. */
 export const CFG = {
 "ACTOR_INTERLOCK_GROUPS": {
@@ -109,6 +110,23 @@ export const CFG = {
 "s": "craftbeerpi",
 "t": "select",
 "v": "kitchen"
+},
+"BREWDAY_LEVELS": {
+"d": "Brew-day screen: show the liquid in each vessel, a faint tint in the drawing worked out from the recipe and its steps, or a volume typed into BrewScribe, marked READ. No draws nothing for it and doesn't ask BrewScribe for the volumes. (default: Yes)",
+"new": true,
+"o": [
+{
+"label": "Yes",
+"value": "Yes"
+},
+{
+"label": "No",
+"value": "No"
+}
+],
+"s": "craftbeerpi",
+"t": "select",
+"v": "Yes"
 },
 "BREWDAY_OVERRIDE_ACTOR": {
 "d": "Brew-day screen: a switch with its own override switch on the rig, which can run it whatever CraftBeerPi says. The screen then warns that it may still run after it is switched off. (default: None)",
