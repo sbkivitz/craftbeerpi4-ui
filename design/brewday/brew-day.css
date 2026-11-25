@@ -55,19 +55,33 @@ html.bare .mock{display:none}
 .clock .cd{order:-1;display:inline-block;padding:4px 7px 3px;border:1px solid #3c7fcc;border-radius:4px;background:#0d2b48;font:600 15px/1 var(--cond);letter-spacing:.08em;color:#9bcbff;white-space:nowrap}
 .clock .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 /* on a monitor or laptop only the alarm or prompt gives way to a long message in the title bar (it wraps): ALL OFF keeps
-   its shape and the clock its digits. Narrower, both still give way, so the prompt doesn't grow taller still */
-@media (min-width:1180px){.alloff,.clock{flex:none}}
-/* a simulator's clock (SIMTAG a, b, c): its date, always, as a quiet line in Soft Steel capitals
-   with no box, so nothing about it looks pressable, over SPEED, a button in the title bar's button look (ALL OFF's
-   steel edge, at 1px), left of the time; the date at 16px and SPEED 34px tall make 52px, so on a simulator the bar is
-   4px taller than ALL OFF's 48px makes it. SPEED opens the chooser below (.spdbox); ?simtag=b puts the speeds there in
-   a row, the one it runs at pressed; ?simtag=c makes SPEED two lines as tall as ALL OFF, the bar 20px taller */
+   its shape and the clock its digits. Narrower, both still give way, so the prompt doesn't grow taller still. The
+   clock gives way first, down to SPEED and the time: the date's room goes before anything else does */
+@media (min-width:1180px){.alloff{flex:none}}
+.clock{flex:0 100000 auto;min-width:min-content}
+/* a simulator's clock (SIMTAG a, b, c): SPEED, a button in the title bar's button look (ALL OFF's steel edge, at 1px),
+   left of the date and the time, all on one line. SPEED opens the chooser below (.spdbox); ?simtag=b puts the speeds
+   there in a row, the one it runs at pressed; ?simtag=c makes SPEED two lines as tall as ALL OFF, the bar 16px taller */
 /* the chooser's place: under the title bar at its right; the bar is its anchor only while it is open, so nothing else
    in the bar is painted differently */
 .topbar:has(>.spdbox:not([hidden])){position:relative}
-.clock[data-sim=spd]{display:flex;align-items:center;justify-content:flex-end;gap:12px}
-.clock[data-sim=spd] .cs{order:-1;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:2px}
-.clock .cdl{font:600 16px/1 var(--cond);letter-spacing:.08em;color:var(--text-2);white-space:nowrap}
+/* the title bar's clock: CraftBeerPi's (The One Clock Rule). CraftBeerPi's date always stands just left of the time, on
+   its line: a quiet line in Soft Steel capitals with no box, so nothing about it looks pressable. It adds no height. Its
+   room (.cdr, held by .cdz, an unseen copy of its words) is the first thing in the bar to give way: a long reminder
+   takes it before the reminder itself wraps, and the date then goes above the time, smaller, in the time's own height
+   (data-over, which the page sets as the room changes), so the bar is never taller, and nothing in it narrower, for
+   the date. Where CraftBeerPi's clock isn't the real time (data-real=no: over a minute from this computer's, or at a
+   speed other than 1×), the time and the date are in italics and Note Amber. On a phone, under the time */
+.clock[data-sim=spd]{display:grid;grid-template-columns:auto minmax(0,max-content) auto;align-items:center;justify-content:end}
+.clock[data-sim=spd] .cs{display:contents}
+.clock[data-sim=spd] .ct{grid-area:1/3}
+.clock[data-sim=spd] :is(.spd,.spdrow){grid-area:1/1;margin-right:12px}
+.clock .cdr{grid-area:1/2;position:relative;padding-right:12px}
+.clock .cdz{display:block;width:max-content;height:0;overflow:hidden;visibility:hidden}
+.clock :is(.cdl,.cdz){font:600 16px/1 var(--cond);letter-spacing:.08em;color:var(--text-2);white-space:nowrap}
+.clock .cdl{position:absolute;top:-.5em;right:12px}
+@media (min-width:701px){.clock[data-over] .cdl{top:auto;right:calc(-1 * var(--ctw,0px));bottom:calc(clamp(26px,2.4vw,40px) / 2 - 3px);font-size:13px;letter-spacing:.05em}}
+.clock[data-real=no] :is(.ct,.cdl,.cdz){font-style:italic;color:#ffd9a0}
 .clock .spd{display:inline-flex;align-items:center;min-height:34px;padding:0 10px;border:1px solid #7d8fa2;border-radius:var(--r);background:var(--panel-2);color:var(--text);font:700 16px/1 var(--cond);letter-spacing:.06em;white-space:nowrap}
 .clock .spd .lb{display:inline-flex;align-items:center;gap:6px}
 .clock .spd .chev{width:12px;height:12px;fill:none;stroke:var(--text-2);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -1172,9 +1186,12 @@ button.step{width:100%;margin:0;color:inherit;text-align:left;touch-action:manip
   .clock[data-sim=tag]{flex-direction:column;align-items:flex-end;gap:2px}
   .clock .cd{order:0;padding:2px 5px 1px;font-size:12px;letter-spacing:.05em}
   .clock .cd .lg{display:none}
-  .clock[data-sim=spd]{flex-direction:column;align-items:flex-end;gap:3px}
-  .clock[data-sim=spd] .cs{order:0;gap:3px}
-  .clock .cdl{font-size:13px;letter-spacing:.05em}
+  .clock[data-sim=spd]{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+  .clock[data-sim=spd] .cs{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:3px}
+  .clock[data-sim=spd] :is(.spd,.spdrow){margin-right:0}
+  .clock .cdr{display:contents}
+  .clock .cdz{display:none}
+  .clock .cdl{position:static;font-size:13px;letter-spacing:.05em}
   .clock .spd{min-height:44px;padding:0 10px}
   .clock .spd .lg{display:none}
   .ssline:not(:empty){display:block}

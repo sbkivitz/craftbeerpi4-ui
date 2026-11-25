@@ -6746,15 +6746,16 @@ his pick is a small change.
 
 ### What to build (screen.js, brewday.css)
 
-1. **The date line and SPEED** (mockup: `spdClock`). Left of the time, one over the other:
-   - CraftBeerPi's date, always, on every CraftBeerPi (the rig and the simulators) and at every speed; where CraftBeerPi's
-     date isn't the screen's, it is CraftBeerPi's: "THU 26 NOV", Barlow Condensed 600 at 16px, capitals,
-     .08em apart, Soft Steel, with no ground and no edge. Hidden from screen readers, which hear "CraftBeerPi's clock,
-     Thursday 26 November" instead.
-   - SPEED, a `<button>`: "60× SPEED" and a 12px chevron; 34px tall; Raised Slate with a 1px #7d8fa2 edge and the 6px
-     radius; 700 16px. `aria-haspopup="dialog"`, `aria-expanded`, `aria-controls="spd-box"`, and the name "Simulator
-     speed, 60×, running 60 times as fast. Change it" ("Simulator speed, 1×. Change it" at 1×). Greyed with no
-     connection, with the screen's reason.
+1. **The date line and SPEED** (mockup: `spdClock`). On the time's line, left of it:
+   - CraftBeerPi's date, always, on every CraftBeerPi (the rig and the simulators) and at every speed, just left of
+     the time: "THU 26 NOV", Barlow Condensed 600 at 16px, capitals, .08em apart, Soft Steel, with no ground and no
+     edge. Hidden from screen readers, which hear "CraftBeerPi's clock, Thursday 26 November" instead. It never makes
+     the bar taller: see "The title bar's date, and the screen between phone and laptop" for its room and for the look
+     of a clock that isn't the real time.
+   - SPEED, a `<button>`, left of the date: "60× SPEED" and a 12px chevron; 34px tall; Raised Slate with a 1px #7d8fa2
+     edge and the 6px radius; 700 16px. `aria-haspopup="dialog"`, `aria-expanded`, `aria-controls="spd-box"`, and the
+     name "Simulator speed, 60×, running 60 times as fast. Change it" ("Simulator speed, 1×. Change it" at 1×). Greyed
+     with no connection, with the screen's reason.
    - SPEED on any simulator, at 1× on the screen's own date too, so the speed can always be changed. A simulator is a CraftBeerPi whose GET /plugin/list includes cbpi4-simvessel and whose /config has
      SIM_TIME_SCALE; SIM_TIME_SCALE alone isn't enough, as the rig once ran the simulator plugin and its saved settings
      may still hold the setting. Where /plugin/list fails or doesn't list the plugin, there is no SPEED; the date line
@@ -6807,9 +6808,8 @@ blue is three CSS values.
 
 ### Known, accepted
 
-- On a simulator the title bar is 2px taller on a monitor (73 px against the rig's 71). On a phone it is 41px taller
-  (162 px against 121, as built 121), for a SPEED a finger can press: there is no room for it beside the time at 360
-  px wide. The rig's bar doesn't change.
+- On a simulator the title bar is as tall as on the rig on a monitor (71 px). On a phone it is 41px taller (162 px
+  against 121), for a SPEED a finger can press: there is no room for it beside the time at 360 px wide.
 - While the chooser is open it covers LOG's button; LOG opening would close it anyway.
 - BrewStart's box keeps its own clock line in the old tag's look ("CRAFTBEERPI'S CLOCK · FRI 20 NOV, 9:12 PM · 60×
   SPEED"), as you asked that nothing else change. It isn't pressable either; if the brewer wants it to follow, it
@@ -7033,6 +7033,61 @@ moment.
   `cmdBanner`'s `lid` and `lidoff`, and NEXT STEP bringing up a waiting turn-off reminder, the `#ss-*` moments);
   `proposal\brew-day.css` (the condenser's rules, `.ssline`); `proposal\brew-day.html` (the moments and the
   condenser's row in the strip); `proposal\STEAM-SLAYER.md` (new); this section.
+
+## The title bar's date, and the screen between phone and laptop
+
+### The date, beside the time (screen.js `clockSet`, `clockRoom`; brewday.css; the mockup's `spdClock` alike)
+
+- CraftBeerPi's date always stands just left of the time, on its line, 16px Soft Steel capitals; on a simulator SPEED
+  stands left of the date. The date adds no height: on a monitor and a laptop the bar is 71 px with or without it, on
+  the rig and on a simulator.
+- Its room is the first thing in the bar to give way. The clock (`#clock`) is a grid of three columns, SPEED, the date
+  and the time; the date's column is `minmax(0, max-content)`, so the clock needs no room for the date at its
+  narrowest, and wants it all at its widest. The room is held by `.cdz`, an unseen copy of the date's words; the date
+  itself (`.cdl`) is placed over it. The clock gives way before anything else in the bar (`flex-shrink: 100000`,
+  down to its narrowest, SPEED and the time). So a long reminder takes the date's room before the reminder itself
+  wraps, and the bar is as tall, and the reminder as wide, as without the date.
+- When the room has gone, even in part, the date goes above the time (`data-over`), at 13px, its right edge on the
+  time's (`--ctw`, the time's width), within the time's own height. A ResizeObserver on the clock, the room, the words
+  and the time sets both as they change; nothing it sets changes the room's size, so it settles at once.
+- On a phone (700 px wide or less) the date stays under the time at 13px, as before, and SPEED under it.
+- At 1180 × 860 with the before-boil or after-boil reminder and OK, or Record strike water with RECORD VOLUME: the bar
+  124 to 169 px and the pipe drawing's strip 64 to 84 px, exactly as without the date (the date above the time).
+
+### Not the real time
+
+- CraftBeerPi's clock is the real time when it runs at 1× and is within a minute of this computer's clock
+  (`clockNow().real`; the demo's: a simulator's moment at 1× on the screen's date, and time where the moment gives
+  one). Otherwise (a simulator running fast or ahead, a Pi whose clock is wrong or not set) the time and the date are
+  in italics and Note Amber (#ffd9a0, 14:1 on Cabinet Black), at their usual size and weight, with nothing blinking or
+  moving (`#clock[data-real=no]`); the italics carry it as well as the colour. A screen reader hears "CraftBeerPi's
+  clock, not the real time: Wednesday 25 November, 2:21 AM", and the time's own digits are hidden from it then. The
+  usual look otherwise. There is no italic Barlow Condensed among the bundled fonts, so the slant is the browser's.
+- Moments: `#mash` and the other rig moments, and `#sim-clock-1x`, the real time; `#sim-clock` (60×) and `#bs-sim-day`
+  (1× on another date), not.
+
+### Between phone and laptop (brewday.css `.app`)
+
+- From 701 to 899 px wide one faceplate stands in a row, sized from the faceplates' own width (`.plates`' `--pu`, in
+  `cqi`). The page's one column (`.app`) is `minmax(0, 1fr)`: as wide as the window, never sized from what it holds.
+  Sized from its contents, under 1180 px, where the drawing keeps an aspect ratio, the browser would lay the
+  faceplates out at a trial width and then their own at every change on the page, restyling all three each time
+  (0.6 s and more a time, so the page fell behind its clock); this way a change lays out only what changed. Every
+  width looks the same either way, picture for picture (seven moments at sixteen widths from 390 to 1920 px).
+- Measured in Chromium on the demo's `#mash`, left alone 6 s, its step's time ticking each second: at 720, 800 and 880
+  px wide each layout takes 0.7 to 0.8 ms, and LOG opens 0.09 to 0.11 s after the press.
+
+### Checked
+
+- test_ui_clock_live: at 720, 800 and 880 px wide, the clock moving ten times a second, the page lays itself out in
+  under 100 ms a second, and LOG opens within 1 s of the press; at 60× the look of a clock that isn't the real time,
+  at 1× the usual look.
+- test_ui_simspeed_live: the date between SPEED and the time on their line; the bar as tall with the date as without
+  it at 1180 × 860, 1280 × 800, 1440 × 900 and 1920 × 1080, on a simulator and not, and the drawing's strip at 1180 ×
+  860; not the real time at 10× and 60×, and at 1× two minutes off; the real time at 1× and 20 seconds off.
+- test_ui_readings_live: with the long reminders up, the bar as tall with the date as without it at the four sizes,
+  and the drawing's strip at 1180 × 860; its presses at 701 to 899 px wide are a brewer's clicks.
+- test_ui_brewday_identity: the mockup and the build alike at 1280 × 800 and 1180 × 860 too.
 
 ## Open questions about the drawing
 

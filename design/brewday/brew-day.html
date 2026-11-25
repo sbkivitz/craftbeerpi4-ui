@@ -128,12 +128,16 @@ boil-manual.html compares the two.
 Title bar: the BREWERY_NAME setting at every width, so a rig and a simulator can't be taken for each other.
 ?name=Simulator 8012 tries another name; blank shows CraftBeerPi. Two lines at most, and a name of more than 24
 characters is drawn smaller (0.7 of the size) on a monitor and a phone; from 701 to 1023 px wide it keeps the full size.
-The time is CraftBeerPi's clock (The One Clock Rule). #sim-clock is a simulator at 60× whose clock is on another day:
-its date sits on a quiet line over SPEED, a button left of the time, and LOG's lines from the day before say their
-date. #sim-speed has SPEED's chooser open: a speed pressed starts the clock again from this computer's time, as the
-core does from post63. #sim-clock-1x is a simulator at 1× on the screen's own date: SPEED alone, so the speed can
-always be changed; the rig shows the time alone. ?simtag=b and ?simtag=c are the other two options; ?simtag=today the
-tag as built before. ?plan=edge, ?plan=ground and ?plan=today are the other ways of the recipe column's blue.
+The time is CraftBeerPi's clock (The One Clock Rule), with CraftBeerPi's date always just left of it on a quiet line.
+Where that clock isn't the real time (more than a minute from this computer's, or at a speed other than 1×), the time
+and the date are in italics and Note Amber. #sim-clock is a simulator at 60× whose clock is on another day: SPEED, a
+button, left of the date and the time, all on one line, and LOG's lines from the day before say their date.
+#sim-speed has SPEED's chooser open: a speed pressed starts the clock again from this computer's time, as the
+core does from post63. #sim-clock-1x is a simulator at 1× on the screen's own date and time: the usual look, SPEED
+still there, so the speed can always be changed; the rig shows the date and the time. Where a long reminder needs the
+room, the date goes above the time, in the time's own height. ?simtag=b and ?simtag=c are the other two options;
+?simtag=today the tag as built before. ?plan=edge, ?plan=ground and ?plan=today are the other ways of the recipe
+column's blue.
 Clock format (The Twelve-Hour Rule): every time of day in 12-hour form by default, "7:00 AM", "11:15:40 PM" in LOG,
 as CraftBeerPi sets its CLOCK_FORMAT setting where a configuration lacks it; ?clock=24 shows its other choice, 24-hour
 ("07:00", "23:15:40"), which is also what a /config without the setting, a blank one or any other value gives.
@@ -248,7 +252,7 @@ whirlpool.html shows them side by side; ?focus=rig is for that page.
   <span class="lay">Boil kettle: <a data-bk="power" href="?bk=power">default</a> <a data-bk="today" href="?bk=today">older BoilPower</a></span>
   <span class="lay">Boil kettle's MANUAL: <a data-bkman="new" href="?">default: by hand at the boil power</a> <a data-bkman="today" href="?bkman=today">as built before</a> <a href="boil-manual.html">side by side</a></span>
   <span class="lay">Clock: <a data-clk="12" href="?">default: 12-hour</a> <a data-clk="24" href="?clock=24">24-hour</a></span>
-  <span class="lay">Simulator's clock: <a data-simtag="a" href="?">default: A · the date over SPEED, a chooser</a> <a data-simtag="b" href="?simtag=b">B · the speeds in a row</a> <a data-simtag="c" href="?simtag=c">C · SPEED as big as ALL OFF</a> <a data-simtag="today" href="?simtag=today">as built before</a></span>
+  <span class="lay">Simulator's clock: <a data-simtag="a" href="?">default: A · SPEED beside the date, a chooser</a> <a data-simtag="b" href="?simtag=b">B · the speeds in a row</a> <a data-simtag="c" href="?simtag=c">C · SPEED as big as ALL OFF</a> <a data-simtag="today" href="?simtag=today">as built before</a></span>
   <span class="lay">Recipe column's blue: <a data-plan="soft" href="?">default: softer ground and edge</a> <a data-plan="edge" href="?plan=edge">the edge alone</a> <a data-plan="ground" href="?plan=ground">the ground alone</a> <a data-plan="today" href="?plan=today">as built before</a></span>
   <span class="lay">Steam Slayer on the boil kettle (proposal, STEAM-SLAYER.md): <a data-slayer="" href="?">none, as today</a> <a data-slayer="hand" href="?slayer=hand">its mister set by hand</a> <a data-slayer="switched" href="?slayer=switched">switched by CraftBeerPi</a></span>
   <span class="lay">Section cues: <a data-cue="a" href="?">default: A · each kind of section on its own ground</a> <a data-cue="today" href="?cues=today">as built before</a> <a href="cues.html">as proposed</a></span>

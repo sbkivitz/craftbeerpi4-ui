@@ -532,15 +532,18 @@
   }
   const pick = () => `<div class="pick" role="group" aria-label="Figure">${FIGS.map((F) => `<button type="button" data-act="pick" data-fig="${F.id}" aria-pressed="${st.pick === F.id}">${F.short}</button>`).join("")}</div>`;
 
-  /* the title bar's clock, as the shared frame draws it: the time, and left of it, one over the other, CraftBeerPi's
-     date, always, on a quiet line with no box, said to a screen reader; and on a simulator (the bench) SPEED, a button
-     in the title bar's button look. On a phone both go under the time */
+  /* the title bar's clock, as the shared frame draws it: the time, and just left of it on its line CraftBeerPi's date,
+     always, on a quiet line with no box, said to a screen reader; on a simulator (the bench) SPEED, a button in the
+     title bar's button look, left of them. A clock that isn't the real time (here, a bench at a speed other than 1×)
+     has the time and the date in italics and Note Amber. On a phone the date and SPEED go under the time */
   function clock(now) {
-    const el = $("#clock"), d = D(now), n = (BENCH.sim && BENCH.sim.scale) || 1;
+    const el = $("#clock"), d = D(now), n = (BENCH.sim && BENCH.sim.scale) || 1, real = st.brewery !== "bench" || n === 1;
     const t = S.h24 ? hm(now) : hm(now).replace(/ (AM|PM)/, '<span class="ap">$1</span>');
     const sp = st.brewery === "bench" ? `<button type="button" class="spd" aria-haspopup="dialog" aria-label="Simulator speed, ${n}×. Change it">${n}×<span class="lg"> SPEED</span><svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>` : "";
+    const when = `${DAY_SAY[d.getDay()]} ${d.getDate()} ${MON_SAY[d.getMonth()]}`;
     el.dataset.sim = "spd";
-    el.innerHTML = `<span class="ct">${t}</span><span class="cs"><span class="cdl" aria-hidden="true">${day(now)}</span><span class="sr">CraftBeerPi's clock, ${DAY_SAY[d.getDay()]} ${d.getDate()} ${MON_SAY[d.getMonth()]}</span>${sp}</span>`;
+    if (real) el.removeAttribute("data-real"); else el.dataset.real = "no";
+    el.innerHTML = `<span class="ct"${real ? "" : ' aria-hidden="true"'}>${t}</span><span class="cs"><span class="cdl" aria-hidden="true">${day(now)}</span><span class="sr">CraftBeerPi's clock, ${real ? when : `not the real time: ${when}, ${hm(now)}`}</span>${sp}</span>`;
   }
 
   function render() {

@@ -863,10 +863,11 @@ const SCENES = {
   "load-notinbook": () => Object.assign(SCENES.finished(), {base: "finished", recipeName: "Rye Pale Ale", open: {confirmLoad: 0}}),
   /* a simulator at 60× (SIM_TIME_SCALE), as 8012 runs: the #sw-plan night before on its clock, 21:12 on Thursday 26 Nov
      while it is Sunday 22 Nov on the screen's own. Everything on CraftBeerPi's clock runs 60 times as fast, the title
-     bar's clock included, which has the date on a quiet line over SPEED, left of the time; past its midnight the date
-     moves on, and LOG's lines from the day before say theirs. #sim-clock-1x: the same evening on a simulator at 1×, its
-     clock the screen's, so SPEED stands alone beside the time. #sim-speed: #sim-clock with SPEED pressed, its chooser
-     open. sim: the speed, CraftBeerPi's date at the moment's midnight (day0) and the screen's (pc) */
+     bar's clock included, which isn't the real time: its date and time in italics and Note Amber, SPEED left of them;
+     past its midnight the date moves on, and LOG's lines from the day before say theirs. #sim-clock-1x: the same evening
+     on a simulator at 1×, its clock the screen's, the real time: the date beside the time in the usual look, SPEED left
+     of them. #sim-speed: #sim-clock with SPEED pressed, its chooser open. sim: the speed, CraftBeerPi's date at the
+     moment's midnight (day0) and the screen's (pc) */
   "sim-clock": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {base: "sw-plan", sim: {scale: 60, day0: "2026-11-26", pc: "2026-11-22"}}),
   "sim-clock-1x": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {base: "sw-plan", sim: {scale: 1, day0: "2026-11-22", pc: "2026-11-22"}}),
   "sim-speed": () => Object.assign(SCENES["sim-clock"](), {open: {spdOpen: true}}),

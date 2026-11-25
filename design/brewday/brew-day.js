@@ -724,9 +724,9 @@ const SCENES = {
   "unload-notinbook": () => { RECIPE.name = "Quick Pale Ale"; return Object.assign(pbMorning(), {base: "prebrew", events: [["07:36:02", "Hot liquor tank MANUAL", "confirmed", "ok"]], open: {confirmUnload: true}}); },
   /* a simulator at 60× (SIM_TIME_SCALE), as 8012 runs: the #sw-plan night before on its clock, 21:12 on Thursday 26 Nov
      while it is Sunday 22 Nov on the screen's own. Everything on CraftBeerPi's clock runs 60 times as fast, the title
-     bar's clock included, which says the date and the speed under the time; past its midnight the date moves on, and
-     LOG's lines from the day before say theirs. #sim-clock-1x: the same evening on a simulator at 1×, its clock the
-     screen's, so the title bar shows its date over SPEED, with no speed beside the date */
+     bar's clock included, which isn't the real time: its date and time in italics and Note Amber, SPEED left of them;
+     past its midnight the date moves on, and LOG's lines from the day before say theirs. #sim-clock-1x: the same evening
+     on a simulator at 1×, its clock the screen's, the real time: the date beside the time in the usual look */
   "sim-clock": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {base: "sw-plan", sim: {scale: 60, day0: "2026-11-26", pc: "2026-11-22"}}),
   "sim-clock-1x": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {base: "sw-plan", sim: {scale: 1, day0: "2026-11-22", pc: "2026-11-22"}}),
   /* the boil kettle's Steam Slayer (STEAM-SLAYER.md), its mister set by hand. #ss-heat: #heatup at 3:12 PM, the boil
@@ -1569,8 +1569,8 @@ const todS = x => { const [h, m, s] = String(x).split(":").map(Number); return t
 const nb = s => s.replace(/ /g, "\u00a0");
 /* CraftBeerPi's clock, which every brewing time on the screen is on (The One Clock Rule): st.t, its seconds from the
    moment's midnight. A simulator's (st.sim) runs SIM_TIME_SCALE times as fast and has a date of its own, day0 being
-   its date at st.t 0; the screen's own date is pc. The title bar always shows CraftBeerPi's date, and on a simulator
-   SPEED */
+   its date at st.t 0; the screen's own date is pc, and its time of day pcT where the moment gives one (else st.t's).
+   The title bar always shows CraftBeerPi's date, and on a simulator SPEED */
 const DOW = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"], MON3 = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 const DOW_SAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"], MON_SAY = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const dayOf = t => Math.floor(t / 86400);
@@ -1599,16 +1599,26 @@ function clockTag() {
   const d = clockDay(st.t), other = ymd(d) !== sim.pc, fast = sim.scale !== 1;
   return other || fast ? {d, other, fast, scale: sim.scale} : null;
 }
+/* whether CraftBeerPi's clock is the real time: at 1× and within a minute of the screen's own clock. The rig's moments
+   are; a simulator's is where it runs at 1× on the screen's date (and time, where the moment gives it) */
+function clockReal() {
+  const sim = st.sim;
+  if (!sim) return true;
+  const off = (Date.parse(ymd(clockDay(st.t)) + "T00:00:00Z") - Date.parse(sim.pc + "T00:00:00Z")) / 1000
+    + (sim.pcT != null ? (((st.t % 86400) + 86400) % 86400) - sim.pcT : 0);
+  return sim.scale === 1 && Math.abs(off) <= 60;
+}
 /* the title bar's time: the digits, then AM or PM at about half their size after a thin space (brew-day.css .ap); in
    24-hour the digits alone */
 const clockHTML = () => { const p = todParts(st.t); return p.ap ? `${p.hm}\u2009<span class="ap">${p.ap}</span>` : p.hm; };
-/* the title bar's clock (SIMTAG). By default (a) CraftBeerPi's date, always, on every CraftBeerPi and at every speed (its
-   own date, where it isn't the screen's), on a quiet line left of the time, said to a screen reader; on a simulator over
-   a SPEED button, which opens a chooser of speeds (spdDraw); ?simtag=b the speeds in a row in the button's place;
-   ?simtag=c a two-line SPEED button as tall as ALL OFF under the date; ?simtag=today the tag as built before, the date
-   and speed in one blue box, only on a simulator where either isn't the screen's, and the time alone elsewhere. SPEED
-   shows on any simulator, at 1× on the screen's date too, so its speed can always be changed; on a phone the date and
-   a compact SPEED button go under the time. A simulator (st.sim) is a CraftBeerPi running the cbpi4-simvessel plugin
+/* the title bar's clock (SIMTAG). By default (a) CraftBeerPi's date, always, on every CraftBeerPi and at every speed,
+   on a quiet line just left of the time, said to a screen reader; on a simulator SPEED left of them, a button which
+   opens a chooser of speeds (spdDraw); ?simtag=b the speeds in a row in the button's place; ?simtag=c a two-line SPEED
+   button as tall as ALL OFF; ?simtag=today the tag as built before, the date and speed in one blue box, only on a
+   simulator where either isn't the screen's, and the time alone elsewhere. SPEED shows on any simulator, at 1× on the
+   screen's date too, so its speed can always be changed; on a phone the date and a compact SPEED button go under the
+   time. Where CraftBeerPi's clock isn't the real time (clockReal), the time and the date are in italics and Note Amber,
+   and a screen reader hears so. A simulator (st.sim) is a CraftBeerPi running the cbpi4-simvessel plugin
    (/plugin/list) with SIM_TIME_SCALE in /config */
 const SIMTAG = (v => ["a", "b", "c", "today"].includes(v) ? v : "a")(new URLSearchParams(location.search).get("simtag"));
 /* the speeds offered: SIM_TIME_SCALE's usual ones, with the one it has where that is another */
@@ -1622,11 +1632,14 @@ function spdPc() { const d = new Date(st.sim.pc + "T00:00:00Z"); return `${tcase
 const spdSay = () => `A new speed starts CraftBeerPi's clock again from this computer's time, ${spdPc()}.`;
 const CHEV = '<svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg>';
 /* the date line and SPEED (a, c) or the speeds' row (b), left of the time; drawn again only where they change, keeping
-   the focus in them, as the time changes every second */
+   the focus in them, as the time changes every second. The date's words are drawn twice: .cdz, unseen, holds their
+   room beside the time; .cdl is the date itself, there or above the time (clockRoom) */
 function spdClock(el, ct) {
-  const sim = st.sim, n = sim ? sim.scale : 1, d = clockDay(st.t), phone = matchMedia("(max-width:700px)").matches;
+  const sim = st.sim, n = sim ? sim.scale : 1, d = clockDay(st.t), phone = matchMedia("(max-width:700px)").matches, real = clockReal();
   const lost = st.link === "lost", P = st.spdPend, fast = n === 1 ? "" : `, running ${n} times as fast`;
-  const date = `<span class="cdl" aria-hidden="true">${DOW[d.getUTCDay()]} ${d.getUTCDate()} ${MON3[d.getUTCMonth()]}</span><span class="sr">CraftBeerPi's clock, ${DOW_SAY[d.getUTCDay()]} ${d.getUTCDate()} ${MON_SAY[d.getUTCMonth()]}</span>`;
+  const words = `${DOW[d.getUTCDay()]} ${d.getUTCDate()} ${MON3[d.getUTCMonth()]}`, when = `${DOW_SAY[d.getUTCDay()]} ${d.getUTCDate()} ${MON_SAY[d.getUTCMonth()]}`;
+  const said = real ? `CraftBeerPi's clock, ${when}` : `CraftBeerPi's clock, not the real time: ${when}, ${tod(st.t)}`;
+  const date = `<span class="cdr"><span class="cdz" aria-hidden="true">${words}</span><span class="cdl" aria-hidden="true">${words}</span><span class="sr">${said}</span></span>`;
   const big = SIMTAG === "c" && !phone;
   const sp = !sim ? "" : SIMTAG === "b" && !phone
     ? `<span class="spdrow" role="group" aria-label="Simulator speed${fast}">${spdList().map(v => `<button type="button" data-cmd="spd:set:${v}" aria-pressed="${v === (P || n)}" title="${esc(spdSay())}"${lost || (P && v !== P) ? ` aria-disabled="true" data-why="${lost ? PAUSED : WAIT}"` : ""}>${v}×</button>`).join("")}</span>`
@@ -1634,11 +1647,35 @@ function spdClock(el, ct) {
   const cs = date + sp;
   if (el.dataset.sim !== "spd") { el.innerHTML = '<span class="ct"></span><span class="cs"></span>'; el.dataset.sim = "spd"; el._ct = el._cs = null; }
   if (el._ct !== ct) { el.querySelector(".ct").innerHTML = ct; el._ct = ct; }
+  if (real !== !el.hasAttribute("data-real")) {
+    if (real) { el.removeAttribute("data-real"); el.querySelector(".ct").removeAttribute("aria-hidden"); }
+    else { el.dataset.real = "no"; el.querySelector(".ct").setAttribute("aria-hidden", "true"); }
+  }
   if (el._cs !== cs) {
     const w = el.querySelector(".cs"), a = document.activeElement, f = w.contains(a) ? a.dataset.cmd : null;
     w.innerHTML = cs; el._cs = cs;
     if (f) w.querySelector(`[data-cmd="${f}"]`)?.focus({preventScroll: true});
+    clockWatch();
   }
+}
+/* the date beside the time while its room (.cdr) holds its words (.cdz), above the time once something longer in the
+   title bar has taken the room (data-over); the time's width (--ctw) lines the date up with it there. Measured whenever
+   the room, the words or the time change size */
+let clockRO = null;
+function clockRoom() {
+  const el = $("#clock"), r = el && el.querySelector(".cdr"), z = el && el.querySelector(".cdz"), t = el && el.querySelector(".ct");
+  if (!r || !z || !t) return;
+  const cs = getComputedStyle(r);
+  const over = cs.display !== "contents" && r.getBoundingClientRect().width + .5 < z.getBoundingClientRect().width + (parseFloat(cs.paddingRight) || 0);
+  if (el.hasAttribute("data-over") !== over) el.toggleAttribute("data-over", over);
+  const w = `${t.getBoundingClientRect().width}px`;
+  if (el.style.getPropertyValue("--ctw") !== w) el.style.setProperty("--ctw", w);
+}
+function clockWatch() {
+  if (typeof ResizeObserver !== "function") return;
+  clockRO = clockRO || new ResizeObserver(clockRoom);
+  clockRO.disconnect();
+  ["#clock", "#clock .cdr", "#clock .cdz", "#clock .ct"].forEach(s => { const n = $(s); if (n) clockRO.observe(n); });
 }
 /* the chooser SPEED opens (a, c): SIMULATOR SPEED set into its top edge, the speeds in the pressed look's row, the one
    CraftBeerPi runs at pressed, what a new one does to its clock, and CANCEL; under the title bar at its right, on a
@@ -1695,7 +1732,7 @@ function spdClose() {
 function clockSet() {
   const el = $("#clock"), ct = clockHTML();
   if (SIMTAG !== "today") return spdClock(el, ct);
-  if (el.dataset.sim === "spd") { el.innerHTML = ""; el._ct = el._cs = null; }
+  if (el.dataset.sim === "spd") { el.innerHTML = ""; el._ct = el._cs = null; el.removeAttribute("data-real"); el.removeAttribute("data-over"); }
   const g = clockTag();
   /* the rig, and a simulator on the screen's date at 1×: the time alone, as ever */
   if (!g) { el.removeAttribute("data-sim"); if (el.innerHTML !== ct) el.innerHTML = ct; return; }

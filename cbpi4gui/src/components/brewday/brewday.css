@@ -37,21 +37,38 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .clock{font:600 clamp(26px,2.4vw,40px)/1 var(--cond);font-variant-numeric:tabular-nums;min-width:3.2ch;text-align:right;white-space:nowrap}
 /* AM or PM after the digits (The Twelve-Hour Rule): half their size, in their weight and colour, on their baseline */
 :where(html.bd-page) .clock .ap{font-size:.5em;letter-spacing:.04em}
-/* the title bar's clock: CraftBeerPi's (The One Clock Rule). Left of the time, one over the other: CraftBeerPi's date,
-   always (its own, where it isn't the screen's), as a quiet line in Soft Steel capitals with no box, so nothing about it looks
-   pressable; and on a simulator SPEED, a button in the title bar's button look (ALL OFF's steel edge, at 1px), which
-   opens the chooser below (.spdbox). The date at 16px and SPEED 34px tall make 52px, so on a simulator the bar is 4px
-   taller than ALL OFF's 48px makes it. On a phone, under the time */
 :where(html.bd-page) .clock .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* on a monitor or laptop only the alarm or prompt gives way to a long message in the title bar (it wraps): ALL OFF keeps
+   its shape and the clock its digits. Narrower, both still give way, so the prompt doesn't grow taller still. The
+   clock gives way first, down to SPEED and the time: the date's room goes before anything else does */
 @media (min-width:1180px){
-:where(html.bd-page) .alloff,:where(html.bd-page) .clock{flex:none}
+:where(html.bd-page) .alloff{flex:none}
 }
+:where(html.bd-page) .clock{flex:0 100000 auto;min-width:min-content}
 /* the chooser's place: under the title bar at its right; the bar is its anchor only while it is open, so nothing else
    in the bar is painted differently */
 :where(html.bd-page) .topbar:has(>.spdbox:not([hidden])){position:relative}
-:where(html.bd-page) .clock[data-sim=spd]{display:flex;align-items:center;justify-content:flex-end;gap:12px}
-:where(html.bd-page) .clock[data-sim=spd] .cs{order:-1;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:2px}
-:where(html.bd-page) .clock .cdl{font:600 16px/1 var(--cond);letter-spacing:.08em;color:var(--text-2);white-space:nowrap}
+/* the title bar's clock: CraftBeerPi's (The One Clock Rule). CraftBeerPi's date always stands just left of the time, on
+   its line: a quiet line in Soft Steel capitals with no box, so nothing about it looks pressable. It adds no height. Its
+   room (.cdr, held by .cdz, an unseen copy of its words) is the first thing in the bar to give way: a long reminder
+   takes it before the reminder itself wraps, and the date then goes above the time, smaller, in the time's own height
+   (data-over, which the page sets as the room changes), so the bar is never taller, and nothing in it narrower, for
+   the date. On a simulator SPEED, a button in the title bar's button look (ALL OFF's steel edge, at 1px), stands left
+   of them and opens the chooser below (.spdbox). Where CraftBeerPi's clock isn't the real time (data-real=no: over a
+   minute from this computer's, or at a speed other than 1×), the time and the date are in italics and Note Amber. On a
+   phone, under the time */
+:where(html.bd-page) .clock[data-sim=spd]{display:grid;grid-template-columns:auto minmax(0,max-content) auto;align-items:center;justify-content:end}
+:where(html.bd-page) .clock[data-sim=spd] .cs{display:contents}
+:where(html.bd-page) .clock[data-sim=spd] .ct{grid-area:1/3}
+:where(html.bd-page) .clock[data-sim=spd] .spd{grid-area:1/1;margin-right:12px}
+:where(html.bd-page) .clock .cdr{grid-area:1/2;position:relative;padding-right:12px}
+:where(html.bd-page) .clock .cdz{display:block;width:max-content;height:0;overflow:hidden;visibility:hidden}
+:where(html.bd-page) .clock :is(.cdl,.cdz){font:600 16px/1 var(--cond);letter-spacing:.08em;color:var(--text-2);white-space:nowrap}
+:where(html.bd-page) .clock .cdl{position:absolute;top:-.5em;right:12px}
+@media (min-width:701px){
+:where(html.bd-page) .clock[data-over] .cdl{top:auto;right:calc(-1 * var(--ctw,0px));bottom:calc(clamp(26px,2.4vw,40px) / 2 - 3px);font-size:13px;letter-spacing:.05em}
+}
+:where(html.bd-page) .clock[data-real=no] :is(.ct,.cdl,.cdz){font-style:italic;color:#ffd9a0}
 :where(html.bd-page) .clock .spd{display:inline-flex;align-items:center;min-height:34px;padding:0 10px;border:1px solid #7d8fa2;border-radius:var(--r);background:var(--panel-2);color:var(--text);font:700 16px/1 var(--cond);letter-spacing:.06em;white-space:nowrap}
 :where(html.bd-page) .clock .spd .lb{display:inline-flex;align-items:center;gap:6px}
 :where(html.bd-page) .clock .spd .chev{width:12px;height:12px;fill:none;stroke:var(--text-2);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -930,9 +947,12 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .app{padding-bottom:calc(var(--tabs-h) + env(safe-area-inset-bottom))}
 :where(html.bd-page) .topbar{gap:10px;padding:8px var(--pad)}
 :where(html.bd-page) .clock{font-size:24px;min-width:0}
-:where(html.bd-page) .clock[data-sim=spd]{flex-direction:column;align-items:flex-end;gap:3px}
-:where(html.bd-page) .clock[data-sim=spd] .cs{order:0;gap:3px}
-:where(html.bd-page) .clock .cdl{font-size:13px;letter-spacing:.05em}
+:where(html.bd-page) .clock[data-sim=spd]{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+:where(html.bd-page) .clock[data-sim=spd] .cs{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:3px}
+:where(html.bd-page) .clock[data-sim=spd] .spd{margin-right:0}
+:where(html.bd-page) .clock .cdr{display:contents}
+:where(html.bd-page) .clock .cdz{display:none}
+:where(html.bd-page) .clock .cdl{position:static;font-size:13px;letter-spacing:.05em}
 :where(html.bd-page) .clock .spd{min-height:44px;padding:0 10px}
 :where(html.bd-page) .clock .spd .lg{display:none}
 :where(html.bd-page) .spdbox{right:var(--pad);width:min(360px,calc(100% - 2 * var(--pad)))}
