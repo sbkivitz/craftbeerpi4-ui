@@ -1026,6 +1026,28 @@ button.step{width:100%;margin:0;color:inherit;text-align:left;touch-action:manip
 .rig-line .gone{display:none}
 .rig-line .chiller rect{fill:#1b2833;stroke:#b9c6d2;stroke-width:2.5}
 .rig-line .chiller text{font:600 18px var(--cond);letter-spacing:.06em;fill:#c3cfda;text-anchor:middle}
+/* the boil kettle's Steam Slayer (STEAM-SLAYER.md): drawn in the drawing's own steel, quiet while it is off. Its mister
+   on: its valve open and its spray drawn, a change of shape as well as words. Set by hand, its water line and spray are
+   in the liquor's blue, still: what the brew needs, not a reading, so no dashes move and no arrows show, and the hand
+   valve stays steel. Switched (CraftBeerPi's actor) and on, its line lights as a running pump's does, dashes moving,
+   with its actuator, and its state reads ON in Running Green. A reminder waiting (the lid's, or turning it off): the
+   valve and its words in Prompt Amber, as a valve to set is, and for the lid its seam too */
+.rig-line .ss-body{fill:#1b2833;stroke:#b9c6d2;stroke-width:3;stroke-linejoin:round}
+.rig-line .ss-cap{fill:none;stroke:#b9c6d2;stroke-width:3;stroke-linecap:round}
+.rig-line .ss-noz{fill:#b9c6d2}
+.rig-line .ss-spray{fill:none;stroke:#b9c6d2;stroke-width:3;stroke-linecap:round;stroke-dasharray:3 6;display:none}
+.rig-line .slayer.on .ss-spray{display:inline}
+.rig-line .slayer.lit .ss-spray,.rig-line .slayer.need .ss-spray{stroke:var(--liquor)}
+.rig-line .ln.need.mist .pf{stroke:var(--liquor)}
+.rig-line .ln.on.mist .pf{stroke:var(--liquor)}.rig-line .ln.on.mist .ch{fill:var(--liquor);stroke:var(--liquor)}
+.rig-line .valve.mist.set path{stroke:var(--prompt);stroke-width:3}
+.rig-line .slayer.lit .valve.mist path{stroke:var(--liquor)}
+.rig-line .ss-lid.set{stroke:var(--prompt)}
+.rig-line .ss-lidt{text-anchor:middle}
+.rig-line .ss-st.run{fill:var(--run)}
+.rig-line .ss-act{fill:#1b2833;stroke:#b9c6d2;stroke-width:2.5}
+.rig-line .slayer.lit .ss-act{stroke:var(--liquor)}
+.ssline{display:none;margin:-4px 0 0;font:500 15px/1.3 var(--cond);letter-spacing:.04em;color:var(--text-2)}
 .rig-line #ln-swirl:not(.on){display:none}
 .rig-line #ln-swirl .pf{stroke-width:3.5}
 .rig-line #ln-swirl .ch{transform-box:view-box}
@@ -1152,6 +1174,7 @@ button.step{width:100%;margin:0;color:inherit;text-align:left;touch-action:manip
   .clock .cdl{font-size:13px;letter-spacing:.05em}
   .clock .spd{min-height:44px;padding:0 10px}
   .clock .spd .lg{display:none}
+  .ssline:not(:empty){display:block}
   .spdbox{right:var(--pad);width:min(360px,calc(100% - 2 * var(--pad)))}
   #link-t{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
   .link{font-size:15px}

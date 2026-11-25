@@ -6932,6 +6932,108 @@ bar's alarm, on a monitor and on a phone. A running or paused timer's editor has
   timer 1 to put back: a removed timer can be put back for 5 seconds.", and the screen says "Stir can't be put back
   now: a removed timer can be put back for 5 seconds."
 
+## The Steam Slayer on the boil kettle's lid: ready to build (25 Nov)
+
+The brewer has a Steam Slayer, a steam condenser, on the boil kettle's lid, its mister turned on by hand today and
+perhaps by a solenoid later. He asked for it in the drawing, chose the mister's water in blue even when set by hand,
+keeps it on "Later, once the wort has cooled down", and turns it off "whenever I was reminded of putting the lid on":
+below the lid reminder's own 203 °F (95 °C), once the boil is over. The design, its reasons and what wasn't chosen are
+in STEAM-SLAYER.md. Nothing changes for a boil kettle without a condenser.
+
+### What to build (rig.js, screen.js, brewday.css)
+
+1. **The drawing** (`proposal\rig.js`, layout B only; copy as it is):
+   - `slayerSVG(k, ss, rs)`: the duct, the column, the mister's water line `#ln-mist` (a `rigLine`, medium `mist`)
+     with its valve `#vl-mist`, the actuator `.ss-act` only when `ss` is "switched", the nozzle, the spray
+     `#ss-spray`, the drain `#ln-drain`, the name `.ss-name` and the tag `#ss-st`, both anchored at their end at
+     k + 122, the name at y 3 + 15·rs and the tag at 50 + 6·rs. Drawn before the vessels, so the kettle covers the
+     duct's inner end.
+   - `vesselB(v, x, ss)`: on the boil kettle, the lid's seam `#ss-lid` (`M-120 112 H120`) and its tag `#ss-lidt` at
+     y 109.
+   - `rigSVG(style, W, rs, wpo, ss)`: the new last argument, "" (none), "hand" or "switched".
+   - The name is the condenser's name in capitals (below); "STEAM SLAYER" on the rig.
+2. **Which condenser** (`slayer()`): none unless the boil kettle's condenser is Fitted (below); then "switched" if
+   steps_boil_actor names an actor, else "hand". Draw the drawing again when it changes, as for its width (the
+   mockup's `rigSs` in `drawRig`).
+3. **Its states** (`misterOn`, `renderSlayer(live)`, on every render as the pumps are):
+   - Set by hand, the mister is open once the lid reminder has been answered this brew, while the boil step runs or
+     is stopped, and after it has ended until the turn-off reminder has been answered; closed otherwise. Switched, it
+     is the actor's own state.
+   - Classes: `#slayer` `.on` (the spray shows) and `.need` (by hand and open: the line and spray in `--liquor`,
+     still) or `.lit` (switched, on and connected); `#ln-mist` `.need` by hand and open, `.on` switched, on and
+     connected (dashes and arrow); `#vl-mist` `.shut` when closed and `.set` while a reminder asks for it.
+   - The tag by hand: CLOSED; SET OPEN while the lid reminder waits; OPEN; SET CLOSED while the turn-off reminder
+     waits, shown or behind another question. `.set` (Prompt Amber) on the last two. Switched: ON or OFF, LAST: before
+     it with no connection, `.run` (Running Green) when on and connected.
+   - The lid: while the lid reminder waits, `#ss-lid` `.set` and `#ss-lidt` "LID ON?" in Prompt Amber; otherwise no
+     words.
+   - Which reminder is which: by the field CraftBeerPi gives them (below), not by their words, as the lid reminder's
+     title is the brewer's own setting.
+4. **For screen readers** (`slayerDesc`): added to the drawing's description; the mockup's words.
+5. **On a phone** (`slayerLine`, in `plateHTML`): under the boil kettle's line, `<p class="ssline">`, for as long as
+   the kettle has the condenser. By hand: "Steam Slayer: mister closed · set by hand" or "… open · set by hand";
+   switched: "Steam Slayer: mister on" or "off", "last on" with no connection. The name is the condenser's.
+6. **brewday.css:** the `.slayer` and `.ss-*` rules after `.chiller text`, the `.ln.need.mist` and `.ln.on.mist`
+   rules, `.ssline` (hidden) and, in the phone block, `.ssline:not(:empty){display:block}`. Copy them as they are.
+7. **The Hardware page:** in the boil kettle's Vessel group, under its material, "Steam condenser on the lid": Not
+   fitted (the default) or Fitted, with the help line in STEAM-SLAYER.md; when Fitted, its name (blank: "steam
+   condenser"). Saved as the kettle's other fields are.
+
+Nothing else on the screen changes. The title bar shows the turn-off reminder as any question, the older one first
+with "· 1 more waiting" (on Test Recipe v5, Whirlpool Hop's "Cool down to 170 °F" comes first).
+
+### In CraftBeerPi
+
+1. **Two kettle fields**, beside capacity, empty weight and material: the steam condenser (blank, not fitted, or
+   fitted) and its name (blank means "steam condenser"). Brew Day reads them with the vessels' other figures.
+2. **The turn-off watcher**, for a boil kettle whose condenser is fitted:
+   - It starts when the boil step ends as done (its time up, or NEXT STEP), not when it is stopped: on_stop also runs
+     for STOP. Only if the mister was asked on this brew: the lid reminder answered (by hand) or steps_boil_actor
+     switched on (switched).
+   - It reads the boil kettle's sensor each second. The first number below the lid's temperature (BoilStep's
+     `lid_temp`: 95 in °C, 203 in °F, by TEMP_UNIT; one place for both, so a setting for it later moves both) ends
+     it. NaN, or no reading, never counts as below. A reading below at the moment the step ends counts at once.
+   - By hand: one notification, kept until answered like LidAlert: title "Turn off the {name} mister" (the condenser's
+     name, "Turn off the Steam Slayer mister" on the rig), message "The boil is over and the wort is below 203 °F"
+     ("95 °C" in °C), one action, Done.
+   - Switched: steps_boil_actor off, and a log notification "{Name} mister off: the boil is over and the wort is
+     below 203 °F".
+   - It outlives the boil step and the recipe's end: on Test Recipe v5 the wort passes 203 °F during Whirlpool Hop,
+     but a recipe whose last step is the boil ends first.
+   - It stops without asking when a recipe is loaded, reset or unloaded, taking a waiting reminder down as "no longer
+     needed". Keep "asked" and "answered" with the boil step's props, as LID_ALERT_DONE_PROP is, so a restart neither
+     asks twice nor forgets to ask, and Brew Day can read them after a reload.
+3. **The solenoid's rule:** with the condenser fitted, the boil step's on_stop leaves steps_boil_actor on when the
+   step ends as done, for the watcher to switch off. STOP still switches it off, as today. Without the condenser,
+   nothing changes: it goes off as the step ends.
+4. **The two reminders marked for the screen:** the lid reminder and the turn-off reminder each carry a field Brew Day
+   can match (say `kind: "condenser_on"` and `"condenser_off"`), so the drawing can mark the valve while one waits,
+   even behind another question.
+
+### Moments
+
+`#ss-heat`, `#ss-ask`, `#ss-on`, `#ss-sag` (a dip to 201.6 °F in the boil, nothing asked), `#ss-after` (the boil over,
+207.6 °F, open), `#ss-cool` (202.4 °F, the turn-off reminder behind Whirlpool Hop's question; NEXT STEP, then DONE),
+`#ss-cooled` (the whirlpool, closed), `#ss-switched`. `?slayer=hand` or `?slayer=switched` adds the condenser to any
+moment.
+
+### Checked
+
+- `files\slayer_check.py`: 102 checks, all passing, no page errors. The eight moments at nine sizes from 820 to 2000
+  wide: tags, lid tag, spray, and their words clear of everything in the drawing and of + TIMER and SOUND; the still
+  blue against the lit solenoid; the dip in the boil asking nothing; "Whirlpool Hop · 1 more waiting", NEXT STEP
+  bringing up the turn-off reminder and its DONE; the lid reminder's DONE; no connection; four moments without a
+  condenser unchanged; the phone's line in each state, with the kettle's buttons not moving.
+- Pictures against UI main 8de7e6d at 1920 × 1080 and 390 × 844: only the `#ss-*` moments differ.
+
+### Changed
+
+- `proposal\rig.js` (`slayerSVG`, `vesselB`, `rigSVG`); `proposal\brew-day.js` (`slayer`, `LID_Q`, `OFF_Q`,
+  `offBanner`, `misterOn`, `renderSlayer`, `slayerDesc`, `slayerLine`, `ssPostBoil`, `ssEv`, `drawRig`'s `rigSs`,
+  `cmdBanner`'s `lid` and `lidoff`, and NEXT STEP bringing up a waiting turn-off reminder, the `#ss-*` moments);
+  `proposal\brew-day.css` (the condenser's rules, `.ssline`); `proposal\brew-day.html` (the moments and the
+  condenser's row in the strip); `proposal\STEAM-SLAYER.md` (new); this section.
+
 ## Open questions about the drawing
 
 Both were answered on 10 Nov. The valves have been in the drawing since then; the path after the boil was

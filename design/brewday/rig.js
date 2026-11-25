@@ -71,13 +71,15 @@ ${v.el ? `<rect class="el-cap" x="-96" y="262" width="12" height="12" rx="3"/><r
 </g>`;
 }
 
-/* B: line drawing of a vessel */
-function vesselB(v, x) {
+/* B: line drawing of a vessel. ss: the boil kettle has a steam condenser on its lid (slayerSVG), so its lid is drawn as a
+   lid, a seam across the top of its walls with a rim a little wider than the kettle */
+function vesselB(v, x, ss) {
   let dots = "";
   if (v.fb) for (let d = -96; d <= 90; d += 12) dots += `<circle cx="${d}" cy="256" r="2.4"/><circle cx="${d + 6}" cy="265" r="2.4"/>`;
   return `<g class="vessel" transform="translate(${r1(x)} 0)">
 <rect class="v-shell" x="-13" y="70" width="26" height="18"/><path class="v-line" d="M-20 70 H20"/>
 <path class="v-shell" d="M-112 286 V112 Q0 56 112 112 V286 Q0 316 -112 286 Z"/>
+${ss && v.id === "bk" ? '<path class="v-line ss-lid" id="ss-lid" d="M-120 112 H120"/><text class="tag ss-lidt" id="ss-lidt" y="109"></text>' : ""}
 <path class="v-line" d="M-88 291 V316 M88 291 V316 M-98 316 H-78 M78 316 H98"/>
 <text class="v-name" y="142">${v.name}</text>
 ${v.coil ? `<g class="coil" id="coil">${coilLoops()}</g>` : ""}
@@ -112,7 +114,29 @@ function rigValve(id, x, y, med, tx, ty, anchor, alt) {
   return `<g class="valve ${med}" id="vl-${id}" transform="translate(${r1(x)} ${y})"><path d="M-13 -9 L13 9 V-9 L-13 9 Z"/></g><text class="tag vtag" id="vt-${id}" x="${r1(tx)}" y="${ty}"${anchor ? ` text-anchor="${anchor}"` : ""}${at}></text>`;
 }
 
-function rigSVG(style, W, rs = 1, wpo = "today") {
+/* the boil kettle's steam condenser (a Steam Slayer), layout B, drawn before the kettle so the kettle covers the duct's
+   inner end: a duct out of the right of the lid into a column beside the kettle; the mister's water coming down into
+   the column's top through its valve, a hand valve like the others (ss "hand", under the same VALVES ARE SET BY HAND)
+   or a solenoid valve CraftBeerPi switches, drawn with its actuator (ss "switched", steps_boil_actor); its nozzle and,
+   while it mists, its spray; and the drain at the column's foot. Its name, and the valve's tag, sit left of the valve
+   over the kettle's dome and above the boil kettle's inlet line, where nothing else is drawn at any width; the name
+   keeps clear of the drawing's top edge as the words grow with rs. brew-day.js draws its states (renderRig) */
+function slayerSVG(k, ss, rs) {
+  const n = r1, x = c => n(k + c), yN = n(3 + 15 * rs), yT = n(50 + 6 * rs);
+  return `<g class="slayer ${ss}" id="slayer">
+<rect class="ss-body" x="${x(70)}" y="88" width="58" height="14"/><rect class="ss-body" x="${x(124)}" y="84" width="26" height="146" rx="6"/>
+${rigLine("ln-mist", "mist", [`M${x(137)} 28 V84`], [[k + 137, 72, 90]])}
+<path class="ss-cap" d="M${x(129)} 28 H${x(145)}"/>
+<g class="valve mist" id="vl-mist" transform="translate(${x(137)} 50) rotate(90)"><path d="M-12 -8 L12 8 V-8 L-12 8 Z"/></g>
+${ss === "switched" ? `<path class="ss-cap" d="M${x(145)} 50 H${x(150)}"/><rect class="ss-act" x="${x(150)}" y="43" width="14" height="14" rx="2"/>` : ""}
+<path class="ss-noz" d="M${x(130)} 92 H${x(144)} L${x(137)} 100 Z"/>
+<path class="ss-spray" id="ss-spray" d="M${x(137)} 102 L${x(127)} 136 M${x(137)} 102 V140 M${x(137)} 102 L${x(147)} 136"/>
+${rigLine("ln-drain", "mist", [`M${x(137)} 230 V254`], [[k + 137, 246, 90]])}
+<text class="p-name ss-name" x="${x(122)}" y="${yN}" text-anchor="end">STEAM SLAYER</text>
+<text class="tag ss-st" id="ss-st" x="${x(122)}" y="${yT}" text-anchor="end"></text>
+</g>`;
+}
+function rigSVG(style, W, rs = 1, wpo = "today", ss = "") {
   const S = RIG_ST[style], g = rigGeom(W), A = style === "kettle";
   const {a, m, k, yTop, ySp, yPump, yLow} = g, n = r1;
   const hRet = S.lidY(g.hltRet - a) + 1, mRet = S.lidY(g.mtRet - m) + 1, bRet = S.lidY(g.bkRet - k) + 1;
@@ -172,12 +196,13 @@ function rigSVG(style, W, rs = 1, wpo = "today") {
 <g class="stand-hi"><rect x="10" y="300" width="${n(W - 20)}" height="2"/><rect x="10" y="376" width="${n(W - 20)}" height="2"/></g>
 <g class="bolts">${legs.map(x => `<circle cx="${n(x + 8)}" cy="307" r="2.4"/><circle cx="${n(x + 8)}" cy="383" r="2.4"/>`).join("")}</g>` : "";
   const names = A ? RIG_V.map((v, i) => `<text class="k-name" x="${n(g.x[i])}" y="30">${v.name}</text>`).join("") : "";
-  const vessels = RIG_V.map((v, i) => (A ? kettleA : vesselB)(v, g.x[i])).join("\n");
+  const vessels = RIG_V.map((v, i) => (A ? kettleA : vesselB)(v, g.x[i], ss)).join("\n");
   const fits = A ? [[g.hltRet, hRet], [g.mtRet, mRet], [g.bkRet, bRet]].map(([x, y]) => `<rect class="fit" x="${n(x - 10)}" y="${n(y - 8)}" width="20" height="9" rx="2"/>`).join("") : "";
   return `<svg id="rigsvg" class="rig-${style}" viewBox="0 0 ${n(W)} ${RIG_H}" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="rig-t rig-d"${rs !== 1 ? ` style="--rs:${rs}"` : ""}>
 <title id="rig-t">Brewhouse drawing</title>
 <desc id="rig-d"></desc>
 ${defs}${stand}${names}
+${ss && !A ? slayerSVG(k, ss, rs) : ""}
 ${vessels}
 <g class="ln-o">${outline.map(d => `<path class="po" d="${d}"/>`).join("")}</g>
 ${A ? "" : rigLine("ln-sparge", "liq", sparge, chSp)}

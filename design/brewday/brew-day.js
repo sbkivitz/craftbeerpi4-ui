@@ -729,6 +729,50 @@ const SCENES = {
      screen's, so the title bar shows its date over SPEED, with no speed beside the date */
   "sim-clock": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {base: "sw-plan", sim: {scale: 60, day0: "2026-11-26", pc: "2026-11-22"}}),
   "sim-clock-1x": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {base: "sw-plan", sim: {scale: 1, day0: "2026-11-22", pc: "2026-11-22"}}),
+  /* the boil kettle's Steam Slayer (STEAM-SLAYER.md), its mister set by hand. #ss-heat: #heatup at 3:12 PM, the boil
+     heating, before the lid reminder: the mister shown off. #ss-ask: 3:24:40 PM, the boil kettle at 203.4 °F since
+     3:24:10, the lid reminder waiting: the lid asked about and the mister marked. #ss-on: #boiling, the reminder
+     answered at 3:25:02: the mister shown open. #ss-sag: a sag below 203 °F in the boil: still open. #ss-after: the boil
+     over, the wort at 207.6 °F: still open. #ss-cool: below 203 °F, the turn-off reminder waiting. #ss-cooled: the
+     whirlpool, closed. #ss-switched: #boiling with a mister CraftBeerPi switches (steps_boil_actor), on since the boil
+     kettle reached 203 °F */
+  "ss-heat": () => Object.assign(SCENES.heatup(), {slayer: "hand"}),
+  "ss-ask": () => {
+    const s = Object.assign(SCENES.heatup(), {slayer: "hand", t: 15 * 3600 + 24 * 60 + 40});
+    s.v.bk.pv = 203.4;
+    s.banner = {tone: "prompt", lid: true, title: LID_Q.title, text: LID_Q.text, act: "DONE", cmd: "b:lid"};
+    s.events.unshift(["15:24:10", `${LID_Q.title}: ${LID_Q.text}`, "waiting for you", "wait"]);
+    return s;
+  },
+  "ss-on": () => {
+    const s = Object.assign(SCENES.boiling(), {slayer: "hand", lidDone: true});
+    s.events.splice(1, 0, ["15:25:02", `${LID_Q.title} answered: Done`, "confirmed", "ok"], ["15:24:10", `${LID_Q.title}: ${LID_Q.text}`, "answered", ""]);
+    return s;
+  },
+  /* #ss-sag: #hop, the 60 min hops in at 4:00:31 PM and the wort dipped to 201.6 °F, below the lid's 203 °F, while the
+     boil step runs: still open, nothing asked */
+  "ss-sag": () => {
+    const s = Object.assign(SCENES.hop(), {slayer: "hand", lidDone: true, t: 16 * 3600 + 44, banner: null});
+    s.v.bk.pv = 201.6; s.recipe.left = 59 * 60 + 16; s.recipe.adds = ["done"];
+    s.events[0][2] = "answered"; s.events[0][3] = "";
+    s.events.unshift(["16:00:31", "Hop Alert answered: Added", "confirmed", "ok"]);
+    s.events.splice(s.events.findIndex(e => e[0] < "15:25:02"), 0, ["15:25:02", `${LID_Q.title} answered: Done`, "confirmed", "ok"], ["15:24:10", `${LID_Q.title}: ${LID_Q.text}`, "answered", ""]);
+    return s;
+  },
+  "ss-after": () => ssPostBoil(17 * 3600 + 40, 207.6, false),
+  "ss-cool": () => ssPostBoil(17 * 3600 + 60 + 30, 202.4, true),
+  /* #ss-cooled: #whirlpool, the turn-off reminder answered at 5:08:14 PM, after Whirlpool Hop's NEXT STEP */
+  "ss-cooled": () => {
+    const s = Object.assign(SCENES.whirlpool(), {slayer: "hand", lidDone: true, ssOff: true});
+    ssEv(s, ["17:08:14", `${OFF_Q.title} answered: Done`, "confirmed", "ok"]);
+    ssEv(s, ["17:01:22", `${OFF_Q.title}: ${OFF_Q.text}`, "answered", ""]);
+    return s;
+  },
+  "ss-switched": () => {
+    const s = Object.assign(SCENES.boiling(), {slayer: "switched", lidDone: true, mister: {on: true}});
+    s.events.splice(1, 0, ["15:25:02", `${LID_Q.title} answered: Done`, "confirmed", "ok"], ["15:24:10", `${LID_Q.title}: ${LID_Q.text}`, "answered", ""]);
+    return s;
+  },
   /* #sim-speed: #sim-clock with SPEED pressed, its chooser open (with ?simtag=b the row has no chooser) */
   "sim-speed": () => Object.assign(SCENES["sim-clock"](), {open: {spdOpen: true}}),
   /* LOAD in the by-hand list over a finished recipe the Recipe Book doesn't have (Rye Pale Ale, built on Brew Steps):
@@ -1972,7 +2016,7 @@ function plateHTML(v) {
       ${LAYOUT === "b" ? auxHTML(v) : ""}
       ${GRAPHS ? graphHTML(v, "f") : ""}
     </div>
-    <p class="dev">${devHTML(v)}</p>
+    <p class="dev">${devHTML(v)}</p>${v === "bk" && slayer() ? `<p class="ssline">${slayerLine()}</p>` : ""}
     <div class="ctrls${nudge && !own ? " bkpow" : ""}">${lamps}</div>
     ${st.edit && st.edit.v === v ? editorHTML(v) : v === "hlt" && st.v.mt.mode === "auto" ? hermsRowHTML() : own ? `<div class="mstack">${mode}<div class="bksteps" role="group" aria-label="Boil power steps">${steps()}</div></div>` : keep ? `<div class="mstack">${mode}<div class="bkspace"></div></div>` : mode}
     <p class="note">${st.notes[v] || ""}</p>
@@ -4042,11 +4086,101 @@ function renderRig() {
   const vn = $("#vnote-2");
   vn.textContent = setNow ? `SET THEM FOR STEP ${ro + 1} (${RECIPE.steps[ro].n.toUpperCase()})` : out ? `SHOWN FOR STEP ${ro + 1} (${RECIPE.steps[ro].n.toUpperCase()})` : "SHOWN FOR RECIRCULATING";
   vn.classList.toggle("set", setNow);
-  $("#rig-d").textContent = rigDesc(ro, held, setNow, post);
+  $("#rig-d").textContent = rigDesc(ro, held, setNow, post) + slayerDesc();
+  renderSlayer(live);
   on("#el-hlt", live && a.hltEl.on); on("#el-bk", live && a.bkEl.on);
   ["hlt", "mt", "bk"].forEach(v => { const n = $("#needle-" + v); if (n) n.setAttribute("transform", `rotate(${needleAngle(st.v[v].pv).toFixed(1)})`); });
 }
-let rigW = 0, rigRs = 1;
+/* the Steam Slayer's moments just after the boil (#ss-after, #ss-cool): the boil over at 5:00:04 PM, Whirlpool Hop
+   asking to cool to 170 °F since 5:00:06, the boil kettle's AUTO off with the step's end and the wort cooling. ask: the
+   wort is below the lid's 203 °F (since 5:01:22), so the turn-off reminder is up, waiting behind Whirlpool Hop's
+   question, the older one, as the title bar shows them in turn */
+function ssPostBoil(t, pv, ask) {
+  const s = Object.assign(SCENES.hold(), {slayer: "hand", lidDone: true, t, base: "hold", offWait: ask});
+  s.v.bk = {pv, sv: null, mode: "manual"};
+  s.a.bkEl = {on: false, pct: 0};
+  s.recipe = {state: "running", cur: 5, left: 0, adds: []};
+  s.banner = {tone: "prompt", title: RECIPE.steps[5].n, text: RECIPE.steps[5].note, act: "NEXT STEP", cmd: "b:done", more: ask ? 1 : 0};
+  s.events = s.events.filter(e => e[0] <= "17:00:04");
+  s.events.unshift(["17:00:06", `${RECIPE.steps[5].n}: ${RECIPE.steps[5].note}`, "waiting for you", "wait"]);
+  if (ask) s.events.unshift(["17:01:22", `${OFF_Q.title}: ${OFF_Q.text}`, "waiting for you", "wait"]);
+  return s;
+}
+/* a line into LOG's events (newest first) in its place by time */
+function ssEv(s, e) {
+  const i = s.events.findIndex(x => x[0] < e[0]);
+  s.events.splice(i < 0 ? s.events.length : i, 0, e);
+}
+/* the boil kettle's steam condenser on its lid (STEAM-SLAYER.md): none (as today), "hand" (its mister set by hand) or
+   "switched" (CraftBeerPi switches its mister, the actor in steps_boil_actor). The Hardware page would set it on the
+   boil kettle; in the mockup a moment's slayer, or ?slayer=hand or ?slayer=switched */
+const slayer = () => (st && st.slayer) || (["hand", "switched"].includes(QS.get("slayer")) ? QS.get("slayer") : "");
+/* the lid reminder up in the title bar: the boil step's LidAlert, its words the steps_boil_lid_alert setting */
+const LID_Q = {title: "Turn on the Steam Slayer mister", text: "Reached temp close to boiling"};
+const lidAsk = () => !!(st.banner && st.banner.lid);
+/* after the boil the condenser stays on until the wort falls back below the lid reminder's own temperature (BoilStep's
+   lid_temp, 203 °F or 95 °C), so on and off follow one figure. Only once the boil step has ended: a sag below it during
+   the boil (low boil power, a hop addition) changes nothing. Set by hand, CraftBeerPi then asks, once a brew, for the
+   mister to be turned off (OFF_Q); offWait: that reminder is up, shown or waiting behind another question */
+const SS_LID_F = 203;
+const OFF_Q = {title: "Turn off the Steam Slayer mister", text: `The boil is over and the wort is below ${SS_LID_F} °F`};
+const offBanner = () => ({tone: "prompt", lidOff: true, title: OFF_Q.title, text: OFF_Q.text, act: "DONE", cmd: "b:lidoff"});
+const offAsk = () => !!st.offWait;
+/* the mister as the drawing shows it. Set by hand, CraftBeerPi can't see it, so it is drawn as the brew needs it, as the
+   hand valves are: open once the lid reminder is answered, through the boil and after it, until the reminder to turn it
+   off is answered; closed before. Switched, it is the actor's own state, as a pump's is (a solenoid on steps_boil_actor
+   would follow the same rule, the core switching it off at the cut-off rather than as the boil step ends) */
+function misterOn() {
+  if (slayer() === "switched") return !!(st.mister && st.mister.on);
+  const bo = RECIPE.steps.findIndex(s => s.boil);
+  if (bo < 0 || !st.lidDone) return false;
+  const bs = stepStatus(bo);
+  return bs === "A" || bs === "S" || (bs === "D" && !st.ssOff);
+}
+function renderSlayer(live) {
+  const ss = slayer(), g = $("#slayer");
+  if (!ss || !g) return;
+  const on = misterOn(), ask = lidAsk() && live, off = offAsk() && live, hand = ss === "hand";
+  const mark = hand && ((ask && !on) || (off && on));
+  /* set by hand, open: its water and spray in the liquor's blue, still, as the brew needs them, with no moving dashes
+     or arrows, so nothing says CraftBeerPi sees it flowing. Switched and on: lit as a running pump's line, its dashes
+     moving */
+  g.classList.toggle("on", on);
+  g.classList.toggle("need", hand && on);
+  g.classList.toggle("lit", !hand && on && live);
+  $("#vl-mist").classList.toggle("shut", !on);
+  $("#vl-mist").classList.toggle("set", mark);
+  $("#ln-mist").classList.toggle("on", !hand && on && live);
+  $("#ln-mist").classList.toggle("need", hand && on);
+  /* set by hand its tag is a hand valve's (CLOSED, SET OPEN, OPEN, SET CLOSED), under VALVES ARE SET BY HAND; switched,
+     the actor's state, as a pump's */
+  const t = $("#ss-st");
+  t.textContent = hand ? (ask && !on ? "SET OPEN" : off && on ? "SET CLOSED" : on ? "OPEN" : "CLOSED") : `${live ? "" : "LAST: "}${on ? "ON" : "OFF"}`;
+  t.classList.toggle("set", mark);
+  t.classList.toggle("run", !hand && on && live);
+  /* the lid: asked, not ordered, as it may be on already */
+  $("#ss-lid").classList.toggle("set", ask);
+  $("#ss-lidt").textContent = ask ? "LID ON?" : "";
+  $("#ss-lidt").classList.toggle("set", ask);
+}
+/* the drawing's words for the condenser, for a screen reader */
+function slayerDesc() {
+  const ss = slayer();
+  if (!ss) return "";
+  const on = misterOn(), ask = lidAsk(), off = offAsk();
+  if (ss === "switched") return ` A Steam Slayer on the boil kettle's lid condenses its steam; CraftBeerPi switches its mister's valve, which is ${on ? "on" : "off"}.${ask ? " The lid reminder is waiting: check the lid is on." : ""}`;
+  return ` A Steam Slayer on the boil kettle's lid condenses its steam. Its mister's valve is set by hand, like the others, and CraftBeerPi can't see it: ${ask && !on ? "the lid reminder is waiting for you to open it, with the lid on." : off && on ? `the boil is over and the wort is below ${SS_LID_F} °F, and the reminder to close it is waiting.` : on ? `it is shown open, as the brew needs it until the wort falls below ${SS_LID_F} °F after the boil.` : "it is shown closed."}`;
+}
+/* on a phone, which has no drawing, the boil kettle's faceplate says what the drawing shows, in one quiet line under
+   its own, whenever the kettle has the condenser, so nothing under a hand moves as the mister comes on */
+function slayerLine() {
+  const ss = slayer();
+  if (!ss) return "";
+  /* set by hand, a valve's words, as the drawing's; switched, the actor's */
+  if (ss === "hand") return `Steam Slayer: mister ${misterOn() ? "open" : "closed"} · set by hand`;
+  return `Steam Slayer: mister ${st.link === "lost" ? "last " : ""}${misterOn() ? "on" : "off"}`;
+}
+let rigW = 0, rigRs = 1, rigSs = "";
 function drawRig() {
   /* --rig-r: room left at the drawing's right for + TIMER and SOUND where they can't clear it (tsideCorner) */
   const box = $("#rig"), w = box.clientWidth - 12 - (parseFloat(box.style.getPropertyValue("--rig-r")) || 0), h = box.clientHeight - 12;
@@ -4056,9 +4190,9 @@ function drawRig() {
   const W = Math.max(1200, Math.round(RIG_H * w / h));
   /* with graphs in the faceplates the drawing gets shorter, so its labels grow to stay readable (up to 1.3 times) */
   const rs = GRAPHS === "face" ? Math.round(Math.min(1.3, Math.max(1, 0.68 / Math.min(h / RIG_H, w / 1200))) * 100) / 100 : 1;
-  if (Math.abs(W - rigW) < 4 && rs === rigRs && $("#rigsvg")) return;
-  rigW = W; rigRs = rs;
-  box.innerHTML = rigSVG(LAYOUT === "b" ? "line" : "kettle", W, rs, WP);
+  if (Math.abs(W - rigW) < 4 && rs === rigRs && slayer() === rigSs && $("#rigsvg")) return;
+  rigW = W; rigRs = rs; rigSs = slayer();
+  box.innerHTML = rigSVG(LAYOUT === "b" ? "line" : "kettle", W, rs, WP, rigSs);
   renderRig();
   if (TPLACE) tsideCorner();
 }
@@ -4626,9 +4760,16 @@ function swAsSaved() {
 function cmdBanner(x) {
   if (x === "added") send("b", "x", "Hop Alert answered: Added", () => { questionGone("Hop Alert"); st.banner = null; if (st.recipe) st.recipe.adds[0] = "done"; });
   else if (x === "boil") send("b", "x", `${RECIPE.steps[st.recipe.cur].n} answered: Start the boil`, boilStart);
+  /* the lid reminder's DONE (BoilStep's LidAlert): CraftBeerPi takes it down; set by hand, the drawing now shows the
+     mister open, as the brew needs it */
+  else if (x === "lid") send("b", "x", `${LID_Q.title} answered: Done`, () => { questionGone(LID_Q.title); st.banner = null; st.lidDone = true; });
+  /* the reminder to turn a hand-set mister off, once the boil kettle has cooled below the cut-off: answered, the drawing
+     shows it closed */
+  else if (x === "lidoff") send("b", "x", `${OFF_Q.title} answered: Done`, () => { questionGone(OFF_Q.title); st.banner = null; st.offWait = false; st.ssOff = true; });
   else if (x === "done") {
     const s = RECIPE.steps[st.recipe.cur];
-    send("b", "x", `${s.n} answered: Next Step`, () => { questionGone(s.n); st.banner = null; stepStart(st.recipe.cur + 1); });
+    /* a question waiting behind this one (the turn-off reminder, after the boil) comes up once it is answered */
+    send("b", "x", `${s.n} answered: Next Step`, () => { questionGone(s.n); st.banner = null; stepStart(st.recipe.cur + 1); if (st.offWait && !st.banner) st.banner = offBanner(); });
   }
   /* the SpargeStep's "Sparge started": its timer starts (or it runs until NEXT STEP), the HLT's AUTO goes off, and the
      drawing goes over to the runoff */
@@ -6687,6 +6828,12 @@ function load(name) {
     if (a.dataset.cue === "today") q.set("cues", "today"); else q.delete("cues");
     a.href = `?${q}#${key}`;
     a.setAttribute("aria-current", (a.dataset.cue === "today") === (QS.get("cues") === "today") ? "true" : "false");
+  });
+  document.querySelectorAll(".mock a[data-slayer]").forEach(a => {
+    const q = new URLSearchParams(location.search), v = a.dataset.slayer;
+    if (v) q.set("slayer", v); else q.delete("slayer");
+    a.href = `?${q}#${key}`;
+    a.setAttribute("aria-current", v === (QS.get("slayer") || "") ? "true" : "false");
   });
   [["simtag", "a"], ["plan", "soft"]].forEach(([p, def]) => document.querySelectorAll(`.mock a[data-${p}]`).forEach(a => {
     const q = new URLSearchParams(location.search), v = a.dataset[p];
