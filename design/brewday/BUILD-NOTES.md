@@ -6874,6 +6874,66 @@ it open:
 - The core's notice in LOG can be longer than the mockup's: when the clock moved, it adds "The graphs keep the readings so
   far, moved with the clock, and carry on from them."
 
+## The simulator's vessels in SPEED's chooser
+
+On a simulator, SPEED's chooser has a second part, SIMULATOR VESSELS: each simulated vessel put back as it stands
+before a brew, or at a temperature, from Brew Day, at any speed and on a phone. On the rig there is no chooser, and the
+part is never drawn.
+
+### What it does (screen.js, and the mockup's brew-day.js alike)
+
+- **Which vessels:** Brew Day's HLT, mash tun and boil kettle whose kettle's probe is a SimVessel sensor (its `type`
+  in the sensors CraftBeerPi sends), each named as its kettle is in CraftBeerPi. Where none is, there is no part and
+  no RESET ALL; commands go only to SimVessel sensors.
+- **Each vessel,** under a hairline and SIMULATOR VESSELS: its name and the temperature Brew Day reads for it,
+  following the readings in place; RESET at the right; under them a small number box in the brewery's unit, in the
+  look of BrewStart's figure box, and SET TEMPERATURE. Every button 48px tall, on a phone too.
+- **RESET:** `POST /sensor/<id>/action {"action": "reset_to_room", "parameter": {}}`, at once, without a question.
+- **SET TEMPERATURE:** `{"action": "set_temperature", "parameter": {"Temperature": 152.0}}`, at once. Greyed until
+  the box holds a temperature from freezing to boiling (32 to 212 °F, 0 to 100 °C); pressed then, it says "Type a
+  temperature from 32 to 212 °F first." under itself. Enter in the box presses it. The box keeps what was typed.
+- **RESET ALL,** at the left of CANCEL, asks in their place, in the recipe column's question look: "Put every
+  simulated vessel back at room temperature: HLT 68 °F, Mash Tun 68 °F, Boil Kettle 68 °F, water refilled? A running
+  recipe keeps running." Each vessel's room temperature is its Ambient setting as the simulator reads it (blank, 68 °F
+  or 20 °C; on a °F brewery a 20, an older plugin's Celsius default, is 68 °F). RESET THE VESSELS and CANCEL; neither
+  is the default, and focus goes to the question's words, scrolled into view. RESET THE VESSELS sends each vessel's
+  RESET at once; when all have answered, the question closes and focus goes back to RESET ALL. CANCEL, or Escape with
+  focus in the chooser, closes the question, focus back on RESET ALL; a second Escape closes the chooser.
+- **Waiting and failing:** while a vessel's command waits, its RESET and SET TEMPERATURE are greyed with "Waiting for
+  CraftBeerPi to answer.", and RESET ALL and the question's answers while any waits. LOG's line for what was done is
+  the simulator's own notice, "SimVessel: HLT back at room temperature, 68.0 °F, full of water: 96.1 L."; a command
+  refused or unanswered in 5 s gets a red line of its own, "HLT reset to room temperature · failed: no answer in 5 s",
+  said aloud. No connection: everything greyed with the screen's reason.
+- **In the window:** what is under the chooser's title scrolls inside it (`.spdin`, its height at most what the window
+  has below it, `--spd-max`, set as the box is drawn), so on a phone with the question open the box still ends inside
+  the window. The chooser is patched in place, so a temperature being typed keeps its caret while readings arrive.
+
+### In CraftBeerPi (cbpi4-simvessel 0.0.18)
+
+- A new action on every SimVessel, "Reset to room" (`reset_to_room`): the vessel at room temperature (its Ambient),
+  its probe with it at once, full of water (the HLT the brew's HLT WATER, else its Volume), no grain, nothing boiled
+  off, no strike water moved. A strike water move is undone on the other vessel it moved between too: that one keeps
+  its temperature, holds its own water again (the HLT its HLT WATER), and the strike water can move again. Heat the
+  coil had banked for the vessel before the reset is dropped, so it starts at room temperature at any SIM_TIME_SCALE.
+  Saved at once, so a restart straight after keeps it. Its notice names the kettle, the temperature and the water.
+- "Reset to Start_Temp" is unchanged, for older callers: a simulator may keep a hot Start_Temp for rehearsing from a
+  hot HLT, which is why Brew Day's RESET is to room temperature.
+- The strike water's "already moved" notice says "Reset HLT or Mash Tun to room temperature to move it again."
+
+### Moments
+
+- `#sim-speed`: the chooser open, the three vessels at the night before's 60.6, 64.6 and 61.4 °F.
+- `#sim-reset-all`: RESET ALL's question open.
+- In the mockup, RESET, RESET THE VESSELS and SET TEMPERATURE are answered a moment later: the vessel at 68 °F or at
+  the figure typed, and the simulator's notice in LOG.
+
+### Known, accepted
+
+- On a phone the chooser covers the tabs at the bottom of the screen while it is open, as it covers LOG's button on
+  a monitor.
+- A recipe running when RESET ALL is answered keeps running: a step heating a vessel heats it again from room
+  temperature, and a strike water step already past doesn't move the strike water again.
+
 ## A timer's time in minutes and seconds, and its alarm's one answer, OK
 
 A new or stopped timer's own time is minutes and seconds, or seconds only, from 1 second to 300 minutes. A timer that
