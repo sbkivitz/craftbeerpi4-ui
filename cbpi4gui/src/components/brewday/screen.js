@@ -664,9 +664,15 @@ function spdDone() {
    has a line of its own there, and is said aloud */
 const SIMVESSEL_TYPE = "SimVessel";
 const SV_NAME = {hlt: "HLT", mt: "Mash Tun", bk: "Boil Kettle"};
-/* the demo's vessels' water once refilled, in litres, as the simulator's own notice gives it: the HLT BrewStart's
-   25.4 gal, the mash tun's and the boil kettle's Volume */
+/* the demo's vessels' water once refilled, in litres, as the simulator keeps it: the HLT BrewStart's 25.4 gal, the mash
+   tun's and the boil kettle's Volume */
 const SV_WATER = {hlt: 96.1, mt: 30.0, bk: 40.0};
+/* that water as the simulator's notice says it (cbpi4-simvessel 0.0.21): one figure, one decimal, in the strike water
+   box's unit, else gal on a °F brewery and L on a °C one: "25.4 gal", "96.1 L" */
+function svWater(v) {
+  const vu = (st.sw && st.sw.vol_unit) || (M.U === "°C" ? "L" : "gal"), L = SV_WATER[v];
+  return `${(vu === "L" ? L : L / GAL_L).toFixed(1)} ${vu}`;
+}
 /* a vessel's room temperature as cbpi4-simvessel reads its Ambient: blank, 68 °F or 20 °C; on a °F brewery a 20, an
    older plugin's Celsius default, is 68 °F */
 function svRoom(p) {
@@ -735,7 +741,7 @@ function svGo(list, action, temp) {
       if (!st) return;
       list.forEach(x => {
         st.v[x.v].pv = reset ? x.room : temp;
-        logEvent(reset ? `SimVessel: ${x.name} back at room temperature, ${(+x.room).toFixed(1)} ${M.U}, full of water: ${SV_WATER[x.v].toFixed(1)} L.`
+        logEvent(reset ? `SimVessel: ${x.name} back at room temperature, ${(+x.room).toFixed(1)} ${M.U}, full of water: ${svWater(x.v)}.`
           : `SimVessel: ${x.probe} set to ${temp.toFixed(1)}`, "from CraftBeerPi", "");
       });
       svDone(list, list.map(() => ({ok: true})), what);
@@ -2166,7 +2172,8 @@ function swWin(N) {
   return `<dl class="swv"><dt>STRIKE</dt><dd><b>${gal}</b><span class="ug">${swVU()}</span><span class="swk">at</span><span class="swt"><b>${T}</b><span class="u">${U}</span></span></dd><dt>MASH</dt><dd class="swm${hot ? " hot" : ""}${N.stale ? " stale" : ""}">${mash}</dd></dl>`;
 }
 /* the numbers USE hasn't got from the rig yet, each a range USE allows for in full, in the order of how much knowing it
-   would raise USE: its line on the screen, its range in words, and its name in a sentence */
+   would raise USE: its line on the screen, its range in words, and its name in a sentence. Volumes are in the box's
+   unit alone: the wort pump's flow, which CraftBeerPi gives in L/min, is gal/min on a gal box, to one decimal */
 const swPct = x => `${Math.round(x * 100)}&nbsp;%`;
 const SW_GUESS = [
   ["next_min", "TO NEXT", g => `${swTo(+g.low, +g.high)}&nbsp;min from the grain going in to pressing Next`, "the minutes from the grain to Next"],
@@ -2175,7 +2182,7 @@ const SW_GUESS = [
   ["transfer_f", "ON THE WAY", g => `${swTo(+g.low, +g.high)}&nbsp;${M.U} lost between the HLT and the tun`, "the heat lost on the way"],
   ["coil_ua", "COIL", g => `${swTo(+g.low, +g.high)}&nbsp;W/K: how fast it passes heat to the wort`, "the coil"],
   ["dough_min", "TO GRAIN", g => `${swTo(+g.low, +g.high)}&nbsp;min from the water reaching the tun to the grain going in`, "the minutes from the water to the grain"],
-  ["flow", "WORT PUMP", g => `${swTo(+g.low, +g.high)}&nbsp;L/min through the coil`, "the wort pump's flow"],
+  ["flow", "WORT PUMP", g => { const vu = swVU(), f = x => vu === "L" ? +x : +(x / GAL_L).toFixed(1); return `${swTo(f(g.low), f(g.high))}&nbsp;${vu}/min through the coil`; }, "the wort pump's flow"],
   ["grain_c", "MALT", g => `${swTo(g.low, g.high)}&nbsp;cal/g&nbsp;°C: how much heat it holds`, "the malt's heat"],
   ["hlt_loss", "HLT LOSS", (g, left) => `${swTo(Math.round(g.low * 100), swPct(g.high))} of its heat loss at ${+(+(g.at ?? 15)).toFixed(2)}&nbsp;${swVU()}, with ${left}&nbsp;${swVU()} left in it`, "the HLT's heat loss"],
   ["hlt_steel", "HLT STEEL", g => `${swTo(+g.low, +g.high)}&nbsp;kg with its coil, still hot when the water goes`, "the HLT's steel"],
