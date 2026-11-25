@@ -6902,6 +6902,10 @@ bar's alarm, on a monitor and on a phone. A running or paused timer's editor has
   another screen logs "Stir: alarm answered · from another screen".
 - Every key in the editor is at least 48 px tall: the names to pick and the presets 48 px, the time's keys and the
   actions 52 px.
+- Stacked (under 1180 px), the timers are drawn before the steps, the recipe book and BrewStart's box (`order`), which
+  come first in the page's own order. The browser keeps the page still by a part it picks in that order, so those
+  parts have `overflow-anchor: none`: a line the timers gain, such as the reason under a greyed START, adds to the
+  page below it, and the editor stays where the hand is.
 
 ### In CraftBeerPi (TimersController)
 

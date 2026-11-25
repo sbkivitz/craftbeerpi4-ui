@@ -899,6 +899,9 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page)[data-timers=new] .recipe .steps,:where(html.bd-page)[data-timers=new] .recipe .book,:where(html.bd-page)[data-timers=new] .recipe .handlinks,:where(html.bd-page)[data-timers=new] .recipe .cmp.byh{order:2}
 :where(html.bd-page)[data-timers=new] .recipe .bsbox{order:2}
 :where(html.bd-page)[data-timers=new] .recipe .tmrs{order:1}
+/* the browser keeps the page still by a part it picks in the page's own order, where the steps come before the timers;
+   drawn after them, they are never that part, so a line the timers gain (a note, an editor) doesn't move them under the hand */
+:where(html.bd-page)[data-timers=new] .recipe .steps,:where(html.bd-page)[data-timers=new] .recipe .book,:where(html.bd-page)[data-timers=new] .recipe .handlinks,:where(html.bd-page)[data-timers=new] .recipe .cmp.byh,:where(html.bd-page)[data-timers=new] .recipe .bsbox{overflow-anchor:none}
 :where(html.bd-page)[data-layout=b] .recipe{order:2}
 :where(html.bd-page)[data-layout=b] .main{grid-template-columns:minmax(0,1fr)}
 :where(html.bd-page)[data-layout=b] .brewhouse{grid-template-rows:auto auto}

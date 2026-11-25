@@ -1096,6 +1096,10 @@ button.step{width:100%;margin:0;color:inherit;text-align:left;touch-action:manip
   /* BrewStart's box sits where the step list is, just above it */
   [data-timers=new] .recipe .bsbox{order:2}
   [data-timers=new] .recipe .tmrs{order:1}
+  /* the browser keeps the page still by a part it picks in the page's own order, where the steps come before the
+     timers; drawn after them, they are never that part, so a line the timers gain (a note, an editor) doesn't move them
+     under the hand */
+  [data-timers=new] .recipe .steps,[data-timers=new] .recipe .book,[data-timers=new] .recipe .handlinks,[data-timers=new] .recipe .cmp.byh,[data-timers=new] .recipe .bsbox{overflow-anchor:none}
   [data-layout=b] .recipe{order:2}
   [data-layout=b] .main{grid-template-columns:minmax(0,1fr)}
   [data-layout=b] .brewhouse{grid-template-rows:auto auto}
