@@ -22,7 +22,8 @@
 // - Another screen's save: a change waiting here stays, and its "was" follows the new value; if that screen saved the
 //   same value, the change clears, as there's nothing left to save.
 // - Leaving by a tab, MORE's list, OPEN SYSTEM or OPEN HARDWARE with changes not saved asks first, in the note at the
-//   top; closing or reloading the browser tab can only get the browser's own question.
+//   top; closing or reloading the browser tab can only get the browser's own question. While SAVE waits for
+//   CraftBeerPi, leaving goes once every change is saved, and stays, saying so, if one didn't.
 // - TRY plays the brew-day screen's own alarm (brewday/alarm.js).
 // - TEST ALERT and TEST TIMER ask the cbpi4-PushOver plugin itself, POST /phone-alerts/test?kind=alert or ?kind=timer,
 //   waiting TEST_MS for the answer. With ?demo= the test only pretends, with the answer its scene gives (WILL), as SAVE
@@ -114,7 +115,7 @@ function phoneReady() {
 /* ---------- state ---------- */
 function fresh() {
   st = {saved: {}, draft: {}, row: {}, q: "", cur: null, shown: {}, view: "index", pg: null, leave: null, leaveTo: null,
-    link: "ok", lostAt: null, saving: false, later: [], failKey: null, extra: {}, test: null, fault: null, testWill: "sent",
+    link: "ok", lostAt: null, saving: false, goAfter: null, later: [], failKey: null, extra: {}, test: null, fault: null, testWill: "sent",
     dl: {}, events: [["14:31:52", "Mash Tun at target, 149.0 °F", "confirmed", "ok"]]};
   for (const k in CFG) st.saved[k] = CFG[k].v;
   // the demo's ?name= is the Brewery name setting too, so its row says the same as the title bar (the mockup's)
@@ -695,18 +696,38 @@ function onFrameClick(e) {
   if (!st || !host || !e.target.closest) return;
   const a = e.target.closest(".tabs a, #bd-more a");
   if (!a || a.getAttribute("aria-current") === "page" || ["More", "BrewScribe"].includes(a.dataset.tab)) return;
-  if (!dirty().length || st.saving) return;
+  if (!dirty().length) return;
   e.preventDefault();
   e.stopPropagation();
   if (env.frame && a.closest("#bd-more")) env.frame.closeMore();
-  const label = (a.querySelector(".long") || a).textContent.trim();
-  leaveFor(label.charAt(0).toUpperCase() + label.slice(1).toLowerCase(), a.getAttribute("href"));
+  const label = (a.querySelector(".long") || a).textContent.trim(), name = label.charAt(0).toUpperCase() + label.slice(1).toLowerCase();
+  if (st.saving) return goAfterSave(name, a.getAttribute("href"));
+  leaveFor(name, a.getAttribute("href"));
 }
 function tabGo(name) {
   const href = {System: "#/system", Hardware: "#/hardware"}[name] || "#/";
   if (DEMO_MODE) return toast(`Mockup: this would open ${name}.`);
-  if (dirty().length && !st.saving) return leaveFor(name, href);
+  if (dirty().length) return st.saving ? goAfterSave(name, href) : leaveFor(name, href);
   go(href);
+}
+/* leaving while SAVE waits for CraftBeerPi: the page goes once every change is saved. If one didn't save, it stays and its
+   note says so; if a change made meanwhile waits, it asks first. Going at once would drop a change CraftBeerPi then refuses,
+   or one made after SAVE, without a word */
+function goAfterSave(label, href) {
+  st.goAfter = {label, href};
+  toast(`Saving: ${label} opens once CraftBeerPi has your changes.`);
+}
+/* a save's answers are in: where goAfterSave was asked to go, go there now, or stay. true when it has taken over from
+   SAVE AND GO's own going */
+function goOnAfterSave(no) {
+  const after = st.goAfter;
+  if (!after) return false;
+  st.goAfter = null;
+  if (no.length) return true;
+  if (dirty().length) leaveFor(after.label, after.href);
+  else if (DEMO_MODE) toast(`Mockup: this would now open ${after.label}.`);
+  else go(after.href);
+  return true;
 }
 function onUnload(e) {
   if (DEMO_MODE || !st || !dirty().length) return;
@@ -754,6 +775,7 @@ function done(ks) {
   const [ok, no] = settle(ks);
   say(no.length ? `${no.length} didn't save` : `${ok.length} saved`);
   refresh();
+  goOnAfterSave(no);
 }
 /* the demo's answer, as state only; the scenes use it before the page is drawn */
 function settle(ks, at) {
@@ -808,7 +830,7 @@ async function send(ks, then) {
   if (env.frame) env.frame.log(what, res2, tone);
   say(no.length ? `${no.length} didn't save` : `${ok.length} saved`);
   refresh();
-  if (then) then(!no.length);
+  if (!goOnAfterSave(no) && then) then(!no.length);
 }
 function undo(k) { delete st.draft[k]; delete st.row[k]; rebuild(k); paintChrome(); }
 function rebuild(k) {

@@ -196,7 +196,7 @@ const PAUSED = "No connection. Controls are paused.";
 let st;
 function fresh() {
   st = {saved: {}, draft: {}, row: {}, q: "", cur: null, shown: {}, view: "index", pg: null, leave: null,
-    link: "ok", saving: false, later: [], failKey: null, extra: {}, test: null, fault: null, testWill: "sent",
+    link: "ok", saving: false, goAfter: null, later: [], failKey: null, extra: {}, test: null, fault: null, testWill: "sent",
     events: [["14:31:52", "Mash Tun at target, 149.0 °F", "confirmed", "ok"]]};
   for (const k in CFG) st.saved[k] = CFG[k].v;
   if (QS.has("name")) st.saved.BREWERY_NAME = QS.get("name");
@@ -710,6 +710,9 @@ function done(ks) {
   const [ok, no] = settle(ks);
   $("#sr").textContent = no.length ? `${no.length} didn't save` : `${ok.length} saved`;
   refresh();
+  const to = st.goAfter;
+  st.goAfter = null;
+  if (to && !no.length) { if (dirty().length) { st.leave = to; paintChrome(); } else toast(`Mockup: this would now open ${to}.`); }
 }
 /* the answer from CraftBeerPi, as state only; the scenes use it before the page is drawn */
 function settle(ks, at) {
@@ -811,7 +814,9 @@ document.addEventListener("click", e => {
     if (ds.tab === "Settings") return;
     /* BrewScribe opens in a browser tab of its own, so this page and its unsaved changes stay: no question first */
     if (ds.tab === "BrewScribe") return toast("Mockup: this opens BrewScribe in a browser tab of its own, or goes back to that tab if it's open, without reloading it. Your changes here stay as they are.");
-    if (dirty().length && !st.saving) { st.leave = ds.tab; paintChrome(); const n = $("#note"); n.scrollIntoView({block: "nearest"}); return $(".cmd.ans", n).focus(); }
+    /* while SAVE waits, the page goes once every change is saved, and stays, saying so, if one didn't (page.js, goAfterSave) */
+    if (dirty().length && st.saving) { st.goAfter = ds.tab; return toast(`Saving: ${ds.tab} opens once CraftBeerPi has your changes.`); }
+    if (dirty().length) { st.leave = ds.tab; paintChrome(); const n = $("#note"); n.scrollIntoView({block: "nearest"}); return $(".cmd.ans", n).focus(); }
     return toast(`Mockup: this would open ${ds.tab}.`);
   }
   if (ds.tabgo) return toast(`Mockup: this would open ${ds.tabgo}.`);
