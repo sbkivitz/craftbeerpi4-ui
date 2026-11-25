@@ -565,17 +565,18 @@ function spdCmd(x, y) {
   if (v === c.scale) return spdClose();
   if (!DEMO_MODE) return spdSetLive(v);
   /* the demo: CraftBeerPi's answer a moment later. Its clock starts again from the moment's computer time on the
-     computer's date; LOG's earlier lines keep the dates they were logged on, and the graphs start again from now, as the
-     core archives the sensor logs written ahead of the clock */
+     computer's date; LOG's earlier lines keep the dates they were logged on, and the graphs keep their readings, moved
+     with the clock, as the core moves its sensor logs' readings, and carry on from them */
   st.spdPend = v; renderAll();
   timers.push(setTimeout(() => {
     if (!st || !st.sim) return;
-    const was = st.sim.scale;
+    const was = st.sim.scale, wasT = st.t;
     st.events.forEach(e => { if (!e[8]) e[8] = st.sim.day0; });
     st.spdPend = null;
     st.sim = Object.assign({}, st.sim, {scale: v, day0: st.sim.pc});
     st.t = spdPcT();
-    if (st.hist) { ["hlt", "mt", "bk"].forEach(k => { const r = st.hist.v[k], l = r[r.length - 1]; st.hist.v[k] = l ? [[st.t - 10, ...l.slice(1)], [st.t, ...l.slice(1)]] : []; }); st.hist.start = st.t - 10; st.hist.steps = []; }
+    /* a row's time counts from its day's midnight, so it moves as far as the clock did from one day to the other */
+    if (st.hist) { const by = Math.round((st.t - wasT) / 10) * 10; ["hlt", "mt", "bk"].forEach(k => { st.hist.v[k] = st.hist.v[k].map(r => [r[0] + by, ...r.slice(1)]); }); st.hist.start += by; st.hist.steps = st.hist.steps.map(([t, n]) => [t + by, n]); }
     const said = `CraftBeerPi's clock is back to this computer's time, ${spdPc()}, now running ${v}× (was ${was}×).`;
     logEvent(`Clock: ${said}`, "from CraftBeerPi", "");
     say(said);
@@ -626,7 +627,7 @@ async function spdSetLive(v) {
   timers.push(spdWaitT);
 }
 /* CraftBeerPi's clock set back to the computer's time (the topic "clock"): where it is and how fast it runs from now
-   on, and a speed pressed here is done */
+   on, the graphs' rows moved with it (history.js moved), and a speed pressed here is done */
 function clockReset(c) {
   const now = num(c.now), sc = num(c.scale);
   if (now > 0) {
@@ -634,6 +635,7 @@ function clockReset(c) {
     bclk = {srv: now, at: c.received || Date.now(), scale: sc > 0 ? sc : 1}; bclkAt = Date.now();
     if (first) clockKnown();
   }
+  if (H && H.moved(c)) loadHistory();
   if (st.spdPend != null) { clearTimeout(spdWaitT); st.spdPend = null; spdDone(); } else renderAll();
 }
 /* while the title bar adds a date or a speed, a LOG line from another of CraftBeerPi's days says its date, as

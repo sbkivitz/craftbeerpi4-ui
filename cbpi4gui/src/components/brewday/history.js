@@ -3,7 +3,9 @@
 // When the screen connects it reads the brew day so far from CraftBeerPi's logs (POST /log/window): each vessel's
 // temperature, and each kettle's target and AUTO and each element's level, which CraftBeerPi logs when they change.
 // From then on it adds a row every 10 s from the readings the screen is sent, as the mockup does. After a lost
-// connection it reads the logs again, which fills in the time it missed.
+// connection it reads the logs again, which fills in the time it missed. When CraftBeerPi's clock moves (a simulator's
+// change of speed sets it back to the computer's time), the rows move with it, as CraftBeerPi moves its logs' readings,
+// and the line carries on from them (moved).
 //
 // Times are CraftBeerPi's brewing clock, which its logs and steps are stamped in: the wall clock on the rig,
 // SIM_TIME_SCALE times as fast in a simulation. The log window's answer says where that clock is and how fast it
@@ -74,13 +76,17 @@ export function createHistory() {
   // worked out on the browser's would reach a day and more back. Then once a minute, because the clock can move while the
   // connection stays up: SIM_TIME_SCALE changed, or a Pi's clock put right by the network after a power cut. Moved
   // by more than a row, or at another speed, the rows are out of step with it, so the logs are read again.
-  let syncedAt = 0, syncing = false;
+  // gen counts the clock's moves heard (moved): an answer asked for before one is out of date when it comes.
+  let syncedAt = 0, syncing = false, gen = 0;
   async function sync() {
     if (syncing) return false;
     syncing = true;
+    const g = gen;
     let res = null;
     try { res = await api.logWindow([], null, null); } catch (e) { res = null; } finally { syncing = false; }
     syncedAt = Date.now();
+    // the clock moved meanwhile: where it is now came with the move
+    if (g !== gen) return true;
     const d = res && res.ok && res.data;
     if (!d || typeof d !== "object" || !(num(d.now) > 0)) return false;
     const scale = num(d.scale) > 0 ? num(d.scale) : 1, moved = Math.abs(num(d.now) - epoch()) > STEP || scale !== clk.scale;
@@ -104,9 +110,11 @@ export function createHistory() {
       T0 = midnight(epoch()); fixed = true;
       place();
     }
-    const since = need(), points = Math.min(POINTS, Math.ceil((epoch() - since) / STEP) + 10);
+    const since = need(), points = Math.min(POINTS, Math.ceil((epoch() - since) / STEP) + 10), g = gen;
     const res = await api.logWindow([...new Set(list)], since, points);
     busy = false;
+    // the clock moved while the logs were read: this window was asked for on the clock as it was, so again
+    if (g !== gen) { stale = true; return false; }
     const d = res && res.ok && res.data;
     if (!d || typeof d !== "object" || !d.series || !(num(d.now) > 0)) { failedAt = Date.now(); return false; }
     clk = { srv: num(d.now), at: Date.now(), scale: num(d.scale) > 0 ? num(d.scale) : 1 };
@@ -162,5 +170,30 @@ export function createHistory() {
     return true;
   }
 
-  return { hist, now, steps, load, due, tick, scale: () => clk.scale, day: () => T0 };
+  // CraftBeerPi's clock moved while the page is open (the topic "clock": {now, scale, moved}, and when this page heard
+  // it, received): a simulator's change of speed sets it back to the computer's time. CraftBeerPi moves its logs'
+  // readings with it, so the graphs keep them: the rows, and the steps' start times, move by as much at once, the rows to
+  // the nearest row, so the line carries on where it was; then the logs are read again, for the line as CraftBeerPi
+  // has it. Whether the move was taken.
+  function moved(c) {
+    const at = num(c && c.now);
+    if (!(at > 0)) return false;
+    gen++;
+    clk = { srv: at, at: num(c.received) > 0 ? num(c.received) : Date.now(), scale: num(c.scale) > 0 ? num(c.scale) : 1 };
+    syncedAt = Date.now();
+    const by = num(c.moved) || 0;
+    starts = starts.map(([e, n]) => [e + by, n]);
+    if (!fixed) return true;
+    const rows = Math.round(by / STEP) * STEP;
+    if (rows) {
+      for (const v of ["hlt", "mt", "bk"]) hist.v[v] = hist.v[v].map((r) => [r[0] + rows, r[1], r[2], r[3]]);
+      if (lastT != null) lastT += rows;
+      if (from != null) from += rows;
+    }
+    place();
+    stale = true;
+    return true;
+  }
+
+  return { hist, now, steps, load, due, tick, moved, scale: () => clk.scale, day: () => T0 };
 }
