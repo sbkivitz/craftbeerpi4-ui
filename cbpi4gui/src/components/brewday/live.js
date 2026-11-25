@@ -242,10 +242,30 @@ export function recipeWater(mn, absorption, C) {
     rate: `${a} ${F ? "gal/lb" : "L/kg"}` };
 }
 
+// The recipe's mash figures as CraftBeerPi keeps them (mash_numbers) are BeerSmith's, from an import of its file, and
+// any typed in Brew Day's strike water box where BeerSmith's were missing. Those typed are named in its typed: "grain",
+// kept as grain_kg, and "water", the strike water to the mash tun, kept as infuse_l. They are never BeerSmith's.
+// typedFigures: the names of those typed, grain first; beerSmithFigures: whether any figure is BeerSmith's; typedWords:
+// those typed, in words ("grain weight and mash water").
+const TYPED_FIELD = { grain: "grain_kg", water: "infuse_l" };
+const TYPED_WORDS = { grain: "grain weight", water: "mash water" };
+export function typedFigures(mn) {
+  if (!mn || typeof mn !== "object" || !Array.isArray(mn.typed)) return [];
+  return Object.keys(TYPED_FIELD).filter((k) => mn.typed.includes(k) && num(mn[TYPED_FIELD[k]]) != null);
+}
+export function beerSmithFigures(mn) {
+  if (!mn || typeof mn !== "object") return false;
+  const typed = typedFigures(mn).map((k) => TYPED_FIELD[k]);
+  return Object.keys(mn).some((k) => k !== "lacks" && k !== "typed" && !typed.includes(k) && mn[k] != null);
+}
+export const typedWords = (typed) => typed.map((k) => TYPED_WORDS[k]).join(" and ");
+
 // Why a recipe's own water can't be worked out (recipeWater gives none), in the words of a new BrewStart's note on the
-// recipe pages and of Brew Day's BrewStart box alike.
+// recipe pages and of Brew Day's BrewStart box alike. Figures typed on Brew Day are named as typed, never as
+// BeerSmith's.
 export function waterLacks(mn, absorption) {
-  return !mn ? "this recipe has no BeerSmith mash figures to work it out from"
+  const typed = typedFigures(mn);
+  return !beerSmithFigures(mn) ? `this recipe has no BeerSmith mash figures to work it out from${typed.length ? `, only the ${typedWords(typed)} typed on Brew Day` : ""}`
     : num(absorption) == null ? "CraftBeerPi has no Grain absorption setting to work this recipe's out with"
     : "this recipe's BeerSmith figures lack the volume before the boil or the grain's weight";
 }

@@ -43,7 +43,7 @@
 //   reader for every screen, where the mockup has its own timeOfDay, boxText and readTime.
 import { GROUPS, KINDS, TYPES, START } from "./catalog";
 import { call, why as callWhy } from "../brewday/api";
-import { stepModel, bookLine as dayBookLine, cfg as cfgOf, parseLeft, recipeWater, waterLacks, pastWater, brewWords, inWords, kettleRoles, hermsLogics, ROLES, declares } from "../brewday/live";
+import { stepModel, bookLine as dayBookLine, cfg as cfgOf, parseLeft, recipeWater, waterLacks, pastWater, brewWords, beerSmithFigures, typedFigures, typedWords, inWords, kettleRoles, hermsLogics, ROLES, declares } from "../brewday/live";
 import { settingsClockFormat, formatTimeOfDay, formatDayTime, parseTypedTime, halfOfDay, NBSP, TWELVE_HOUR } from "../util/timefmt";
 import { clearKeyboard } from "../util/keyboard";
 // As text, exactly as written (config-overrides.js): recipes.css for the shadow root; recipes-frame.css, the mockup's
@@ -187,8 +187,12 @@ const boilMin = steps => { const b = steps.find(s => s.type === "BoilStep"); ret
 const bookLine = steps => dayBookLine({steps}, U());
 const fromLine = r => r.desc || (r.imported_from ? `Imported from ${r.imported_from}` : "");
 /* a book recipe without BeerSmith's mash figures (basic data mash_numbers), which Brew Day's strike water box and a new
-   BrewStart's water need, and what gives it them: an import of its BeerSmith file, UPDATE */
+   BrewStart's water need, and what gives it them: an import of its BeerSmith file, UPDATE. Figures typed in Brew Day's
+   strike water box and kept with the recipe aren't BeerSmith's, so a recipe with only those still has the note, which
+   says which were typed (typed: their names) */
 const NOFIG = "No BeerSmith mash figures: import its BeerSmith file again to add them.";
+const nofigSays = r => !r.typed || !r.typed.length ? NOFIG
+  : `No BeerSmith mash figures: its ${typedWords(r.typed)} ${r.typed.length > 1 ? "were" : "was"} typed on Brew Day. Import its BeerSmith file again to add them.`;
 const noFig = r => !!r && !r.bad && !r.figures;
 
 /* ---------- state ---------- */
@@ -535,7 +539,9 @@ function brewStartProps(ed) {
     props.Campden_Reminder === "Yes" && "the Campden reminder"].filter(Boolean);
   const from = src && got.length ? `Filled in from ${src.from}, the newest recipe with a BrewStart: ${andList(got)}.` : "No recipe has a BrewStart yet, so the element is blank.";
   const lacks = waterLacks(numbers, C("GRAIN_ABSORPTION"));
-  const water = w ? ` The water, ${v1(w.total)} ${w.unit}, is what this recipe needs, worked out from the recipe file: ${v1(w.before)} ${w.unit} before the boil, and ${v1(w.kept)} ${w.unit} the grain keeps (Grain absorption in Settings, ${w.rate})${w.lost ? `, and ${v1(w.lost)} ${w.unit} lost under the mash` : ""}.`
+  /* a grain weight typed on Brew Day that goes into the water worked out is said so: it isn't the recipe file's */
+  const typedGrain = typedFigures(numbers).includes("grain");
+  const water = w ? ` The water, ${v1(w.total)} ${w.unit}, is what this recipe needs, worked out from the recipe file${typedGrain ? " and its grain weight typed on Brew Day" : ""}: ${v1(w.before)} ${w.unit} before the boil, and ${v1(w.kept)} ${w.unit} the grain keeps (Grain absorption in Settings, ${w.rate})${w.lost ? `, and ${v1(w.lost)} ${w.unit} lost under the mash` : ""}.`
     : past ? ` The water, ${v1(past.vol)} ${past.unit}, is what the HLT heated for ${brewWords(past)}, the last brew that recorded it: ${lacks}.`
     : ` No water filled in: ${lacks}, and ${st.past === "wait" ? "CraftBeerPi's past brews haven't come yet" : "no past brew recorded the HLT's water"}. Give it under The water, or in Brew Day's strike water box.`;
   const temp = mi && num(mi.props.Temp) != null ? ` The water temperature is ${nameIn(mi)}'s, ${fmt(num(mi.props.Temp))} ${U()}; on Brew Day the strike water box can change it.` : "";
@@ -725,7 +731,7 @@ function colHTML() {
   const steps = r.bad ? `<p class="empty"><b>Couldn't be read</b>${esc(bad)}</p>` : !Array.isArray(r.steps) ? `<p class="empty"><b>Reading its steps</b>CraftBeerPi is sending them.</p>` : stepsListHTML(r.steps, {bsadd: !hasBrewStart(r.steps)});
   return `${back}<h2>${esc(r.name)}</h2>
     <p class="rmeta">${meta}</p>
-    ${r.desc ? `<p class="desc">${esc(r.desc)}</p>` : ""}${noFig(r) ? `<p class="nofig">${NOFIG}</p>` : ""}
+    ${r.desc ? `<p class="desc">${esc(r.desc)}</p>` : ""}${noFig(r) ? `<p class="nofig">${nofigSays(r)}</p>` : ""}
     <div class="rctl">${first}${cmd("", "EDIT", "steps and name", {data: " data-edit", why: bad || (Array.isArray(r.steps) ? "" : WAIT)})}${cmd("", "COPY", "as a new recipe", {data: " data-copy", why: bad})}</div>
     ${ask}${offerHTML(r.file)}<p class="note" id="col-note" role="status">${esc(st.notes.col || "")}</p>
     ${steps}`;
@@ -865,7 +871,7 @@ function bookRowHTML(r) {
   const line = r.bad ? "Couldn't be read" : got ? bookLine(S) : "";
   return `<li class="bk" data-f="${esc(r.file)}"${st.open === r.file ? ' aria-current="true"' : ""}>
     <button type="button" class="bko" data-open="${esc(r.file)}" aria-label="${esc(r.name)}${line ? `: ${esc(line)}` : ""}${noFig(r) ? ". No BeerSmith mash figures" : ""}. Open it">
-      <span class="bn">${marked(r.name)}</span><span class="bs">${r.bad ? "Couldn't be read" : marked(fromLine(r))}</span>${noFig(r) ? `<span class="nofig">${NOFIG}</span>` : ""}${hitLine(r)}<span class="sum">${esc(line)}</span>
+      <span class="bn">${marked(r.name)}</span><span class="bs">${r.bad ? "Couldn't be read" : marked(fromLine(r))}</span>${noFig(r) ? `<span class="nofig">${nofigSays(r)}</span>` : ""}${hitLine(r)}<span class="sum">${esc(line)}</span>
       <span class="c n">${got ? S.length : ""}</span><span class="c m">${got ? (m.length ? `${m.map(fmt).join(", ")} ${U()}` : "–") : ""}</span><span class="c b">${got ? (bm ? `${fmt(bm)} min` : "–") : ""}</span><span class="c d">${esc(dateWords(r.modified))}</span>
     </button><div class="act">${act}</div>${ask}${note}</li>`;
 }
@@ -1473,7 +1479,7 @@ async function readBook() {
   st.book = res.data.filter(x => x && x.file).map(x => {
     const o = was.get(x.file), modified = epoch(x.modified), keep = o && o.modified === modified && Array.isArray(o.steps);
     return {file: x.file, name: x.name || "", author: x.author || "", desc: x.desc || "", imported_from: x.imported_from || "", modified,
-      figures: !!x.mash_numbers && typeof x.mash_numbers === "object", steps: keep ? o.steps : null, basic: keep ? o.basic : null, bad: false};
+      figures: beerSmithFigures(x.mash_numbers), typed: typedFigures(x.mash_numbers), steps: keep ? o.steps : null, basic: keep ? o.basic : null, bad: false};
   });
   st.bookRead = true; st.bookFail = "";
   refreshLoaded();
