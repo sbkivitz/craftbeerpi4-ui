@@ -50,7 +50,7 @@ function strikeVessels(st, F) {
    BrewStart itself with Ready by (BrewStart 1.3.0 heats the HLT and holds the water), so then si is bi */
 export function swSteps(S) {
   const bi = S.findIndex(s => s.type === "BrewStart"), hi = S.findIndex(s => s.k === "hlt" && s.type === "MashInStep");
-  return {bi, si: hi >= 0 ? hi : bi >= 0 && !S[bi].start ? bi : -1, mi: S.findIndex(s => s.k === "mt")};
+  return {bi, si: hi >= 0 ? hi : bi, mi: S.findIndex(s => s.k === "mt")};
 }
 
 /* ---------- the model's answers, as the mockup reads them (brew-day.js, swFcOf to swModel) ---------- */

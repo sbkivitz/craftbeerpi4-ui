@@ -65,7 +65,7 @@ import { rigSVG, RIG_H } from "./rig";
 import * as DEMO from "./demo";
 import * as SWD from "./strike-demo";
 import { api, why as failWhy } from "./api";
-import { model, num, parseLeft, bookLine, isHerms, unitText, ROLES, cfg, timerNames, recipeWater, waterLacks, pastWater, brewWords, inWords, durWords, GAL_L } from "./live";
+import { model, num, parseLeft, bookLine, isHerms, unitText, ROLES, cfg, timerNames, recipeWater, waterLacks, pastWater, brewWords, bsHoldWords, inWords, durWords, GAL_L } from "./live";
 import { play as playSound, soundOf, DEFAULT_SOUND, SOUNDS } from "./alarm";
 import { GSPANS, GSAY, graphHTML, graphSVG, graphETA } from "./graphs";
 import { createHistory } from "./history";
@@ -2552,7 +2552,8 @@ const stepTemp = s => (s.type === "SpargeStep" ? "water " : "") + s.temp;
 const runWord = s => s.type === "SpargeStep" ? "SPARGING" : "NOW";
 /* ---------- BrewStart's box (design/brewday BREWSTART-EDIT.md; BUILD-NOTES "BrewStart on Brew Day") ----------
    BrewStart's time is set on Brew Day the night before, from its row in the step list: Ready by first (the water hot by
-   a time, BrewStart working out when heating must start), Start at the second choice; the day as TODAY or TOMORROW on
+   a time, BrewStart working out when heating must start), Start at the second choice (heating starts at the time).
+   Either way BrewStart heats the water and holds it until the brewer's NEXT (1.3.0.post7); the day as TODAY or TOMORROW on
    CraftBeerPi's clock, which the step keeps as a date; and where the grain spent the night, asked once a brew as USE
    depends on it: in the garage, where the boil kettle's probe stands for it, or indoors, at a figure. BrewStart's water
    is a fact here: the strike water box (USE, HLT WATER) and Brew Steps (ALL SETTINGS) change it. Every other setting
@@ -2591,20 +2592,20 @@ const bsIdx = () => M.RECIPE.steps.findIndex(s => s.type === "BrewStart");
 const bsKind = s => s.kind || (s.start ? "start" : "ready");
 const bsTime = s => s.start || s.ready || null;
 const bsWaits = () => { const r = st.recipe, s = r && M.RECIPE.steps[r.cur]; return !!s && s.type === "BrewStart" && r.state === "running" && typeof r.wait === "string" && r.wait.startsWith("STARTS "); };
-/* BrewStart as the strike water step (BrewStart 1.3.0; BUILD-NOTES "BrewStart heats the HLT itself"): with Ready by on
-   the HLT, in a recipe with no MashInStep on the HLT, it heats the HLT itself at its heating start, then holds the water
-   until it has been moved to the Mash Tun and Next pressed. The recipe's shape says so, as the strike water box finds
+/* BrewStart as the strike water step (BrewStart 1.3.0; BUILD-NOTES "BrewStart heats the HLT itself"): on the HLT, in a
+   recipe with no MashInStep on the HLT, it heats the HLT itself at its heating start, Ready by's or Start at's (1.3.0.post7),
+   then holds the water until it has been moved to the Mash Tun and Next pressed. The recipe's shape says so, as the strike water box finds
    its steps (swSteps). A recipe with a strike water step on the HLT keeps that step, which BrewStart hands over to as
    heating is due */
 const bsStrike = () => {
   const S = M.RECIPE.steps, i = bsIdx();
-  return i >= 0 && bsKind(S[i]) === "ready" && S[i].k === "hlt" && !S.some(s => s.k === "hlt" && s.type === "MashInStep");
+  return i >= 0 && S[i].k === "hlt" && !S.some(s => s.k === "hlt" && s.type === "MashInStep");
 };
-/* BrewStart's question while it holds the water, in its words: live as CraftBeerPi asked it, naming the next kettle;
-   with no question up (after a restart it doesn't ask a second time), the same words for the Mash Tun */
+/* BrewStart's question while it holds the water, in its words: live as CraftBeerPi asked it; with no question up (after
+   a restart it doesn't ask a second time), the same words (bsHoldWords), for the Mash Tun by its name */
 function bsAsk(s) {
   const q = !DEMO_MODE && st.prompts.find(p => String(p.title || "") === s.n && p.message);
-  return q ? ut(q.message) : `Move the strike water to the ${DEMO_MODE ? DEMO.KNAME.mt : (M.K && M.K.mt && M.K.mt.name) || "Mash Tun"}, then press Next`;
+  return q ? ut(q.message) : bsHoldWords(s.temp, M.U, DEMO_MODE ? DEMO.KNAME.mt : (M.K && M.K.mt && M.K.mt.name) || "Mash Tun");
 }
 /* BrewStart before its heating has begun: on a recipe not begun, and while it waits. Its row then gives its day, and
    USE waiting for the grain opens its box (after that, the strike water box's GRAIN) */
@@ -2782,13 +2783,14 @@ function bsSays(B) {
   const m = B.m, t = bsNow();
   if (m == null || t == null) return null;
   const at = B.day * 86400 + m * 60, now = dayOf(t), hm = tod(m * 60), rel = B.day === now ? "today" : B.day === now + 1 ? "tomorrow" : "";
-  if (at <= t) return {past: true, text: `${hm} ${rel || dMid(B.day)} has passed, so nothing would start by itself. For tomorrow morning, choose TOMORROW.`};
+  if (at <= t) return {past: true, text: `${hm} ${rel || dMid(B.day)} has passed. For tomorrow morning, choose TOMORROW.`};
   const lead = B.neu || B.kind === "start" ? null : bsLead();
   if (lead != null && at - t <= lead + 60) return {past: false, soon: true, text: `Heating starts as soon as you press HEAT NOW: BrewStart plans ${nb(durWords(lead))} for heating the water, and ${hm} ${rel || dMid(B.day)} is ${nb(durWords(at - t))} away.`};
-  const S = M.RECIPE.steps, bi = bsIdx(), nx = B.neu ? S[0] : S[bi + 1], when = `${hm}${rel ? ` ${rel},` : ""} ${dMid(B.day)}: ${bsIn(at - t)}.`;
-  /* Start at chosen while BrewStart heats or holds the water: SET stops its heating, so the box says so first */
-  const stops = !B.neu && B.kind === "start" && bsRuns() && st.recipe.bsHeat && bsKind(S[bi]) !== "start" ? `SET stops BrewStart's heating: the ${bsWaterOf(B).kn}'s AUTO goes off. ` : "";
-  return {past: false, text: B.kind === "start" ? `${stops}${nx ? nx.n : "The next step"} starts at ${when}` : `The ${bsWaterOf(B).kn}'s water is hot by ${when}`};
+  const when = `${hm}${rel ? ` ${rel},` : ""} ${dMid(B.day)}: ${bsIn(at - t)}.`;
+  /* Start at while BrewStart heats or holds the water: its heating has begun and carries on (1.3.0.post7), so its time
+     changes nothing now. Either way nothing moves on until the brewer's NEXT */
+  if (!B.neu && B.kind === "start" && bsRuns() && st.recipe.bsHeat) return {past: false, text: "Heating has begun, so Start at's time changes nothing now: the heating carries on."};
+  return {past: false, text: B.kind === "start" ? `Heating starts at ${when}` : `The ${bsWaterOf(B).kn}'s water is hot by ${when}`};
 }
 /* the water, last in the box: what BrewStart heats, a fact here. A new one's is the recipe pages' (bsFillOf): worked
    out from the recipe; else the water of the newest brew that was brewed and recorded it, saying which brew and why
@@ -2865,11 +2867,11 @@ function bsClockHTML() {
    can't take a new time (bsRetimes), the time, AM and PM, the day and START AT */
 function bsHTML() {
   const B = st.bs, S = M.RECIPE.steps, bi = bsIdx(), s = B.neu ? null : S[bi], busy = !!st.pend.bs, wait = !B.neu && bsWaits(), now = dayOf(bsNow()), U = M.U;
-  const off = busy ? WAIT : "", ws = bsSays(B), nx = S[bi + 1], run = !B.neu && bsRuns(), heat = run ? st.recipe.bsHeat : null, w = bsWaterOf(B);
+  const off = busy ? WAIT : "", ws = bsSays(B), run = !B.neu && bsRuns(), heat = run ? st.recipe.bsHeat : null, w = bsWaterOf(B);
   const held = run && !bsRetimes() ? BS_HELD : "", hoff = off || held, hdis = hoff ? ` aria-disabled="true" data-why="${esc(hoff)}"` : "";
   const key = (d, l, a) => `<button type="button" data-cmd="bs:step:${d}" aria-label="${a}"${hdis}>${l}</button>`;
   const at = w.temp == null ? "" : ` ${heat === "holding" ? "at" : "to"} ${w.temp.toFixed(1)} ${U}`;
-  const head = wait ? `<p class="bsw">BrewStart is waiting: ${bsKind(s) === "start" ? `${nx ? esc(nx.n) : "the next step"} starts at ${todS(bsTime(s))}` : `heating starts about ${st.recipe.wait.slice(7)}`}.${held ? "" : " A change here plans it again at once."}</p>`
+  const head = wait ? `<p class="bsw">BrewStart is waiting: ${bsKind(s) === "start" ? `heating starts at ${todS(bsTime(s))}` : `heating starts about ${st.recipe.wait.slice(7)}`}.${held ? "" : " A change here plans it again at once."}</p>`
     : heat === "heating" ? `<p class="bsw">BrewStart is heating the ${esc(w.kn)}'s water${at}. A new time here changes when it should be ready; the heating carries on.</p>`
     : heat === "holding" ? `<p class="bsw">BrewStart is holding the ${esc(w.kn)}'s water${at} for you to move it.</p>`
     : !B.neu && bsStopped() ? '<p class="bsw">BrewStart is stopped: START carries it on with what is set here.</p>' : "";
@@ -2878,7 +2880,9 @@ function bsHTML() {
      still opens the box */
   const doing = heat === "holding" ? "holds the water" : heat ? "heats the water" : "waits";
   const kindWhy = !run || bsSets() ? "" : held || `Not while BrewStart ${doing}: STOP it first.`;
-  const kind = `<div class="bskind"><p class="bsl" id="bs-kl">${B.kind === "start" ? "Start at" : "Ready by"}</p>${b("bsq", B.kind === "start" ? "READY BY INSTEAD" : "START AT INSTEAD", "", {cmd: "bs:kind", why: off || kindWhy})}</div>`;
+  /* what the choice means, under it: both heat the water and hold it until NEXT, nothing moving on by itself */
+  const kind = `<div class="bskind"><p class="bsl" id="bs-kl">${B.kind === "start" ? "Start at" : "Ready by"}</p>${b("bsq", B.kind === "start" ? "READY BY INSTEAD" : "START AT INSTEAD", "", {cmd: "bs:kind", why: off || kindWhy})}</div>`
+    + `<p class="bsgh" id="bs-kh">${B.kind === "start" ? "Heating starts at the time" : "Hot by the time"}, and held until you press NEXT.</p>`;
   const as = is12() ? "7:00" : "07:00";
   const time = `<div class="editor bstime" role="group" aria-labelledby="bs-kl">${key(-60, "−1 H", "An hour earlier")}${key(-15, "−15", "15 minutes earlier")}<input id="bstin" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="${as}" value="${esc(B.txt)}" aria-label="Time, as ${as}"${busy || held ? " readonly" : ""}${held ? ` data-cmd="noop"${hdis}` : ""}>${key(15, "+15", "15 minutes later")}${key(60, "+1 H", "An hour later")}</div>`;
   /* the half of the day the time is in, pressed; a tap moves the same time to the other half. A compact pair, without
@@ -3183,13 +3187,9 @@ function bsSet() {
     if (grainCh) Object.assign(s, {where: B.where, grain: B.where === "indoors" ? g : null});
     st.bsOpen = false; st.bs = null;
     if (grainCh && st.swd) swRework("grain");
-    /* Start at while BrewStart heats or holds the water: its heating stops, the HLT's AUTO off, and it waits for its
-       time, as BrewStart's change_settings does */
-    if (timeCh && r.bsHeat && M.RECIPE.steps[r.cur] === s && B.kind === "start" && wasKind !== "start") {
-      if (st.v.hlt.mode === "auto") setMode("hlt", "manual");
-      r.bsHeat = null; r.wait = `STARTS ${tod(bsHeatAt(s, st.v.hlt.pv))}`;
-      soon(() => logEvent(`BrewStart: BrewStart's heating stopped: the HLT's AUTO is off. Brew start scheduled for ${bsFmt(bsAt(s))}`, "from CraftBeerPi", ""));
-    } else if (timeCh && M.RECIPE.steps[r.cur] === s && bsWaits()) {
+    /* while BrewStart heats or holds the water, a new timing or time changes nothing in the heating, which carries on
+       (BrewStart 1.3.0.post7's change_settings) */
+    if (timeCh && M.RECIPE.steps[r.cur] === s && bsWaits()) {
       const pv = st.v.hlt.pv;
       if (ws.soon) {
         /* HEAT NOW: BrewStart's notice, then it heats the HLT itself at once (bsHeat), the current step still */
@@ -3387,13 +3387,13 @@ function bsOwnWater() {
    element and the Campden choice of the newest BrewStart in the Recipe Book (src), which belong to the rig; the water
    this recipe needs, else the water of the newest brew that was brewed and recorded it (past, pastWater), else none:
    never the water of a recipe that was only loaded or kept in the book. The temperature of its first MashInStep. The
-   time and the day are the box's; NotifyBefore blank, AutoNext Yes */
+   time and the day are the box's; NotifyBefore blank. No AutoNext: nothing but NEXT moves BrewStart on (1.3.0.post7) */
 function bsFillOf(src, past = null) {
   const q = (src && src.props) || {}, C = M.C === "F" ? "F" : "C", {w, lacks} = bsOwnWater(), T = bsNewTemp();
   const kettle = q.Heat_Kettle || (M.K && M.K.hlt ? M.K.hlt.id : "");
   const p = w ? null : past, vol = w ? Math.round(w.total * 10) / 10 : p ? Math.round(p.vol * 10) / 10 : null, volU = w ? w.unit : p ? p.unit : C === "F" ? "gal" : "L";
   const props = {Timing: "Ready by", Mode: "Date", StartDate: "", StartTime: "", Heat_Kettle: kettle, Ready_Temp: T != null ? T : q.Ready_Temp ?? "",
-    Volume: vol ?? "", Volume_Unit: volU, Grain_Temp: "", Heater_Watts: q.Heater_Watts ?? "", Campden_Reminder: q.Campden_Reminder || "No", NotifyBefore: "", AutoNext: "Yes"};
+    Volume: vol ?? "", Volume_Unit: volU, Grain_Temp: "", Heater_Watts: q.Heater_Watts ?? "", Campden_Reminder: q.Campden_Reminder || "No", NotifyBefore: ""};
   const k = ((last && last.kettles) || []).find(x => x && x.id === kettle), watts = num(q.Heater_Watts);
   return {props, kn: k && k.name ? String(k.name) : bsHltName(), watts: watts > 0 ? watts : null, vol, volU, from: w ? "recipe" : p ? "past" : null, past: p, lacks};
 }
@@ -4359,9 +4359,10 @@ function bsHeating(s) {
   if (st.v.hlt.pv < s.temp - 0.5) { r.wait = true; r.bsHeat = "heating"; return; }
   r.wait = WAITING_FOR_YOU; r.bsHeat = "holding";
   soon(() => {
-    st.banner = {tone: "prompt", title: s.n, text: DEMO.SW_ASK, act: "NEXT STEP", cmd: "b:done"};
-    logEvent(`${s.n}: ${DEMO.SW_ASK}`, "waiting for you", "wait");
-    say(`${s.n}. ${DEMO.SW_ASK}.`, true);
+    const ask = bsHoldWords(s.temp, M.U, DEMO.KNAME.mt);
+    st.banner = {tone: "prompt", title: s.n, text: ask, act: "NEXT STEP", cmd: "b:done"};
+    logEvent(`${s.n}: ${ask}`, "waiting for you", "wait");
+    say(`${s.n}. ${ask}`, true);
   });
 }
 /* when the demo's BrewStart goes on to the heating: with Start at, at its time; with Ready by, as early as heating the

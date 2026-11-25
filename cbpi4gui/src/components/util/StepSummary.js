@@ -106,9 +106,11 @@ export const describeStep = (step, type, context = {}) => {
   }
   if (byLabel.AutoNext) {
     handled.add("AutoNext");
-    if (props.AutoNext === "No") {
+    // BrewStart never moves on by itself (1.3.0.post7), whatever an older form saved: it says nothing of it
+    const autoNext = step?.type === "BrewStart" ? "" : props.AutoNext;
+    if (autoNext === "No") {
       say("waits for you");
-    } else if (props.AutoNext === "Yes") {
+    } else if (autoNext === "Yes") {
       say("moves on by itself");
     }
   }

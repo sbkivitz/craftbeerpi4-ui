@@ -20,6 +20,7 @@
 // rd-sparge-nolevel, rd-sparge-volume, rd-sparge-bad, rd-preboil, rd-postboil, rd-partial, rd-saved, rd-fail and
 // rd-final) runs on this, so it can be compared with the mockup pixel for pixel.
 import { swModel, SW_MORNING, SW_LEVER_S } from "./strike-demo";
+import { bsHoldWords } from "./live";
 import { formatTimeOfDay, TWELVE_HOUR } from "../util/timefmt";
 
 const RECIPE = {
@@ -1319,12 +1320,12 @@ function swMorning(t, plan) {
     s.a.hltEl = {on: true, pct: held ? 16 : 100};
     s.recipe.wait = held ? WFY : true;
     if (held) {
-      s.banner = {tone: "prompt", title: S.n, text: SW_ASK, act: "NEXT STEP", cmd: "b:done"};
-      log.push([hhmmss(hot + 6), `${S.n}: ${SW_ASK}`, "waiting for you", "wait"]);
+      s.banner = {tone: "prompt", title: S.n, text: bsHoldWords(plan, "°F"), act: "NEXT STEP", cmd: "b:done"};
+      log.push([hhmmss(hot + 6), `${S.n}: ${bsHoldWords(plan, "°F")}`, "waiting for you", "wait"]);
     }
   } else {
     s.recipe.cur = 1; s.swd.g.moved = SW_MOVED; s.swd.g.marks.push([SW_MOVED, 2]);
-    log.push([hhmmss(hot + 6), `${S.n}: ${SW_ASK}`, "answered", ""], [hhmmss(SW_MOVED), `${S.n} answered: Next Step`, "confirmed", "ok"],
+    log.push([hhmmss(hot + 6), `${S.n}: ${bsHoldWords(plan, "°F")}`, "answered", ""], [hhmmss(SW_MOVED), `${S.n} answered: Next Step`, "confirmed", "ok"],
       [hhmmss(SW_MOVED), "BrewStart finished, HLT AUTO off", "by recipe", ""],
       [hhmmss(SW_MOVED + 1), "MashIn started, mash tun target 126.0 °F", "by recipe", ""]);
     const asked = t >= ask;

@@ -149,7 +149,8 @@ export function additions(p) {
 }
 
 /* BrewStart, as Brew Day's row and box read it (design/brewday BREWSTART-EDIT.md):
-   - its time, as "07:00": Ready by's (ready) or Start at's (start); a blank Timing is Start at, as cbpi4_BrewStart reads it;
+   - its time, as "07:00": Ready by's (ready: hot by then) or Start at's (start: heating starts then); either heats the
+     water and holds it until the brewer's NEXT (BrewStart 1.3.0.post7), and a blank Timing is Ready by, as it reads it;
    - its day: a date ("2026-11-21") where its Mode is Date, or how it counts one (mode: Today or Tomorrow, from START;
      Daily, an older form's next time the clock shows it); while it waits, the day it planned for, which it keeps with the
      step (planned, from _brewstart_planned: "<settings>|<moment>");
@@ -166,28 +167,29 @@ function bsDay(x) {
   return day.getUTCMonth() === mo - 1 && day.getUTCDate() === d ? day.toISOString().slice(0, 10) : null;
 }
 function brewStartModel(p, U, kname) {
-  const m = {kind: String(p.Timing || "").trim() === "Ready by" ? "ready" : "start", props: p};
+  const m = {kind: String(p.Timing || "").trim() === "Start at" ? "start" : "ready", props: p};
   const at = /^\s*(\d{1,2})(?::(\d{2})(?::\d{2})?)?\s*$/.exec(String(p.StartTime ?? "")), h = at ? +at[1] : 99, mi = at && at[2] != null ? +at[2] : 0;
   if (h < 24 && mi < 60) m[m.kind] = `${String(h).padStart(2, "0")}:${String(mi).padStart(2, "0")}`;
   m.mode = String(p.Mode || "").trim() || "Today";
   if (m.mode === "Date" || m.mode === "DateTime") m.date = bsDay(p.StartDate);
   const kept = String(p._brewstart_planned || ""), moment = kept.slice(kept.lastIndexOf("|") + 1);
   if (kept.includes("|")) m.planned = bsDay(moment.slice(0, 10));
-  /* the water as its settings have it, whichever the Timing (the box says what BrewStart heats); the row gives it, as
-     BrewStart's form does, only for Ready by, which heats it */
+  /* the water as its settings have it: both timings heat it, so the row and the box give it for either */
   const ready = num(p.Ready_Temp), vol = num(p.Volume), watts = num(p.Heater_Watts);
   const W = {temp: ready, vol: vol != null && vol > 0 ? vol : null, volU: p.Volume_Unit === "L" || p.Volume_Unit === "gal" ? p.Volume_Unit : U === "°C" ? "L" : "gal",
     watts: watts != null && watts > 0 ? watts : null, kn: kname[p.Heat_Kettle] || null};
   m.water = W;
-  if (m.kind === "ready") {
-    if (W.temp != null) m.temp = W.temp;
-    if (W.vol != null) { m.vol = W.vol; m.volU = W.volU; }
-    if (W.kn) m.kn = W.kn;
-  }
+  if (W.temp != null) m.temp = W.temp;
+  if (W.vol != null) { m.vol = W.vol; m.volU = W.volU; }
+  if (W.kn) m.kn = W.kn;
   m.grain = num(p.Grain_Temp);
   m.campden = p.Campden_Reminder === "Yes";
   return m;
 }
+
+/* BrewStart's question while it holds the strike water, in its own words (1.3.0.post7), for either timing: the screen
+   says it where CraftBeerPi's question isn't up (after a restart BrewStart doesn't ask twice), and the demo asks it */
+export const bsHoldWords = (temp, U, mt = "Mash Tun") => `Strike water hot and holding at ${temp != null && Number.isFinite(+temp) ? `${(+temp).toFixed(1)} ${U}` : "its temperature"}. When you've moved the strike water to the ${mt} and connected the hoses and pumps for recirculating, press NEXT.`;
 
 export function stepModel(s, roleOf, U, kname = {}) {
   const p = (s && s.props) || {};
