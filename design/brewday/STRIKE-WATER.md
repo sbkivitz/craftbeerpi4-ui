@@ -1,5 +1,10 @@
 # Strike water helper: approved by the brewer (20 Nov 2026), with the model's figures
 
+**A redesign is proposed** (25 Nov): the strike water card, `STRIKE-CARD.md`, in the mockup behind `?strike=bs` and
+the `#card-…` moments. It follows an independent review of this flow and the brewer's decision that BeerSmith's strike
+temperature drives BrewStart and MashIn, with this helper's forecast kept as an optional check. Until he approves it,
+this note describes the box as built.
+
 From BrewStart 1.3.0 (22 Nov, night) the strike water step is usually BrewStart itself: with Ready by it heats the HLT,
 holds the water and asks for it to be moved, as the strike water step on the HLT did, and the box sits on it. Where
 this note says "the strike water step", read that BrewStart, or a MashInStep on the HLT after it where a recipe has
@@ -488,8 +493,8 @@ no more than that, it moves nothing and says why. The same at any simulator spee
     (design/recipes/RECIPES.md decision 15). There, unlike in the box, BeerSmith's own figure can be changed: it is then
     the brewer's, named in the recipe's typed, with BeerSmith's own kept beside it for BEERSMITH'S, the way back. On Brew
     Steps, SAVE sends it through the box's own command (POST /step2/strike/recipe with "edit"), so the box shows it and
-    works USE out from it at once, and the same refusal holds: mash water that would leave the HLT less than covers its
-    element and coil. A figure changed from BeerSmith's isn't one given here: the state names it in recipe.changed, with
+    works USE out from it at once, and the same rule holds: mash water that leaves the HLT less than covers its element
+    and coil is kept, and said once in one short line. A figure changed from BeerSmith's isn't one given here: the state names it in recipe.changed, with
     BeerSmith's own. A MashIn's own grain weight and mash water aren't a second copy: MashIn works its strike out from
     the recipe's figures where it has them, and a figure saved, in the box or the editor, clears the copy of each MashIn
     still to come. Where the recipe has no mash water or grain weight, a box asking for it opens with a suggestion from

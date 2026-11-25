@@ -7646,6 +7646,35 @@ Measured with every placement of the timers at 1920 × 1080, 1920 × 950, 1440 �
   in the recipe column; main (b80e7ae) stops at the same place, so it isn't this change, and it is being looked at
   separately.
 
+## The mash water's ratio from the figure in force, and BeerSmith's figure named plainly: ready to build (25 Nov)
+
+An independent review of the strike water flow found two wrong figures. Both are to build now, whatever becomes of the
+card proposed below.
+
+1. **The ratio stays at BeerSmith's after the mash water changes** (screen.js `swRatio`, and the mockup's). With
+   BeerSmith's 19.51 gal changed to 8.00 gal, MashIn's row, the box and FORECAST still said 3.75 qt/lb, and warned it
+   was unusual; by the rule below it is 1.45. For the same 19.51 gal the row said 3.75 and the mash water box 3.9. **One rule, everywhere
+   a ratio shows** (MashIn's row, the strike water box, FORECAST, the mash water box as it is typed, the recipe
+   editor): the mash water in force, less BeerSmith's water under the false bottom where the recipe has it, against
+   the grain weight in force. BeerSmith's own 19.51 gal gives 3.75 qt/lb (18.75 gal for 20 lb); 8.00 gal gives 1.45.
+   The mockup: `swIn` gives `R.for_grain` as the mash water given less BeerSmith's `dead` once it is changed, and
+   `swRecWarn` takes the same off.
+2. **"changed from BeerSmith's 19.51 gal in the recipe editor"** after a change made on Brew Day (MashIn's box and
+   FORECAST, build only). Say "BeerSmith: 19.51 gal", without where it was changed.
+
+The mockup now also matches post71 for the box as built: HLT WATER and MASH WATER set and close whatever they leave in
+the HLT, the long refusal is gone from the boxes, and one short line under the strike water box says it once: "Leaves
+0.5 gal in the HLT, under its 3.0 gal minimum." HLT water under the mash water is said the same way, never refused:
+"Less than the 19.5 gal of mash water." (`hltShortText`, two places where one would show both figures the same), as
+post73 builds it; with it the forecast waits for more HLT water.
+
+## The strike water card: a proposal for the brewer to see first (25 Nov)
+
+**Not to build yet.** `STRIKE-CARD.md` has the design, its words, the review's findings and where each went, and what
+each part needs; the mockup has it behind `?strike=bs` and in the `#card-…` moments. It answers "give me the option to
+set the mash water too" and "I need to be able to get out of this screen", and makes BeerSmith's strike the plan, with
+CraftBeerPi's forecast as CHECK. Once he has seen it, this section becomes its "ready to build".
+
 ## Open questions about the drawing
 
 Both were answered on 10 Nov. The valves have been in the drawing since then; the path after the boil was

@@ -964,6 +964,55 @@ const SCENES = {
      CLOSE still in GIVE THEM's halves */
   "sw-give-open": () => Object.assign(SCENES["sw-missing-steps"](), {base: "sw-missing-steps", open: {swOpen: "give"}}),
   "sw-gave": () => Object.assign(SCENES["sw-typed"](), {base: "sw-typed", open: {swOpen: "give"}}),
+  /* the strike water card (STRIKE-CARD.md), the strike water moments with BeerSmith's figures as the plan: BrewStart's
+     temperature is BeerSmith's strike, 134.6 °F for Test Recipe v5 (sw.plan), and the card stands in the box's place.
+     #card-plan the night before; #card-low with 10 gal of HLT water, under its minimum once the 8.26 gal of mash water
+     has gone; #card-water its MASH WATER opened, 7.00 typed; #card-yours 7.00 set, BeerSmith's strike then for other
+     figures; #card-yours-edit MASH WATER opened again, BEERSMITH'S beside SET; #card-strike STRIKE opened, 136.0 typed;
+     #card-mine 136.0 set; #card-mine-edit opened again, BEERSMITH'S beside SET; #card-cold the grain given as 45 °F, the
+     check offering USE; #card-used USE pressed; #card-check CHECK opened; #card-check-grain its GRAIN TEMP opened;
+     #card-hlt HLT WATER opened, 10.0 typed; #card-novol by hand, no HLT water given; #card-nobs a recipe without
+     BeerSmith's figures; #card-working the check being worked out; #card-heat BrewStart heating; #card-move the water
+     hot and held; #card-moved the water in the mash tun, MashIn's pre-heat; #card-stall the pre-heat stalled;
+     #card-asked the malt asked for, the strike done */
+  "card-plan": () => cardOf(swDay(21 * 3600 + 12 * 60 + 5, {})),
+  "card-low": () => { const s = SCENES["card-plan"](); s.sw.vol = 10; return s; },
+  "card-water": () => Object.assign(SCENES["card-low"](), {base: "card-plan", open: {sx: {k: "water", val: 7}}}),
+  "card-yours": () => { const s = SCENES["card-low"](); s.sw.rec = {water: 7}; s.events.unshift(["21:12:20", "Mash water set to 7.00 gal, was 8.26 gal", "confirmed", "ok"]); return Object.assign(s, {base: "card-plan"}); },
+  "card-yours-edit": () => Object.assign(SCENES["card-yours"](), {open: {sx: {k: "water", val: 7}}}),
+  "card-strike": () => Object.assign(SCENES["card-plan"](), {base: "card-plan", open: {sx: {k: "strike", val: 136}}}),
+  "card-mine": () => { const s = SCENES["card-plan"](); s.sw.plan = 136; s.bss = {from: "you"}; s.events.unshift(["21:12:20", "Strike set to 136.0 °F, was 134.6 °F", "confirmed", "ok"]); return Object.assign(s, {base: "card-plan"}); },
+  "card-mine-edit": () => Object.assign(SCENES["card-mine"](), {open: {sx: {k: "strike", val: 136}}}),
+  "card-cold": () => { const s = SCENES["card-plan"](); s.sw.grain = 45; s.events.unshift(["21:12:20", "Grain temperature set to 45.0 °F, was the probe's 60.6 °F", "confirmed", "ok"]); return Object.assign(s, {base: "card-plan"}); },
+  "card-used": () => { const s = SCENES["card-cold"](); s.bss = {from: "check"}; s.then = () => { const K = bssK(), u = K.use(swIn().grain); st.events.unshift(["21:12:40", `Strike set to ${u.toFixed(1)} °F, the check's, was 134.6 °F`, "confirmed", "ok"]); swSet(u); }; return s; },
+  "card-check": () => Object.assign(SCENES["card-plan"](), {base: "card-plan", open: {swOpen: true}}),
+  "card-check-grain": () => Object.assign(SCENES["card-plan"](), {base: "card-plan", open: {swOpen: true, sx: {k: "grain", val: 45}}}),
+  "card-hlt": () => Object.assign(SCENES["card-plan"](), {base: "card-plan", open: {sx: {k: "hlt", val: 10}}}),
+  "card-novol": () => { const s = SCENES["card-plan"](); s.sw.vol = null; return Object.assign(s, {base: "card-plan"}); },
+  "card-nobs": () => { const s = cardOf(swDay(21 * 3600 + 12 * 60 + 5, {})); s.sw.from = null; s.sw.plan = 126; return Object.assign(s, {base: "card-plan"}); },
+  "card-working": () => { const s = SCENES["card-plan"](); s.sw.has = null; s.sw.work = {since: s.t - 8, why: "recipe"}; return Object.assign(s, {base: "card-plan"}); },
+  "card-heat": () => cardOf(swMorning(DAY2 + 6 * 3600 + 41 * 60 + 30, SW_FROM.bs)),
+  "card-move": () => cardOf(swMorning(DAY2 + 6 * 3600 + 51 * 60 + 10, SW_FROM.bs)),
+  /* the water in the mash tun 40 s after NEXT: MashIn heats it to its pre-heat with the pump running, and asks for the
+     malt there. Its target and reading follow the card's figures, set once the recipe is built */
+  "card-moved": () => {
+    const s = cardOf(swMorning(SW_MOVED + 40, SW_FROM.bs));
+    s.banner = null; s.recipe.wait = true; s.a.wortPump = {on: true};
+    s.events = s.events.filter(e => !/add malt/.test(e[1]));
+    s.then = () => { const t = bssK().pre(st.sw.plan); st.events = st.events.map(e => e[1].startsWith("MashIn started") ? [e[0], `MashIn started, mash tun target ${t.toFixed(1)} °F`, e[2], e[3]] : e);
+      Object.assign(st.v.mt, {sv: t, own: t, pv: +(t - 1.6).toFixed(1), mode: "auto"}); };
+    return s;
+  },
+  "card-stall": () => { const s = SCENES["card-moved"](), f = s.then; s.t += 15 * 60; s.bss = {stall: {short: 0.4, min: 10}}; s.then = () => { f(); st.v.mt.pv = +(st.v.mt.sv - 0.4).toFixed(1); }; return s; },
+  /* the pre-heat reached and the malt asked for: the pump stopped for the dough-in, the Mash Tun's probe reading the
+     water left in the HLT's coil, and the strike done */
+  "card-asked": () => {
+    const s = SCENES["card-moved"](), f = s.then;
+    s.t += 6 * 60; s.recipe.wait = WFY; s.a.wortPump = {on: false};
+    s.banner = {tone: "prompt", title: "MashIn", text: "Target temperature reached. Please add malt.", act: "NEXT STEP", cmd: "b:done"};
+    s.then = () => { f(); st.v.mt.pv = +(st.v.mt.sv + 3.4).toFixed(1); st.events.unshift([hhmmss(st.t - 4), "MashIn: Target temperature reached. Please add malt.", "waiting for you", "wait"]); };
+    return s;
+  },
   "sw-noprobe": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.v.bk.pv = null; s.pb.none.bk = 300; return Object.assign(s, {pbLast: {bk: 61.4}, gap: {bk: 300}}); },
   "sw-grain-bad": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.sw.grain = 150; return s; },
   /* the strike water's temperature (BrewStart's, or with ?sws=step the strike water step's) typed on Brew Steps as
@@ -1307,6 +1356,15 @@ function swDay(t, o) {
   if (used) s.events.unshift(["21:12:31", `Strike water set to ${hot.toFixed(1)} °F, was 126.0 °F`, "confirmed", "ok"]);
   if (o.state) s.events.unshift(["21:13:04", swPlanLine(s.sw.plan, 60.6), "from CraftBeerPi", ""], ["21:13:02", "Recipe started", "confirmed", "ok"],
     ["21:13:01", "Checked before starting: probes, clock, reminders", "all passed", "ok"]);
+  return s;
+}
+/* a strike water moment as the card has it (?strike=bs, STRIKE-CARD.md): BrewStart's temperature BeerSmith's strike,
+   as ADD BREWSTART fills it, and nothing in LOG about USE, which the card doesn't have */
+function cardOf(s) {
+  s.strikeBs = true;
+  if (s.sw.from && s.sw.from.bs != null) s.sw.plan = s.sw.from.bs;
+  s.sw.was = null;
+  s.events = s.events.filter(e => !/^Strike water set to/.test(e[1]));
   return s;
 }
 /* brew day, from BrewStart's heating start: BrewStart (1.3.0) heats the HLT on its own AUTO at the rig's rate to plan,
@@ -2371,7 +2429,7 @@ function pbEnd(why) {
 let pbKeep = null;
 /* the box on screen as it is about to be drawn again: the height its contents need now, at the column's width now */
 function pbMeasure() {
-  const kp = $("#recipe .pbc, #recipe .cmp, #recipe .sw:not(.open)");
+  const kp = $("#recipe .pbc, #recipe .cmp, #recipe .sw:not(.open):not(.swcard)");
   if (!kp || (document.fonts && document.fonts.status === "loading")) return null;
   const kept = kp.style.minHeight;
   kp.style.minHeight = "";
@@ -2381,7 +2439,8 @@ function pbMeasure() {
 }
 /* after it is drawn again (before: pbMeasure's, from just before): the tallest of what its contents need, at this width */
 function pbFit(before = null) {
-  const kp = $("#recipe .pbc, #recipe .cmp, #recipe .sw:not(.open)");
+  /* not the strike water card: it grows only as the brewer opens it, and nothing under a reaching hand moves in it */
+  const kp = $("#recipe .pbc, #recipe .cmp, #recipe .sw:not(.open):not(.swcard)");
   if (!kp) { pbKeep = null; return; }
   kp.style.minHeight = "";
   if (document.fonts && document.fonts.status === "loading") { pbKeep = null; return; }
@@ -2679,9 +2738,10 @@ const bsStrike = () => { const {bi, si} = swSteps(); return bi >= 0 && si === bi
    MASH WATER is the strike water that goes to the mash tun; HLT WATER is all the water in the HLT, strike and sparge;
    what the HLT water leaves after the mash water is the sparge water. The HLT keeps the least water that covers its
    element and coil: its least water on the Hardware page, else 15% of its capacity, else 3 gal. Mash water, or HLT
-   water, that would leave it less is refused, saying what would be left and the least. The mash water's
-   water-to-grain ratio, in qt/lb, is shown beside it and can be typed instead of it; one outside 0.75-3 qt/lb is said
-   to be unusual, never refused. Figures and units are joined by a no-break space */
+   water, that leaves it less is kept, and one short line says so (hltLowText), as CraftBeerPi warns of it (hlt_low):
+   never refused, as the figures are typed and nothing switches on them. HLT water less than the mash water is said
+   the same way. The mash water's water-to-grain ratio, in qt/lb, is shown beside it and can be typed instead of it;
+   one outside 0.75-3 qt/lb is said to be unusual, never refused. Figures and units are joined by a no-break space */
 const L_PER_GAL = 3.785411784, KG_PER_LB = 0.45359237, NB = "\u00a0";
 const MASH_WATER = {label: "MASH WATER", says: "the strike water that goes to the mash tun"};
 const HLT_WATER = {label: "HLT WATER", says: "all the water in the HLT, strike and sparge"};
@@ -2714,19 +2774,17 @@ function spargeText(hlt, mash, vu) {
   if (left == null) return "";
   return left < 0 ? "Sparge water left: none, as the mash water is more than the HLT water" : `Sparge water left: ${volText(left, vu)}`;
 }
-const mashWaterLow = (mash, hlt, least) => mwPos(mash) != null && mwPos(hlt) != null && least && hlt - mash < least.value - 1e-9;
-function mashWaterRefused({mash, hlt, least, vu}) {
-  const left = mwR2(hlt - mash), most = mwR2(hlt - least.value);
-  const leaves = left >= 0 ? `would leave ${volText(left, vu)} in the HLT` : `is more than the HLT's ${volText(hlt, vu)}`;
-  return `Mash water ${volText(mash, vu)} ${leaves}. The HLT needs at least ${volText(least.value, vu)} over its element and coil (${leastFrom(least, vu)}). `
-    + (most > 0 ? `With ${volText(hlt, vu)} of HLT water, the mash water can be at most ${volText(most, vu)}.` : `HLT WATER, ${volText(hlt, vu)}, leaves no room for mash water: raise it first.`);
+/* whether mash water `mash` leaves the HLT's `hlt` less than the least (`least`: {value, from, capacity}) */
+const hltLow = (hlt, mash, least) => mwPos(mash) != null && mwPos(hlt) != null && !!least && hlt - mash < least.value - 1e-9;
+/* the warning, as CraftBeerPi words it: "Leaves 0.5 gal in the HLT, under its 3.0 gal minimum.", `left` the water the HLT
+   keeps after the mash water. Figures to one place, or two where one would show them the same */
+function hltLowText(left, least, vu) {
+  const l = Math.max(0, +left), m = +least, p = Math.round(l * 10) < Math.round(m * 10) ? 1 : 2;
+  return `Leaves ${l.toFixed(p)}${NB}${vu} in the HLT, under its ${m.toFixed(p)}${NB}${vu} minimum.`;
 }
-const hltWaterLow = (hlt, mash, least) => mashWaterLow(mash, hlt, least);
-function hltWaterRefused({hlt, mash, least, vu}) {
-  const left = mwR2(hlt - mash);
-  const leaves = left >= 0 ? `would leave ${volText(left, vu)} in the HLT after the ${volText(mash, vu)} of mash water` : `is less than the ${volText(mash, vu)} of mash water`;
-  return `HLT water ${volText(hlt, vu)} ${leaves}. The HLT needs at least ${volText(least.value, vu)} over its element and coil (${leastFrom(least, vu)}), so the HLT water has to be at least ${volText(mwR2(mash + least.value), vu)}.`;
-}
+/* HLT water less than the mash water, said the same way (CraftBeerPi's hlt_under): "Less than the 19.5 gal of mash
+   water.", to two places where one would show the two figures the same */
+const hltShortText = (hlt, mash, vu) => `Less than the ${(+mash).toFixed((+hlt).toFixed(1) === (+mash).toFixed(1) ? 2 : 1)}${NB}${vu} of mash water.`;
 const ratioUnit = C => C === "C" ? "L/kg" : "qt/lb";
 function waterRatio(water, vu, grain, mu, C) {
   const w = mwPos(water), g = mwPos(grain);
@@ -2760,13 +2818,14 @@ function mashWaterText({water, forGrain, vu, grain, mu, C}) {
 const swLeast = () => leastWater((st.vessels || {}).hlt, "F", "gal");
 const swMashText = R => mashWaterText({water: R.strike_vol ?? null, forGrain: R.for_grain ?? null, vu: "gal", grain: R.grain ?? null, mu: "lb", C: "F"});
 const swRatio = R => waterRatio(R.for_grain ?? R.strike_vol ?? null, "gal", R.grain ?? null, "lb", "F");
-/* the figures leave the HLT less than covers its element and coil: one line in Note Amber where the two figures are,
-   blocking nothing */
+/* the figures leave the HLT less than covers its element and coil (CraftBeerPi's warning hlt_low), or less than the
+   mash water: one short line in Note Amber, once, under the strike water box (swHTML) or in the MashIn row's box, until
+   they no longer do. It blocks nothing; the Hardware page's Least water line says where the minimum comes from */
 function swLowHTML(N) {
   if (N.vol == null || N.gal == null) return "";
-  const least = swLeast();
-  if (!(N.vol - N.gal < least.value - 1e-9)) return "";
-  return `<p class="vover swlow">Only ${volText(Math.max(0, N.vol - N.gal), "gal")} stays in the HLT after the ${volText(N.gal, "gal")} of mash water: it needs at least ${volText(least.value, "gal")} over its element and coil (${leastFrom(least, "gal")}). Check MASH WATER and HLT WATER.</p>`;
+  const least = swLeast().value;
+  if (N.vol < N.gal - 1e-9) return `<p class="vover swlow">${hltShortText(N.vol, N.gal, "gal")}</p>`;
+  return N.vol - N.gal < least - 1e-9 ? `<p class="vover swlow">${hltLowText(N.vol - N.gal, least, "gal")}</p>` : "";
 }
 function swPhase() {
   const r = st.recipe;
@@ -2876,12 +2935,14 @@ function swIn() {
   const usable = probeRoom != null && probeRoom >= ROOM_LO && probeRoom <= ROOM_HI, given = !usable && st.sw.room != null;
   const room = given ? st.sw.room : probeRoom, raw = swGrainOf(), typed = raw == null || !Number.isFinite(raw) ? null : raw, vol = swVolOf();
   const rec = st.sw.rec || {}, beer = !!(F && F.grainLb && F.forGrain);
-  const grainLb = beer ? F.grainLb : rec.grain ?? (st.sw.stepGrain ? SW_FROM.grainLb : null), gal = beer ? swGal(F) : rec.water ?? null;
+  /* a mash water or grain weight given on Brew Day stands for BeerSmith's, which is kept beside it for BEERSMITH'S. The
+     ratio is the mash water less BeerSmith's water under the false bottom, against the grain, whichever gave them */
+  const grainLb = rec.grain ?? (beer ? F.grainLb : st.sw.stepGrain ? SW_FROM.grainLb : null), gal = rec.water ?? (beer ? swGal(F) : null);
   const both = grainLb != null && gal != null ? gal : null;
-  const R = beer ? {grain: F.grainLb, strike_vol: gal, for_grain: F.forGrain, dead: F.dead || 0, tun: F.tunLb ?? null, grain_from: "beersmith"}
+  const R = beer ? {grain: grainLb, strike_vol: gal, for_grain: rec.water != null ? mwR2(Math.max(0, rec.water - (F.dead || 0))) : F.forGrain, dead: F.dead || 0, tun: F.tunLb ?? null, grain_from: rec.grain != null ? "typed" : "beersmith"}
     : {grain: grainLb, strike_vol: gal, for_grain: null, dead: null, tun: null, grain_from: rec.grain != null ? "typed" : grainLb != null ? "step" : null};
   const N = {plan: plan ?? null, rest, room, typed, grain: typed ?? room, vol, step: si >= 0, gal, probe: st.sw.probe || "coil", interval: st.sw.interval,
-    mashName: S[mi].n, R, recTyped: beer ? [] : ["grain", "water"].filter(k => rec[k] != null), roomFrom: given ? "you" : "probe", roomGiven: st.sw.room ?? null, roomProbe: probeRoom};
+    mashName: S[mi].n, R, recTyped: ["grain", "water"].filter(k => rec[k] != null), roomFrom: given ? "you" : "probe", roomGiven: st.sw.room ?? null, roomProbe: probeRoom};
   N.misses = [(both == null || rest == null) && "recipe", !swIntervalOk(N.interval) && "sample_time", !given && probeRoom == null && "probe",
     !given && probeRoom != null && !usable && "room", raw != null && !swGrainOk(raw) && "grain", (vol == null || (both != null && vol < both)) && "vol"].filter(Boolean);
   if (N.misses.length) N.miss = N.misses[0];
@@ -3079,7 +3140,7 @@ function swMissBits(N) {
   /* the sparge water left, under the two figures, where MASH WATER is one of them */
   const sparge = asks.includes("water") && N.vol != null && N.gal != null ? `<p class="swn swsp">${spargeText(N.vol, N.gal, "gal")}.</p>` : "";
   return {says: `${first}${too}${vq}`, ask, use, hlt: b("cmdbtn", "HLT WATER", water, {cmd: "swv:open", expanded: false}),
-    grain: b("cmdbtn", "GRAIN", grain, {cmd: "swg:open", expanded: false}), sparge, warn: `${swLowHTML(N)}${N.vol != null ? hltOverHTML(N.vol) : ""}`};
+    grain: b("cmdbtn", "GRAIN", grain, {cmd: "swg:open", expanded: false}), sparge, warn: N.vol != null ? hltOverHTML(N.vol) : ""};
 }
 /* the figures USE needs that are missing and can be given here, by their names in swRec: the recipe's grain weight and
    mash water, and the room while the boil kettle's probe can't stand for it; with any of them, the HLT's water where it
@@ -3164,12 +3225,10 @@ function swRecOther(N, v) {
   if (N.vol == null) return `${HLT_WATER.label}: not given yet.`;
   return `${HLT_WATER.label}: ${volText(N.vol, "gal")}.${v != null ? ` ${spargeText(N.vol, v, "gal")}.` : ""}`;
 }
-/* what the mash water being given would do that it shouldn't: leave the HLT less than covers its element and coil
-   (refused), or give a ratio no usual mash has (said, never refused) */
+/* the mash water being given with a ratio no usual mash has: said, never refused. The ratio is the mash water less the
+   water under the false bottom where BeerSmith gives it, as everywhere else */
 function swRecWarn(N, v) {
-  const least = swLeast();
-  if (v != null && N.vol != null && mashWaterLow(v, N.vol, least)) return mashWaterRefused({mash: v, hlt: N.vol, least, vu: "gal"});
-  return ratioWarning(waterRatio(v, "gal", N.R.grain ?? null, "lb", "F"), "F");
+  return ratioWarning(waterRatio(v == null ? null : Math.max(0, v - (N.R.dead || 0)), "gal", N.R.grain ?? null, "lb", "F"), "F");
 }
 /* the ratio, typed instead of the mash water: it fills the mash water from the grain weight, and the water typed shows
    the ratio it gives. Without a grain weight, what it needs */
@@ -3213,7 +3272,6 @@ function swRec(x, y, at) {
   if (v == null) return note("r", `Type the ${small}, in ${D.many}.`);
   if (v < lo || v > hi) return note("r", `The ${small} has to be between ${lo} and ${hi} ${U}.`);
   if (given && was != null && Math.abs(v - was) < 0.5 / 10 ** q) { st.swRec = null; return renderAll(); }
-  if (k === "water" && N.vol != null && mashWaterLow(v, N.vol, swLeast())) return note("r", mashWaterRefused({mash: v, hlt: N.vol, least: swLeast(), vu: "gal"}));
   send("swr", "set", `${D.name} set to ${fmt(v)} ${k === "room" ? "for this brew" : "for this recipe"}${given && was != null ? `, was ${fmt(was)}` : ""}`, keep(v));
 }
 /* what USE needs, said on a tap of it greyed: the sentence above it, from USE's side */
@@ -3294,12 +3352,12 @@ const swAnd = a => a.length < 2 ? a.join("") : `${a.slice(0, -1).join(", ")} and
    what it would do here. The HLT's water and the grain's temperature are the brewer's, each with CHANGE, which opens
    its box in place. They are the numbers as they are now; while CraftBeerPi works USE out, what needs its answer
    waits for it */
-function swList(N) {
+function swList(N, short) {
   const F = st.sw.from, gal = x => `${x.toFixed(2)}&nbsp;gal`, left = N.vol - N.gal, {S, bi} = swSteps(), by = bi >= 0;
   const g = (h, rows) => `<h4 class="swg">${h}</h4><dl class="swd">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>`;
   /* BrewStart's Campden dose for the water, while its Campden reminder is on, as the water sets it */
   const camp = by && S[bi].campden ? ` Campden for it: ${swCampden(N.vol)}.` : "";
-  const water = st.swVol && st.swVol.at !== "row" ? swVolHTML(N) : `<div class="swyou"><div><p>${+N.vol.toFixed(2)}&nbsp;gal in the HLT, strike and sparge${by ? ": BrewStart's water volume" : ""}.${camp} The ${gal(left)} that stays there warms the mash through the coil.</p>${hltOverHTML(N.vol)}${swLowHTML(N)}</div>${b("cmdbtn", "CHANGE", "", {cmd: "swv:open", label: "Change the water in the HLT", expanded: false})}</div>`;
+  const water = st.swVol && st.swVol.at !== "row" ? swVolHTML(N) : `<div class="swyou"><div><p>${+N.vol.toFixed(2)}&nbsp;gal in the HLT, strike and sparge${by ? ": BrewStart's water volume" : ""}.${camp} The ${gal(left)} that stays there warms the mash through the coil.</p>${hltOverHTML(N.vol)}</div>${b("cmdbtn", "CHANGE", "", {cmd: "swv:open", label: "Change the water in the HLT", expanded: false})}</div>`;
   const grainSays = N.typed != null
     ? `Grain at ${swT(N.grain)}${by ? ": BrewStart's grain temperature. Left blank" : ", given for today's brew. Without it"}, ${swRoomSrc(N)} would stand for it, at ${swT(N.room)}.`
     : `Grain at ${swT(N.grain)}: ${swRoomSrc(N)}${by ? ", as BrewStart's grain temperature is blank" : ""}. Grain that spent the night somewhere warmer lands the mash higher: give its temperature.`;
@@ -3314,6 +3372,8 @@ function swList(N) {
     + (typedW ? rec("water", `Mash water ${gal(N.gal)}${qs} to the mash tun, given here for this recipe.${qw ? ` ${qw}` : ""}`) : "")
     + (N.roomGiven == null ? "" : rec("room", N.roomFrom === "you" ? `Room ${swT(N.room)}, given here while the boil kettle's probe gives no reading a room can have.`
       : `Room ${swT(N.roomGiven)} given here, kept aside: the boil kettle's probe reads the room again${N.room != null ? `, at ${swT(N.room)}` : ""}, so it is used.`));
+  /* the check under BeerSmith's strike (bssDet): only what the brewer can change here */
+  if (short) return `${grain}${water}${given}`;
   const R = Object.assign({}, SW_MODEL.box, {hlt_loss: swModel(N.grain, N.vol, N.probe).hlt}), coil = N.probe === "coil";
   /* the vessels' own figures from the Hardware page, where given: the Mash Tun's in place of BeerSmith's, and the HLT's in
      place of the guess about its steel. Named under From Hardware only when there are some */
@@ -3352,8 +3412,8 @@ function swVolHTML(N) {
   const key = (d, l) => `<button type="button" data-cmd="swv:step:${d}" aria-label="${l}">${d < 0 ? "−" : "+"}${Math.abs(d) === 1 ? "1" : ".1"}</button>`;
   return `<div class="editor swvol" role="group" aria-labelledby="swv-l"><label class="swvl" id="swv-l" for="swvin"><span class="swvk">${HLT_WATER.label}</span><span class="swvs">: ${HLT_WATER.says}, in gallons</span></label>`
     + `<p class="swvh" id="swv-h">${swSteps().bi >= 0 ? "It is BrewStart's water volume, which also sets the Campden dose." : "What is in the HLT now."}</p>`
-    + `${key(-1, "1 gallon less")}${key(-0.1, "0.1 gallon less")}<input id="swvin" inputmode="decimal" autocomplete="off" value="${x}" aria-describedby="swv-h swv-o swv-over swv-w">${key(0.1, "0.1 gallon more")}${key(1, "1 gallon more")}`
-    + `<p class="swvo" id="swv-o">${swVolOther(N, v)}</p><p class="vover" id="swv-over" aria-live="polite">${hltOver(v)}</p><p class="vover" id="swv-w" aria-live="polite">${swVolWarn(N, v)}</p>`
+    + `${key(-1, "1 gallon less")}${key(-0.1, "0.1 gallon less")}<input id="swvin" inputmode="decimal" autocomplete="off" value="${x}" aria-describedby="swv-h swv-o swv-over">${key(0.1, "0.1 gallon more")}${key(1, "1 gallon more")}`
+    + `<p class="swvo" id="swv-o">${swVolOther(N, v)}</p><p class="vover" id="swv-over" aria-live="polite">${hltOver(v)}</p>`
     + `<button type="button" class="ok" data-cmd="swv:set"${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}>${pend ? "SETTING…" : `SET <span id="swvok">${x || "– –"}</span> gal`}</button><button type="button" class="no" data-cmd="swv:x">CANCEL</button></div>`;
 }
 /* beside the HLT water being given: MASH WATER, the other figure, and under them the sparge water it leaves */
@@ -3361,15 +3421,11 @@ function swVolOther(N, v) {
   if (N.gal == null) return `${MASH_WATER.label}: not given yet.`;
   return `${MASH_WATER.label}: ${swMashText(N.R)}.${v != null ? ` ${spargeText(v, N.gal, "gal")}.` : ""}`;
 }
-/* HLT water that would leave the HLT less than covers its element and coil once the mash water has gone: refused */
-function swVolWarn(N, v) {
-  const least = swLeast();
-  return v != null && N.gal != null && hltWaterLow(v, N.gal, least) ? hltWaterRefused({hlt: v, mash: N.gal, least, vu: "gal"}) : "";
-}
 /* the HLT's water (swVolHTML): SET writes BrewStart's water volume where the recipe has BrewStart, or by hand the figure
    CraftBeerPi keeps for the brew day, and CraftBeerPi works USE out again for it. It can be changed back the same way,
-   so nothing asks first. The HLT keeps the mash water and, once it has gone, the least that covers its element and
-   coil: less is refused. Opened from the MashIn row's box (at "row"), it is drawn there */
+   so nothing asks first. Water that leaves the HLT less than covers its element and coil once the mash water has gone,
+   or less than the mash water, is set too, and the box closes on the one line saying so (swLowHTML). An unchanged
+   figure closes the box. Opened from the MashIn row's box (at "row"), it is drawn there */
 function swVol(x, y) {
   const N = swNumbers(), e = st.swVol;
   if (x === "open") {
@@ -3384,7 +3440,6 @@ function swVol(x, y) {
   if (x === "step") { e.val = Math.max(0, Math.round(((e.val ?? N.gal ?? 0) + parseFloat(y)) * 10) / 10); return renderAll(); }
   const v = e.val, was = N.vol;
   if (v == null) return note("r", "Type how much water is in the HLT, in gallons.");
-  if (N.gal != null && hltWaterLow(v, N.gal, swLeast())) return note("r", hltWaterRefused({hlt: v, mash: N.gal, least: swLeast(), vu: "gal"}));
   if (was != null && Math.abs(v - was) < 0.05) { st.swVol = null; return renderAll(); }
   /* while BrewStart's Campden reminder is on, LOG gives the dose for the new water, as it matters when the water does */
   const {S: S0, bi: b0} = swSteps(), camp = b0 >= 0 && S0[b0].campden ? ` · Campden ${swCampden(v)}` : "";
@@ -3486,9 +3541,16 @@ function drawSw() {
    the head stays at the top of the screen while the details pass under it. Once the water is in the mash tun and the
    pump has stopped for the dough-in, the head says when the Mash Tun's reading isn't the mash. While CraftBeerPi works
    USE out, the head says so, with how long it has been at it, and greys USE */
+/* the strike water box, and under it CraftBeerPi's warning hlt_low once (swLowHTML); the card says its own */
 function swHTML() {
+  const box = swBoxHTML();
+  return box && !bssOn() ? `${box}${swLowHTML(swNumbers())}` : box;
+}
+function swBoxHTML() {
   const phase = swPhase();
   if (!phase || st.pbOpen || st.cmpOpen || st.confirmNext || st.confirmReset || st.confirmUnload || st.bsOpen || st.mwOpen) return "";
+  /* the strike water card (?strike=bs): BeerSmith's figures as the plan, and CraftBeerPi's forecast as a check */
+  if (bssOn()) return cardHTML(phase);
   const N = swNumbers(), pend = st.pend.sw, why = st.link === "lost" ? PAUSED : pend || st.pend["r:unload"] || st.pend.bs ? WAIT : "", has = N.ok || !!N.wait, open = !!st.swOpen && has;
   /* sw-wk while CraftBeerPi works USE out: its own class, so the height the box keeps closed (pbFit) is let go as the
      forecast comes, and the box is then as tall as on a fresh load */
@@ -3565,6 +3627,351 @@ function swHTML() {
 }
 /* the box's head: the window, then what goes under it */
 const head0 = (N, under) => `<div class="swhead">${swWin(N)}${under}</div>`;
+/* ---------- the strike water card (STRIKE-CARD.md; ?strike=bs, or a moment's strikeBs) ----------
+   BeerSmith's figures are the plan: the mash water, and the strike temperature BrewStart heats the HLT to. MashIn then
+   heats the moved water to a little less before it asks for the malt (its pre-heat): BeerSmith's figure already pays
+   for warming the tun's steel, which the HERMS warms again. The card has one shape in every moment: three figures, each
+   a button with where it comes from under it (MASH WATER, STRIKE, HLT WATER). A tap opens that figure's editor under
+   them, the other two staying in view. A warning is one short line under them, never a refusal. Then CHECK,
+   CraftBeerPi's forecast, one row, which offers its own strike (USE) only where it expects the mash more than 1 °F off
+   the rest; opened, the figures it works from that the card doesn't show, as the same buttons. The mockup's figures:
+   the recipe's BeerSmith numbers (sw.from) in BeerSmith's own heat balance, with the share of the tun's steel
+   BeerSmith counted worked out from its figure */
+const STRIKE = (v => v === "bs" ? "bs" : "")(new URLSearchParams(location.search).get("strike"));
+const bssOn = () => !!st && !!st.sw && (STRIKE === "bs" || st.strikeBs === true);
+const BS_MALT = 0.38, BS_STEEL = 0.12, BSS_OFF = 1;
+/* the recipe's numbers, from N as swIn gives them: BeerSmith's strike (bs; null without BeerSmith's figures) and the
+   rest (R); where the moved water is before the malt for a strike (tmi: never under the rest, at most 27 °F over it,
+   never over 179.6 °F); MashIn's pre-heat for a strike (pre), which is that where the steel counted is known and the
+   rest where it isn't; where the mash lands for a strike and a grain temperature (land; null without the mash water or
+   the grain weight); and the strike that lands it on the rest (use). The steel counted: from BeerSmith's own figures,
+   else the whole tun's from the Hardware page, else none for the pre-heat and the rig's usual tun for the check */
+function bssK(N = swIn()) {
+  const F = st.sw.from, R = N.rest, bs = F && F.bs != null ? F.bs : null, Tt = F && F.bsTun != null ? F.bsTun : N.room ?? 68;
+  const cG = lb => BS_MALT * lb * KG_PER_LB, W = N.gal == null ? null : N.gal * L_PER_GAL, G = N.R.grain == null ? null : cG(N.R.grain);
+  const hw = vesselOf("mt"), known = bs != null || vesselWeighed(hw);
+  let Cs = SW_FROM.tunLb * KG_PER_LB * BS_STEEL;
+  if (bs != null && R != null) Cs = Math.max(0, Math.min(F.tunLb * KG_PER_LB * BS_STEEL, (swGal(F) * L_PER_GAL * (bs - R) - cG(F.grainLb) * (R - F.bsGrain)) / (R - Tt)));
+  else if (vesselWeighed(hw)) Cs = hw.empty_weight * KG_PER_LB * BS_STEEL;
+  const cap = s => +Math.min(R + SW_MAX_RISE, SW_CEIL, Math.max(R, s)).toFixed(1);
+  const tmi = s => R == null || W == null ? R : cap((W * s + Cs * Tt) / (W + Cs));
+  const land = (s, tg) => R == null || W == null || G == null || s == null || tg == null ? null : ((W + Cs) * tmi(s) + G * tg) / (W + Cs + G);
+  const use = tg => {
+    if (R == null || W == null || G == null || tg == null) return null;
+    const m = (R * (W + Cs + G) - G * tg) / (W + Cs);
+    return +Math.min(R + SW_MAX_RISE, SW_CEIL, Math.max(R, (m * (W + Cs) - Cs * Tt) / W)).toFixed(1);
+  };
+  return {bs, R, tmi, pre: s => known ? tmi(s) : R, land, use, top: R == null ? null : Math.min(R + SW_MAX_RISE, SW_CEIL)};
+}
+/* where the strike in use comes from: BeerSmith's where it is BeerSmith's to 0.1; the rest on a recipe without
+   BeerSmith's figures; else the check's where USE wrote it, or the brewer's own */
+function bssFrom(S, K) {
+  if (S == null) return "you";
+  if (K.bs != null && Math.abs(S - K.bs) < 0.05) return "bs";
+  if (K.bs == null && K.R != null && Math.abs(S - K.R) < 0.05) return "rest";
+  return (st.bss && st.bss.from) || "you";
+}
+const BSS_TAG = {bs: "BEERSMITH", you: "YOURS", check: "CHECK", rest: "REST"};
+const BSS_DONE = "The malt has been asked for: the strike is done.";
+/* the malt asked for: MashIn waits for the brewer */
+const bssAsked = () => swPhase() === "moved" && st.recipe.wait === WFY;
+/* MashIn's pre-heat where it differs from the rest: the dough-in MashIn's figure on its row ("132.5 °F, then malt") */
+function bssPreheat(i) {
+  if (!bssOn() || i !== swSteps().mi) return null;
+  const N = swIn(), K = bssK(N), t = N.plan == null ? null : K.pre(N.plan);
+  return t == null || K.R == null || t < K.R + 0.05 ? null : t;
+}
+/* a pre-heat stalled short of its figure (CraftBeerPi: within 1 °F under it, not climbing, for 10 min): said on MashIn's
+   row, in Note Amber, with what to do. It switches nothing. Lowering the strike lowers the pre-heat; NEXT would skip
+   MashIn's pump stop at the malt ask, so it isn't offered */
+function bssStall(i) {
+  const x = st.bss && st.bss.stall, t = bssPreheat(i);
+  return x && t != null ? `${x.short.toFixed(1)} °F short for ${x.min} min: lower the strike.` : "";
+}
+/* the card's figures: the button's name, the unit, the places shown, the range CraftBeerPi takes (the strike's is the
+   rest to 27 °F over it, at most 179.6 °F) and the editor's label, keyword first with its unit */
+const CX = {
+  water: {k: "MASH WATER", name: "Mash water", unit: "gal", places: 2, range: [0.5, 100], label: "MASH WATER, gal (strike only)"},
+  strike: {k: "STRIKE", name: "Strike", unit: "°F", places: 1, label: "STRIKE, °F"},
+  hlt: {k: "HLT WATER", name: "HLT water", unit: "gal", places: 1, range: [0.5, 100], label: "HLT WATER, gal (strike + sparge)"},
+  grain: {k: "GRAIN TEMP", name: "Grain temperature", unit: "°F", places: 1, range: [ROOM_LO, ROOM_HI], label: "GRAIN TEMP, °F"},
+  weight: {k: "GRAIN WEIGHT", name: "Grain weight", unit: "lb", places: 1, range: [0.5, 200], label: "GRAIN WEIGHT, lb"},
+  room: {k: "ROOM", name: "Room temperature", unit: "°F", places: 1, range: [ROOM_LO, ROOM_HI], label: "ROOM, °F"}
+};
+const cxFmt = (k, v) => `${v.toFixed(CX[k].places)} ${CX[k].unit}`;
+/* a figure as it is now (v), its tag (where it comes from, or for the HLT the sparge water it leaves), the tag said in
+   words, and the way back where there is one (back, its button's words): BeerSmith's figure for the mash water, the
+   strike and the grain weight once changed; the probe for the grain's and the room's temperatures given here */
+function cxNow(k, N, K) {
+  const F = st.sw.from, rec = st.sw.rec || {}, beer = !!(F && F.grainLb && F.forGrain);
+  if (k === "water") {
+    const typed = rec.water != null;
+    return {v: N.gal, tag: N.gal == null ? "not given" : typed ? "YOURS" : "BEERSMITH", say: typed ? "yours" : "BeerSmith's",
+      back: typed && beer ? swGal(F) : null, backSays: "BEERSMITH'S"};
+  }
+  if (k === "strike") {
+    const from = bssFrom(N.plan, K), stale = from === "bs" && (rec.water != null || rec.grain != null);
+    return {v: N.plan, tag: BSS_TAG[from], say: from === "rest" ? "the rest" : from === "check" ? "the check's" : from === "bs" ? "BeerSmith's" : "yours", amb: stale,
+      back: K.bs != null && N.plan != null && Math.abs(N.plan - K.bs) >= 0.05 ? K.bs : null, backSays: "BEERSMITH'S"};
+  }
+  if (k === "hlt") {
+    const left = N.vol != null && N.gal != null ? N.vol - N.gal : null;
+    return {v: N.vol, tag: N.vol == null ? "not given" : left == null ? (swSteps().bi >= 0 ? "BREWSTART" : "YOURS") : left < 0 ? "no sparge" : `sparge ${left.toFixed(1)} gal`,
+      say: left == null ? "" : left < 0 ? "no sparge water left" : `sparge water left ${left.toFixed(1)} gal`, amb: left != null && left < swLeast().value - 1e-9};
+  }
+  if (k === "grain") {
+    const typed = N.typed != null, probe = N.roomFrom !== "you";
+    return {v: N.grain ?? null, tag: N.grain == null ? "not given" : typed ? "YOURS" : probe ? "PROBE" : "ROOM", say: typed ? "yours" : probe ? "the boil kettle's probe" : "the room given",
+      back: typed && N.room != null ? N.room : null, backSays: probe ? "THE PROBE" : "THE ROOM"};
+  }
+  if (k === "weight") {
+    const typed = rec.grain != null, g = N.R.grain ?? null;
+    return {v: g, tag: g == null ? "not given" : typed ? "YOURS" : beer ? "BEERSMITH" : "MASHIN", say: typed ? "yours" : beer ? "BeerSmith's" : `${N.mashName}'s own`,
+      back: typed && beer ? F.grainLb : null, backSays: "BEERSMITH'S"};
+  }
+  const pr = N.roomProbe, usable = pr != null && pr >= ROOM_LO && pr <= ROOM_HI;
+  return {v: N.roomGiven, tag: N.roomGiven == null ? "not given" : "YOURS", say: "yours", back: N.roomGiven != null && usable ? pr : null, backSays: "THE PROBE"};
+}
+/* why a figure can't be changed now: no connection, CraftBeerPi still answering, or for the strike, the malt asked for */
+function cxWhy(k) {
+  if (st.link === "lost") return PAUSED;
+  if (st.pend.sx || st.pend.sw || st.pend["r:unload"] || st.pend.bs) return WAIT;
+  return k === "strike" && bssAsked() ? BSS_DONE : "";
+}
+/* the figure's button: its name, the figure in large, and its tag under it, which is Note Amber where it needs a look
+   (BeerSmith's strike worked out for other figures, the HLT left under its minimum) */
+function cxTile(k, N, K) {
+  const D = CX[k], x = cxNow(k, N, K), open = !!st.sx && st.sx.k === k, why = cxWhy(k), fig = x.v == null ? "– –" : x.v.toFixed(D.places);
+  const label = open ? `${D.name}: close, changing nothing` : `${D.name}: ${x.v == null ? "not given" : `${cxFmt(k, x.v)}${x.say ? `, ${x.say}` : ""}`}. ${x.v == null ? "Give it" : "Change it"}`;
+  /* open, it is its editor's title, with ✕ in its corner: a second tap closes the editor */
+  return `<button type="button" class="cfig" data-cmd="sx:open:${k}" data-k="${k}" aria-expanded="${open}"${open ? ' aria-controls="sx-ed"' : ""} aria-label="${esc(label)}"${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}>`
+    + `<span class="ck"${open ? ' id="sx-l"' : ""}>${D.k}</span><span class="cv"><b>${fig}</b><span class="u">${D.unit}</span></span><span class="cs${x.amb ? " amb" : ""}">${x.tag}</span>${open ? '<span class="cxx" aria-hidden="true">✕</span>' : ""}</button>`;
+}
+/* the HLT's water against the mash water, as CraftBeerPi warns (hlt_low, and less than the mash water), and against its
+   capacity where the Hardware page gives one: each one short line, blocking nothing */
+function cxHltWarn(vol, gal) {
+  if (vol == null) return [];
+  const out = [], cap = vesselOf("hlt").capacity, least = swLeast().value;
+  if (cap > 0 && vol > cap + 0.005) out.push(`More than the HLT holds (${+cap.toFixed(1)} gal).`);
+  if (gal != null) {
+    if (vol < gal - 1e-9) out.push(hltShortText(vol, gal, "gal"));
+    else if (vol - gal < least - 1e-9) out.push(hltLowText(vol - gal, least, "gal"));
+  }
+  return out;
+}
+/* the card's warnings, under the figures: the HLT's water, and BeerSmith's strike in use while the mash water or the
+   grain weight is no longer BeerSmith's, as it was worked out for those */
+function cardWarns(N, K) {
+  const F = st.sw.from, rec = st.sw.rec || {}, out = cxHltWarn(N.vol, N.gal);
+  if (bssFrom(N.plan, K) === "bs" && F && (rec.water != null || rec.grain != null)) {
+    const fig = [rec.water != null ? `${swGal(F).toFixed(2)} gal` : "", rec.grain != null ? `${F.grainLb.toFixed(1)} lb of grain` : ""].filter(Boolean).join(" and ");
+    out.push(`BeerSmith's ${K.bs.toFixed(1)} °F is for ${fig}.`);
+  }
+  return out;
+}
+/* the dough-in: with the pump stopped, a Mash Tun reading more than 3 °F over where the mash lands is the water left in
+   the HLT's coil, where its probe sits */
+function cardCoil(N, K) {
+  const mt = st.v.mt, L = K.land(N.plan, N.grain);
+  return swPhase() === "moved" && N.probe === "coil" && !st.a.wortPump.on && mt.pv != null && L != null && mt.pv > L + 3
+    ? `${Math.round(mt.pv)} °F is coil water, not the mash.` : "";
+}
+/* CraftBeerPi's check: where it expects the mash to land with the strike in use and the grain as it is today, against
+   the rest. It needs the figures the forecast is worked out from (swIn's misses); it is worked out once they are there,
+   and again as they change (sw.has, sw.work), as USE was. Where it lands more than 1 °F off the rest, before the water
+   moves, it offers the strike that lands it there (use) */
+function cardCheck(N, K) {
+  if (N.miss) return {st: "miss", m: N.miss};
+  if (st.sw.failed && !st.sw.work && swSameIn(swNow(), st.sw.failed.for)) return {st: "failed"};
+  if (!st.sw.has) return {st: "wait"};
+  if (st.sw.work) return {st: "work"};
+  const L = K.land(N.plan, N.grain);
+  if (L == null) return {st: "miss", m: "recipe"};
+  const off = Math.abs(L - K.R) > BSS_OFF, u = off && swPhase() !== "moved" ? K.use(N.grain) : null;
+  return {st: "ok", land: +L.toFixed(1), off, use: u != null && Math.abs(u - N.plan) >= 0.05 ? u : null};
+}
+/* what the check still needs, in a few words */
+function cardNeeds(N, m) {
+  if (m === "vol") return N.vol == null ? "needs the HLT water" : "needs more HLT water";
+  if (m === "probe" || m === "room") return "needs the room temperature";
+  if (m === "grain") return `grain at ${f1(N.typed)} °F can't be right`;
+  if (m === "sample_time") return "needs a 2 or 5 s control interval";
+  if (m === "recipe") return N.rest == null ? `${esc(N.mashName)} has no temperature` : N.gal == null ? "needs the mash water" : "needs the grain weight";
+  return "can't check yet";
+}
+/* the check's row: CHECK, where the mash lands against the rest, quiet where it agrees, Note Amber where it doesn't,
+   with USE beside it; what it needs where it can't check, its row leading to that figure where it is one of the card's
+   three; CLOSE while it is open */
+function cardChkRow(N, K, C) {
+  const open = !!st.swOpen;
+  let says = "", cls = "", cmd = "sx:chk";
+  if (C.st === "ok") { says = `mash <b>${C.land.toFixed(1)}&nbsp;°F</b> · rest ${+K.R.toFixed(1)}&nbsp;°F`; if (C.off) cls = " off"; }
+  else if (C.st === "wait" || C.st === "work") { says = `working it out${C.st === "work" ? " again" : ""}`; cls = " quiet"; }
+  else if (C.st === "failed") { says = "failed: see LOG"; cls = " quiet"; }
+  else {
+    says = cardNeeds(N, C.m); cls = " quiet";
+    if (!open && C.m === "vol") cmd = "sx:open:hlt";
+    else if (!open && C.m === "recipe" && N.rest != null && N.gal == null) cmd = "sx:open:water";
+  }
+  const toggles = cmd === "sx:chk", plain = says.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ");
+  const row = `<button type="button" class="cchk${cls}" data-cmd="${cmd}"${toggles ? ` aria-expanded="${open}"${open ? ' aria-controls="sx-chk"' : ""}` : ""} aria-label="${esc(`Check: ${plain}.${toggles ? open ? " Close it" : " Open it" : ""}`)}">`
+    + `<span class="ck">CHECK</span><span class="cx" aria-hidden="true">${toggles ? open ? "CLOSE&nbsp;✕" : "▾" : "›"}</span><span class="cw">${says}</span></button>`;
+  const use = C.st === "ok" && C.use != null ? b("cmdbtn cuse", `USE ${C.use.toFixed(1)}&nbsp;°F`, "", {cmd: "sx:use", why: cxWhy("strike"), label: `Use the check's strike, ${C.use.toFixed(1)} °F`}) : "";
+  return `<div class="cchkr">${row}${use}</div>`;
+}
+/* the check opened: what it can't use, where that is something to set elsewhere; BeerSmith's own grain temperature, the
+   one figure that tells why the two disagree; and the figures it works from that the card doesn't show, as the same
+   buttons, an editor opening under them. The room only while the boil kettle's probe can't stand for it */
+function cardChkHTML(N, K, C) {
+  const F = st.sw.from, lines = [];
+  if (C.st === "miss" && C.m === "recipe" && N.rest == null) lines.push(`${esc(N.mashName)} has no temperature. Set it in Brew Steps.`);
+  if (C.st === "miss" && C.m === "sample_time") lines.push("Set the mash tun's control interval to 2 or 5 s, on the Hardware page.");
+  if (C.st === "failed") lines.push("No forecast for these figures. LOG says why.");
+  if (F && F.bsGrain != null) lines.push(`BeerSmith took the grain at ${f1(F.bsGrain)}&nbsp;°F.`);
+  const ks = ["grain", "weight"].concat(N.misses.includes("probe") || N.misses.includes("room") || N.roomGiven != null ? ["room"] : []);
+  const ed = st.sx && ks.includes(st.sx.k) ? cxEdHTML(N, K) : "";
+  /* while one of its figures is open, its lines step aside, so the figure's button and its editor fit together */
+  return `<div class="cpanel" id="sx-chk" role="group" aria-label="What the check works from">${ed ? "" : lines.map(l => `<p class="cl">${l}</p>`).join("")}`
+    + `<div class="cfigs" data-n="${ks.length}">${ks.map(k => cxTile(k, N, K)).join("")}</div>${ed}</div>`;
+}
+/* a figure typed that CraftBeerPi won't take: blank, or outside its range */
+function cxBad(k, v, K) {
+  const [lo, hi] = k === "strike" ? [K.R, K.top] : CX[k].range;
+  if (v == null) return `Type the ${CX[k].name.toLowerCase()}.`;
+  return lo != null && (v < lo - 1e-9 || v > hi + 1e-9) ? `${+lo.toFixed(1)}–${+hi.toFixed(1)} ${CX[k].unit} only.` : "";
+}
+/* what the figure being typed does, in one line under it: the sparge water and the ratio it leaves; the mash water and
+   sparge water beside the HLT's; MashIn's pre-heat for the strike; where the mash lands for the grain's figures */
+function cxSays(k, v, N, K) {
+  if (v == null) return "";
+  /* where the HLT's warning says what is left there, the line doesn't say it too */
+  const low = (vol, gal) => vol != null && gal != null && vol - gal < swLeast().value - 1e-9;
+  if (k === "water") {
+    const q = N.R.grain != null ? waterRatio(Math.max(0, v - (N.R.dead || 0)), "gal", N.R.grain, "lb", "F") : null;
+    const parts = [N.vol != null && !low(N.vol, v) ? `sparge left ${(N.vol - v).toFixed(2)} gal` : "", q != null ? ratioText(q, "F") : ""].filter(Boolean);
+    return parts.length ? parts.join(" · ").replace(/^./, c => c.toUpperCase()) : "";
+  }
+  if (k === "hlt") return N.gal == null || low(v, N.gal) ? "" : `Mash ${N.gal.toFixed(2)} gal · sparge left ${(v - N.gal).toFixed(2)} gal`;
+  if (k === "strike") { const t = K.pre(v); return t == null ? "" : t > K.R + 0.05 ? `MashIn heats to ${t.toFixed(1)} °F before the malt.` : `MashIn heats to the ${+K.R.toFixed(1)} °F rest.`; }
+  if (k === "grain") { const L = K.land(N.plan, v); return L == null ? "" : `The mash lands ${L.toFixed(1)} °F.`; }
+  if (k === "weight") { const L = bssK(Object.assign({}, N, {R: Object.assign({}, N.R, {grain: v})})).land(N.plan, N.grain); return L == null ? "" : `The mash lands ${L.toFixed(1)} °F.`; }
+  return "";
+}
+/* and what it would do that needs a look, in Note Amber: the HLT's warnings, or a mash water ratio no usual mash has */
+function cxWarn(k, v, N) {
+  if (v == null) return "";
+  if (k === "hlt") return cxHltWarn(v, N.gal).join(" ");
+  if (k === "water") {
+    const w = cxHltWarn(N.vol, v);
+    if (w.length) return w.join(" ");
+    const q = N.R.grain != null ? waterRatio(Math.max(0, v - (N.R.dead || 0)), "gal", N.R.grain, "lb", "F") : null;
+    if (ratioUnusual(q, "F")) return `${ratioText(q, "F")} is ${mwR2(q) > RATIO_RANGE["qt/lb"][1] ? "high" : "low"} (most mashes: ${RATIO_RANGE["qt/lb"].join("–")}).`;
+  }
+  return "";
+}
+/* a figure's editor, under its button, which is its title and closes it (✕): −1 −.1, the figure, +.1 +1; one line of
+   what it does and one of what needs a look; SET, and where there is one the way back (BEERSMITH'S, THE PROBE) beside
+   it. Escape and a tap anywhere outside the card close it too. The box's label is the figure's name and unit, for a
+   screen reader as on the button */
+function cxEdHTML(N, K) {
+  const e = st.sx, k = e.k, D = CX[k], q = D.places, v = e.val, x = v == null ? "" : v.toFixed(q), pend = st.pend.sx, why = cxWhy(k);
+  const dis = w => w ? ` aria-disabled="true" data-why="${esc(w)}"` : "";
+  const one = D.unit === "°F" ? "degree" : D.unit === "lb" ? "pound" : "gallon";
+  const key = (d, l) => `<button type="button" data-cmd="sx:step:${d}" aria-label="${l}">${d < 0 ? "−" : "+"}${Math.abs(d) === 1 ? "1" : ".1"}</button>`;
+  const now = cxNow(k, N, K), bad = cxBad(k, v, K);
+  const back = now.back != null ? `<button type="button" class="cback" data-cmd="sx:back"${dis(why)}>${pend === "back" ? "SETTING…" : now.backSays}<small>${cxFmt(k, now.back)}</small></button>` : "";
+  return `<div class="editor swvol cxed${back ? " hasback" : ""}" id="sx-ed" role="group" aria-labelledby="sx-l">`
+    + `${key(-1, `1 ${one} less`)}${key(-0.1, `0.1 ${one} less`)}<input id="sxin" inputmode="decimal" autocomplete="off" value="${x}" aria-label="${esc(D.label)}" aria-describedby="sx-o sx-w">${key(0.1, `0.1 ${one} more`)}${key(1, `1 ${one} more`)}`
+    + `<button type="button" class="ok" data-cmd="sx:set"${dis(why || bad)}>${pend === "set" ? "SETTING…" : `SET <span id="sxok">${x || "– –"}</span> ${D.unit}`}</button>${back}`
+    /* the lines that change as a figure is typed come after SET, so nothing under the hand moves as they do */
+    + `<p class="swvo" id="sx-o">${cxSays(k, v, N, K)}</p><p class="vover" id="sx-w" aria-live="polite">${bad && v != null ? bad : cxWarn(k, v, N)}</p></div>`;
+}
+/* the card */
+function cardHTML(phase) {
+  const N = swIn(), K = bssK(N), C = cardCheck(N, K), top = !!st.sx && ["water", "strike", "hlt"].includes(st.sx.k);
+  /* while one of the three is being changed, its editor says what needs a look, and the card's lines and CHECK step
+     aside until it closes, so the step list keeps its room on one screen */
+  const below = top ? "" : cardWarns(N, K).map(w => `<p class="cwarn">${w}</p>`).join("") + (c => c ? `<p class="cnote">${c}</p>` : "")(cardCoil(N, K))
+    + cardChkRow(N, K, C) + (st.swOpen ? cardChkHTML(N, K, C) : "");
+  return `<section class="sw swcard sw-${phase}" id="sw-card" aria-label="Strike water">`
+    + `<div class="cfigs" role="group" aria-label="Strike water">${["water", "strike", "hlt"].map(k => cxTile(k, N, K)).join("")}</div>`
+    + (top ? cxEdHTML(N, K) : "") + below + `</section>`;
+}
+/* opening a figure's editor (a second tap on its button closes it); one of the three closes the check, so the card
+   stays short; the check's own figures open inside it. The editor starts from the figure as it is */
+function cxOpen(k) {
+  if (st.sx && st.sx.k === k) return cxClose();
+  if (cxWhy(k)) return;
+  const N = swIn(), K = bssK(N), now = cxNow(k, N, K);
+  st.swOpen = !["water", "strike", "hlt"].includes(k);
+  st.sx = {k, val: now.v};
+  renderAll();
+  setTimeout(() => { const i = $("#sxin"); if (i) { i.focus(); i.select(); $("#sx-ed").scrollIntoView({block: "nearest"}); } }, 0);
+}
+/* closed, changing nothing: focus back on the figure's button */
+function cxClose() {
+  const k = st.sx && st.sx.k;
+  st.sx = null;
+  renderAll();
+  if (k) setTimeout(() => { const t = $(`#sw-card [data-k="${k}"]`); if (t) t.focus({preventScroll: true}); }, 0);
+}
+/* a tap anywhere outside the card, or Escape: the editor closes, then the check */
+function cardDismiss() {
+  if (st.sx) return cxClose();
+  if (st.swOpen) { st.swOpen = false; renderAll(); const c = $("#sw-card .cchk"); if (c) c.focus({preventScroll: true}); }
+}
+function cxCmd(x, y) {
+  const N = swIn(), K = bssK(N);
+  if (x === "open") return cxOpen(y);
+  if (x === "x") return cxClose();
+  if (x === "chk") { st.sx = null; st.swOpen = !st.swOpen; return renderAll(); }
+  if (x === "use") { const C = cardCheck(N, K); if (C.st === "ok" && C.use != null) cxSend("strike", C.use, "check"); return; }
+  const e = st.sx;
+  if (!e || st.pend.sx) return;
+  if (x === "step") {
+    const q = CX[e.k].places, from = e.val ?? cxNow(e.k, N, K).v ?? (e.k === "hlt" ? N.gal : null) ?? (CX[e.k].unit === "°F" ? 68 : 0);
+    e.val = Math.max(0, Math.round((from + parseFloat(y)) * 10 ** q) / 10 ** q);
+    return renderAll();
+  }
+  if (x === "set") { if (!cxBad(e.k, e.val, K)) cxSend(e.k, e.val, "you"); return; }
+  if (x === "back") { const now = cxNow(e.k, N, K); if (now.back != null) cxSend(e.k, now.back, "back"); }
+}
+/* SET, a way back, or USE: the figure sent, LOG saying what it was, and the editor closed. A figure as it is closes the
+   editor at once. What each writes is what its box wrote before: the recipe's mash water and grain weight (BeerSmith's
+   kept beside them, which BEERSMITH'S puts back); the strike water step's temperature, and the HLT's target while it
+   heats (swSet), and once the water has moved MashIn's pre-heat instead; BrewStart's water volume or grain
+   temperature, or by hand the figures CraftBeerPi keeps for the brew day; the room for this brew. The check is worked
+   out again for figures it works from */
+function cxSend(k, v, how) {
+  const N = swIn(), K = bssK(N), now = cxNow(k, N, K), was = now.v, moved = swPhase() === "moved", D = CX[k];
+  if (was != null && v != null && Math.abs(v - was) < 0.5 / 10 ** D.places) return cxClose();
+  const {S, bi} = swSteps(), wasSays = was == null ? "" : `, was ${cxFmt(k, was)}`, dir = how === "back" ? "back" : "set";
+  const recSet = (f, val) => () => { st.sw.rec = Object.assign({}, st.sw.rec, {[f]: val}); if (val == null) delete st.sw.rec[f]; st.sx = null; swRework("recipe"); };
+  if (k === "water") return send("sx", dir, how === "back" ? `Mash water back to BeerSmith's ${cxFmt(k, v)}` : `Mash water set to ${cxFmt(k, v)}${wasSays}`, recSet("water", how === "back" ? null : v));
+  if (k === "weight") return send("sx", dir, how === "back" ? `Grain weight back to BeerSmith's ${cxFmt(k, v)}` : `Grain weight set to ${cxFmt(k, v)}${wasSays}`, recSet("grain", how === "back" ? null : v));
+  if (k === "strike") {
+    const pre = K.pre(v), says = how === "back" ? `Strike back to BeerSmith's ${cxFmt(k, v)}` : `Strike set to ${cxFmt(k, v)}${how === "check" ? ", the check's" : ""}${wasSays}`;
+    return send("sx", dir, `${says}${moved ? ` · MashIn heats to ${pre.toFixed(1)} °F` : ""}`, () => {
+      st.bss = Object.assign({}, st.bss, {from: how === "back" ? "bs" : how}); st.sx = null;
+      swSet(v);
+      if (moved && !bssAsked() && st.v.mt.mode === "auto") st.v.mt.sv = st.v.mt.own = pre;
+    });
+  }
+  if (k === "hlt") {
+    const camp = bi >= 0 && S[bi].campden ? ` · Campden ${swCampden(v)}` : "";
+    return send("sx", dir, `HLT water set to ${cxFmt(k, v)}${wasSays}${camp}`, () => { if (bi >= 0) S[bi].vol = v; else st.sw.vol = v; st.sx = null; swRework("vol"); });
+  }
+  if (k === "grain") {
+    const probe = how === "back", src = N.roomFrom === "you" ? "the room given" : "the probe's";
+    return send("sx", dir, probe ? `Grain temperature: ${src} again, ${cxFmt(k, v)}` : `Grain temperature set to ${cxFmt(k, v)}, was ${N.typed != null ? cxFmt(k, N.typed) : `${src} ${cxFmt(k, was)}`}`,
+      () => { const g = probe ? null : v; if (bi >= 0) Object.assign(S[bi], {grain: g, where: g == null ? "garage" : "indoors"}); else st.sw.grain = g; st.sx = null; swRework("grain"); });
+  }
+  if (k === "room") {
+    const probe = how === "back";
+    return send("sx", dir, probe ? `Room temperature from the boil kettle's probe again, ${cxFmt(k, v)}` : `Room temperature set to ${cxFmt(k, v)} for this brew${wasSays}`,
+      () => { st.sw.room = probe ? null : v; st.sx = null; swRework("room"); });
+  }
+}
 /* USE waiting for the grain (swHTML) leads to the answer: while BrewStart's row is the way to its box, that box, with
    focus on IN THE GARAGE and back on USE as it closes; once BrewStart heats or has finished, the strike water box's own
    grain box, in its details */
@@ -3743,7 +4150,7 @@ function bsOpens(i) {
    gave it. A load from the Recipe Book asks again */
 const bsGrainSaid = s => s.where === "garage" || s.where === "indoors";
 /* a recipe with BrewStart whose grain isn't answered yet for this load: USE waits for the answer (swHTML) */
-const bsGrainAsk = () => { const {S, bi} = swSteps(); return bi >= 0 && !bsGrainSaid(S[bi]); };
+const bsGrainAsk = () => { if (bssOn()) return false; const {S, bi} = swSteps(); return bi >= 0 && !bsGrainSaid(S[bi]); };
 /* a time kept 24-hour, as a step keeps it ("07:00"): minutes from midnight, or null */
 function hmMin(x) {
   const m = /^\s*(\d{1,2}):?(\d{2})\s*$/.exec(x || "");
@@ -4272,7 +4679,8 @@ const mwOpens = i => mwShows(i) && !mwMaltIn();
 /* the row's words for it: the figure and its ratio, never split from their units */
 function mwSays() {
   const R = swIn().R, w = R.strike_vol ?? null;
-  if (w == null) return '<span class="amb">mash water not given</span>';
+  /* the strike water card asks for it in one place, the card: the row only says there is none */
+  if (w == null) return bssOn() ? "mash water –" : '<span class="amb">mash water not given</span>';
   const q = swRatio(R);
   return `mash water ${volText(w, "gal")}${q != null ? `&nbsp;· ${ratioText(q, "F")}` : ""}`;
 }
@@ -4286,9 +4694,9 @@ function mwWhy() {
    Amber while the mash water isn't given, else "change"; its label says the same in words */
 function mwRowHTML(s, i, state, p, right, nt, bar) {
   const R = swIn().R, missing = (R.strike_vol ?? null) == null, why = mwWhy();
-  const hint = missing ? '<small class="bsh amb">give it</small>' : '<small class="bsh">change</small>';
-  const said = `${s.n}${s.temp != null ? `, ${stepTemp(s)} °F` : ""}: mash water ${missing ? "not given" : swMashText(R).replace(/\u00a0/g, " ")}. ${missing ? "Give it" : "Change it"}, with the grain weight and the HLT water`;
-  const note = nt ? `<span class="p pn${state === "cur" && st.banner && st.banner.title === s.n ? " asked" : ""}">${esc(nt)}</span>` : "";
+  const hint = missing && !bssOn() ? '<small class="bsh amb">give it</small>' : `<small class="bsh">${missing ? "give it" : "change"}</small>`;
+  const said = `${s.n}${s.temp != null ? `, ${bssPreheat(i) != null ? `${bssPreheat(i).toFixed(1)} °F, then malt` : `${stepTemp(s)} °F`}` : ""}: mash water ${missing ? "not given" : swMashText(R).replace(/\u00a0/g, " ")}. ${missing ? "Give it" : "Change it"}, with the grain weight and the HLT water`;
+  const note = nt ? `<span class="p pn${nt === bssStall(i) ? " amb" : ""}${state === "cur" && st.banner && st.banner.title === s.n ? " asked" : ""}">${esc(nt)}</span>` : "";
   return `<li class="stepb"><button type="button" class="step mwrow"${state === "cur" ? ' aria-current="step"' : ""} data-cmd="mw:open" aria-label="${esc(said)}" aria-expanded="${!!st.mwOpen}"${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}><span class="n">${i + 1}</span><span class="t">${esc(s.n)}</span><span class="p">${p}</span>${note}<span class="s">${right}${hint}</span>${bar}</button></li>`;
 }
 /* the box: MASH WATER, GRAIN WEIGHT and HLT WATER, each in plain words with its figure, where it comes from and CHANGE
@@ -4322,6 +4730,8 @@ function mwCmd(x) {
   if (x === "open") {
     if (st.mwOpen) return mwClose();
     if (!mwOpens(mwIdx())) return;
+    /* the strike water card: the row opens the card's own mash water, the card brought into view */
+    if (bssOn()) { if (!(st.sx && st.sx.k === "water")) cxOpen("water"); return setTimeout(() => $("#sw-card")?.scrollIntoView({block: "nearest"}), 0); }
     Object.assign(st, {mwOpen: true, bsOpen: false, bs: null, swOpen: false, swVol: null, swGrain: null, swRec: null, pbOpen: false, cmpOpen: false,
       rbOpen: false, confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null});
     renderAll();
@@ -4351,14 +4761,17 @@ function stepHTML(s, i) {
      start with one */
   const held = state === "cur" && s.type === "BrewStart" && r.wait === WFY && bsStrike();
   const when = live ? (tm ? `${s.start ? "start at" : "ready by"} ${todS(tm)}${s.date ? `&nbsp;${dShort(dayIdx(s.date))}` : ""}` : '<span class="amb">no time set</span>') : held ? "" : s.ready ? `ready&nbsp;by ${todS(s.ready)}` : s.start ? `start&nbsp;at ${todS(s.start)}` : "";
-  const p = [s.temp != null ? `${stepTemp(s)}&nbsp;°F` : "", s.min ? `${s.min}&nbsp;min` : "", when, s.vol != null ? `${+s.vol.toFixed(2)}&nbsp;gal` : "", mwShows(i) ? mwSays() : ""].filter(Boolean).join("&nbsp;· ");
+  const pre = bssPreheat(i);
+  const p = [s.temp != null ? (pre != null ? `${pre.toFixed(1)}&nbsp;°F, then&nbsp;malt` : `${stepTemp(s)}&nbsp;°F`) : "", s.min ? `${s.min}&nbsp;min` : "", when, s.vol != null ? `${+s.vol.toFixed(2)}&nbsp;gal` : "", mwShows(i) ? mwSays() : ""].filter(Boolean).join("&nbsp;· ");
   const right = state === "done" ? "✓ DONE" : state === "cur" ? (r.state === "running" ? (r.wait ? waitHTML(r.wait) : s.min ? `<span id="r-left">${mmss(r.left)}</span> LEFT` : runWord(s)) : r.state === "ready" ? (r.wait ? waitHTML(r.wait) : "READY") : "STOPPED") : '<i class="todo" aria-hidden="true"></i><span class="sr">to come</span>';
   if (bsOpens(i)) return bsRowHTML(s, i, state, p, right, state === "cur" && s.type === "BrewStart" && r.bsHeat === "holding" ? bsHoldWords(s.temp, KNAME.mt) : "");
   const pct = s.min ? Math.round(100 * (1 - r.left / (s.min * 60))) : 0;
   const bar = state === "cur" && s.min ? `<span class="bar"><i id="r-bar" style="width:${pct}%"></i></span>` : "";
   const adds = s.adds ? `<span class="adds">${s.adds.map((a, j) => addHTML(a, j, state)).join("")}</span>` : "";
-  /* BrewStart holding the strike water has its question as its note line, as the strike water step's note shows it */
-  const nt = s.note || (state === "cur" && s.type === "BrewStart" && r.bsHeat === "holding" ? bsHoldWords(s.temp, KNAME.mt) : "");
+  /* BrewStart holding the strike water has its question as its note line, as the strike water step's note shows it. A
+     MashIn with a pre-heat says "then malt" in its figure, so its "Add the malt when…" line goes; a pre-heat that has
+     stalled short of its figure says so there instead (bssStall) */
+  const nt = pre != null ? bssStall(i) : s.note || (state === "cur" && s.type === "BrewStart" && r.bsHeat === "holding" ? bsHoldWords(s.temp, KNAME.mt) : "");
   if (mwOpens(i)) return mwRowHTML(s, i, state, p, right, nt, bar);
   return `<li class="step${state === "done" ? " done" : ""}"${state === "cur" ? ' aria-current="step"' : ""}><span class="n">${i + 1}</span><span class="t">${s.n}</span>${p ? `<span class="p">${p}</span>` : ""}${nt ? `<span class="p pn${state === "cur" && st.banner && st.banner.title === s.n ? " asked" : ""}">${nt}</span>` : ""}<span class="s">${right}</span>${bar}${adds}</li>`;
 }
@@ -5029,7 +5442,7 @@ function renderAll() {
   /* the pre-brew check's box, the probes side by side and the strike water box opened out, or with the HLT's water being
      given, take the step list's room on one screen, as a timer's editor does; so do BrewStart's box and the proposal's
      recipe book */
-  $("#recipe").toggleAttribute("data-pb", !!(st.pbOpen || st.cmpOpen || st.swOpen || st.swVol || st.swGrain || st.swRec || st.rbOpen || st.bsOpen || st.mwOpen));
+  $("#recipe").toggleAttribute("data-pb", !!(st.pbOpen || st.cmpOpen || (st.swOpen && !bssOn()) || st.swVol || st.swGrain || st.swRec || st.rbOpen || st.bsOpen || st.mwOpen));
   /* BrewStart's box: COMPARE PROBES makes way for it on one screen too, as the step list does (brew-day.css) */
   $("#recipe").toggleAttribute("data-bs", !!st.bsOpen);
   /* the proposal's timers (?col=new), opened from their folded line, take the step list's room and the strike water
@@ -7248,6 +7661,7 @@ function run(cmd) {
        closes, even once the forecast takes the figures' place */
     case "sw": if (x === "use") return swUse(); if (x === "back") return swBack(); if (x === "where") return swWhere(); st.swOpen = x === "more" ? (st.swOpen ? false : swGiveOpen() ? "give" : true) : x === "open"; if (!st.swOpen) { st.swVol = null; st.swGrain = null; st.swRec = null; } return renderAll();
     case "swv": return swVol(x, y);
+    case "sx": return cxCmd(x, y);
     case "swg": return swGrain(x, y);
     case "swr": return swRec(x, y);
     case "mw": return mwCmd(x);
@@ -7320,6 +7734,13 @@ document.addEventListener("keydown", e => {
     if (box && document.activeElement !== box) { box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
     return;
   }
+  /* Enter in a card figure's box is SET; a figure it won't take says why on its line under the box */
+  if (e.target.id === "sxin" && e.key === "Enter" && st.sx) {
+    e.preventDefault();
+    const bad = cxBad(st.sx.k, st.sx.val, bssK()), w = $("#sx-w");
+    if (bad) { if (w) w.textContent = bad; } else cxCmd("set");
+    return;
+  }
   if (e.target.id === "swvin" && e.key === "Enter") { e.preventDefault(); swVol("set"); return; }
   if (e.target.id === "swgin" && e.key === "Enter") { e.preventDefault(); swGrain("set"); return; }
   if (e.target.id === "swrin" && e.key === "Enter") { e.preventDefault(); swRec("set"); return; }
@@ -7373,6 +7794,7 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape" && st.confirmLoad != null) { st.confirmLoad = null; renderAll(); return; }
   /* the proposal's boxes (?col=new): the recipe book, and the timers opened from their folded line */
   if (e.key === "Escape" && (st.rbOpen || st.tfOpen)) { st.rbOpen = false; st.tfOpen = false; renderAll(); return; }
+  if (e.key === "Escape" && bssOn() && (st.sx || st.swOpen)) { cardDismiss(); return; }
   if (e.key === "Escape" && (st.edit || st.logOpen || st.confirmNext || st.confirmReset || st.confirmUnload || st.pbOpen || st.cmpOpen || st.swOpen)) { st.edit = null; st.logOpen = false; st.confirmNext = false; st.confirmReset = false; st.confirmUnload = false; st.pbOpen = false; st.cmpOpen = false; st.swOpen = false; renderAll(); }
   else if (e.key === "Escape" && st.ph && st.ph.open) phClose();
 });
@@ -7430,14 +7852,25 @@ document.addEventListener("input", e => {
     if (warn) warn.textContent = swRecWarn(N, st.swRec.val);
     return;
   }
+  /* a card figure's box: kept as typed, with SET, the line of what it does and the line of what needs a look following
+     it in place, so the box keeps its caret */
+  if (e.target.id === "sxin" && st.sx) {
+    const x = parseFloat(e.target.value.replace(",", ".")), k = st.sx.k, q = CX[k].places, N = swIn(), K = bssK(N);
+    st.sx.val = Number.isFinite(x) ? Math.round(x * 10 ** q) / 10 ** q : null;
+    const v = st.sx.val, bad = cxBad(k, v, K), ok = $("#sxok"), o = $("#sx-o"), w = $("#sx-w"), set = $('#sx-ed [data-cmd="sx:set"]');
+    if (ok) ok.textContent = v == null ? "– –" : v.toFixed(q);
+    if (o) o.textContent = cxSays(k, v, N, K).replace(/&nbsp;/g, "\u00a0");
+    if (w) w.textContent = bad && v != null ? bad : cxWarn(k, v, N);
+    if (set) { const why = cxWhy(k) || bad; if (why) { set.setAttribute("aria-disabled", "true"); set.dataset.why = why; } else { set.removeAttribute("aria-disabled"); delete set.dataset.why; } }
+    return;
+  }
   if (e.target.id === "swvin" && st.swVol) {
     const x = parseFloat(e.target.value), ok = $("#swvok");
     st.swVol.val = Number.isFinite(x) ? Math.round(x * 10) / 10 : null;
     if (ok) ok.textContent = st.swVol.val == null ? "– –" : st.swVol.val.toFixed(1);
-    const ov = $("#swv-over"), o = $("#swv-o"), w = $("#swv-w"), N = swNumbers();
+    const ov = $("#swv-over"), o = $("#swv-o"), N = swNumbers();
     if (ov) ov.textContent = hltOver(st.swVol.val);
     if (o) o.textContent = swVolOther(N, st.swVol.val);
-    if (w) w.textContent = swVolWarn(N, st.swVol.val);
     return;
   }
   /* the timer editor's boxes: kept as typed, without redrawing, so the caret stays put. A time typed follows at once in
@@ -7476,6 +7909,9 @@ document.addEventListener("click", e => {
     return;
   }
   const el = e.target.closest("[data-cmd]");
+  /* the strike water card: a tap anywhere outside it closes its editor, or its check, before anything tapped does what
+     it does; MashIn's row, which opens the card's mash water, is the card's own */
+  if (bssOn() && (st.sx || st.swOpen) && !e.target.closest("#sw-card") && !(el && /^(sx|mw):/.test(el.dataset.cmd))) cardDismiss();
   if (!el) {
     if (st.logOpen && !e.target.closest(".log")) { st.logOpen = false; renderAll(); }
     if (st.spdOpen && !e.target.closest("#spd-box")) spdClose();
@@ -7619,7 +8055,7 @@ function load(name) {
   /* a moment can open an editor (open) and borrow another moment's graph history (base) */
   const open = st.open, base = st.base || key;
   delete st.open; delete st.base;
-  Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, logOpen: false, pbOpen: false, cmpOpen: false, swOpen: false, swVol: null, swGrain: null, swRec: null, bsOpen: false, bs: null, mwOpen: false, spdOpen: false, spdPend: null, svAsk: false, svPend: {}, svIn: {}}, open);
+  Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, logOpen: false, pbOpen: false, cmpOpen: false, swOpen: false, swVol: null, swGrain: null, swRec: null, sx: null, bsOpen: false, bs: null, mwOpen: false, spdOpen: false, spdPend: null, svAsk: false, svPend: {}, svIn: {}}, open);
   /* with the levels, the kettles' Hardware page figures are the mockup's examples (LV_HW) under any the moment gives */
   if (lvMode()) st.vessels = Object.fromEntries(Object.keys(LV_HW).map(v => [v, Object.assign({}, LV_HW[v], (st.vessels || {})[v])]));
   /* BrewScribe as the moment has it, and Brew Day's copy of its answer (phLoad) */
@@ -7627,6 +8063,8 @@ function load(name) {
   /* the strike water box: CraftBeerPi's answer for the moment's numbers, worked out already, unless the moment has it
      working one out (sw.has: null) or showing an older one */
   if (st.sw && st.sw.has === undefined) st.sw.has = swNow();
+  /* a moment can finish itself once the recipe is built and its figures are known (then): the card's MashIn pre-heat */
+  if (typeof st.then === "function") { const f = st.then; delete st.then; f(); }
   /* a box or CHECKING… a moment opens belongs to the recipe it shows, as one START opens does */
   if (st.pbOpen || st.pend["r:check"]) st.pbFor = recipeOn();
   /* CraftBeerPi's answers to the pre-brew check: all pass, unless a moment says otherwise */
@@ -7655,6 +8093,8 @@ function load(name) {
   if (st.bsAt) { const o = st.bsAt; delete st.bsAt; bsOpen(o); }
   /* a moment can show FORECAST's details scrolled to a part of them (swAt) */
   if (st.swAt) { const at = st.swAt; delete st.swAt; requestAnimationFrame(() => { const el = $(at); if (el) el.scrollIntoView({block: "center"}); }); }
+  /* a card figure's editor a moment opens is in view, as a tap opens it */
+  if (st.sx) requestAnimationFrame(() => $("#sx-ed")?.scrollIntoView({block: "nearest"}));
   /* a moment can open the pH box, as RECORD pH does (phAt: what it opens it with), put focus on LOG, as SAVE does once
      it is done (phLog), or on RECORD, as a SAVE that leaves the reminder up does (phRec), and have the reminder
      answered on another screen some real milliseconds on (phElse) */
