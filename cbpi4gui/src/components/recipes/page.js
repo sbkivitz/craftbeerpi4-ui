@@ -48,7 +48,7 @@ import { call, why as callWhy } from "../brewday/api";
 import { stepModel, bookLine as dayBookLine, cfg as cfgOf, parseLeft, recipeWater, waterLacks, pastWater, brewWords, beerSmithFigures, typedFigures, typedWords, inWords, kettleRoles, hermsLogics, ROLES, declares } from "../brewday/live";
 import { settingsClockFormat, formatTimeOfDay, formatDayTime, parseTypedTime, halfOfDay, NBSP, TWELVE_HOUR } from "../util/timefmt";
 import { clearKeyboard } from "../util/keyboard";
-import { MASH_WATER, waterRatio, waterForRatio, ratioUnit, ratioWarning, mashWaterText, leastWater, hltLow, hltLowText, spargeText } from "../util/mashwater";
+import { MASH_WATER, waterRatio, waterForRatio, ratioUnit, ratioWarning, mashWaterText, leastWater, hltLow, hltLowText, hltUnder, hltUnderText, spargeText } from "../util/mashwater";
 // As text, exactly as written (config-overrides.js): recipes.css for the shadow root; recipes-frame.css, the mockup's
 // .app rules (one screen tall from 620 px, scrolling below 1180 px, room for the phone's save bar), for the document,
 // where they apply only while <html> has data-page=recipes or brewsteps
@@ -634,10 +634,11 @@ function figHlt(ed, F) {
   const k = (D.kettleData || []).find(x => x && x.id === kid) || null;
   return {vol, least: leastWater(k, D.unit, F.vu), step: bs};
 }
-/* the mash water, as saved or changed, leaving the HLT less than covers its element and coil: CraftBeerPi's warning
-   hlt_low in the strike water box's words, blocking nothing */
+/* the mash water, as saved or changed, leaving the HLT less than covers its element and coil, or more than the HLT's
+   water: CraftBeerPi's warning hlt_low or hlt_under in the strike water box's words, blocking nothing */
 function figLow(ed) {
   const F = figsOf(ed), w = F.water.now, h = figHlt(ed, F);
+  if (h && w != null && hltUnder(h.vol, w)) return hltUnderText(h.vol, w, F.vu);
   return h && w != null && hltLow(h.vol, w, h.least) ? hltLowText(h.vol - w, h.least.value, F.vu) : "";
 }
 const figChanges = ed => Object.keys((ed && ed.doc.figs) || {}).length;
@@ -708,7 +709,7 @@ function figsHTML(ed, s) {
   if (!figsTaken()) return "";
   const F = figsOf(ed);
   if ((F.water.now == null || F.grain.now == null) && st.link !== "lost") askSuggest(ed);
-  const h = figHlt(ed, F), left = h && F.water.now != null ? spargeText(h.vol, F.water.now, F.vu) : "";
+  const h = figHlt(ed, F), left = h && F.water.now != null && !hltUnder(h.vol, F.water.now) ? spargeText(h.vol, F.water.now, F.vu) : "";
   return `${figRowHTML(ed, "water", F)}${figRowHTML(ed, "grain", F)}${left ? `<p class="foot figleft" id="fig-left">${esc(left)}: the HLT water less the mash water.</p>` : ""}`;
 }
 /* SAVE on Brew Steps: the figures changed, for the strike water box's command, with BeerSmith's allowed (edit) */

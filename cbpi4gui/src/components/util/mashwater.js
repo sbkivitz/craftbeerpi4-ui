@@ -6,8 +6,9 @@
      What the HLT water leaves after the mash water is the sparge water.
    - The HLT keeps the least water that covers its element and coil (leastWater, as cbpi.strike.vessels.least_water
      counts it): mash water, or HLT water, that leaves it less is kept, and one short line says so (hltLowText), as
-     CraftBeerPi warns of it (hlt_low). Never refused: the figures are typed, and nothing switches on them. The Hardware
-     page's Least water line says where the least comes from.
+     CraftBeerPi warns of it (hlt_low); HLT water less than the mash water too, in its own line (hltUnderText,
+     CraftBeerPi's hlt_under), said in place of the other. Never refused: the figures are typed, and nothing switches
+     on them. The Hardware page's Least water line says where the least comes from.
    - The mash water's water-to-grain ratio, in the brewery's units (qt/lb on a °F brewery, L/kg on a °C one), is shown
      beside it and can be typed instead of it; a ratio outside 0.75-3 qt/lb (1.6-6.3 L/kg) is said to be unusual, never
      refused.
@@ -63,6 +64,11 @@ export const hltLow = (hlt, mash, least) => pos(mash) != null && pos(hlt) != nul
 /* the warning, as CraftBeerPi words it: "Leaves 0.5 gal in the HLT, under its 3.0 gal minimum.", `left` the water the HLT
    keeps after the mash water (none where the mash water is more). Figures to one place, or two where one would show
    them the same */
+/* figures to one place, or two where one would show a and b the same */
+const places = (a, b) => (+a).toFixed(1) === (+b).toFixed(1) ? 2 : 1;
+/* the HLT water less than the mash water, as CraftBeerPi words it: "Less than the 19.5 gal of mash water." */
+export const hltUnder = (hlt, mash) => pos(mash) != null && pos(hlt) != null && hlt < mash - 1e-9;
+export const hltUnderText = (hlt, mash, vu) => `Less than the ${(+mash).toFixed(places(hlt, mash))}${NB}${vu} of mash water.`;
 export function hltLowText(left, least, vu) {
   const l = Math.max(0, +left), m = +least, p = Math.round(l * 10) < Math.round(m * 10) ? 1 : 2;
   return `Leaves ${l.toFixed(p)}${NB}${vu} in the HLT, under its ${m.toFixed(p)}${NB}${vu} minimum.`;

@@ -356,8 +356,10 @@ leave the brewer stuck in the box. SET sets the figure and the box closes. While
 CraftBeerPi's strike water state says so (`warnings: ["hlt_low"]`, and the commands' answers' `warning`) and one short
 line in Note Amber says it once, under the strike water box (in the MashIn row's box while that is open, in place of
 the strike water box): "Leaves 0.5 gal in the HLT, under its 3.0 gal minimum." It goes once the figures leave enough.
-Brew Day doesn't explain the minimum: the Hardware page's Least water line does. Only HLT water less than the mash
-water itself is refused (POST /step2/strike/water's 400 too_little). USE and the forecast go on as before.
+Brew Day doesn't explain the minimum: the Hardware page's Least water line does. HLT water less than the mash water is
+set too, and its own line says so in the same place, in place of the other: "Less than the 19.5 gal of mash water."
+(`warnings: ["hlt_under"]`); with it the forecast waits for more HLT water. USE and the forecast go on as before
+otherwise.
 
 **The water-to-grain ratio.** Beside the mash water, wherever it shows, is the ratio it gives, in the brewery's units:
 qt/lb on a °F brewery, L/kg on a °C one, worked out from the grain weight and the water for the grain (BeerSmith's,
