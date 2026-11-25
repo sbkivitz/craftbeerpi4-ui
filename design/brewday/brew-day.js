@@ -163,14 +163,14 @@ const SCENES = {
   mash,
   hop: () => Object.assign(mash(), {
     t: 16 * 3600 + 2,
-    /* BoilStep's hop alert, in its words: "Hop Alert", "Please add <hop> (<n>)", one button, Added */
-    banner: {tone: "prompt", title: "Hop Alert", text: "Please add 3.00 oz Centennial (1)", act: "ADDED", cmd: "b:added"},
+    /* BoilStep's hop alert, in its words: "Hop Alert", "Please add <hop>", one button, Added */
+    banner: {tone: "prompt", title: "Hop Alert", text: "Please add 3.00 oz Centennial", act: "ADDED", cmd: "b:added"},
     v: {hlt: {pv: 165.3, sv: 168.0, own: 168.0, mode: "manual"}, mt: {pv: 151.2, sv: null, mode: "manual"}, bk: {pv: 210.6, sv: 210.2, mode: "auto"}},
     a: {hltEl: {on: false, pct: 0}, hltPump: {on: false}, wortPump: {on: false}, bkEl: {on: true, pct: 45}},
     fill: {mtLiq: false, bk: true},
     recipe: {state: "running", cur: 4, left: 59 * 60 + 58, adds: ["due"]},
     events: [
-      ["16:00:02", "Hop Alert: Please add 3.00 oz Centennial (1)", "waiting for you", "wait"],
+      ["16:00:02", "Hop Alert: Please add 3.00 oz Centennial", "waiting for you", "wait"],
       ["15:30:04", "Boil: 210.2 °F reached, 90 min timer started", "by recipe", ""],
       ...boilDay()
     ]

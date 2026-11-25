@@ -2422,9 +2422,11 @@ answered: button".
   an imported recipe's MashIn Notification (`upload_controller`), then "MashIn answered: Next Step". They were
   "MashIn: 126 °F reached. Please add malt." and "MashIn: malt added".
 - **The hop alert** (`#hop`, `#boilpower`, `#keepboil`, the moments built on them, and ADDED): "Hop Alert: Please add
-  3.00 oz Centennial (1)", from BoilStep's `check_hop_timer`, then "Hop Alert answered: Added". They were "Hop alert:
+  3.00 oz Centennial", from BoilStep's `check_hop_timer`, then "Hop Alert answered: Added". They were "Hop alert:
   add 3.00 oz Centennial (1)" and "Hop alert answered: 3.00 oz Centennial added". The title bar's title is "Hop Alert"
-  too; it's drawn in capitals, so it looks the same.
+  too; it's drawn in capitals, so it looks the same. The words name only the hop: CraftBeerPi says which addition
+  it is by the prompt's kind, `hop-1` for `Hop_1`, and the recipe column's "· add now" goes by that (`hopAlertFor`). A
+  core that sends no kind ended the words with the number, "(1)", or said "Please add Hop 1"; that is still read.
 - **The sparge water** (`#sparge-ready`, `#sparge-run`, `#sparge-batch`, `#boil-hold`, and the step's own press flow):
   the whole question, "Sparge: The sparge water is ready at 168 °F, and both pumps are off. Set the hoses or valves
   for a fly or a batch sparge, start the pumps by hand, then press Sparge started, which switches the HLT's AUTO off."
@@ -2486,7 +2488,7 @@ Done in the next section, from Brett's live log.
 
 Only in the event line:
 
-- `#hop` ("Hop Alert: Please add 3.00 oz Centennial (1)") and `#boilpower` ("Hop Alert answered: Added").
+- `#hop` ("Hop Alert: Please add 3.00 oz Centennial") and `#boilpower` ("Hop Alert answered: Added").
 - `#sparge-ready` (the whole sparge question; at 1920 px it fits, narrower it's cut off with "…").
 - `#hold` and `#whirlpool` (with the new BoilPower, its hold notice; with today's, "Whirlpool answered: Heat and hold").
 

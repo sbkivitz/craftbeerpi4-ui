@@ -7011,6 +7011,15 @@ function liveLocks() {
     }
   }
 }
+/* Is this prompt the boil's hop alert for addition n (Hop_n)? CraftBeerPi says which by its kind, "hop-3"; its words
+   name only the hop. An older core sent no kind and ended the words with the number: "Please add 1.00 oz Citra (3)",
+   or "Please add Hop 3" for an addition with no words. */
+function hopAlertFor(q, n) {
+  if (!/hop alert/i.test(q.title || "")) return false;
+  if (q.kind) return q.kind === `hop-${n}`;
+  const words = String(q.message || "").trim();
+  return words.endsWith(`(${n})`) || words === `Please add Hop ${n}`;
+}
 function liveRecipe(snap) {
   const S = M.RECIPE.steps;
   if (!S.length || S.every(s => s.status === "D")) return null;
@@ -7043,7 +7052,7 @@ function liveRecipe(snap) {
   }
   const adds = (s.adds || []).map(a => {
     const n = a[3];
-    const due = st.prompts.some(q => n === "fw" ? /first wort/i.test(q.message || "") : /hop alert/i.test(q.title || "") && (String(q.message || "").trim().endsWith(`(${n})`) || String(q.message || "").trim() === `Please add Hop ${n}`));
+    const due = st.prompts.some(q => n === "fw" ? /first wort/i.test(q.message || "") : hopAlertFor(q, n));
     return due ? "due" : (n === "fw" ? props._first_wort_done : done.has(n)) ? "done" : "";
   });
   // a SpargeStep holds the drawing on recirculating until Sparge started: its _sparge_started, kept with the step

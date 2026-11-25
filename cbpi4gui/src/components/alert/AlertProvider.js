@@ -177,7 +177,8 @@ export const AlertProvider = ({ children }) => {
   }, []);
 
   // kind: the word the server tells a notification apart by, whatever its words say (the boil's lid reminder,
-  // "condenser_on", and the reminder to turn the steam condenser's mister off, "condenser_off"), kept with it.
+  // "condenser_on", the reminder to turn the steam condenser's mister off, "condenser_off", and the boil's hop alert
+  // for each addition, "hop-1" to "hop-6"), kept with it.
   const show = useCallback((id, title = "", message = "", type = "info", action = null, timeout = 5000, kind = null) => {
     const alert = {
       id,
