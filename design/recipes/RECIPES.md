@@ -96,7 +96,7 @@ IMPORT opens on the right, in three parts:
 
 **IMPORT only adds the recipe to the Recipe Book. It no longer changes Brew Day.** So an import can never replace a brew. The result shows in place: "Imported Craftbeerpi Test Recipe v6. It's in your Recipe Book, at the top." The new recipe opens on the left so you can check its steps, and its row is there with LOAD (Amber's suggestion), so going from import to brewing costs one tap more than today.
 
-Importing a recipe again under the same name replaces the earlier import, never a recipe you've changed or saved here, as since 5 Nov. CraftBeerPi's warnings show in place too, as well as in the title bar. For example: "This recipe has 7 boil additions, but the boil step can remind you of only six." A refusal says why in CraftBeerPi's words, with SETTINGS beside it.
+Importing a BeerXML recipe whose name the book has asks first, before anything changes: UPDATE that recipe, or ADD AS A NEW RECIPE (decision 12). A recipe from another file imported again under the same name replaces the earlier import, never a recipe you've changed or saved here. CraftBeerPi's warnings show in place too, as well as in the title bar. For example: "This recipe has 7 boil additions, but the boil step can remind you of only six." A refusal says why in CraftBeerPi's words, with SETTINGS beside it.
 
 ![Imported, with CraftBeerPi's warning](pictures/09-imported-monitor.png)
 
@@ -134,7 +134,7 @@ EDIT, or a tap on any step, opens the recipe's settings on the right. The steps 
 On a recipe without BrewStart, a dashed line over step 1 offers it: **+ BrewStart**, "Hot water by a set time · goes in as step 1". It's there in the Recipe Book and on Brew Steps, until a brew begins. One tap puts BrewStart in as step 1 and opens its settings at **When**, with the time box ready.
 
 - **Filled in for you:** Ready by, plus the HLT, its element's watts and the Campden choice, from the newest BrewStart CraftBeerPi has (on Brew Day, or in the newest recipe with one). The water temperature is the recipe's mash in temperature; on Brew Day the strike water box can change it, as it already does. The day is Tomorrow from noon (the night before) and Today before noon. A note says where each came from.
-- **The HLT's water is filled in too, never typed:** what the recipe needs, worked out from its BeerSmith file, else the last brew's figure (the newest BrewStart's). For v5 that's 25.4 gal: BeerSmith's 23.0 gal before the boil, plus 2.4 gal the grain keeps (20 lb at 0.12 gal/lb). See [The HLT's water](#the-hlts-water).
+- **The HLT's water is filled in too, never typed:** what the recipe needs, worked out from its BeerSmith file, else the water of the newest brew that was brewed and recorded it, saying which (decision 13). For v5 that's 25.4 gal: BeerSmith's 23.0 gal before the boil, plus 2.4 gal the grain keeps (20 lb at 0.12 gal/lb). See [The HLT's water](#the-hlts-water).
 - **Left for you: the time.** It's the one thing only you know, so it isn't guessed. SAVE waits for it ("set BrewStart's time first").
 - **The time in words,** worked out as BrewStart works it out, and said as Brew Day's BrewStart box says it, with how long that is: "With START pressed today, the HLT's water is hot by 7:00 AM tomorrow, Mon 23 Nov: in 10 h 20 min." On a simulator it adds the real time: "…: in 17 h 44 min, about 35 real minutes at 30×." A time already past says so: "7:00 AM today has passed, so nothing would start by itself. For tomorrow morning, choose TOMORROW."
 - **The time box** takes "7", "7:30" or "730", with AM and PM beside it, as a phone's number keys have no letters. "7 pm" or "19" works too. The sentence under it says how long until then, so 7 PM by mistake reads "in 22 h 20 min", not "in 10 h 20 min".
@@ -152,8 +152,8 @@ The same on a phone: [`36-compare-phone`](pictures/36-compare-phone.png).
 BrewStart's Water is all the water in the HLT, strike and sparge. You asked for it not to be typed. A new BrewStart, here or on Brew Day, fills it in, in this order:
 
 1. **What the recipe needs**, worked out from its BeerSmith file: the volume before the boil (`BOIL_SIZE`), less anything topped up in the kettle (`TOP_UP_KETTLE`), plus what the grain keeps, plus what's lost under the mash (`LAUTER_DEADSPACE`). Every figure is BeerSmith's own except what the grain keeps: a BeerXML file has no field for it, so it comes from a new setting, Grain absorption, 0.12 gal/lb to start with. For v5: 23.0 gal + 20 lb × 0.12 gal/lb + 0 = **25.4 gal**. That's the strike water (8.26 gal, BeerSmith's "Add 33.04 qt"), the 2.50 gal BeerSmith adds at 168 °F, and 14.6 gal of sparge water.
-2. **Else the last brew's figure**, the newest BrewStart's water: for a recipe from MMuM, Kleiner Brauhelfer or Brewfather (I haven't checked what water figures their files carry), or one imported before this change.
-3. **Else nothing**, and Brew Day asks for it, as it does now.
+2. **Else the water of a brew that was brewed**: the newest past brew in CraftBeerPi's logs and BrewScribe that recorded the HLT's water, named in the note. Never a recipe that was only loaded or kept in the book. This is for a recipe from MMuM, Kleiner Brauhelfer or Brewfather, one written here, or one without BeerSmith's mash figures (decision 13).
+3. **Else nothing**: the water is left blank for you to give, and the note says so. Brew Day's strike water box asks for it too.
 
 The note in BrewStart's settings says which it is, with the sum: "The water, 25.4 gal, is what this recipe needs, worked out from the recipe file: 23.0 gal before the boil, and 2.4 gal the grain keeps (Grain absorption in Settings, 0.12 gal/lb)."
 
@@ -249,6 +249,18 @@ Later that night you asked for two more:
 9. **Times of day in 12-hour** ("I don't like the 24h time. Change the BrewStart to use 12-hr time."), everywhere CraftBeerPi shows a time of day: 7:00 AM, 11:15 PM. A new CraftBeerPi setting, CLOCK_FORMAT, keeps 24-hour possible. Times are still saved in 24-hour, so recipes and the rig keep working.
 10. **On a simulator, setting BrewStart's time shows the simulator's clock** ("When sim_time_scale is not 1, setting brewStart ready by time needs to show current sim date/time and the current timescale."). And changing the speed puts the simulator's clock back to the real date and time ("Whenever I change the timescale, the simtime date and time need to reset to actual"), which is CraftBeerPi's part.
 
+A recipe without BeerSmith's mash figures only misses what they would add; nothing waits for them:
+
+11. **The Recipe Book says which recipes lack BeerSmith's mash figures.** A recipe whose basic data has no `mash_numbers` (imported before they were kept, imported from another program, or written here) has a quiet line on its book row and in its column: "No BeerSmith mash figures: import its BeerSmith file again to add them." It is a note, not a warning: the recipe loads and brews as before.
+12. **Importing a BeerXML recipe whose name the book has asks first: UPDATE or ADD AS A NEW RECIPE.** The question opens in the recipe's import row before anything changes. Neither answer is the default; CANCEL, or Escape, imports nothing. Names match as CraftBeerPi matches them, whatever the accents, capitals or spaces.
+    - **UPDATE "<name>"** brings that book recipe up to date with the file. A recipe changed here (saved in the book, kept with SAVE TO BOOK, copied, or written here) keeps every step, its name, author and notes, and gains BeerSmith's mash figures and the BeerSmith file; it stays your own, so a later import never overwrites it. A recipe still as an earlier import left it takes the file's steps too, since nothing in it was changed. Where several recipes share the name, each has its own UPDATE, with when it was changed or imported.
+    - **If that recipe is the one on Brew Day**, UPDATE gives Brew Day's copy the mash figures and the file at once. Nothing is loaded again, and no step, its status or its settings change, so it works while a step runs or BrewStart waits overnight. Brew Day's copy still counts as the book's, so LOAD AGAIN isn't offered for figures it already has.
+    - **ADD AS A NEW RECIPE** keeps the import as a recipe of its own beside the others, replacing none.
+    - CraftBeerPi does the update: `POST /upload/xml` with `"update": <book file>` or `"new": true` (4.7.7.post72). The answer adds `"updated": true`, `"steps": "kept"` or `"file"`, and `"loaded"`. A refusal (the recipe deleted on another screen, another name, a file that isn't BeerXML) says why and ends "Nothing was changed in the Recipe Book." An older CraftBeerPi isn't asked: the import replaces an earlier import as before.
+    - Files from MMuM, Kleiner Brauhelfer and Brewfather bring no mash figures, so they import as before, without the question.
+13. **A new BrewStart's water, on Brew Steps and in the Recipe Book:** what the recipe needs, worked out from its BeerSmith figures; else the water of the newest past brew that was brewed and recorded the HLT's water (CraftBeerPi's past brews in the logs and BrewScribe, `GET /figures/`), its note naming that brew and its day; never the water of a recipe that was only loaded or kept in the book. With neither, the water is left blank for you to give, and the note says so. + BrewStart waits, greyed, while CraftBeerPi's past brews come. Its HLT, element and Campden choice still come from the newest BrewStart CraftBeerPi has: they belong to the rig, not to a recipe.
+14. **Brew Steps shows the recipe's author and its notes** under its name, read-only, in the column's quieter type. They are changed in the Recipe Book, under Name and notes.
+
 ## Assumptions the build follows
 
 1. You import mostly BeerXML from BeerSmith. MMuM, Kleiner Brauhelfer and Brewfather stay, below it.
@@ -257,7 +269,7 @@ Later that night you asked for two more:
 4. The malt, hops, misc and yeast editors aren't wanted: CraftBeerPi's recipes have no ingredient list, and BeerSmith keeps yours.
 5. Changes are saved with one SAVE, as on Settings and Hardware, both in the book and on Brew Steps.
 6. A new BrewStart's day is Tomorrow when it's added after noon by CraftBeerPi's clock (the night before) and Today before noon, and the sentence under its time says which day that is.
-7. Its HLT, element and Campden choice come from the newest BrewStart CraftBeerPi has, its water from the recipe (else the newest BrewStart's), and its water temperature from the recipe's mash in. Its time is never filled in.
+7. Its HLT, element and Campden choice come from the newest BrewStart CraftBeerPi has, its water from the recipe (else from the newest brew that was brewed and recorded it, else none), and its water temperature from the recipe's mash in. Its time is never filled in.
 8. The places for each kind of step, listed under Moving a step, match how you build recipes.
 9. Grain absorption starts at 0.12 gal/lb. BeerSmith keeps yours in its equipment profile, in fl oz per oz: divide by 8 for gal/lb, and set it once in Settings.
 

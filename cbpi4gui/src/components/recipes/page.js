@@ -28,7 +28,10 @@
 //   data), the page goes by names: the book's recipe of the same name. SAVE TO BOOK then saves the steps as a new recipe,
 //   under their own name. Where an import doesn't yet answer with the book file it kept, the page finds it in the book by
 //   its name. Where a recipe has no water figures from its import (mash_numbers' boil_l) or CraftBeerPi has no
-//   GRAIN_ABSORPTION setting, a new BrewStart takes the last brew's water. Before CraftBeerPi 4.7.7.post58, which has no
+//   GRAIN_ABSORPTION setting, a new BrewStart takes the water of the newest past brew that recorded it (GET /figures/),
+//   saying which brew, and else none, saying so. Before CraftBeerPi 4.7.7.post72, an IMPORT of a BeerXML recipe whose
+//   name the book has doesn't ask whether to UPDATE that recipe or ADD AS A NEW RECIPE: it replaces an earlier import, as
+//   it always did. Before CraftBeerPi 4.7.7.post58, which has no
 //   PUT /step2/order and ignores a new step's index, MOVE on Brew Steps is greyed and a new step goes last.
 // - The addresses: #/recipes (the book), #/recipes/<file> (that recipe in the column), #/recipe/<file> (changing it),
 //   #/upload (importing), #/mashprofile and #/brewsteps (Brew Steps), #/step/<id> (that step's settings) and #/step
@@ -47,12 +50,23 @@ import FRAME_CSS from "./recipes-frame.css";
 import { brewNow, brewScale } from "../brewday/screen";
 
 /* the page's own rules, for a state the mockup doesn't draw: + BrewStart, and BrewStart among + STEP's kinds, greyed
-   while CraftBeerPi's clock or the Recipe Book's steps are still coming (bsWhy), as a greyed command is */
+   while CraftBeerPi's clock or the Recipe Book's steps are still coming (bsWhy), as a greyed command is; a recipe without
+   BeerSmith's mash figures (NOFIG), on its book row and in its column, quieter than what the row says of it; the question
+   before importing a BeerXML recipe of a name the book has, whose answers each say what they do; and on Brew Steps, the
+   recipe's author over its notes */
 const OWN_CSS = `
 .bsadd[aria-disabled=true],.kind[aria-disabled=true]{color:var(--text-3);cursor:not-allowed}
 .bsadd[aria-disabled=true]:hover,.kind[aria-disabled=true]:hover{background:none}
 .kind[aria-disabled=true]:hover{background:var(--panel-2)}
 .bsadd[aria-disabled=true] .n,.bsadd[aria-disabled=true] .d,.kind[aria-disabled=true] span,.kind[aria-disabled=true] em{color:var(--text-3)}
+.bko .nofig{grid-column:1;font:500 15px/1.3 var(--cond);letter-spacing:.02em;color:var(--text-3)}
+.bk[aria-current=true] .nofig{color:var(--active-ink)}
+.col .nofig{margin:0;font:500 15px/1.35 var(--cond);letter-spacing:.02em;color:var(--text-3)}
+.col .by{margin:0;font:500 15px/1.35 var(--sans);color:var(--text-3)}
+.imr .confirm{grid-column:1/-1;margin:8px 0 4px}
+.confirm .acts.ways{grid-template-columns:1fr}
+.confirm .acts.ways button{display:grid;gap:3px;justify-items:start;padding:8px 12px;text-align:left}
+.confirm .acts.ways button small{font:500 15px/1.25 var(--sans);letter-spacing:0;text-transform:none;color:var(--text-2)}
 `;
 
 const CAT = {GROUPS, KINDS, TYPES, START};
@@ -152,6 +166,10 @@ const boilMin = steps => { const b = steps.find(s => s.type === "BoilStep"); ret
 // Brew Day's one-line summary of a recipe, for the narrow book
 const bookLine = steps => dayBookLine({steps}, U());
 const fromLine = r => r.desc || (r.imported_from ? `Imported from ${r.imported_from}` : "");
+/* a book recipe without BeerSmith's mash figures (basic data mash_numbers), which Brew Day's strike water box and a new
+   BrewStart's water need, and what gives it them: an import of its BeerSmith file, UPDATE */
+const NOFIG = "No BeerSmith mash figures: import its BeerSmith file again to add them.";
+const noFig = r => !!r && !r.bad && !r.figures;
 
 /* ---------- state ---------- */
 function fresh() {
@@ -171,7 +189,8 @@ function fresh() {
     ed: null,           // the Recipe Book's copy being changed
     bs: null,           // Brew Day's copy being changed (Brew Steps)
     offer: null,        // after SAVE: the copy on Brew Day is older than the book's, and LOAD AGAIN would bring it up to date
-    imp: {lists: null, sent: null, result: null, bq: "", busy: null, path: "upload", bfBusy: false},
+    imp: {lists: null, sent: null, result: null, bq: "", busy: null, path: "upload", bfBusy: false, ask: null},
+    past: undefined,    // a past brew's water for a new BrewStart (askPast): "wait" while CraftBeerPi is asked, then it or null
     link: "ok",
     leaveTo: null,      // where a question about changes not saved would go
     elsewhere: false,   // the brew steps were changed on another screen while this page had changes
@@ -193,14 +212,18 @@ const C = k => D.config[k];
 /* CraftBeerPi says which book recipe the brew steps came from (book_file, book_modified, loaded_at); before it does, the
    page goes by names */
 const knowsBook = () => !!D.basic && ("book_file" in D.basic || "book_modified" in D.basic || "loaded_at" in D.basic);
-/* PUT /step2/order and POST /step2/'s index: CraftBeerPi 4.7.7.post58 and later. null while it hasn't said its version */
-function orders() {
+/* whether CraftBeerPi is 4.7.7.post<post> or later; null while it hasn't said its version */
+function coreFrom(post) {
   const m = /^(\d+)\.(\d+)\.(\d+)(?:\.(\d+))?(?:\.post(\d+))?/.exec(String(D.version || ""));
   if (!m) return null;
-  const v = [+m[1], +m[2], +m[3], m[4] == null ? 0 : +m[4], m[5] == null ? -1 : +m[5]], want = [4, 7, 7, 0, 58];
+  const v = [+m[1], +m[2], +m[3], m[4] == null ? 0 : +m[4], m[5] == null ? -1 : +m[5]], want = [4, 7, 7, 0, post];
   for (let i = 0; i < want.length; i++) if (v[i] !== want[i]) return v[i] > want[i];
   return true;
 }
+/* PUT /step2/order and POST /step2/'s index: CraftBeerPi 4.7.7.post58 and later */
+const orders = () => coreFrom(58);
+/* an import's UPDATE and ADD AS A NEW RECIPE (POST /upload/xml with update or new): 4.7.7.post72 and later */
+const updates = () => coreFrom(72) === true;
 /* the recipe on Brew Day, from CraftBeerPi's brew steps: where it came from in the book, when, and how far it has got */
 function refreshLoaded() {
   const S = D.steps, B = D.basic || {};
@@ -209,7 +232,7 @@ function refreshLoaded() {
   if (knowsBook()) file = B.book_file || null;
   else if (norm(B.name)) { const r = sorted().find(x => x.name === B.name); file = r ? r.file : null; }
   const steps = S.map(s => ({id: s.id, name: s.name, type: s.type, status: s.status, state_text: s.state_text, props: s.props || {}}));
-  const L = {file, name: B.name || "", at: epoch(B.loaded_at), bm: epoch(B.book_modified), steps, left: null, ran: null, mash_numbers: B.mash_numbers || null};
+  const L = {file, name: B.name || "", author: norm(B.author), desc: norm(B.desc), at: epoch(B.loaded_at), bm: epoch(B.book_modified), steps, left: null, ran: null, mash_numbers: B.mash_numbers || null};
   st.loaded = L;
   const b = brew();
   if (b.state === "running" || b.state === "stopped") {
@@ -418,40 +441,78 @@ function moveTo(ed, s, g) {
 }
 
 /* ---------- BrewStart: filled in from the rig, and its time in words ---------- */
-/* the newest BrewStart there is: on Brew Day's steps, or in the newest recipe in the book that has one */
+/* the newest BrewStart there is: on Brew Day's steps, or in the newest recipe in the book that has one. Its HLT, element
+   and Campden choice are the rig's, which a new BrewStart takes; never its water, which was that recipe's */
 function newestBrewStart() {
   const onDay = st.loaded && st.loaded.steps.find(s => s.type === "BrewStart");
   if (onDay) return {s: onDay, from: `${st.loaded.name || "the steps"} on Brew Day`};
   for (const r of sorted()) { const s = stepsOf(r).find(x => x.type === "BrewStart"); if (s) return {s, from: r.name}; }
   return null;
 }
-/* why adding a BrewStart waits: CraftBeerPi's clock isn't known yet (its day), or the Recipe Book's steps are still
-   coming, where its HLT, element and Campden choice come from when Brew Day has no BrewStart */
+const PAST_WAIT = "Waiting for CraftBeerPi's past brews, for the HLT's water.";
+/* the water of a brew that was brewed, for a new BrewStart on a recipe whose own can't be worked out: the newest past
+   brew in CraftBeerPi's logs and BrewScribe (GET /figures/) whose HLT heating recorded its water (its hlt cell's volume,
+   in the brewery's unit). Asked once, when a new BrewStart first needs it; st.past is "wait" until it answers, then the
+   brew or null. A recipe that was only loaded, or kept in the book, is never where it comes from */
+async function askPast() {
+  if (st.past !== undefined) return;
+  st.past = "wait";
+  const g = gen, res = await call("GET", "/figures/", undefined, 15000);
+  if (g !== gen || !st) return;
+  const data = res.ok && res.data && typeof res.data === "object" ? res.data : {};
+  const brews = (Array.isArray(data.brews) ? data.brews : []).filter(b => b && typeof b === "object").sort((p, q) => (num(q.start) ?? -Infinity) - (num(p.start) ?? -Infinity));
+  const b = brews.find(x => x.cells && x.cells.hlt && num(x.cells.hlt.volume) > 0);
+  st.past = b ? {vol: num(b.cells.hlt.volume), unit: data.vol_unit === "L" || data.vol_unit === "gal" ? data.vol_unit : volUnit(), name: norm(b.name), start: num(b.start)} : null;
+  schedule();
+}
+// a past brew in words: "Rye Pale Ale, brewed Sat 21 Nov", or "the brew of Sat 21 Nov"
+function brewWords(p) {
+  const d = p.start != null ? new Date(p.start * 1000) : null, day = d ? `${WEEK[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}` : "";
+  return p.name ? `${p.name}${day ? `, brewed ${day}` : ""}` : day ? `the brew of ${day}` : "an earlier brew";
+}
+/* whether a new BrewStart's water can't come from the recipe it joins: no BeerSmith mash figures, or no Grain absorption */
+const waterFromPast = () => !recipeWater(recipeNumbers(), C("GRAIN_ABSORPTION"), D.unit);
+/* why adding a BrewStart waits: CraftBeerPi's clock isn't known yet (its day), the Recipe Book's steps are still
+   coming, where its HLT, element and Campden choice come from when Brew Day has no BrewStart, or, for a recipe whose
+   own water can't be worked out, CraftBeerPi's past brews */
 function bsWhy() {
+  const fromPast = waterFromPast();
+  if (fromPast && st.past === undefined) askPast();
   if (!cbNow()) return CLOCK_WAIT;
   const onDay = st.loaded && st.loaded.steps.some(s => s.type === "BrewStart");
   if (!onDay && !st.bookFail && !(st.bookRead && st.book.every(r => Array.isArray(r.steps) || r.bad))) return WAIT;
+  if (fromPast && st.past === "wait") return PAST_WAIT;
   return "";
 }
 const v1 = n => (Math.round(n * 10) / 10).toFixed(1);
-// the recipe a new BrewStart joins: Brew Day's copy on Brew Steps, else the book's copy being changed
-const recipeNumbers = () => st.page === "steps" ? (st.loaded || {}).mash_numbers : st.ed && book(st.ed.file) ? (book(st.ed.file).basic || {}).mash_numbers : null;
+// the recipe a new BrewStart joins: Brew Day's copy on Brew Steps, else the book's copy being changed or open
+function recipeNumbers() {
+  if (st.page === "steps") return (st.loaded || {}).mash_numbers;
+  const r = book(st.ed ? st.ed.file : st.open);
+  return r ? (r.basic || {}).mash_numbers : null;
+}
 /* a new BrewStart: Ready by, with the HLT, its element and the Campden choice of the newest BrewStart, the water this
-   recipe needs (else the newest BrewStart's: the last brew's), and the water temperature of its mash in. The time is
-   left for the brewer: it is the one thing only he knows, and SAVE waits for it. The day is Tomorrow from noon by
-   CraftBeerPi's clock (the night before), Today before; every way of adding one waits for that clock (bsWhy) */
+   recipe needs, else the water of the newest past brew that recorded it (labelled with that brew), else none, saying
+   so, and the water temperature of its mash in. The time is left for the brewer: it is the one thing only he knows,
+   and SAVE waits for it. The day is Tomorrow from noon by CraftBeerPi's clock (the night before), Today before; every
+   way of adding one waits for that clock (bsWhy) */
 function brewStartProps(ed) {
   const L = ed ? live(ed) : [], src = newestBrewStart(), q = src ? src.s.props || {} : {}, mi = L.find(s => s.type === "MashInStep");
-  const w = recipeWater(recipeNumbers(), C("GRAIN_ABSORPTION"), D.unit), unit = volUnit(), now = cbNow();
+  const numbers = recipeNumbers(), w = recipeWater(numbers, C("GRAIN_ABSORPTION"), D.unit), unit = volUnit(), now = cbNow();
+  const past = !w && st.past && st.past !== "wait" ? st.past : null;
   const props = {Timing: "Ready by", Mode: now && hhmmOf(now) >= "12:00" ? "Tomorrow" : "Today", StartDate: "", StartTime: "",
     Heat_Kettle: q.Heat_Kettle || hltOf(L), Ready_Temp: mi && num(mi.props.Temp) != null ? mi.props.Temp : q.Ready_Temp ?? "",
-    Volume: w ? Math.round(w.total * 10) / 10 : q.Volume ?? "", Volume_Unit: w ? w.unit : q.Volume_Unit || unit, Grain_Temp: "", Heater_Watts: q.Heater_Watts ?? "",
+    Volume: w ? Math.round(w.total * 10) / 10 : past ? Math.round(past.vol * 10) / 10 : "", Volume_Unit: w ? w.unit : past ? past.unit : unit, Grain_Temp: "", Heater_Watts: q.Heater_Watts ?? "",
     Campden_Reminder: q.Campden_Reminder || "No", NotifyBefore: "", AutoNext: "Yes"};
   const got = [props.Heat_Kettle && nameOf(D.kettles, props.Heat_Kettle) && `the ${nameOf(D.kettles, props.Heat_Kettle)}`, num(props.Heater_Watts) != null && `its ${fmt(num(props.Heater_Watts))} W element`,
-    !w && num(props.Volume) != null && `${fmt(num(props.Volume))} ${props.Volume_Unit} of water, the last brew's`, props.Campden_Reminder === "Yes" && "the Campden reminder"].filter(Boolean);
+    props.Campden_Reminder === "Yes" && "the Campden reminder"].filter(Boolean);
   const from = src && got.length ? `Filled in from ${src.from}, the newest recipe with a BrewStart: ${andList(got)}.` : "No recipe has a BrewStart yet, so the element is blank.";
+  const lacks = !numbers ? "this recipe has no BeerSmith mash figures to work it out from"
+    : num(C("GRAIN_ABSORPTION")) == null ? "CraftBeerPi has no Grain absorption setting to work this recipe's out with"
+    : "this recipe's BeerSmith figures lack the volume before the boil or the grain's weight";
   const water = w ? ` The water, ${v1(w.total)} ${w.unit}, is what this recipe needs, worked out from the recipe file: ${v1(w.before)} ${w.unit} before the boil, and ${v1(w.kept)} ${w.unit} the grain keeps (Grain absorption in Settings, ${w.rate})${w.lost ? `, and ${v1(w.lost)} ${w.unit} lost under the mash` : ""}.`
-    : num(props.Volume) == null ? " No water figure yet: Brew Day asks for it." : "";
+    : past ? ` The water, ${v1(past.vol)} ${past.unit}, is what the HLT heated for ${brewWords(past)}, the last brew that recorded it: ${lacks}.`
+    : ` No water filled in: ${lacks}, and ${st.past === "wait" ? "CraftBeerPi's past brews haven't come yet" : "no past brew recorded the HLT's water"}. Give it under The water, or in Brew Day's strike water box.`;
   const temp = mi && num(mi.props.Temp) != null ? ` The water temperature is ${nameIn(mi)}'s, ${fmt(num(mi.props.Temp))} ${U()}; on Brew Day the strike water box can change it.` : "";
   return {props, fill: `${from}${water}${temp}`};
 }
@@ -568,8 +629,8 @@ function stepsListHTML(steps, o = {}) {
     if (mv) return `${before}<li id="c-${esc(go)}"><div class="${cls}">${inner}</div></li>`;
     return `<li id="c-${esc(go)}"><button type="button" class="${cls}" data-go="${esc(go)}"${cur} aria-label="Step ${i + 1}, ${esc(v.n)}${v.p ? ", " + esc(v.p) : ""}. Open its settings">${inner}</button></li>`;
   }).join("") + slot(L.length);
-  const bw = bsWhy(), bsWait = bw ? ` aria-disabled="true" data-why="${esc(bw)}"` : "";
-  const offer = o.bsadd && !mv && hasKind("BrewStart") ? `<li class="bsrow"><button type="button" class="bsadd" data-bsadd${bsWait}><span class="n" aria-hidden="true">+</span><b>BrewStart</b><span class="d">Hot water by a set time · goes in as step ${(ed ? firstFree(ed) : 0) + 1}</span></button></li>` : "";
+  const offers = o.bsadd && !mv && hasKind("BrewStart"), bw = offers ? bsWhy() : "", bsWait = bw ? ` aria-disabled="true" data-why="${esc(bw)}"` : "";
+  const offer = offers ? `<li class="bsrow"><button type="button" class="bsadd" data-bsadd${bsWait}><span class="n" aria-hidden="true">+</span><b>BrewStart</b><span class="d">Hot water by a set time · goes in as step ${(ed ? firstFree(ed) : 0) + 1}</span></button></li>` : "";
   return `<ol class="steps${mv ? " moving" : ""}" id="steps" aria-label="Steps">${offer}${rows}</ol>`;
 }
 /* MOVE's bar, over the steps while one is moved: what moves, FIRST and LAST for the far moves that are the usual ones
@@ -603,7 +664,7 @@ function colHTML() {
   const steps = r.bad ? `<p class="empty"><b>Couldn't be read</b>${esc(bad)}</p>` : !Array.isArray(r.steps) ? `<p class="empty"><b>Reading its steps</b>CraftBeerPi is sending them.</p>` : stepsListHTML(r.steps, {bsadd: !hasBrewStart(r.steps)});
   return `${back}<h2>${esc(r.name)}</h2>
     <p class="rmeta">${meta}</p>
-    ${r.desc ? `<p class="desc">${esc(r.desc)}</p>` : ""}
+    ${r.desc ? `<p class="desc">${esc(r.desc)}</p>` : ""}${noFig(r) ? `<p class="nofig">${NOFIG}</p>` : ""}
     <div class="rctl">${first}${cmd("", "EDIT", "steps and name", {data: " data-edit", why: bad || (Array.isArray(r.steps) ? "" : WAIT)})}${cmd("", "COPY", "as a new recipe", {data: " data-copy", why: bad})}</div>
     ${ask}${offerHTML(r.file)}<p class="note" id="col-note" role="status">${esc(st.notes.col || "")}</p>
     ${steps}`;
@@ -643,6 +704,7 @@ function colStepsHTML() {
   const meta = L ? `<span class="on${b.state === "running" ? " run" : ""}">On Brew Day · ${statusWords(b).toLowerCase()}</span>` : `<span class="on">Not on Brew Day yet</span>`;
   return `<h2>${esc((L && L.name) || "Steps with no name")}</h2>
     <p class="rmeta">${meta}${n ? ` · <b>${n} ${n === 1 ? "change" : "changes"} not saved</b>` : ""}</p>
+    ${L && L.author ? `<p class="by">by ${esc(L.author)}</p>` : ""}${L && L.desc ? `<p class="desc">${esc(L.desc)}</p>` : ""}
     <div class="rctl">${cmd("", "BREW DAY", b.state === "running" ? "running there" : "start it there", {data: ' data-tabgo="Brew Day"'})}${cmd("", pendB ? "SAVING…" : "SAVE TO BOOK", pendB ? "waiting for CraftBeerPi" : "keep for next time", {busy: pendB, data: " data-tobook", why: pendB ? WAIT : n ? "SAVE your changes to the brew steps first, then keep them in the book." : !L ? "SAVE the steps first, then keep them in the book." : "", live: true})}${cmd("", pendU ? "UNLOADING…" : "UNLOAD", pendU ? "waiting for CraftBeerPi" : "brew by hand", {busy: pendU, data: " data-unload", why: pendU ? WAIT : un.why || ""})}</div>
     ${ask || ""}<p class="note" id="col-note" role="status">${esc(st.notes.col || "")}</p>
     ${ed.mv ? moveBarHTML(ed) : ""}${stepsListHTML(ed.doc.steps, {ed, cur: ed.cur, run: true, bsadd: (b.state === "none" || (b.state === "ready" && !b.begun)) && !hasBrewStart(ed.doc.steps) && !lastOnly()})}
@@ -740,8 +802,8 @@ function bookRowHTML(r) {
   const note = st.notes.row && st.notes.row.file === r.file ? `<p class="note" role="status">${esc(st.notes.row.text)}</p>` : "";
   const line = r.bad ? "Couldn't be read" : got ? bookLine(S) : "";
   return `<li class="bk" data-f="${esc(r.file)}"${st.open === r.file ? ' aria-current="true"' : ""}>
-    <button type="button" class="bko" data-open="${esc(r.file)}" aria-label="${esc(r.name)}${line ? `: ${esc(line)}` : ""}. Open it">
-      <span class="bn">${marked(r.name)}</span><span class="bs">${r.bad ? "Couldn't be read" : marked(fromLine(r))}</span>${hitLine(r)}<span class="sum">${esc(line)}</span>
+    <button type="button" class="bko" data-open="${esc(r.file)}" aria-label="${esc(r.name)}${line ? `: ${esc(line)}` : ""}${noFig(r) ? ". No BeerSmith mash figures" : ""}. Open it">
+      <span class="bn">${marked(r.name)}</span><span class="bs">${r.bad ? "Couldn't be read" : marked(fromLine(r))}</span>${noFig(r) ? `<span class="nofig">${NOFIG}</span>` : ""}${hitLine(r)}<span class="sum">${esc(line)}</span>
       <span class="c n">${got ? S.length : ""}</span><span class="c m">${got ? (m.length ? `${m.map(fmt).join(", ")} ${U()}` : "–") : ""}</span><span class="c b">${got ? (bm ? `${fmt(bm)} min` : "–") : ""}</span><span class="c d">${esc(dateWords(r.modified))}</span>
     </button><div class="act">${act}</div>${ask}${note}</li>`;
 }
@@ -927,7 +989,9 @@ function importHTML() {
     const L = I.lists[f.kind], sent = I.sent && I.sent.kind === f.kind;
     const rows = L.map(x => {
       const busy = I.busy && I.busy.kind === f.kind && I.busy.id === x.value, got = I.result && I.result.ok && I.result.kind === f.kind && I.result.id === x.value;
-      return `<li class="imr${got ? " got" : ""}"><span class="in">${esc(x.label)}</span><span class="is">${got ? "Imported" : inBook(x.label) ? "Its earlier import is in the book; importing replaces it" : "Not in the book yet"}</span>${cmd("", busy ? "IMPORTING…" : got ? "IMPORT AGAIN" : "IMPORT", busy ? "waiting for CraftBeerPi" : "into the book", {busy, why: busy || I.busy ? WAIT : "", data: ` data-imp="${esc(x.value)}" data-ik="${f.kind}"`, live: true, label: `Import ${x.label} into the Recipe Book`})}</li>`;
+      const asks = f.kind === "xml" && updates(), there = asks && sameNamed(x.label).length, asking = I.ask && I.ask.kind === f.kind && I.ask.id === x.value;
+      const is = got ? (I.result.updated ? "Updated" : "Imported") : there ? "In the book: IMPORT asks whether to update it or add a new recipe" : !asks && inBook(x.label) ? "Its earlier import is in the book; importing replaces it" : "Not in the book yet";
+      return `<li class="imr${got ? " got" : ""}"><span class="in">${esc(x.label)}</span><span class="is">${is}</span>${cmd("", busy ? "IMPORTING…" : got ? "IMPORT AGAIN" : "IMPORT", busy ? "waiting for CraftBeerPi" : there ? "asks first" : "into the book", {busy, why: busy || I.busy ? WAIT : "", data: ` data-imp="${esc(x.value)}" data-ik="${f.kind}"`, live: true, label: `Import ${x.label} into the Recipe Book`})}${asking ? importAskHTML(I.ask) : ""}</li>`;
     }).join("");
     return `<p class="fileh"><b>${esc(sent ? I.sent.name : f.file)}</b><span>${sent ? "just sent" : "the last file sent, kept by CraftBeerPi"} · ${esc(f.label)} · ${L.length} ${L.length === 1 ? "recipe" : "recipes"}</span></p><ul class="iml">${rows}</ul>`;
   }).join("");
@@ -951,16 +1015,40 @@ function importHTML() {
       <div class="drop${over}" id="drop"><p class="big">Drop a recipe file here</p><p class="or">or</p>${cmd("go", up ? "SENDING…" : "CHOOSE FILE", up ? "waiting for CraftBeerPi" : ".xml, .json or .sqlite", {busy: up, why: up ? WAIT : "", data: " data-choose", live: true})}<p class="note" id="file-note" role="status">${esc(st.notes.file || "")}</p></div>
       <p class="how"><b>From BeerSmith:</b> select the recipe in My Recipes, then File, Export Selected Items, BeerXML. One recipe a file is simplest.</p>
       ${fileH}
-      <p class="how">IMPORT puts the recipe in your Recipe Book; Brew Day isn't changed until you LOAD it. Importing a recipe again under the same name replaces the earlier import, never a recipe you've changed or saved here.</p></section>
+      <p class="how">IMPORT puts the recipe in your Recipe Book; Brew Day isn't changed until you LOAD it. ${updates() ? "A BeerXML recipe whose name is in the book already asks first: UPDATE that recipe, which adds BeerSmith's mash figures and keeps your steps, or ADD AS A NEW RECIPE. Other files replace an earlier import of the same name, never a recipe you've changed or saved here." : "Importing a recipe again under the same name replaces the earlier import, never a recipe you've changed or saved here."}</p></section>
     <section class="plate pick" id="p-bf" aria-labelledby="h-bf"><div class="phd"><h2 id="h-bf">From Brewfather</h2><p class="sum">Your recipes in Brewfather's web app.</p></div>${I.result && I.result.from === "bf" ? resultHTML(I.result) : ""}${bf}</section>
     <section class="plate pick" id="p-uses" aria-labelledby="h-uses"><div class="phd"><h2 id="h-uses">Imports use these settings</h2><p class="sum">What a recipe file can't say, CraftBeerPi takes from Settings as it imports.</p></div>${uses}</section></div>`;
 }
 const inBook = name => st.book.some(r => r.name === name && r.imported_from);
+/* a recipe's name as CraftBeerPi compares names (beerxml.name_key): its letters without their marks, in any case, with
+   single spaces. "Kölsch" is " kolsch " */
+const nameKey = s => String(s == null ? "" : s).normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase().split(/\s+/).filter(Boolean).join(" ");
+/* the book's recipes of a name, newest first: what an import of that name could UPDATE */
+const sameNamed = name => sorted().filter(r => !r.bad && nameKey(r.name) === nameKey(name));
+/* before a BeerXML recipe of a name the book has is imported: UPDATE that recipe (each, where several share the name),
+   or ADD AS A NEW RECIPE, each saying what it does, and neither the default: the question, not an answer, has the focus.
+   CANCEL, or Escape, imports nothing */
+function importAskHTML(a) {
+  const R = sameNamed(a.label), many = R.length > 1;
+  const ways = R.map(r => {
+    const what = r.imported_from ? "Takes this file's steps, mash figures and file in place of its earlier import: you haven't changed it here."
+      : "Adds BeerSmith's mash figures and this file to it, and keeps every step as you left it.";
+    const day = many ? ` · ${r.imported_from ? "imported" : "changed"} ${dateWords(r.modified)}` : "";
+    const on = isLoaded(r.file) ? " It's on Brew Day: its copy there gets the mash figures at once, with its steps as they are." : "";
+    return `<button type="button" data-imq="update" data-file="${esc(r.file)}">Update “${esc(r.name)}”${esc(day)}<small>${what}${on}</small></button>`;
+  }).join("");
+  return `<div class="confirm" role="group" aria-labelledby="imq-t" id="imq"><p id="imq-t" tabindex="-1"><b>${esc(a.label)}</b> is in your Recipe Book already${many ? `, ${R.length} times` : ""}. Nothing changes until you choose.</p>
+    <div class="acts ways">${ways}<button type="button" data-imq="new">Add as a new recipe<small>${many ? "They stay" : "It stays"} as ${many ? "they are" : "it is"}, and this file's recipe goes in beside ${many ? "them" : "it"}.</small></button></div>
+    <div class="acts three"><button type="button" data-no>Cancel</button></div></div>`;
+}
+const focusImq = () => requestAnimationFrame(() => { const a = $("#imq"); if (a) a.scrollIntoView({block: "nearest"}); const t = $("#imq-t"); if (t) t.focus({preventScroll: true}); });
 function resultHTML(R) {
-  if (!R.ok) return `<div class="fail" role="alert"><b>Not imported</b><p>${esc(R.why)}</p><div class="acts">${cmd("", "SETTINGS", "Brewhouse", {data: ' data-tabgo="Settings"'})}</div></div>`;
+  if (!R.ok) return `<div class="fail" role="alert"><b>${R.update ? "Not updated" : "Not imported"}</b><p>${esc(R.why)}</p><div class="acts">${cmd("", "SETTINGS", "Brewhouse", {data: ' data-tabgo="Settings"'})}</div></div>`;
   const r = book(R.file);
-  if (!r) return `<div class="impok" role="status">${ICON.tick}<p><b>Imported ${esc(R.name)}.</b> It's in your Recipe Book.</p></div>`;
-  return `<div class="impok" role="status">${ICON.tick}<p><b>Imported ${esc(r.name)}.</b> ${R.replaced ? "Its earlier import in the Recipe Book was replaced." : "It's in your Recipe Book, at the top."} ${narrow() ? "Open it to check its steps before you brew it." : "Check its steps on the left before you brew it."}</p><ul class="bkl">${bookRowHTML(r)}</ul></div>
+  if (!r) return `<div class="impok" role="status">${ICON.tick}<p><b>${R.updated ? "Updated" : "Imported"} ${esc(R.name)}.</b> It's in your Recipe Book.</p></div>`;
+  const said = R.updated ? `${R.steps === "file" ? "Its steps, mash figures and file are this file's: you hadn't changed it here." : "It has BeerSmith's mash figures and this file now, and its steps are as you left them."}${R.loaded ? " Brew Day's copy has the mash figures too, and its steps are as they were." : ""}`
+    : R.replaced ? "Its earlier import in the Recipe Book was replaced." : "It's in your Recipe Book, at the top.";
+  return `<div class="impok" role="status">${ICON.tick}<p><b>${R.updated ? "Updated" : "Imported"} ${esc(r.name)}.</b> ${said} ${narrow() ? "Open it to check its steps before you brew it." : "Check its steps on the left before you brew it."}</p><ul class="bkl">${bookRowHTML(r)}</ul></div>
     ${(R.warnings || []).map(w => `<div class="warn" role="note"><b>${esc(w.title)}</b><p>${esc(w.text)}</p></div>`).join("")}`;
 }
 function bfHTML() {
@@ -1206,7 +1294,7 @@ async function readBook() {
   st.book = res.data.filter(x => x && x.file).map(x => {
     const o = was.get(x.file), modified = epoch(x.modified), keep = o && o.modified === modified && Array.isArray(o.steps);
     return {file: x.file, name: x.name || "", author: x.author || "", desc: x.desc || "", imported_from: x.imported_from || "", modified,
-      steps: keep ? o.steps : null, basic: keep ? o.basic : null, bad: false};
+      figures: !!x.mash_numbers && typeof x.mash_numbers === "object", steps: keep ? o.steps : null, basic: keep ? o.basic : null, bad: false};
   });
   st.bookRead = true; st.bookFail = "";
   refreshLoaded();
@@ -1513,18 +1601,21 @@ async function sendFile(f) {
   await readLists();
   if (st) render();
 }
-/* IMPORT: the recipe goes into the Recipe Book, and the result shows in place, over the list, with its row and LOAD */
-async function doImport(kind, id, label) {
+/* IMPORT: the recipe goes into the Recipe Book, and the result shows in place, over the list, with its row and LOAD. A
+   BeerXML recipe of a name the book has asks first, in its row, before anything changes (importAskHTML): `how` is the
+   answer, {update: the book file} or {new: true}, sent with it */
+async function doImport(kind, id, label, how) {
   const I = st.imp;
   if (I.busy) return;
+  if (!how && kind === "xml" && updates() && sameNamed(label).length) { I.ask = {kind, id, label}; I.result = null; render(); return focusImq(); }
   const before = st.book.some(r => r.name === label && r.imported_from);
-  I.busy = {kind, id}; I.result = null; render();
-  const g = gen, res = await call("POST", `/${I.path}/${kind}`, {id}, 30000);
+  I.busy = {kind, id}; I.result = null; I.ask = null; render();
+  const g = gen, res = await call("POST", `/${I.path}/${kind}`, how ? {id, ...how} : {id}, 30000);
   if (g !== gen || !st) return;
   const from = kind === "bf" ? "bf" : "file";
   if (!res.ok) {
     I.busy = null;
-    I.result = {ok: false, from, why: detailOf(res) || (res.error === "http" ? `CraftBeerPi said no (${res.status}).` : `CraftBeerPi didn't answer: ${callWhy(res)}.`)};
+    I.result = {ok: false, from, update: !!(how && how.update), why: detailOf(res) || (res.error === "http" ? `CraftBeerPi said no (${res.status}).` : `CraftBeerPi didn't answer: ${callWhy(res)}.`)};
     render();
     return;
   }
@@ -1535,6 +1626,7 @@ async function doImport(kind, id, label) {
   let file = R.file && book(R.file) ? R.file : null;
   if (!file) { const r = sorted().find(x => x.name === name && x.imported_from) || sorted().find(x => x.name === name); file = r ? r.file : null; }
   I.result = {ok: true, from, kind, id, file, name, replaced: "replaced" in R ? !!R.replaced : before,
+    updated: !!R.updated, steps: R.steps === "file" ? "file" : "kept", loaded: !!R.loaded,
     warnings: Array.isArray(R.warnings) ? R.warnings.filter(w => w && (w.title || w.text)) : []};
   if (file) st.open = file;
   render();
@@ -1661,7 +1753,7 @@ function onClick(e) {
       return onward();
     }
   }
-  if ("no" in ds) { st.ask = null; st.leaveTo = null; return render(); }
+  if ("no" in ds) { st.ask = null; st.leaveTo = null; st.imp.ask = null; return render(); }
   if ("edit" in ds) { if (!startEdit(st.open)) return render(); if (narrow()) st.view = "recipe"; render(); return goView(false); }
   if (ds.go) {
     if (st.page === "book" && st.pane !== "edit") {
@@ -1762,6 +1854,7 @@ function onClick(e) {
   if ("import" in ds) { st.pane = "import"; st.view = "plate"; st.imp.result = null; openImport(); render(); return goView(false); }
   if ("choose" in ds) { if (fileIn) { fileIn.value = ""; fileIn.click(); } return; }
   if (ds.imp) { const x = ((st.imp.lists || {})[ds.ik] || []).find(r => r.value === ds.imp); return doImport(ds.ik, ds.imp, x ? x.label : ""); }
+  if (ds.imq) { const a = st.imp.ask; st.imp.ask = null; if (!a) return render(); return doImport(a.kind, a.id, a.label, ds.imq === "new" ? {new: true} : {update: ds.file}); }
   if ("bfre" in ds) return refreshBf();
   if (ds.bfimp) { const x = D.bf.find(r => String(r.value) === ds.bfimp); return doImport("bf", ds.bfimp, x ? String(x.label) : ""); }
   if ("clear" in ds) { st.q = ""; render(); const q = $("#q"); return q && q.focus(); }
@@ -1817,6 +1910,7 @@ function onKey(e) {
     if (t.id === "q" && st.q) { st.q = ""; t.value = ""; return render(); }
     if (E() && E().mv) { E().mv = null; return render(); }
     if (st.ask) { st.ask = null; st.leaveTo = null; render(); }
+    if (st.imp.ask) { st.imp.ask = null; render(); }
   }
   if (t.getAttribute && t.getAttribute("role") === "radio" && /^Arrow(Left|Right|Up|Down)$/.test(e.key)) {
     e.preventDefault();
