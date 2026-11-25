@@ -48,7 +48,7 @@ import { call, why as callWhy } from "../brewday/api";
 import { stepModel, bookLine as dayBookLine, cfg as cfgOf, parseLeft, recipeWater, waterLacks, pastWater, brewWords, beerSmithFigures, typedFigures, typedWords, inWords, kettleRoles, hermsLogics, ROLES, declares } from "../brewday/live";
 import { settingsClockFormat, formatTimeOfDay, formatDayTime, parseTypedTime, halfOfDay, NBSP, TWELVE_HOUR } from "../util/timefmt";
 import { clearKeyboard } from "../util/keyboard";
-import { MASH_WATER, waterRatio, waterForRatio, ratioUnit, ratioWarning, mashWaterText, leastWater, mashWaterLow, mashWaterRefused, spargeText } from "../util/mashwater";
+import { MASH_WATER, waterRatio, waterForRatio, ratioUnit, ratioWarning, mashWaterText, leastWater, hltLow, hltLowText, spargeText } from "../util/mashwater";
 // As text, exactly as written (config-overrides.js): recipes.css for the shadow root; recipes-frame.css, the mockup's
 // .app rules (one screen tall from 620 px, scrolling below 1180 px, room for the phone's save bar), for the document,
 // where they apply only while <html> has data-page=recipes or brewsteps
@@ -626,7 +626,7 @@ function figsOf(ed) {
   return out;
 }
 /* the HLT's water and the least it keeps over its element and coil, where BrewStart gives the HLT's water: what mash
-   water is held to, as Brew Day's strike water box holds it */
+   water is warned against, as Brew Day's strike water box warns */
 function figHlt(ed, F) {
   const bs = live(ed).find(s => s.type === "BrewStart"), vol = bs ? num(bs.props.Volume) : null;
   if (vol == null) return null;
@@ -634,12 +634,11 @@ function figHlt(ed, F) {
   const k = (D.kettleData || []).find(x => x && x.id === kid) || null;
   return {vol, least: leastWater(k, D.unit, F.vu), step: bs};
 }
-/* why the mash water as changed can't be saved: more than the HLT's water leaves for its element, in the box's words */
-function figRefused(ed) {
-  const F = figsOf(ed), e = F.water.edit;
-  if (e == null || e === "back") return "";
-  const h = figHlt(ed, F);
-  return h && mashWaterLow(e, h.vol, h.least) ? mashWaterRefused({mash: e, hlt: h.vol, least: h.least, vu: F.vu}) : "";
+/* the mash water, as saved or changed, leaving the HLT less than covers its element and coil: CraftBeerPi's warning
+   hlt_low in the strike water box's words, blocking nothing */
+function figLow(ed) {
+  const F = figsOf(ed), w = F.water.now, h = figHlt(ed, F);
+  return h && w != null && hltLow(h.vol, w, h.least) ? hltLowText(h.vol - w, h.least.value, F.vu) : "";
 }
 const figChanges = ed => Object.keys((ed && ed.doc.figs) || {}).length;
 /* a figure typed or tapped: kept as a change unless it is the figure as saved */
@@ -688,6 +687,8 @@ function figRowHTML(ed, k, F) {
     if (x.now != null) line = mashWaterText({water: x.now, forGrain: Math.max(0, x.now - F.dead), vu: F.vu, grain, mu: F.mu, C: D.unit});
     const warn = r != null ? ratioWarning(r, D.unit) : "";
     if (warn) line += `${line ? ". " : ""}${warn}`;
+    const low = figLow(ed);
+    if (low) line = line ? `${line}${/[.?!]$/.test(line) ? "" : "."} ${low}` : low;
   }
   const changed = x.edit != null;
   const beer = x.bs != null && x.edit !== "back" && (x.from === "changed" || changed);
@@ -698,9 +699,8 @@ function figRowHTML(ed, k, F) {
     : x.from === "beersmith" ? "BeerSmith's." : x.from === "changed" ? "Changed from BeerSmith's." : x.from === "typed" ? "Given for this recipe, not BeerSmith's."
     : x.from === "step" ? `${esc(nameIn(x.stepOwn))}'s own: a change here makes it the recipe's.` : "";
   const sugSays = sug ? `<span class="sugg">${esc(`${sug.value} ${unit}`)} suggested, ${esc(sug.says)}.</span><button type="button" class="lnk" data-figuse="${k}" data-v="${esc(sug.value)}" aria-label="Use the ${f.one} suggested, ${esc(`${sug.value} ${unit}`)}">USE ${esc(`${sug.value} ${unit.toUpperCase()}`)}</button>` : "";
-  const refused = k === "water" ? figRefused(ed) : "";
   return `<div class="row figrow${changed ? " chg" : ""}" id="r-fig-${k}" data-fig="${k}"><div class="lb"><label class="nm" for="${id}" id="n-fig-${k}">${f.label}</label><p class="wh" id="${id}-h">${esc(f.help)} The recipe's, as Brew Day's strike water box has it.</p><p class="ky">the recipe's · ${f.field}</p></div>
-    <div class="ct"><div class="figbox">${box}${ratio}</div>${line ? `<p class="figl" id="${id}-l">${esc(line)}</p>` : ""}<p class="st" id="st-fig-${k}">${fromSays ? `<span class="from">${fromSays}</span>` : ""}${st1}${st2}${sugSays}</p><p class="why" id="need-fig-${k}" role="status">${esc(refused)}</p></div></div>`;
+    <div class="ct"><div class="figbox">${box}${ratio}</div>${line ? `<p class="figl" id="${id}-l">${esc(line)}</p>` : ""}<p class="st" id="st-fig-${k}">${fromSays ? `<span class="from">${fromSays}</span>` : ""}${st1}${st2}${sugSays}</p><p class="why" id="need-fig-${k}" role="status"></p></div></div>`;
 }
 /* the figures on their plate, under its water (BrewStart) or for the grain (MashIn): mash water, grain weight, and with
    BrewStart's HLT water the sparge water left */
@@ -748,10 +748,6 @@ function figNumbersSaved(ed) {
 /* a refusal of the figures, in the strike water box's words */
 function figWords(d, status) {
   const what = d.what === "grain" ? "The grain weight" : "The mash water", vu = figVolUnit(E()), unit = d.what === "grain" ? massUnit() : vu;
-  if (status === 400 && d.error === "too_much" && num(d.hlt) != null) {
-    const h = figHlt(E(), figsOf(E())), least = {value: num(d.least), from: d.least_from, capacity: h ? h.least.capacity : null};
-    return `The mash water wasn't saved. ${mashWaterRefused({mash: num(d.hlt) - num(d.left), hlt: num(d.hlt), least, vu})}`;
-  }
   if (status === 400 && d.error === "out_of_range") return `${what} wasn't saved: it has to be between ${num(d.low)} and ${num(d.high)} ${unit}.`;
   if (d.error === "beersmith") return `${what} wasn't saved: this CraftBeerPi keeps BeerSmith's own and can't change it here.`;
   if (d.error === "no_beersmith") return `${what} wasn't saved: the recipe has no BeerSmith figure to go back to.`;
@@ -836,8 +832,6 @@ function needsWhy(ed) {
   if (!ed) return "";
   const x = blockedOf(ed);
   if (x) return blockedWords(x);
-  const over = figRefused(ed);
-  if (over) return `Mash water: ${over}`;
   const words = {StartTime: "Set BrewStart's time first.", StartDate: "Give BrewStart its date first.", Heat_Kettle: "Choose BrewStart's vessel first.", Heater_Watts: "Give BrewStart the element's watts first."};
   for (const s of live(ed)) {
     if (s.type !== "BrewStart" || !stepChange(ed, s).tag) continue;
@@ -850,7 +844,6 @@ function needsWhy(ed) {
 function needsSmall(ed) {
   const x = blockedOf(ed);
   if (x) return `move ${nameIn(x.s)} below ${nameIn(x.begun)} first`;
-  if (figRefused(ed)) return "less mash water first";
   return needsWhy(ed).replace(/^Set/, "set").replace(/^Give/, "give").replace(/^Choose/, "choose").replace(/^Put/, "put").replace(/:.*$/, "").replace(/\.$/, "");
 }
 /* what SAVE does to a running BrewStart that the brewer should know before pressing it, said under the setting: a new

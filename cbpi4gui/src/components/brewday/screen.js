@@ -76,7 +76,7 @@ import { GSPANS, GSAY, graphHTML, graphSVG, graphETA } from "./graphs";
 import { createHistory } from "./history";
 import { settingsClockFormat, formatTimeOfDay, timeParts, parseTypedTime, TWELVE_HOUR, TWENTY_FOUR_HOUR } from "../util/timefmt";
 import { clearKeyboard } from "../util/keyboard";
-import { MASH_WATER, HLT_WATER, leastWater, leastFrom, mashWaterLow, mashWaterRefused, hltWaterLow, hltWaterRefused, spargeText,
+import { MASH_WATER, HLT_WATER, leastWater, hltLowText, spargeText,
   waterRatio, waterForRatio, ratioText, ratioUnit, ratioWarning, mashWaterText, volText, massText } from "../util/mashwater";
 // As text, exactly as written (config-overrides.js): the CSS pipeline would rewrite the mockup's colours.
 import BREWDAY_CSS from "./brewday.css";
@@ -1716,13 +1716,13 @@ function swLeast() {
    water for the grain where BeerSmith gives it, else from the mash water itself */
 const swMashText = R => mashWaterText({water: num(R.strike_vol), forGrain: num(R.for_grain), vu: swVU(), grain: num(R.grain), mu: swMU(), C: swCU()});
 const swRatio = R => waterRatio(num(R.for_grain) ?? num(R.strike_vol), swVU(), num(R.grain), swMU(), swCU());
-/* the figures leave the HLT less than covers its element and coil (CraftBeerPi's warning hlt_low): one line in Note
-   Amber where the two figures are, blocking nothing */
+/* the figures leave the HLT less than covers its element and coil (CraftBeerPi's warning hlt_low): one short line in
+   Note Amber, once, under the strike water box (swHTML) or in the MashIn row's box, until they no longer do. It blocks
+   nothing; the Hardware page's Least water line says where the minimum comes from */
 function swLowHTML(N) {
   const W = st.sw && Array.isArray(st.sw.warnings) ? st.sw.warnings : [];
   if (!W.includes("hlt_low") || N.vol == null || N.gal == null) return "";
-  const least = swLeast(), vu = swVU();
-  return `<p class="vover swlow">Only ${volText(Math.max(0, N.vol - N.gal), vu)} stays in the HLT after the ${volText(N.gal, vu)} of mash water: it needs at least ${volText(least.value, vu)} over its element and coil (${leastFrom(least, vu)}). Check MASH WATER and HLT WATER.</p>`;
+  return `<p class="vover swlow">${hltLowText(N.vol - N.gal, swLeast().value, swVU())}</p>`;
 }
 /* the recipe's step ids, as START sends them, so CraftBeerPi changes only the recipe this screen shows */
 const swIds = () => M.RECIPE.steps.map(s => s.id).filter(x => x != null);
@@ -1937,7 +1937,7 @@ function swMissBits(N) {
   /* the sparge water left, under the two figures, where MASH WATER is one of them */
   const sparge = asks.includes("water") && N.vol != null && N.gal != null ? `<p class="swn swsp">${spargeText(N.vol, N.gal, VU)}.</p>` : "";
   return {says: `${first}${too}${vq}`, ask, use, hlt: b("cmdbtn", "HLT WATER", water, {cmd: "swv:open", expanded: false}),
-    grain: b("cmdbtn", "GRAIN", grain, {cmd: "swg:open", expanded: false}), sparge, warn: `${swLowHTML(N)}${N.vol != null ? hltOverHTML(N.vol, VU) : ""}`};
+    grain: b("cmdbtn", "GRAIN", grain, {cmd: "swg:open", expanded: false}), sparge, warn: N.vol != null ? hltOverHTML(N.vol, VU) : ""};
 }
 /* the figures USE needs that are missing and can be given here, by their names in SW_REC: the recipe's grain weight and
    mash water, and the room while the boil kettle's probe can't stand for it; with any of them, the HLT's water where it
@@ -2002,9 +2002,10 @@ const swRecBtn = (N, k) => { const v = swRecFig(N, k), D = SW_REC[k], q = k === 
 /* the figure's box, as the HLT water's: −1 −.1, the number, +.1 +1, then SET and CANCEL. The room given has THE PROBE
    too, which takes it back. The mash water's names itself as MASH WATER, the strike water that goes to the mash tun,
    with HLT WATER and the sparge water left beside it, and takes its water-to-grain ratio instead where the grain weight
-   is known (swRatioHTML); a figure that would leave the HLT less than covers its element and coil says so as it is
-   typed, and SET refuses it. Opened with no figure, it is filled with CraftBeerPi's suggestion from BeerSmith's data
-   where there is one (swSuggest), saying where it comes from; SET takes it, and nothing is kept before */
+   is known (swRatioHTML); SET sets a figure that leaves the HLT less than covers its element and coil too, and the
+   box closes on the one line saying so (swLowHTML). Opened with no figure, it is filled with CraftBeerPi's suggestion
+   from BeerSmith's data where there is one (swSuggest), saying where it comes from; SET takes it, and nothing is kept
+   before */
 function swRecHTML(N) {
   const e = st.swRec, k = e.kind, D = SW_REC[k], q = D.places, v = e.val, x = v == null ? "" : v.toFixed(q), pend = st.pend.swr;
   const why = st.link === "lost" ? PAUSED : pend ? WAIT : "", dis = why ? ` aria-disabled="true" data-why="${esc(why)}"` : "";
@@ -2024,12 +2025,9 @@ function swRecOther(N, v) {
   if (N.vol == null) return `${HLT_WATER.label}: not given yet.`;
   return `${HLT_WATER.label}: ${volText(N.vol, vu)}.${v != null ? ` ${spargeText(N.vol, v, vu)}.` : ""}`;
 }
-/* what the mash water being given would do that it shouldn't: leave the HLT less than covers its element and coil
-   (refused), or give a ratio no usual mash has (said, never refused) */
+/* the mash water being given with a ratio no usual mash has: said, never refused */
 function swRecWarn(N, v) {
-  const least = swLeast(), vu = swVU();
-  if (v != null && N.vol != null && mashWaterLow(v, N.vol, least)) return mashWaterRefused({mash: v, hlt: N.vol, least, vu});
-  return ratioWarning(waterRatio(v, vu, num(N.R.grain), swMU(), swCU()), swCU());
+  return ratioWarning(waterRatio(v, swVU(), num(N.R.grain), swMU(), swCU()), swCU());
 }
 /* the ratio, typed instead of the mash water: it fills the water from the grain weight, and the water typed shows the
    ratio it gives. Without a grain weight, what it needs */
@@ -2063,10 +2061,7 @@ function swRec(x, y, at) {
     e.typed = true;
     return renderAll();
   }
-  const least = swLeast(), vu = swVU();
   const refused = head => (d, status) => {
-    if (status === 400 && d.error === "too_much" && num(d.hlt) != null && num(d.least) != null)
-      return mashWaterRefused({mash: e.val, hlt: num(d.hlt), least: {value: num(d.least), from: d.least_from, capacity: least.capacity}, vu});
     if (status === 400) return d.error === "out_of_range" ? `${head}: it has to be between ${num(d.low) ?? lo} and ${num(d.high) ?? hi} ${U}.` : "";
     if (d.error === "beersmith") { st.swRec = null; return `${head}: the recipe has BeerSmith's own, which stays.`; }
     const why = d.error === "recipe_changed" || d.error === "off" ? swWhyNot(d) : "";
@@ -2085,9 +2080,6 @@ function swRec(x, y, at) {
   if (v == null) return note("r", `Type the ${small}, in ${D.many()}.`);
   if (v < lo || v > hi) return note("r", `The ${small} has to be between ${lo} and ${hi} ${U}.`);
   if (given && was != null && Math.abs(v - was) < 0.5 / 10 ** q) { st.swRec = null; return renderAll(); }
-  /* mash water that would leave the HLT less than covers its element and coil: refused here as CraftBeerPi refuses it,
-     the box kept open with the figure, to be put right */
-  if (k === "water" && N.vol != null && mashWaterLow(v, N.vol, least)) return note("r", mashWaterRefused({mash: v, hlt: N.vol, least, vu}));
   /* BeerSmith's own figure, changed here, where CraftBeerPi keeps BeerSmith's beside it (recipe.changed) */
   const edit = k !== "room" && !given && was != null && N.R.changed && typeof N.R.changed === "object";
   const sug = e.sug && Math.abs(v - e.sug.value) < 0.5 / 10 ** q ? `, ${e.sug.says}` : "";
@@ -2226,7 +2218,7 @@ function swList(N) {
   const hwMT = swHw("mt"), hwHLT = swHw("hlt");
   const hw = [hwMT && ["Mash tun", vesselSays(hwMT)], hwHLT && ["HLT", vesselSays(hwHLT, ", with what's fixed in it")]].filter(Boolean);
   const cd = swCampden();
-  const water = st.swVol && st.swVol.at !== "row" ? swVolHTML(N) : `<div class="swyou"><div><p>${+N.vol.toFixed(2)}&nbsp;${VU} in the HLT, strike and sparge${by ? ": BrewStart's water volume" : ""}.${cd != null ? ` Campden for it: ${swCampdenText(cd)}.` : ""} The ${gal(left)} that stays there warms the mash through the coil.</p>${hltOverHTML(N.vol, VU)}${swLowHTML(N)}</div>${b("cmdbtn", "CHANGE", "", {cmd: "swv:open", label: "Change the water in the HLT", expanded: false})}</div>`;
+  const water = st.swVol && st.swVol.at !== "row" ? swVolHTML(N) : `<div class="swyou"><div><p>${+N.vol.toFixed(2)}&nbsp;${VU} in the HLT, strike and sparge${by ? ": BrewStart's water volume" : ""}.${cd != null ? ` Campden for it: ${swCampdenText(cd)}.` : ""} The ${gal(left)} that stays there warms the mash through the coil.</p>${hltOverHTML(N.vol, VU)}</div>${b("cmdbtn", "CHANGE", "", {cmd: "swv:open", label: "Change the water in the HLT", expanded: false})}</div>`;
   const grainSays = N.typed != null
     ? `Grain at ${swT(N.grain)}${by ? ": BrewStart's grain temperature. Left blank" : ", given for today's brew. Without it"}, ${swRoomSrc(N)} would stand for it, at ${swT(N.room)}.`
     : `Grain at ${swT(N.grain)}: ${swRoomSrc(N)}${by ? ", as BrewStart's grain temperature is blank" : ""}. Grain that spent the night somewhere warmer lands the mash higher: give its temperature.`;
@@ -2281,8 +2273,8 @@ function swVolHTML(N) {
   const key = (d, l) => `<button type="button" data-cmd="swv:step:${d}" aria-label="${l}">${d < 0 ? "−" : "+"}${Math.abs(d) === 1 ? "1" : ".1"}</button>`;
   return `<div class="editor swvol" role="group" aria-labelledby="swv-l"><label class="swvl" id="swv-l" for="swvin"><span class="swvk">${HLT_WATER.label}</span><span class="swvs">: ${HLT_WATER.says}, in ${many}</span></label>`
     + `<p class="swvh" id="swv-h">${swBrewStart() ? "It is BrewStart's water volume, which also sets the Campden dose." : "What is in the HLT now."}</p>`
-    + `${key(-1, `1 ${one} less`)}${key(-0.1, `0.1 ${one} less`)}<input id="swvin" inputmode="decimal" autocomplete="off" value="${x}" aria-describedby="swv-h swv-o swv-over swv-w">${key(0.1, `0.1 ${one} more`)}${key(1, `1 ${one} more`)}`
-    + `<p class="swvo" id="swv-o">${swVolOther(N, v)}</p><p class="vover" id="swv-over" aria-live="polite">${hltOver(v, swVU())}</p><p class="vover" id="swv-w" aria-live="polite">${swVolWarn(N, v)}</p>`
+    + `${key(-1, `1 ${one} less`)}${key(-0.1, `0.1 ${one} less`)}<input id="swvin" inputmode="decimal" autocomplete="off" value="${x}" aria-describedby="swv-h swv-o swv-over">${key(0.1, `0.1 ${one} more`)}${key(1, `1 ${one} more`)}`
+    + `<p class="swvo" id="swv-o">${swVolOther(N, v)}</p><p class="vover" id="swv-over" aria-live="polite">${hltOver(v, swVU())}</p>`
     + `<button type="button" class="ok" data-cmd="swv:set"${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}>${pend ? "SETTING…" : `SET <span id="swvok">${x || "– –"}</span> ${swVU()}`}</button><button type="button" class="no" data-cmd="swv:x">CANCEL</button></div>`;
 }
 /* beside the HLT water being given: MASH WATER, the other figure, and under them the sparge water it leaves */
@@ -2290,11 +2282,6 @@ function swVolOther(N, v) {
   const vu = swVU();
   if (N.gal == null) return `${MASH_WATER.label}: not given yet.`;
   return `${MASH_WATER.label}: ${swMashText(N.R)}.${v != null ? ` ${spargeText(v, N.gal, vu)}.` : ""}`;
-}
-/* HLT water that would leave the HLT less than covers its element and coil once the mash water has gone: refused */
-function swVolWarn(N, v) {
-  const least = swLeast();
-  return v != null && N.gal != null && hltWaterLow(v, N.gal, least) ? hltWaterRefused({hlt: v, mash: N.gal, least, vu: swVU()}) : "";
 }
 /* a small box opening in FORECAST's details: they are drawn from their top, as the box opens in its place, and the
    input's focus then brings the box into view (the mockup draws them afresh) */
@@ -2305,7 +2292,8 @@ function swOpened(input) {
 }
 /* the HLT's water (swVolHTML): SET writes BrewStart's water volume where the recipe has BrewStart, or by hand the figure
    CraftBeerPi keeps for the brew day, and CraftBeerPi works USE out again for it. It can be changed back the same way,
-   so nothing asks first */
+   so nothing asks first. Water that leaves the HLT less than covers its element and coil once the mash water has gone
+   is set too, and the box closes on the one line saying so (swLowHTML); only less than the mash water is refused */
 function swVol(x, y) {
   const N = swNumbers(), e = st.swVol, VU = swVU();
   if (x === "open") {
@@ -2318,10 +2306,8 @@ function swVol(x, y) {
   if (x === "x") { st.swVol = null; return renderAll(); }
   if (!e || st.pend.swv) return;
   if (x === "step") { e.val = Math.max(0, Math.round(((e.val ?? N.gal ?? 0) + parseFloat(y)) * 10) / 10); return renderAll(); }
-  const v = e.val, was = N.vol, least = swLeast();
+  const v = e.val, was = N.vol;
   if (v == null) return note("r", `Type how much water is in the HLT, in ${swUnitWords()[0]}.`);
-  /* the HLT keeps the mash water and, once it has gone, the least that covers its element and coil */
-  if (N.gal != null && hltWaterLow(v, N.gal, least)) return note("r", hltWaterRefused({hlt: v, mash: N.gal, least, vu: VU}));
   if (was != null && Math.abs(v - was) < 0.05) { st.swVol = null; return renderAll(); }
   const label = `HLT water set to ${v.toFixed(1)} ${VU}${was != null ? `, was ${was.toFixed(1)} ${VU}` : ""}`;
   if (DEMO_MODE) {
@@ -2338,8 +2324,6 @@ function swVol(x, y) {
     /* under the strike water, the box stays open with the figure, to be put right; a recipe changed or gone closes it */
     refused: (d, status) => {
       const head = `The HLT's water wasn't set to ${v.toFixed(1)} ${VU}`;
-      if (status === 400 && d.error === "too_little" && num(d.least) != null && num(d.mash) != null)
-        return hltWaterRefused({hlt: v, mash: num(d.mash), least: {value: num(d.least), from: d.least_from, capacity: least.capacity}, vu: VU});
       if (status === 400) return d.error === "too_little" && num(d.min) != null ? `${head}: the HLT holds the strike water too, so at least ${num(d.min).toFixed(2)} ${VU}.` : "";
       const why = d.error === "recipe_changed" || d.error === "off" ? swWhyNot(d) : "";
       if (why) st.swVol = null;
@@ -2462,7 +2446,12 @@ function drawSw() {
    under it. Once the water is in the mash tun and the pump has stopped for the dough-in, the head says when the Mash
    Tun's reading isn't the mash. While CraftBeerPi works USE out, the head says so, with how long it has been at it,
    and greys USE */
+/* the strike water box, and under it CraftBeerPi's warning hlt_low once (swLowHTML) */
 function swHTML() {
+  const box = swBoxHTML();
+  return box ? `${box}${swLowHTML(swNumbers())}` : "";
+}
+function swBoxHTML() {
   const phase = swPhase();
   if (!phase || st.pbOpen || st.cmpOpen || st.confirmNext || st.confirmReset || st.confirmUnload || st.bsOpen || st.mwOpen) return "";
   /* USE and BACK TO wait while their own call, UNLOAD's or BrewStart's SET does */
@@ -7637,7 +7626,7 @@ const handlers = {
       st.swRec.val = Number.isFinite(x) ? Math.round(x * 10 ** q) / 10 ** q : null;
       st.swRec.typed = true;
       if (ok) ok.textContent = st.swRec.val == null ? "– –" : st.swRec.val.toFixed(q);
-      /* the mash water: the ratio it gives, the sparge water it leaves and what it shouldn't do follow it in place */
+      /* the mash water: the ratio it gives, the sparge water it leaves and a ratio no usual mash has follow it in place */
       if (st.swRec.kind === "water") {
         const N = swNumbers(), r = $("#swrq"), o = $("#swr-o"), w = $("#swr-w"), g = num(N.R.grain);
         const ratio = waterRatio(st.swRec.val, swVU(), g, swMU(), swCU());
@@ -7660,15 +7649,13 @@ const handlers = {
       return;
     }
     if (e.target.id === "swvin" && st.swVol) {
-      const x = parseFloat(e.target.value), ok = $("#swvok"), ov = $("#swv-over"), o = $("#swv-o"), w = $("#swv-w");
+      const x = parseFloat(e.target.value), ok = $("#swvok"), ov = $("#swv-over"), o = $("#swv-o");
       st.swVol.val = Number.isFinite(x) ? Math.round(x * 10) / 10 : null;
       if (ok) ok.textContent = st.swVol.val == null ? "– –" : st.swVol.val.toFixed(1);
       // the line saying it is more than the HLT holds follows the figure as it is typed
       if (ov) ov.textContent = hltOver(st.swVol.val, swVU());
-      // and the mash water's sparge water left, and a figure the HLT's least water refuses
-      const N = swNumbers();
-      if (o) o.textContent = swVolOther(N, st.swVol.val);
-      if (w) w.textContent = swVolWarn(N, st.swVol.val);
+      // and the mash water's sparge water left
+      if (o) o.textContent = swVolOther(swNumbers(), st.swVol.val);
       return;
     }
     /* the timer editor's boxes: kept as typed, the box keeping its caret. The names' buttons follow the name in place; a

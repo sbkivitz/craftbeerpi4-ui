@@ -349,23 +349,15 @@ water. The least water that covers them is:
    near the bottom of a common 15-20 gal kettle;
 3. else 3 gal (11.4 L on a °C brewery), a cautious figure applied only where the Hardware page gives neither.
 
-**What is refused, and what is only said.**
-
-- Mash water given on Brew Day that would leave the HLT less than the least is refused, saying what would be left and
-  what the least is, and the most mash water the HLT water allows: "Mash water 20.00 gal would leave 0.00 gal in the
-  HLT. The HLT needs at least 3.00 gal over its element and coil (15% of its 20 gal capacity, until its least water is
-  set on the Hardware page). With 20.00 gal of HLT water, the mash water can be at most 17.00 gal."
-- HLT water given on Brew Day that would leave less than the least once the mash water has gone is refused the same
-  way: "HLT water 10.00 gal would leave 1.74 gal in the HLT after the 8.26 gal of mash water. The HLT needs at least
-  3.00 gal over its element and coil (…), so the HLT water has to be at least 11.26 gal."
-- The box says either as it is typed, in Note Amber under the figures, and SET refuses it without sending anything.
-  CraftBeerPi refuses the same figures itself (POST /step2/strike/recipe's 400 too_much, POST /step2/strike/water's
-  400 too_little), so any screen gets the same answer, in the same words.
-- Figures set anywhere else, BrewStart's water volume on Brew Steps or ALL SETTINGS and BeerSmith's mash water, are
-  never refused. Where they leave the HLT short, CraftBeerPi's strike water state says so (`warnings: ["hlt_low"]`) and
-  the box, FORECAST and the MashIn row's box say it in Note Amber: "Only 0.00 gal stays in the HLT after the 20.00 gal
-  of mash water: it needs at least 3.00 gal over its element and coil (…). Check MASH WATER and HLT WATER." USE and
-  the forecast go on as before.
+**Said, never refused.** HLT water or mash water that leaves the HLT less than the least once the mash water has gone
+is set, wherever it is given: Brew Day's HLT WATER and MASH WATER boxes, the MashIn row's box, the recipe editor,
+BrewStart's water volume. They are typed figures and nothing switches on them, so a refusal would protect nothing and
+leave the brewer stuck in the box. SET sets the figure and the box closes. While the figures leave the HLT short,
+CraftBeerPi's strike water state says so (`warnings: ["hlt_low"]`, and the commands' answers' `warning`) and one short
+line in Note Amber says it once, under the strike water box (in the MashIn row's box while that is open, in place of
+the strike water box): "Leaves 0.5 gal in the HLT, under its 3.0 gal minimum." It goes once the figures leave enough.
+Brew Day doesn't explain the minimum: the Hardware page's Least water line does. Only HLT water less than the mash
+water itself is refused (POST /step2/strike/water's 400 too_little). USE and the forecast go on as before.
 
 **The water-to-grain ratio.** Beside the mash water, wherever it shows, is the ratio it gives, in the brewery's units:
 qt/lb on a °F brewery, L/kg on a °C one, worked out from the grain weight and the water for the grain (BeerSmith's,

@@ -5,7 +5,9 @@
    - MASH WATER is the strike water that goes to the mash tun; HLT WATER is all the water in the HLT, strike and sparge.
      What the HLT water leaves after the mash water is the sparge water.
    - The HLT keeps the least water that covers its element and coil (leastWater, as cbpi.strike.vessels.least_water
-     counts it): mash water, or HLT water, that would leave it less is refused, saying what would be left and the least.
+     counts it): mash water, or HLT water, that leaves it less is kept, and one short line says so (hltLowText), as
+     CraftBeerPi warns of it (hlt_low). Never refused: the figures are typed, and nothing switches on them. The Hardware
+     page's Least water line says where the least comes from.
    - The mash water's water-to-grain ratio, in the brewery's units (qt/lb on a °F brewery, L/kg on a °C one), is shown
      beside it and can be typed instead of it; a ratio outside 0.75-3 qt/lb (1.6-6.3 L/kg) is said to be unusual, never
      refused.
@@ -49,12 +51,6 @@ export function leastWater(hlt, C, vu) {
   if (cap != null) return {value: r2(cap * LEAST_SHARE), from: "capacity", capacity: r2(cap)};
   return {value: LEAST_DEFAULT[vu] ?? LEAST_DEFAULT[kept], from: "default", capacity: null};
 }
-/* where the least comes from, in words */
-export function leastFrom(least, vu) {
-  if (!least || least.from === "hardware") return "its least water on the Hardware page";
-  if (least.from === "capacity") return `${Math.round(LEAST_SHARE * 100)}% of its ${least.capacity != null ? `${+(+least.capacity).toFixed(2)}${NB}${vu} ` : ""}capacity, until its least water is set on the Hardware page`;
-  return `a cautious ${+(+least.value).toFixed(2)}${NB}${vu}, as the Hardware page gives neither its least water nor its capacity`;
-}
 /* the sparge water left: the HLT water less the mash water, or null while either isn't known */
 export const spargeLeft = (hlt, mash) => pos(hlt) == null || pos(mash) == null ? null : r2(hlt - mash);
 export function spargeText(hlt, mash, vu) {
@@ -62,20 +58,14 @@ export function spargeText(hlt, mash, vu) {
   if (left == null) return "";
   return left < 0 ? "Sparge water left: none, as the mash water is more than the HLT water" : `Sparge water left: ${volText(left, vu)}`;
 }
-/* whether mash water `mash` leaves the HLT's `hlt` less than the least (`least`: {value, from, capacity}), and the words
-   that refuse it; the same for the HLT water */
-export const mashWaterLow = (mash, hlt, least) => pos(mash) != null && pos(hlt) != null && least && hlt - mash < least.value - 1e-9;
-export function mashWaterRefused({mash, hlt, least, vu}) {
-  const left = r2(hlt - mash), most = r2(hlt - least.value);
-  const leaves = left >= 0 ? `would leave ${volText(left, vu)} in the HLT` : `is more than the HLT's ${volText(hlt, vu)}`;
-  return `Mash water ${volText(mash, vu)} ${leaves}. The HLT needs at least ${volText(least.value, vu)} over its element and coil (${leastFrom(least, vu)}). `
-    + (most > 0 ? `With ${volText(hlt, vu)} of HLT water, the mash water can be at most ${volText(most, vu)}.` : `HLT WATER, ${volText(hlt, vu)}, leaves no room for mash water: raise it first.`);
-}
-export const hltWaterLow = (hlt, mash, least) => mashWaterLow(mash, hlt, least);
-export function hltWaterRefused({hlt, mash, least, vu}) {
-  const left = r2(hlt - mash);
-  const leaves = left >= 0 ? `would leave ${volText(left, vu)} in the HLT after the ${volText(mash, vu)} of mash water` : `is less than the ${volText(mash, vu)} of mash water`;
-  return `HLT water ${volText(hlt, vu)} ${leaves}. The HLT needs at least ${volText(least.value, vu)} over its element and coil (${leastFrom(least, vu)}), so the HLT water has to be at least ${volText(r2(mash + least.value), vu)}.`;
+/* whether mash water `mash` leaves the HLT's `hlt` less than the least (`least`: {value, from, capacity}) */
+export const hltLow = (hlt, mash, least) => pos(mash) != null && pos(hlt) != null && !!least && hlt - mash < least.value - 1e-9;
+/* the warning, as CraftBeerPi words it: "Leaves 0.5 gal in the HLT, under its 3.0 gal minimum.", `left` the water the HLT
+   keeps after the mash water (none where the mash water is more). Figures to one place, or two where one would show
+   them the same */
+export function hltLowText(left, least, vu) {
+  const l = Math.max(0, +left), m = +least, p = Math.round(l * 10) < Math.round(m * 10) ? 1 : 2;
+  return `Leaves ${l.toFixed(p)}${NB}${vu} in the HLT, under its ${m.toFixed(p)}${NB}${vu} minimum.`;
 }
 
 /* ---------- the water-to-grain ratio ---------- */
