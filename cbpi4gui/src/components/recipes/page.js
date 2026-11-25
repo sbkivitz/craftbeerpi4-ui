@@ -21,7 +21,9 @@
 // - Every command waits for CraftBeerPi's answer, up to 5 s: LOAD (POST /recipe/{file}/brew), UNLOAD (POST /step2/clear),
 //   SAVE in the book (PUT /recipe/{file}, the whole recipe), SAVE on Brew Steps (each changed step, each removed one, the
 //   new order, then each new step at its place: PUT /step2/{id}, DELETE /step2/{id}, PUT /step2/order, POST /step2/ with
-//   index), SAVE TO BOOK (POST /step2/savetobook), COPY, + NEW and DELETE (POST /recipe/{file}/clone, POST
+//   index, then the recipe's mash water and grain weight changed: POST /step2/strike/recipe with edit or back), a
+//   suggestion for a mash figure the recipe lacks (GET /step2/strike/suggest), SAVE TO BOOK (POST /step2/savetobook),
+//   COPY, + NEW and DELETE (POST /recipe/{file}/clone, POST
 //   /recipe/create, DELETE /recipe/{file}), sending a file (POST /upload/) and IMPORT (POST /upload/{kind}). A refusal
 //   says CraftBeerPi's own sentence under the button for 6 s; no answer is a failed command, in the event line.
 // - Where CraftBeerPi doesn't yet say which book recipe the brew steps came from (book_file and loaded_at in their basic
@@ -46,6 +48,7 @@ import { call, why as callWhy } from "../brewday/api";
 import { stepModel, bookLine as dayBookLine, cfg as cfgOf, parseLeft, recipeWater, waterLacks, pastWater, brewWords, beerSmithFigures, typedFigures, typedWords, inWords, kettleRoles, hermsLogics, ROLES, declares } from "../brewday/live";
 import { settingsClockFormat, formatTimeOfDay, formatDayTime, parseTypedTime, halfOfDay, NBSP, TWELVE_HOUR } from "../util/timefmt";
 import { clearKeyboard } from "../util/keyboard";
+import { MASH_WATER, waterRatio, waterForRatio, ratioUnit, ratioWarning, mashWaterText, leastWater, mashWaterLow, mashWaterRefused, spargeText } from "../util/mashwater";
 // As text, exactly as written (config-overrides.js): recipes.css for the shadow root; recipes-frame.css, the mockup's
 // .app rules (one screen tall from 620 px, scrolling below 1180 px, room for the phone's save bar), for the document,
 // where they apply only while <html> has data-page=recipes or brewsteps
@@ -57,8 +60,9 @@ import { brewNow, brewScale } from "../brewday/screen";
    while CraftBeerPi's clock, Brew Day's steps or the Recipe Book's steps are still coming (bsWhy), as a greyed command
    is; a recipe without BeerSmith's mash figures (NOFIG), on its book row and in its column, quieter than what the row
    says of it; the question before importing a BeerXML recipe of a name the book has, whose answers each say what they
-   do; on Brew Steps, the recipe's author over its notes; and BrewStart's plate opened from Brew Day (ALL SETTINGS),
-   whose BACK TO BREW DAY is as tall as SAVE's answers */
+   do; on Brew Steps, the recipe's author over its notes; BrewStart's plate opened from Brew Day (ALL SETTINGS),
+   whose BACK TO BREW DAY is as tall as SAVE's answers; and the recipe's mash water and grain weight on their plate, the
+   ratio's box beside the mash water's, where they come from in the quieter type of "was" */
 const OWN_CSS = `
 .bsadd[aria-disabled=true],.kind[aria-disabled=true]{color:var(--text-3);cursor:not-allowed}
 .bsadd[aria-disabled=true]:hover,.kind[aria-disabled=true]:hover{background:none}
@@ -74,6 +78,10 @@ const OWN_CSS = `
 .confirm .acts.ways button small{font:500 15px/1.25 var(--sans);letter-spacing:0;text-transform:none;color:var(--text-2)}
 .pnote.day{border-color:var(--select)}
 .pnote.day .cmd{min-height:54px}
+.figbox{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.figbox .numf input:disabled{color:var(--text-3)}
+.figl{margin:0;max-width:62ch;font:500 15px/1.35 var(--sans);color:var(--text-2)}
+.st .from,.st .sugg{text-transform:none;letter-spacing:.02em;font-weight:500;color:var(--text-2)}
 `;
 
 const CAT = {GROUPS, KINDS, TYPES, START};
@@ -318,14 +326,14 @@ const keyedById = steps => steps.map(s => ({_k: s.id, id: s.id, name: s.name, ty
 function startEdit(file, cur) {
   const r = book(file);
   if (!r || !Array.isArray(r.steps)) { st.wantEdit = {file, cur: cur || null}; st.pane = "edit"; st.open = file; return false; }
-  const doc = {name: r.name, author: r.author || "", desc: r.desc || "", steps: keyed(r.steps)};
+  const doc = {name: r.name, author: r.author || "", desc: r.desc || "", steps: keyed(r.steps), figs: {}};
   st.ed = {file, doc, orig: clone(doc), cur: cur || "r", kinds: cur === "kinds", mv: null, from: null, pick: cur === "kinds" ? "kinds" : null};
   st.pane = "edit"; st.open = file; st.ask = null; st.offer = null; st.wantEdit = null;
   return true;
 }
 function ensureBs() {
   if (st.bs) return;
-  const doc = {name: st.loaded ? st.loaded.name : "", steps: keyedById(st.loaded ? st.loaded.steps : [])};
+  const doc = {name: st.loaded ? st.loaded.name : "", steps: keyedById(st.loaded ? st.loaded.steps : []), figs: {}};
   st.bs = {doc, orig: clone(doc), cur: "o", kinds: false, mv: null, from: null, pick: null};
 }
 const origOf = (ed, s) => ed.orig.steps.find(o => o._k === s._k);
@@ -359,7 +367,7 @@ function stepChange(ed, s) {
   return {tag: n ? (keys.length ? "changed" : "moved") : "", n, keys, moved: !!s._moved};
 }
 const recipeKeys = ed => ed.doc.author === undefined ? [] : ["name", "author", "desc"].filter(k => norm(ed.doc[k]) !== norm(ed.orig[k]));
-const changes = ed => !ed ? 0 : recipeKeys(ed).length + ed.doc.steps.reduce((n, s) => n + stepChange(ed, s).n, 0);
+const changes = ed => !ed ? 0 : recipeKeys(ed).length + ed.doc.steps.reduce((n, s) => n + stepChange(ed, s).n, 0) + figChanges(ed);
 const dirty = () => changes(E()) > 0;
 // a move is undone by moving the step back; once the steps are in their first order again, no step counts as moved
 function settleMoves(ed) {
@@ -548,6 +556,214 @@ function brewStartProps(ed) {
   const temp = mi && num(mi.props.Temp) != null ? ` The water temperature is ${nameIn(mi)}'s, ${fmt(num(mi.props.Temp))} ${U()}; on Brew Day the strike water box can change it.` : "";
   return {props, fill: `${from}${water}${temp}`};
 }
+/* ---------- the recipe's mash figures: its grain weight and mash water ----------
+   The recipe's grain weight and its mash water (the strike water that goes to the mash tun), as Brew Day's strike
+   water box shows them: the recipe's mash_numbers, BeerSmith's from its import, or given on Brew Day or here. One
+   figure, shown and changed on one plate: BrewStart's, beside its HLT water, with the sparge water left; with no
+   BrewStart, the MashIn that heats the strike water on the HLT, else the mash tun's MashIn. A MashIn's own Grain_Kg and
+   Mash_Water are the recipe's there, not a second copy: CraftBeerPi's MashIn reads the recipe's where it has them. A
+   change is kept in the editor's copy (doc.figs: grain, water, each a number or "back" for BeerSmith's own) until SAVE:
+   on Brew Steps CraftBeerPi takes it at once through the strike water box's own command (POST /step2/strike/recipe,
+   "edit": true), so the box has it at once; in the Recipe Book it goes into the recipe's file with the rest. Changing
+   BeerSmith's own figure is allowed here: it says it was changed, with BeerSmith's beside it and BEERSMITH'S to go back */
+const FIG = {
+  grain: {field: "grain_kg", name: "grain", key: "grain", places: 1, label: "Grain weight", one: "grain weight", prop: "Grain_Kg",
+    help: "All the grain in the mash, as the recipe's grain bill has it."},
+  water: {field: "infuse_l", name: "water", key: "strike_vol", places: 2, label: "Mash water", one: "mash water", prop: "Mash_Water",
+    help: `${MASH_WATER.says[0].toUpperCase()}${MASH_WATER.says.slice(1)}, not the sparge.`}
+};
+const FIG_KEYS = ["water", "grain"];
+const KG_PER_LB = 0.45359237, L_PER_GAL = 3.785411784;
+const ALL_LACKS = ["grain", "water", "tun", "infuse_temp", "grain_temp", "tun_temp"];
+/* CraftBeerPi takes a change of BeerSmith's figures through the strike water box's command, and its MashIn reads the
+   recipe's, from 4.7.7.post78 */
+const FIGS_POST = 78;
+const figsTaken = () => st.page !== "steps" || coreFrom(FIGS_POST) === true;
+const massUnit = () => (D.unit === "F" ? "lb" : "kg");
+/* the recipe's mash figures as CraftBeerPi keeps them: Brew Day's copy's on Brew Steps, the book's in the Recipe Book */
+function figNumbers(ed) {
+  const mn = st.page === "steps" ? (st.loaded || {}).mash_numbers : ((book(ed.file) || {}).basic || {}).mash_numbers;
+  return mn && typeof mn === "object" && !Array.isArray(mn) ? mn : null;
+}
+/* the water's unit: BrewStart's Volume_Unit, as the strike water box takes it, else the brewery's */
+function figVolUnit(ed) {
+  const bs = live(ed).find(s => s.type === "BrewStart"), u = norm(bs && bs.props.Volume_Unit).toLowerCase();
+  return u.startsWith("gal") ? "gal" : u === "l" ? "L" : volUnit();
+}
+const toShown = (k, si, mu, vu) => si == null ? null : k === "grain" ? (mu === "lb" ? si / KG_PER_LB : si) : (vu === "gal" ? si / L_PER_GAL : si);
+const toSi = (k, v, mu, vu) => k === "grain" ? (mu === "lb" ? v * KG_PER_LB : v) : (vu === "gal" ? v * L_PER_GAL : v);
+const roundTo = (v, p) => v == null ? null : Math.round(v * 10 ** p) / 10 ** p;
+/* the plate the figures are on: the first BrewStart; with none, the MashIn on the HLT, else the mash tun's, else the
+   first MashIn. None in a recipe with neither */
+function figHost(ed) {
+  const L = live(ed), bs = L.find(s => s.type === "BrewStart");
+  if (bs) return bs;
+  const role = id => D.roles[id], mi = L.filter(s => s.type === "MashInStep");
+  return mi.find(s => role(s.props.Kettle) === "hlt") || mi.find(s => role(s.props.Kettle) === "mt") || mi[0] || null;
+}
+/* each figure as the editor shows it, in the brewery's units: now (with any change not saved), as saved (was), where it
+   comes from (beersmith, typed: given on Brew Day or here where BeerSmith gave none, changed: from BeerSmith's, step: a
+   MashIn's own, where the recipe has none), BeerSmith's own (bs), and the change not saved (edit) */
+function figsOf(ed) {
+  const mn = figNumbers(ed) || {}, mu = massUnit(), vu = figVolUnit(ed), typed = typedFigures(mn), kept = mn.beersmith && typeof mn.beersmith === "object" ? mn.beersmith : {};
+  const out = {mu, vu, numbers: mn};
+  for (const k of FIG_KEYS) {
+    const f = FIG[k], si = num(mn[f.field]) > 0 ? num(mn[f.field]) : null, keptSi = num(kept[f.field]) > 0 ? num(kept[f.field]) : null;
+    let from = si == null ? null : !typed.includes(f.name) ? "beersmith" : keptSi != null ? "changed" : "typed";
+    let was = roundTo(toShown(k, si, mu, vu), f.places), stepOwn = null;
+    if (was == null) {
+      const own = live(ed).find(s => s.type === "MashInStep" && num(s.props[f.prop]) > 0);
+      if (own) { stepOwn = own; was = roundTo(toShown(k, num(own.props[f.prop]), mu, vu), f.places); from = "step"; }
+    }
+    const bs = from === "beersmith" ? was : from === "changed" ? roundTo(toShown(k, keptSi, mu, vu), f.places) : null;
+    const e = (ed.doc.figs || {})[k];
+    const now = e === "back" ? bs : e != null ? e : was;
+    out[k] = {now, was, from, bs, edit: e, stepOwn};
+  }
+  // the dead space BeerSmith adds to the mash water (its infuse_l less for_grain_l): the ratio counts the water for the grain
+  const fg = num(mn.for_grain_l), bsW = num(kept.infuse_l) > 0 ? num(kept.infuse_l) : out.water.from === "beersmith" ? num(mn.infuse_l) : null;
+  out.dead = fg != null && bsW != null ? Math.max(0, toShown("water", bsW - fg, mu, vu)) : 0;
+  return out;
+}
+/* the HLT's water and the least it keeps over its element and coil, where BrewStart gives the HLT's water: what mash
+   water is held to, as Brew Day's strike water box holds it */
+function figHlt(ed, F) {
+  const bs = live(ed).find(s => s.type === "BrewStart"), vol = bs ? num(bs.props.Volume) : null;
+  if (vol == null) return null;
+  const kid = norm(bs.props.Heat_Kettle) || Object.keys(D.roles).find(id => D.roles[id] === "hlt");
+  const k = (D.kettleData || []).find(x => x && x.id === kid) || null;
+  return {vol, least: leastWater(k, D.unit, F.vu), step: bs};
+}
+/* why the mash water as changed can't be saved: more than the HLT's water leaves for its element, in the box's words */
+function figRefused(ed) {
+  const F = figsOf(ed), e = F.water.edit;
+  if (e == null || e === "back") return "";
+  const h = figHlt(ed, F);
+  return h && mashWaterLow(e, h.vol, h.least) ? mashWaterRefused({mash: e, hlt: h.vol, least: h.least, vu: F.vu}) : "";
+}
+const figChanges = ed => Object.keys((ed && ed.doc.figs) || {}).length;
+/* a figure typed or tapped: kept as a change unless it is the figure as saved */
+function setFig(ed, k, v) {
+  const F = figsOf(ed), f = F[k];
+  ed.doc.figs = ed.doc.figs || {};
+  if (v == null) delete ed.doc.figs[k];
+  else if (v === "back") { if (f.from === "changed") ed.doc.figs[k] = "back"; else delete ed.doc.figs[k]; }
+  else if (f.was != null && roundTo(v, FIG[k].places) === f.was) delete ed.doc.figs[k];
+  else ed.doc.figs[k] = roundTo(v, FIG[k].places);
+}
+/* the suggestion for a figure the recipe has none of, from BeerSmith's data (GET /step2/strike/suggest): asked once per
+   recipe opened; "wait" while CraftBeerPi answers, then its answer, or null */
+async function askSuggest(ed) {
+  const key = st.page === "steps" ? `loaded:${(D.basic || {}).book_file || ""}:${(D.basic || {}).loaded_at || ""}:${(D.basic || {}).name || ""}` : `book:${ed.file}`;
+  if (st.sugg && st.sugg.key === key) return;
+  st.sugg = {key, data: "wait"};
+  const g = gen, res = await call("GET", `/step2/strike/suggest${st.page === "steps" ? "" : `?file=${enc(ed.file)}`}`, undefined, 10000);
+  if (g !== gen || !st || !st.sugg || st.sugg.key !== key) return;
+  st.sugg.data = res.ok && res.data && typeof res.data === "object" ? res.data : null;
+  schedule();
+}
+function suggestionOf(ed, k, F) {
+  const d = st.sugg && st.sugg.data;
+  if (!d || d === "wait" || F[k].now != null) return null;
+  const s = d[FIG[k].key];
+  if (!s || typeof s !== "object" || num(s.value) == null) return null;
+  const u = k === "grain" ? d.mass_unit : d.vol_unit, mine = k === "grain" ? F.mu : F.vu;
+  const si = k === "grain" ? toSi(k, num(s.value), u, F.vu) : toSi(k, num(s.value), F.mu, u);
+  const v = u === mine ? num(s.value) : toShown(k, si, F.mu, F.vu);
+  return {value: roundTo(v, FIG[k].places), says: String(s.says || ""), from: s.from};
+}
+/* a figure's row: its box, its unit; for the mash water the ratio's box beside it and the line with both; what it was
+   and UNDO, or BeerSmith's own and BEERSMITH'S; a suggestion where the recipe has none; what holds SAVE */
+function figRowHTML(ed, k, F) {
+  const f = FIG[k], x = F[k], id = `fig-${k}`, unit = k === "grain" ? F.mu : F.vu, dis = st.link === "lost" ? " disabled" : "";
+  const typing = (st.figTxt || {})[k], shown = typing != null ? typing : x.now == null ? "" : String(x.now);
+  const sug = x.now == null && x.edit == null ? suggestionOf(ed, k, F) : null;
+  const box = `<span class="numf"><input id="${id}" inputmode="decimal" autocomplete="off" value="${esc(shown)}" data-fig="${k}"${sug ? ` placeholder="${esc(sug.value)}"` : ""} aria-describedby="${id}-h"${dis}><span>${esc(unit)}</span></span>`;
+  let ratio = "", line = "";
+  const grain = F.grain.now;
+  if (k === "water") {
+    const r = x.now != null && grain != null ? waterRatio(Math.max(0, x.now - F.dead), F.vu, grain, F.mu, D.unit) : null;
+    const rt = (st.figTxt || {}).ratio, rs = rt != null ? rt : r == null ? "" : String(+r.toFixed(2));
+    ratio = `<span class="numf"><input id="fig-ratio" inputmode="decimal" autocomplete="off" value="${esc(rs)}" data-fig="ratio" aria-label="Mash water as a ratio, ${esc(ratioUnit(D.unit))} of grain"${grain == null ? ` disabled title="Give the grain weight first"` : dis}><span>${esc(ratioUnit(D.unit))}</span></span>`;
+    if (x.now != null) line = mashWaterText({water: x.now, forGrain: Math.max(0, x.now - F.dead), vu: F.vu, grain, mu: F.mu, C: D.unit});
+    const warn = r != null ? ratioWarning(r, D.unit) : "";
+    if (warn) line += `${line ? ". " : ""}${warn}`;
+  }
+  const changed = x.edit != null;
+  const beer = x.bs != null && x.edit !== "back" && (x.from === "changed" || changed);
+  const wasShown = x.was == null ? "blank" : `${x.was} ${unit}`;
+  const st1 = changed ? `<span class="was">was ${esc(wasShown)}</span><button type="button" class="lnk" data-figundo="${k}" aria-label="Undo the ${f.one}, back to ${esc(wasShown)}">UNDO</button>` : "";
+  const st2 = beer ? `<span class="was">BeerSmith's: ${esc(`${x.bs} ${unit}`)}</span><button type="button" class="lnk" data-figback="${k}" aria-label="The ${f.one} back to BeerSmith's ${esc(`${x.bs} ${unit}`)}">BEERSMITH'S</button>` : "";
+  const fromSays = x.edit === "back" ? `BeerSmith's own, at SAVE.` : changed ? (x.from === "beersmith" || x.from === "changed" ? "Changed from BeerSmith's: kept as yours, not BeerSmith's." : "")
+    : x.from === "beersmith" ? "BeerSmith's." : x.from === "changed" ? "Changed from BeerSmith's." : x.from === "typed" ? "Given for this recipe, not BeerSmith's."
+    : x.from === "step" ? `${esc(nameIn(x.stepOwn))}'s own: a change here makes it the recipe's.` : "";
+  const sugSays = sug ? `<span class="sugg">${esc(`${sug.value} ${unit}`)} suggested, ${esc(sug.says)}.</span><button type="button" class="lnk" data-figuse="${k}" data-v="${esc(sug.value)}" aria-label="Use the ${f.one} suggested, ${esc(`${sug.value} ${unit}`)}">USE ${esc(`${sug.value} ${unit.toUpperCase()}`)}</button>` : "";
+  const refused = k === "water" ? figRefused(ed) : "";
+  return `<div class="row figrow${changed ? " chg" : ""}" id="r-fig-${k}" data-fig="${k}"><div class="lb"><label class="nm" for="${id}" id="n-fig-${k}">${f.label}</label><p class="wh" id="${id}-h">${esc(f.help)} The recipe's, as Brew Day's strike water box has it.</p><p class="ky">the recipe's · ${f.field}</p></div>
+    <div class="ct"><div class="figbox">${box}${ratio}</div>${line ? `<p class="figl" id="${id}-l">${esc(line)}</p>` : ""}<p class="st" id="st-fig-${k}">${fromSays ? `<span class="from">${fromSays}</span>` : ""}${st1}${st2}${sugSays}</p><p class="why" id="need-fig-${k}" role="status">${esc(refused)}</p></div></div>`;
+}
+/* the figures on their plate, under its water (BrewStart) or for the grain (MashIn): mash water, grain weight, and with
+   BrewStart's HLT water the sparge water left */
+function figsHTML(ed, s) {
+  if (!figsTaken()) return "";
+  const F = figsOf(ed);
+  if ((F.water.now == null || F.grain.now == null) && st.link !== "lost") askSuggest(ed);
+  const h = figHlt(ed, F), left = h && F.water.now != null ? spargeText(h.vol, F.water.now, F.vu) : "";
+  return `${figRowHTML(ed, "water", F)}${figRowHTML(ed, "grain", F)}${left ? `<p class="foot figleft" id="fig-left">${esc(left)}: the HLT water less the mash water.</p>` : ""}`;
+}
+/* SAVE on Brew Steps: the figures changed, for the strike water box's command, with BeerSmith's allowed (edit) */
+function figBody(ed) {
+  const body = {edit: true}, back = [];
+  for (const [k, v] of Object.entries(ed.doc.figs || {})) { if (v === "back") back.push(FIG[k].key); else body[FIG[k].key] = v; }
+  if (back.length) body.back = back;
+  return body;
+}
+/* SAVE in the Recipe Book: the recipe's mash figures with the changes, kept as CraftBeerPi keeps those changed on Brew
+   Steps: a figure changed from BeerSmith's is named in typed, BeerSmith's own kept in beersmith for the way back; back
+   to BeerSmith's (or changed to it) is BeerSmith's again; one the recipe's BeerSmith file gives, taken as suggested, is
+   BeerSmith's */
+function figNumbersSaved(ed) {
+  const F = figsOf(ed), mn = clone(Object.keys(F.numbers).length ? F.numbers : {lacks: ALL_LACKS.slice()});
+  const kept = {...(mn.beersmith && typeof mn.beersmith === "object" ? mn.beersmith : {})};
+  let typed = Array.isArray(mn.typed) ? mn.typed.filter(t => t === "grain" || t === "water") : [];
+  const sugg = st.sugg && st.sugg.data && st.sugg.data !== "wait" ? st.sugg.data : null;
+  for (const [k, v] of Object.entries(ed.doc.figs || {})) {
+    const f = FIG[k], x = F[k], own = x.from === "beersmith" ? num(mn[f.field]) : num(kept[f.field]);
+    const lacksNot = () => { mn.lacks = (Array.isArray(mn.lacks) ? mn.lacks : []).filter(n => n !== f.name); };
+    if (v === "back" || (own != null && roundTo(toShown(k, own, F.mu, F.vu), f.places) === v)) {
+      if (own != null) mn[f.field] = own;
+      delete kept[f.field]; typed = typed.filter(t => t !== f.name);
+      continue;
+    }
+    const si = Math.round(toSi(k, v, F.mu, F.vu) * 1000) / 1000, s = sugg && sugg[f.key];
+    if (x.from === "beersmith") kept[f.field] = num(mn[f.field]);
+    mn[f.field] = si; lacksNot();
+    if (s && s.from === "file" && x.from !== "beersmith" && x.from !== "changed" && roundTo(num(s.value), f.places) === v) typed = typed.filter(t => t !== f.name);
+    else typed.push(f.name);
+  }
+  if (Object.keys(kept).length) mn.beersmith = kept; else delete mn.beersmith;
+  mn.typed = [...new Set(typed)].sort();
+  return mn;
+}
+/* a refusal of the figures, in the strike water box's words */
+function figWords(d, status) {
+  const what = d.what === "grain" ? "The grain weight" : "The mash water", vu = figVolUnit(E()), unit = d.what === "grain" ? massUnit() : vu;
+  if (status === 400 && d.error === "too_much" && num(d.hlt) != null) {
+    const h = figHlt(E(), figsOf(E())), least = {value: num(d.least), from: d.least_from, capacity: h ? h.least.capacity : null};
+    return `The mash water wasn't saved. ${mashWaterRefused({mash: num(d.hlt) - num(d.left), hlt: num(d.hlt), least, vu})}`;
+  }
+  if (status === 400 && d.error === "out_of_range") return `${what} wasn't saved: it has to be between ${num(d.low)} and ${num(d.high)} ${unit}.`;
+  if (d.error === "beersmith") return `${what} wasn't saved: this CraftBeerPi keeps BeerSmith's own and can't change it here.`;
+  if (d.error === "no_beersmith") return `${what} wasn't saved: the recipe has no BeerSmith figure to go back to.`;
+  return "";
+}
+/* on a MashIn that isn't the figures' plate: where they are, and what they are now */
+function figsElsewhereHTML(ed, host) {
+  if (!figsTaken() || !host) return "";
+  const F = figsOf(ed), w = F.water.now, g = F.grain.now, i = live(ed).indexOf(host);
+  const what = [g != null && `${g} ${F.mu} of grain`, w != null && `${w} ${F.vu} of mash water`].filter(Boolean);
+  return `<p class="foot figelse">The grain weight and the mash water are the recipe's${what.length ? `, ${andList(what)}` : ""}: they are set under ${esc(nameIn(host))}, step ${i + 1}.</p>`;
+}
 const ymd = t => /^\d{4}-\d{2}-\d{2}$/.test(norm(t)) ? norm(t) : "";
 const dayAfter = iso => { const d = new Date(`${iso}T12:00:00`); d.setDate(d.getDate() + 1); return isoOf(d); };
 /* a day and a time of it as seconds on one count, as Brew Day counts its BrewStart box's: the day's number, and the
@@ -620,6 +836,8 @@ function needsWhy(ed) {
   if (!ed) return "";
   const x = blockedOf(ed);
   if (x) return blockedWords(x);
+  const over = figRefused(ed);
+  if (over) return `Mash water: ${over}`;
   const words = {StartTime: "Set BrewStart's time first.", StartDate: "Give BrewStart its date first.", Heat_Kettle: "Choose BrewStart's vessel first.", Heater_Watts: "Give BrewStart the element's watts first."};
   for (const s of live(ed)) {
     if (s.type !== "BrewStart" || !stepChange(ed, s).tag) continue;
@@ -632,6 +850,7 @@ function needsWhy(ed) {
 function needsSmall(ed) {
   const x = blockedOf(ed);
   if (x) return `move ${nameIn(x.s)} below ${nameIn(x.begun)} first`;
+  if (figRefused(ed)) return "less mash water first";
   return needsWhy(ed).replace(/^Set/, "set").replace(/^Give/, "give").replace(/^Choose/, "choose").replace(/^Put/, "put").replace(/:.*$/, "").replace(/\.$/, "");
 }
 /* what SAVE does to a running BrewStart that the brewer should know before pressing it, said under the setting: a new
@@ -962,11 +1181,23 @@ function stepPlateHTML(ed, s, i) {
   const moving = ed.mv === s._k ? `<p class="pnote mv">Moving it: tap <b>PUT IT HERE</b> in the steps where it goes, or FIRST or LAST above them.</p>` : "";
   const bl = blockedOf(ed), blocked = bl && bl.s === s ? `<p class="pnote">${esc(blockedWords(bl))}</p>` : "";
   const placed = ch.tag === "new" && s._where ? `<p class="pnote"><b>Went in as step ${li + 1}, ${esc(s._where)}.</b> MOVE puts it elsewhere.</p>` : "";
+  const host = figHost(ed);
   const body = [{rows: ["name", "type"]}, ...partsOf(s)].map(p => {
-    const rows = p.adds ? addsHTML(ed, s, lock) : (p.rows || []).filter(l => shows(s, l)).map(l => rowHTML(ed, s, l, fixed(l))).join("");
+    // the recipe's grain weight and mash water: under BrewStart's water, beside its HLT water; on a MashIn in place of
+    // its own Grain_Kg and Mash_Water, on the figures' plate or saying where they are
+    const figPart = figsTaken() && ((s.type === "BrewStart" && p.fill) || (s.type === "MashInStep" && (p.rows || []).includes("Grain_Kg")));
+    const labels = (p.rows || []).filter(l => shows(s, l) && !(figPart && s.type === "MashInStep" && (l === "Grain_Kg" || l === "Mash_Water")));
+    const rowList = labels.map(l => rowHTML(ed, s, l, fixed(l)));
+    if (figPart) {
+      const figs = host === s ? figsHTML(ed, s) : s.type === "MashInStep" ? figsElsewhereHTML(ed, host) : "";
+      const at = Math.max(labels.lastIndexOf("Volume"), labels.lastIndexOf("Volume_Unit"));
+      rowList.splice(at >= 0 ? at + 1 : rowList.length, 0, figs);
+    }
+    const rows = p.adds ? addsHTML(ed, s, lock) : rowList.join("");
     const when = p.when ? `<p class="whenl" id="when-${k}">${whenHTML(ed, s)}</p>` : "";
     const fill = p.fill && s._fill && ch.tag === "new" ? `<p class="pnote fill">${esc(s._fill)}</p>` : "";
-    return `<div class="part">${p.h ? `<h3>${esc(p.h)}</h3>` : ""}${p.when ? cbClockHTML() : ""}${fill}${rows}${when}${p.note ? `<p class="foot">${esc(p.note)}</p>` : ""}</div>`;
+    const note = figPart && s.type === "MashInStep" ? "With no grain temperature probe, it heats to the strike temperature only." : p.note;
+    return `<div class="part">${p.h ? `<h3>${esc(p.h)}</h3>` : ""}${p.when ? cbClockHTML() : ""}${fill}${rows}${when}${note ? `<p class="foot">${esc(note)}</p>` : ""}</div>`;
   }).join("");
   return `<section class="plate${lock ? " locked" : ""}${pickCls(s._k)}${landCls(s._k)}" id="p-${k}" data-k="${k}" aria-labelledby="h-${k}">${head}${dayBackHTML(s)}${lockNote}${blocked}${moving}${placed}${body}</section>`;
 }
@@ -1515,14 +1746,16 @@ function intake(d) {
   const steps = (Array.isArray(d.steps) ? d.steps : []).filter(x => x && typeof x === "object");
   const basic = d.basic && typeof d.basic === "object" && !Array.isArray(d.basic) ? d.basic : {};
   const bf = Array.isArray(d.bf) && Array.isArray(d.bf[0]) ? d.bf[0] : [];
-  const sig = JSON.stringify([c, listOf(d.kettles), listOf(d.sensors), listOf(d.actors), Object.keys(typesOf(d.stepTypes)), d.version, !!d.connected, !!d.loaded, steps, basic, bf, roles]);
+  // each kettle's water figures from Hardware, which the least an HLT keeps comes from
+  const kettleData = (d.kettles || []).filter(x => x && x.id).map(x => ({id: x.id, capacity: x.capacity ?? null, min_water: x.min_water ?? null}));
+  const sig = JSON.stringify([c, listOf(d.kettles), listOf(d.sensors), listOf(d.actors), Object.keys(typesOf(d.stepTypes)), d.version, !!d.connected, !!d.loaded, steps, basic, bf, roles, kettleData]);
   if (sig === st.sig) return;
   st.sig = sig;
   const wasLink = st.link;
   D.config = c;
   D.roles = roles;
   D.unit = String(c.TEMP_UNIT || "C").toUpperCase().startsWith("F") ? "F" : "C";
-  D.kettles = listOf(d.kettles); D.sensors = listOf(d.sensors); D.actors = listOf(d.actors);
+  D.kettles = listOf(d.kettles); D.sensors = listOf(d.sensors); D.actors = listOf(d.actors); D.kettleData = kettleData;
   D.types = typesOf(d.stepTypes);
   D.version = d.version && d.version !== "---" ? String(d.version) : "";
   D.connected = !!d.connected; D.loaded = !!d.loaded; D.bf = bf;
@@ -1580,8 +1813,8 @@ function rebase() {
     doc = now.map(n => { const d = ed.doc.steps.find(x => x._k === n._k); return d && was.has(n._k) ? carry(d) : clone(n); });
     ed.doc.steps.forEach((d, i) => { if (!was.has(d._k)) doc.splice(Math.min(i, doc.length), 0, d); });
   }
-  ed.orig = {name: B.name || "", steps: now};
-  ed.doc = {name: B.name || "", steps: doc};
+  ed.orig = {name: B.name || "", steps: now, figs: {}};
+  ed.doc = {name: B.name || "", steps: doc, figs: ed.doc.figs || {}};
   settleMoves(ed);
   valid(ed);
   if (!changes(ed)) st.elsewhere = false;
@@ -1683,6 +1916,11 @@ async function saveBook(then) {
   if (!r) return;
   const basic = {...(r.basic || {}), name: ed.doc.name, author: ed.doc.author, desc: ed.doc.desc};
   const steps = live(ed).map(s => ({name: s.name, type: s.type, props: clone(s.props || {})}));
+  if (figChanges(ed)) {
+    basic.mash_numbers = figNumbersSaved(ed);
+    /* a MashIn's own copy of a figure changed goes: it reads the recipe's */
+    for (const k of Object.keys(ed.doc.figs)) steps.forEach(s => { if (s.type === "MashInStep" && norm(s.props[FIG[k].prop]) !== "") s.props[FIG[k].prop] = ""; });
+  }
   st.pend.save = true; render();
   const g = gen, res = await call("PUT", `/recipe/${enc(ed.file)}`, {basic, steps});
   if (g !== gen || !st) return;
@@ -1694,6 +1932,8 @@ async function saveBook(then) {
     return;
   }
   ed.doc.steps = tidy(ed.doc.steps);
+  ed.doc.figs = {}; st.figTxt = null;
+  steps.forEach((s, i) => { if (ed.doc.steps[i]) ed.doc.steps[i].props = clone(s.props); });
   ed.orig = clone(ed.doc);
   Object.assign(r, {name: ed.doc.name, author: ed.doc.author, desc: ed.doc.desc, steps: steps.map(s => clone(s)), basic, imported_from: ""});
   log(`${name} saved in the Recipe Book`, "confirmed", "ok");
@@ -1716,6 +1956,8 @@ async function saveSteps(then) {
   const ids = ed.doc.steps.filter(s => origOf(ed, s) && !s._removed).map(s => s._k), was = ed.orig.steps.map(s => s._k).filter(k => ids.includes(k));
   if (ids.join() !== was.join()) ops.push({kind: "order", ids, n: ed.doc.steps.filter(s => s._moved && !s._removed).length || 1});
   live(ed).forEach((s, i) => { if (!origOf(ed, s)) ops.push({kind: "add", s, index: i, n: 1}); });
+  /* the recipe's figures last, so mash water is held to the HLT's water as saved with them */
+  if (figChanges(ed)) ops.push({kind: "figs", n: figChanges(ed), body: figBody(ed)});
   const total = ops.reduce((n, o) => n + o.n, 0);
   st.pend.save = true; st.elsewhere = false; render();
   const g = gen, body = s => ({name: s.name, type: s.type, props: clone(s.props || {})});
@@ -1725,12 +1967,14 @@ async function saveSteps(then) {
       : op.kind === "act" ? await call("POST", `/step2/action/${enc(op.s._k)}`, {action: "change_settings", parameter: op.params})
       : op.kind === "del" ? await call("DELETE", `/step2/${enc(op.s._k)}`)
       : op.kind === "order" ? await call("PUT", "/step2/order", {ids: op.ids})
+      : op.kind === "figs" ? await call("POST", "/step2/strike/recipe", {...op.body, steps: ed.orig.steps.map(o => o._k)})
       : await call("POST", "/step2/", {...body(op.s), index: op.index});
     if (g !== gen || !st) return;
     if (!res.ok) { failed = {op, res}; break; }
     if (op.kind === "put" || op.kind === "act") { const o = origOf(ed, op.s); o.name = op.s.name; o.type = op.s.type; o.props = clone(op.s.props || {}); }
     else if (op.kind === "del") { ed.doc.steps = ed.doc.steps.filter(x => x !== op.s); ed.orig.steps = ed.orig.steps.filter(x => x._k !== op.s._k); }
     else if (op.kind === "order") { ed.orig.steps = op.ids.map(k => ed.orig.steps.find(o => o._k === k)).filter(Boolean); ed.doc.steps.forEach(x => delete x._moved); }
+    else if (op.kind === "figs") { ed.doc.figs = {}; st.figTxt = null; }
     else {
       const saved = res.data && typeof res.data === "object" ? res.data : {}, old = op.s._k, id = saved.id || old;
       op.s._k = id; op.s.id = saved.id; op.s.status = saved.status || "I";
@@ -1754,7 +1998,8 @@ async function saveSteps(then) {
   }
   const {op, res} = failed, data = res.data && typeof res.data === "object" ? res.data : {};
   let words;
-  if (op.kind === "put" && res.status === 409 && typeof data.error === "string" && data.error.includes(" ")) words = data.error;
+  if (op.kind === "figs" && figWords(data, res.status)) words = figWords(data, res.status);
+  else if (op.kind === "put" && res.status === 409 && typeof data.error === "string" && data.error.includes(" ")) words = data.error;
   else if (res.status === 409 && data.error === "steps_changed") { words = "The brew steps were changed on another screen, so the new order wasn't saved. Your changes are still here."; st.elsewhere = true; }
   else if (res.status === 409 && detailOf(res)) words = detailOf(res);
   else if (res.status === 400 && detailOf(res)) { words = detailOf(res); log(`${name}: saving the brew steps`, "failed", "bad"); }
@@ -2088,13 +2333,16 @@ function onClick(e) {
     if (sk && sk.type === "BrewStart" && (ds.p === "Timing" || ds.p === "Mode")) keepWhenInView(ds.s);
     return;
   }
+  if (ds.figundo) { st.figTxt = null; setFig(E(), ds.figundo, null); return render(); }
+  if (ds.figback) { st.figTxt = null; setFig(E(), ds.figback, "back"); return render(); }
+  if (ds.figuse) { st.figTxt = null; setFig(E(), ds.figuse, num(ds.v)); render(); const n = $(`#fig-${CSS.escape(ds.figuse)}`); if (n) n.focus({preventScroll: true}); return; }
   if (ds.undo) {
     const ed = E(), k = ds.undo, label = ds.p;
     if (k === "r") ed.doc[label] = ed.orig[label];
     else { const s = stepByKey(k), o = origOf(ed, s); delete s._tt; delete s._typing; if (label === "name") s.name = o.name; else if (label === "type") { s.type = o.type; s.props = clone(o.props); } else s.props[label] = (o.props || {})[label]; }
     return render();
   }
-  if ("undoall" in ds) { const ed = E(); ed.doc = clone(ed.orig); ed.kinds = false; ed.mv = null; st.elsewhere = false; log(st.page === "steps" ? "Brew Steps: changes put back" : `${ed.doc.name}: changes put back`, "done", "ok"); return render(); }
+  if ("undoall" in ds) { st.figTxt = null; const ed = E(); ed.doc = clone(ed.orig); ed.kinds = false; ed.mv = null; st.elsewhere = false; log(st.page === "steps" ? "Brew Steps: changes put back" : `${ed.doc.name}: changes put back`, "done", "ok"); return render(); }
   if ("save" in ds) return save();
   if (ds.rmadd) { const s = stepByKey(ds.s), i = +ds.rmadd; s.props[`Hop_${i}`] = null; s.props[`Hop_${i}_text`] = null; return render(); }
   if (ds.addadd) {
@@ -2136,6 +2384,7 @@ function onInput(e) {
   if (f.id === "bq") { st.imp.bq = f.value; return render(); }
   if (f.id === "nm-in") { st.nmValue = f.value; return; }
   if (f.id === "tb-name" || f === fileIn) return;
+  if (f.dataset.fig) return figInput(f);
   const k = f.dataset.s, label = f.dataset.p;
   if (!k || !label || f.tagName === "SELECT") return;
   if (f.classList.contains("tmbox")) {
@@ -2158,6 +2407,18 @@ function onInput(e) {
   setProp(k, label, f.value);
   render();
   if (label === "StartDate") keepWhenInView(k);
+}
+/* a figure's box typed in: the mash water, the grain weight, or the mash water as a ratio of the grain, which gives the
+   mash water (with the dead space BeerSmith adds). What is typed stays in its box as typed until it is left (figTxt);
+   blank or not a number more than 0 is no change */
+function figInput(f) {
+  const ed = E(), k = f.dataset.fig, v = num(f.value), F = figsOf(ed);
+  st.figTxt = {[k]: f.value};
+  if (k === "ratio") {
+    const g = F.grain.now, w = v != null && v > 0 && g != null ? waterForRatio(v, g, F.mu, F.vu, D.unit) : null;
+    setFig(ed, "water", w == null ? null : w + F.dead);
+  } else setFig(ed, k, v != null && v > 0 ? v : null);
+  render();
 }
 function onChange(e) {
   const f = e.target;
@@ -2189,6 +2450,7 @@ function onFocusIn(e) {
 }
 function onFocusOut(e) {
   const f = e.target;
+  if (f && f.dataset && f.dataset.fig && st.figTxt) { st.figTxt = null; render(); return; }
   if (f && f.classList && f.classList.contains("tmbox")) settleTime(f);
 }
 function onKey(e) {

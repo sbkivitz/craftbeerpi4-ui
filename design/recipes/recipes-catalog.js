@@ -80,7 +80,7 @@ window.CBPI_STEP_CATALOG = (() => {
           StartTime: {n: "Time", h: "Ready by: when the water must be hot. Start at: when heating starts."},
           Heat_Kettle: {n: "Vessel", h: "The vessel with the element, holding all the strike and sparge water.", blank: "None chosen"},
           Ready_Temp: {n: "Water temperature", unit: "deg", h: "How hot the water is heated, and held until you press NEXT."},
-          Volume: {n: "Water", unit: "vol", h: "All the water in the HLT, strike and sparge. Also sets the Campden dose."},
+          Volume: {n: "HLT water", unit: "vol", h: "All the water in the HLT, strike and sparge. Also sets the Campden dose."},
           Volume_Unit: {n: "Water in", opts: {gal: "GAL", L: "L"}},
           Grain_Temp: {n: "Grain temperature", unit: "deg", h: "Only for grain that spends the night away from the boil kettle. Blank: the boil kettle's probe.", blank: "The boil kettle's probe"},
           Heater_Watts: {n: "Element", unit: "W", h: "Volts × amps, measured if you can. Ready by works out from it when to start heating."},
