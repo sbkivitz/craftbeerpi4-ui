@@ -7497,6 +7497,72 @@ them is taken as BrewScribe takes it (`lvReads`, through `rdApply`), so the remi
   `tm2_presses` 72: all passing. `tm2_presses` expected +5 MIN on a run-out timer, which went with the alarm's one
   answer, OK (above); the check now expects OK alone.
 
+## BrewStart's row: fewer words, and the lines under a step's name across the row: ready to build (25 Nov)
+
+The brewer, with a picture of BrewStart's row while it held the water: "Too many words and they should not be forced
+into a column". The row read WAITING FOR YOU and "change" on the right and, in a narrow column beside them, "Strike
+water hot and holding at 156.9 °F. When you've moved the strike water to the Mash Tun and connected the hoses and pumps
+for recirculating, press NEXT." over 7 lines (286 px on a 390 px phone). Both fixes were decided with him.
+
+### What to build
+
+1. **The words** (live.js `bsHoldWords`; the mockup's alike): "Hot at 156.9 °F. Move it to the Mash Tun, connect
+   the hoses, then NEXT." (the Mash Tun by its name, the temperature with its unit). With no temperature: "The water
+   is hot. Move it to the Mash Tun, connect the hoses, then NEXT."
+   - The title bar's question is BrewStart's own notification, so **BrewStart (the plugin) sends these words** as its
+     hold question's message, either timing. Until it does, the title bar shows its older words.
+   - The row's note (screen.js `bsAsk`) uses `bsHoldWords` always, not the question's message, so it is short
+     whatever BrewStart sends.
+   - Nothing else in the step rows is long: across every moment at every size checked, the only line under a step's
+     name over 60 characters is this one (75).
+2. **The layout** (brewday.css, the step row):
+   - `.step .s`: `grid-row: 1` (was `1/3`), `align-self: baseline`, `margin-top: -8px`. The state takes the right of
+     the name's line only, on the name's baseline, and may reach up into the row's top padding, never down.
+   - `.step .t`: `align-self: baseline`.
+   - `.step .p` (the details and any note, `.pn`): `grid-column: 2/-1` (was `2`). They run the row's full width, under
+     the state too. `.bar` and `.adds` already did.
+   - `.step.bs .s` and `.step.mwrow .s`: `min-width: 64px` only (their `margin: -8px 0` goes).
+   - `.step:is(.bs,.mwrow)[data-inl] .bsh{display:inline;margin:0 0 0 8px}`, and `[data-wrap]` for `.mwrow` too.
+3. **The hint beside or under the state** (screen.js `bsFit`, for BrewStart's row and now MashIn's mash water row
+   too): each row tries, in this order, the hint on the state's line ("READY change", `data-inl`); under it; under it
+   wrapping ("where's the / grain?", `data-wrap`); and in 12-hour STARTS's time under the word (`data-stack`), with
+   the hint under or wrapping. It keeps the shortest whose name and state aren't cut (`scrollWidth` within
+   `clientWidth`), the first where they tie. Hidden, the hint goes under the state. Called where `bsFit` is today.
+
+### What it gives
+
+Every step row in every moment (184) at 1920 × 1080, 1920 × 950, 1440 × 900, 1200 × 860, 1180 × 860, 1100 × 860,
+1024 × 768, 900 × 900, 800 × 900, 701 × 900 and 390 × 844, against main 3565fde:
+
+- BrewStart holding the water on a 390 px phone: 286 px → 146 px, the words on two lines across the row.
+- On the phone 223 of 1234 rows shorter, none taller. From 701 to 1100 px wide 4 shorter, none taller. From 1180 to
+  1440 px, 169 of 937 shorter. At 1920 px, 4 shorter.
+- Taller: only BrewStart WAITING FOR YOU on the brew morning, where the state and its hint don't fit beside the name
+  and the hint goes under it: `#sw-late` and `#sw-where-am`, 15 px at 1180 to 1440 px, and `#sw-where-am` 17 px at
+  1920 px ("where's the grain?").
+- On one screen the question under BrewStart's name still steps aside while the title bar shows it, as before.
+
+### Moments whose pictures change
+
+Every moment with the step list: each row's state on the name's baseline; the details of BrewStart's, MashIn's and
+any row whose details wrapped beside the state now across the row. The hold words in `#sw-move`, `#sw-late`,
+`#sw-where-am`, `#lv-read-move` and the moments built on them, title bar and LOG included.
+
+### Checked
+
+- `files\steprows_check.py` (new): the sizes and moments above, about 12,000 rows. In every row the state is beside
+  the name only; nothing under the name sits beside the state; every line under the name is the row's full width; no
+  name, state or line is cut, and no row is wider than the list. No page errors, but one: "RIG_H is not defined" in
+  `#ph-set` at 1024 × 768, once, with five browsers running; not again in 36 loads, nor on main.
+- Suites, all passing: `bs_presses` 293, `sw7_presses` 28, `sw8_presses` 38, `wk_presses` 17, `give_presses` 93,
+  `unload_presses` 61, `twelve_presses` 188, `tplace_presses` 149, `tm2_col_presses` 41, `review_check` 36. Changed
+  for the new rule: `bs_presses`' three checks of where the hint goes (now: the shortest arrangement that cuts
+  nothing, READY on the name's baseline) and its hold words; `twelve_presses`' STARTS check (AM costs the row
+  nothing, whichever way it sits); `tm2_col_presses`' fold into one line, now made with a longer recipe note, as the
+  strike water step's own note no longer makes its row tall.
+- Pictures, as built beside proposed: `files\steprows-pics\rows-390x844.png`, `rows-800x900.png`,
+  `rows-1180x860.png`, `rows-1920x950.png`.
+
 ## Open questions about the drawing
 
 Both were answered on 10 Nov. The valves have been in the drawing since then; the path after the boil was

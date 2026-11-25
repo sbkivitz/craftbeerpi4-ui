@@ -82,8 +82,9 @@ const SW_WATTS = 6500;
 /* the question that holds the strike water until it has been moved, in CraftBeerPi's words: BrewStart's, or in the
    older shape the strike water step's */
 const SW_ASK = "Move the strike water to the Mash Tun, then press Next";
-/* BrewStart's question while it holds the strike water (1.3.0.post7), either timing */
-const bsHoldWords = (temp, mt = "Mash Tun") => `Strike water hot and holding at ${(+temp).toFixed(1)} °F. When you've moved the strike water to the ${mt} and connected the hoses and pumps for recirculating, press NEXT.`;
+/* BrewStart's question while it holds the strike water, either timing: in the title bar and as the current step's note
+   line, in the same words, short enough to read at a glance */
+const bsHoldWords = (temp, mt = "Mash Tun") => `${temp != null && Number.isFinite(+temp) ? `Hot at ${(+temp).toFixed(1)} °F` : "The water is hot"}. Move it to the ${mt}, connect the hoses, then NEXT.`;
 /* the steps the strike water moments put in front of the recipe (load): BrewStart alone, as the brewer's recipe has it.
    ?sws=step (SWS) adds the older shape's strike water step after it, a MashInStep on the HLT that BrewStart hands over
    to at its heating start and that heats the water and asks for it to be moved, kept for comparison */
@@ -3812,24 +3813,28 @@ function bsRowHTML(s, i, state, p, right, nt) {
   const note = nt ? `<span class="p pn${state === "cur" && st.banner && st.banner.title === s.n ? " asked" : ""}">${nt}</span>` : "";
   return `<li class="stepb"><button type="button" class="step bs"${state === "cur" ? ' aria-current="step"' : ""} data-cmd="bs:open" aria-label="${esc(said)}" aria-expanded="${!!st.bsOpen}"${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}><span class="n">${i + 1}</span><span class="t">${s.n}</span><span class="p">${p}</span>${note}<span class="s">${right}${hint}</span></button></li>`;
 }
-/* the row's hint on one line under its state where that leaves the name and the details their lines; where the width it
-   takes would give them another line, it wraps inside the state's own width instead (data-wrap, brew-day.css). In
-   12-hour, STARTS's time goes under the word (data-stack) where its AM or PM would otherwise cost the row height, as
-   the state then takes less of the row's width. Tried each time the column is drawn, when it changes size and once the
-   fonts are in; while the list is hidden the hint stays on one line and STARTS on one line. True where it changed */
+/* BrewStart's row and MashIn's mash water row have a small hint with their state ("change", "where's the grain?", "give
+   it"). The state sits beside the name alone, so how the two sit decides how tall the first line is. Each row takes
+   whichever of these makes it shortest without cutting its name or its state, the first where they tie: the hint on
+   the state's line, after it (data-inl);
+   under it; under it, wrapping inside the state word's width (data-wrap, brew-day.css); and in 12-hour, STARTS's time
+   under the word (data-stack), with the hint under or wrapping. Tried each time the column is drawn, when it changes
+   size and once the fonts are in; while the list is hidden the hint stays under the state on one line, and STARTS on
+   one line. True where any row changed */
 function bsFit() {
-  const r = $("#recipe .step.bs");
-  if (!r) return false;
-  const was = [r.hasAttribute("data-wrap"), r.hasAttribute("data-stack")], h = () => r.querySelector(".t").offsetHeight + r.querySelector(".p").offsetHeight;
-  const set = (w, s) => { r.toggleAttribute("data-wrap", w); r.toggleAttribute("data-stack", s); };
-  set(false, false);
-  const one = h();
-  set(true, false);
-  const wrap = h() < one;
-  let stack = false;
-  if (!CLOCK24 && r.querySelector(".s .wt")) { set(wrap, false); const flat = r.offsetHeight; set(wrap, true); stack = r.offsetHeight < flat; }
-  set(wrap, stack);
-  return wrap !== was[0] || stack !== was[1];
+  const K = ["data-inl", "data-wrap", "data-stack"];
+  let changed = false;
+  document.querySelectorAll("#recipe .step.bs, #recipe .step.mwrow").forEach(r => {
+    const was = K.map(k => r.hasAttribute(k)), set = c => K.forEach((k, j) => r.toggleAttribute(k, c[j]));
+    const tries = [[true, false, false], [false, false, false], [false, true, false]];
+    if (!CLOCK24 && r.querySelector(".s .wt")) tries.push([false, false, true], [false, true, true]);
+    let best = [false, false, false], bh = Infinity;
+    const whole = () => [".t", ".s"].every(q => { const e = r.querySelector(q); return !e || e.scrollWidth <= e.clientWidth + 1; });
+    if (r.offsetHeight) tries.forEach(c => { set(c); const h = r.getBoundingClientRect().height; if (whole() && h < bh - 0.5) { bh = h; best = c; } });
+    set(best);
+    if (best.some((v, j) => v !== was[j])) changed = true;
+  });
+  return changed;
 }
 /* + BrewStart: on a recipe loaded and not begun that has no BrewStart, a dashed row above its first step, not a step
    yet, that opens BrewStart's box for a new one */
@@ -4341,8 +4346,8 @@ function stepHTML(s, i) {
   const r = st.recipe, state = i < r.cur ? "done" : i === r.cur ? "cur" : "", live = bsLive(i), tm = s.start || s.ready;
   /* BrewStart's row as the way to its box says its day too, or that no time is set; heating or finished, it stays as it
      was, and holding the water for the move it drops the ready time, which has come. The details line never splits a
-     figure from its unit, or a time from its AM or PM and its day ("ready by" can end a line, as a narrow column
-     beside STARTS or HEATING needs), and each "·" stays with what comes before it, so a line can end with one but never
+     figure from its unit, or a time from its AM or PM and its day ("ready by" can end a line, as a phone's narrow row
+     needs), and each "·" stays with what comes before it, so a line can end with one but never
      start with one */
   const held = state === "cur" && s.type === "BrewStart" && r.wait === WFY && bsStrike();
   const when = live ? (tm ? `${s.start ? "start at" : "ready by"} ${todS(tm)}${s.date ? `&nbsp;${dShort(dayIdx(s.date))}` : ""}` : '<span class="amb">no time set</span>') : held ? "" : s.ready ? `ready&nbsp;by ${todS(s.ready)}` : s.start ? `start&nbsp;at ${todS(s.start)}` : "";

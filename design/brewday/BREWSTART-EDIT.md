@@ -149,9 +149,10 @@ on the HLT, so at the heating start BrewStart handed over, and the Mash Tun's pu
 - At its heating start BrewStart sets the HLT's target to its own temperature and its AUTO on, and stays the current
   step: its row says HEATING. LOG: BrewStart's "Time to heat - the water should be ready by Sat Nov 21, 07:00.", then
   "BrewStart heating, HLT target 132.4 °F".
-- With the water there, it holds it and asks, whichever its timing: "BrewStart: Strike water hot and holding at 132.4
-  °F. When you've moved the strike water to the Mash Tun and connected the hoses and pumps for recirculating, press
-  NEXT.", with NEXT STEP, in the title bar; its row WAITING FOR YOU. The HLT pump may run while it heats and holds, as
+- With the water there, it holds it and asks, whichever its timing: "BrewStart: Hot at 132.4 °F. Move it to the Mash
+  Tun, connect the hoses, then NEXT.", with NEXT STEP, in the title bar; its row WAITING FOR YOU, with the same words
+  under its details, across the row. (Until 25 Nov the words were BrewStart's longer "Strike water hot and holding at
+  …"; the brewer found them too many.) The HLT pump may run while it heats and holds, as
   core's HLT_PUMP_WITH_HEAT has it; BrewStart itself switches only the vessel's AUTO and target.
 - Nothing else starts until NEXT. NEXT switches the HLT's AUTO off, and MashIn on the Mash Tun begins with the water in
   the tun. Skipping BrewStart with NEXT STEP before then asks first, and says the tun is still empty.
