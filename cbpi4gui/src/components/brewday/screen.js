@@ -2755,11 +2755,11 @@ const bsStrike = () => {
   const S = M.RECIPE.steps, i = bsIdx();
   return i >= 0 && S[i].k === "hlt" && !S.some(s => s.k === "hlt" && s.type === "MashInStep");
 };
-/* BrewStart's question while it holds the water, in its words: live as CraftBeerPi asked it; with no question up (after
-   a restart it doesn't ask a second time), the same words (bsHoldWords), for the Mash Tun by its name */
+/* BrewStart's question while it holds the water, for the row's note line: always in the short words (bsHoldWords), for
+   the Mash Tun by its name, whatever words BrewStart's own question has, so the row stays short. The title bar shows
+   BrewStart's question as CraftBeerPi asked it */
 function bsAsk(s) {
-  const q = !DEMO_MODE && st.prompts.find(p => String(p.title || "") === s.n && p.message);
-  return q ? ut(q.message) : bsHoldWords(s.temp, M.U, DEMO_MODE ? DEMO.KNAME.mt : (M.K && M.K.mt && M.K.mt.name) || "Mash Tun");
+  return bsHoldWords(s.temp, M.U, DEMO_MODE ? DEMO.KNAME.mt : (M.K && M.K.mt && M.K.mt.name) || "Mash Tun");
 }
 /* BrewStart before its heating has begun: on a recipe not begun, and while it waits. Its row then gives its day, and
    USE waiting for the grain opens its box (after that, the strike water box's GRAIN) */
@@ -2858,24 +2858,29 @@ function bsRowHTML(s, i, state, p, right, nt) {
   const note = nt ? `<span class="p pn${state === "cur" && st.banner && st.banner.title === s.n ? " asked" : ""}">${esc(nt)}</span>` : "";
   return `<li class="stepb"><button type="button" class="step bs"${state === "cur" ? ' aria-current="step"' : ""} data-cmd="bs:open" aria-label="${esc(said)}" aria-expanded="${!!st.bsOpen}"${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}><span class="n">${i + 1}</span><span class="t">${esc(s.n)}</span><span class="p">${p}</span>${note}<span class="s">${right}${hint}</span></button></li>`;
 }
-/* the row's hint on one line under its state where that leaves the name and the details their lines; where the width it
-   takes would give them another line, it wraps inside the state's own width instead (data-wrap, brewday.css). In
-   12-hour, STARTS's time goes under the word (data-stack) where its AM or PM would otherwise cost the row height, as
-   the state then takes less of the row's width. Tried each time the column is drawn, when it changes size and once the
-   fonts are in; while the list is hidden the hint stays on one line and STARTS on one line. True where it changed */
+/* BrewStart's row and MashIn's mash water row have a small hint with their state ("change", "where's the grain?", "give
+   it"). The state sits beside the name alone, so how the two sit decides how tall the first line is. Each row takes
+   whichever of these makes it shortest without cutting its name or its state, the first where they tie: the hint on
+   the state's line, after it (data-inl);
+   under it; under it, wrapping inside the state word's width (data-wrap, brewday.css); and in 12-hour, STARTS's time
+   under the word (data-stack), with the hint under or wrapping. Tried each time the column is drawn, when it changes
+   size and once the fonts are in; while the list is hidden the hint stays under the state on one line, and STARTS on
+   one line. True where any row changed */
 function bsFit() {
-  const r = root && $("#recipe .step.bs");
-  if (!r) return false;
-  const was = [r.hasAttribute("data-wrap"), r.hasAttribute("data-stack")], h = () => r.querySelector(".t").offsetHeight + r.querySelector(".p").offsetHeight;
-  const set = (w, s) => { r.toggleAttribute("data-wrap", w); r.toggleAttribute("data-stack", s); };
-  set(false, false);
-  const one = h();
-  set(true, false);
-  const wrap = h() < one;
-  let stack = false;
-  if (is12() && r.querySelector(".s .wt")) { set(wrap, false); const flat = r.offsetHeight; set(wrap, true); stack = r.offsetHeight < flat; }
-  set(wrap, stack);
-  return wrap !== was[0] || stack !== was[1];
+  if (!root) return false;
+  const K = ["data-inl", "data-wrap", "data-stack"];
+  let changed = false;
+  root.querySelectorAll("#recipe .step.bs, #recipe .step.mwrow").forEach(r => {
+    const was = K.map(k => r.hasAttribute(k)), set = c => K.forEach((k, j) => r.toggleAttribute(k, c[j]));
+    const tries = [[true, false, false], [false, false, false], [false, true, false]];
+    if (is12() && r.querySelector(".s .wt")) tries.push([false, false, true], [false, true, true]);
+    let best = [false, false, false], bh = Infinity;
+    const whole = () => [".t", ".s"].every(q => { const e = r.querySelector(q); return !e || e.scrollWidth <= e.clientWidth + 1; });
+    if (r.offsetHeight) tries.forEach(c => { set(c); const h = r.getBoundingClientRect().height; if (whole() && h < bh - 0.5) { bh = h; best = c; } });
+    set(best);
+    if (best.some((v, j) => v !== was[j])) changed = true;
+  });
+  return changed;
 }
 /* POST /step2/ with index, so a new step goes in at its place: CraftBeerPi 4.7.7.post58 and later. An older one puts it
    last, so + BrewStart, which puts BrewStart in as step 1, waits for a CraftBeerPi that says it is new enough */
@@ -3677,7 +3682,7 @@ const mwFocus = () => setTimeout(() => { const f = root && $("#mw-box [data-cmd^
    box until BrewStart has finished (bsOpens); before its heating it says its day too, or that no time is set; heating or
    finished, it stays as it was, and holding the water for
    the move it drops the ready time, which has come. The details line never splits a figure from its unit, or a time
-   from its AM or PM and its day ("ready by" can end a line, as a narrow column beside STARTS or HEATING needs), and
+   from its AM or PM and its day ("ready by" can end a line, as a phone's narrow row needs), and
    each "·" stays with what comes before it, so a line can end with one but never start with one. BrewStart holding
    the strike water has its question as its note line, as the strike water step's note shows it. On one screen the
    title bar is always in view, so a step's note steps aside while the title bar shows that step's own question

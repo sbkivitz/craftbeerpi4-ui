@@ -7565,6 +7565,23 @@ any row whose details wrapped beside the state now across the row. The hold word
 - Pictures, as built beside proposed: `files\steprows-pics\rows-390x844.png`, `rows-800x900.png`,
   `rows-1180x860.png`, `rows-1920x950.png`.
 
+### Built (web UI 0.5.1.a3.post72, BrewStart 1.3.0.post9)
+
+- `live.js` `bsHoldWords` as above, with and without the temperature. `screen.js` `bsAsk` always uses it, for the
+  Mash Tun by its name, never the question's message. `bsFit` as above, for `.step.bs` and `.step.mwrow`, from where
+  it is called today. brewday.css: `.step .t`, `.step .p`, `.step .s`, `.step.bs .s`, `.step.mwrow .s` and the
+  `[data-wrap]` and `[data-inl]` hints as above.
+- BrewStart 1.3.0.post9 sends these words word for word as its hold question ("Hot at 156.9 °F. Move it to the Mash
+  Tun, connect the hoses, then NEXT.", or "The water is hot. …" with no Ready_Temp), so the title bar and the row
+  agree; in German "Heiß auf 69.4 °C. In den Maischbottich umfüllen, Schläuche anschließen, dann NEXT."
+- Every step row of the built screen in every demo moment (184), at 1920 × 1080, 1920 × 950, 1440 × 900, 1200 × 860,
+  1180 × 860, 1100 × 860, 1024 × 768, 900 × 900, 800 × 900, 701 × 900 and 390 × 844, 12,169 rows: the state beside
+  the name only, nothing under the name beside the state, every line under the name the row's full width, nothing
+  cut, no row wider than the list. The only line over 60 characters is the hold question, on two lines at 390 px.
+- Live (test_ui_brewstart_heats_live.py): BrewStart holding the water, its details at 1920 × 950 and its question at
+  1100 × 860 and 390 × 844 run from their left edge to the row's right edge, inside the row, none of their words
+  meeting the state's.
+
 ## The timer's time: presets first, one large time, then − min + and − sec +: ready to build (25 Nov)
 
 The brewer, with a picture of a new timer's time: "This is a confusing way to present minutes/seconds. It is not

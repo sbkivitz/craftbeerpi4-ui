@@ -187,9 +187,10 @@ function brewStartModel(p, U, kname) {
   return m;
 }
 
-/* BrewStart's question while it holds the strike water, in its own words (1.3.0.post7), for either timing: the screen
-   says it where CraftBeerPi's question isn't up (after a restart BrewStart doesn't ask twice), and the demo asks it */
-export const bsHoldWords = (temp, U, mt = "Mash Tun") => `Strike water hot and holding at ${temp != null && Number.isFinite(+temp) ? `${(+temp).toFixed(1)} ${U}` : "its temperature"}. When you've moved the strike water to the ${mt} and connected the hoses and pumps for recirculating, press NEXT.`;
+/* BrewStart's question while it holds the strike water, for either timing, in BrewStart's own words (1.3.0.post9):
+   short enough to read at a glance, in the title bar and as the current step's note line. The row always says it in
+   these words, and the demo asks it */
+export const bsHoldWords = (temp, U, mt = "Mash Tun") => `${temp != null && Number.isFinite(+temp) ? `Hot at ${(+temp).toFixed(1)} ${U}` : "The water is hot"}. Move it to the ${mt}, connect the hoses, then NEXT.`;
 
 export function stepModel(s, roleOf, U, kname = {}) {
   const p = (s && s.props) || {};

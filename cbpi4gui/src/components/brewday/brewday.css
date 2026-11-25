@@ -382,12 +382,17 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .step{display:grid;grid-template-columns:36px minmax(0,1fr) auto;column-gap:12px;row-gap:3px;align-items:center;padding:8px 12px 8px 6px;border:1px solid var(--line);border-radius:var(--r);background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),var(--panel-2)}
 :where(html.bd-page) .todo{display:inline-block;width:16px;height:16px;border:2px solid #6b7c8d;border-radius:50%;vertical-align:middle}
 :where(html.bd-page) .step .n{grid-row:1/3;font:700 26px/1 var(--cond);text-align:center;color:var(--text-2)}
-:where(html.bd-page) .step .t{grid-column:2;font:600 20px/1.1 var(--cond);letter-spacing:.02em}
-:where(html.bd-page) .step .p{grid-column:2;font:500 16px/1.25 var(--cond);letter-spacing:.02em;color:var(--text-2)}
+:where(html.bd-page) .step .t{grid-column:2;align-self:baseline;font:600 20px/1.1 var(--cond);letter-spacing:.02em}
+/* the state ("WAITING FOR YOU", "READY", "12:34 LEFT", with BrewStart's "change" beside or under it) takes the right of
+   the first line only, beside the name, on the name's baseline; the lines under the name (the details, a note,
+   BrewStart's question while it holds the water) run the row's full width, never squeezed into a column beside the
+   state. The state may reach up into the row's top padding, so a large state, or one with its hint under it, makes the
+   name's line no taller than it must; never down, where the lines under the name run */
+:where(html.bd-page) .step .p{grid-column:2/-1;font:500 16px/1.25 var(--cond);letter-spacing:.02em;color:var(--text-2)}
 @media (min-width:1180px){
 :where(html.bd-page) .step .pn.asked{display:none}
 }
-:where(html.bd-page) .step .s{grid-column:3;grid-row:1/3;font:600 15px/1 var(--cond);letter-spacing:.06em;color:var(--text-3);text-align:right;white-space:nowrap}
+:where(html.bd-page) .step .s{grid-column:3;grid-row:1;align-self:baseline;margin-top:-8px;font:600 15px/1 var(--cond);letter-spacing:.06em;color:var(--text-3);text-align:right;white-space:nowrap}
 :where(html.bd-page) .wfy{color:#ffd27a}
 :where(html.bd-page) .step.done .t,:where(html.bd-page) .step.done .p,:where(html.bd-page) .step.done .n{color:var(--text-3)}
 :where(html.bd-page) .step.done .s{color:var(--run)}
@@ -404,9 +409,8 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .step[aria-current=step] .adds{color:#dce9f7}
 :where(html.bd-page) .step[aria-current=step] .adds .gone{color:#c9d6e2}
 :where(html.bd-page) .step[aria-current=step] .adds .due{color:#ffd27a}
-/* BrewStart's row as the way to its box (screen.js, bsRowHTML): the row as it is, now a button, with a small hint under
-   its state; the hint wraps inside the state word's width where it would take a line from the name and the details
-   (data-wrap, bsFit) */
+/* BrewStart's row as the way to its box (screen.js, bsRowHTML): the row as it is, now a button, with a small hint with
+   its state */
 :where(html.bd-page) .stepb,:where(html.bd-page) .bsnew{display:block}
 :where(html.bd-page) button.step{width:100%;margin:0;color:inherit;text-align:left;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 :where(html.bd-page) .step.bs:not([aria-disabled=true]):hover{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),#253545}
@@ -414,8 +418,12 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .step.bs[aria-disabled=true],:where(html.bd-page) .bsadd[aria-disabled=true]{cursor:not-allowed}
 :where(html.bd-page) .steps :is(.step.bs,:where(html.bd-page) .bsadd):focus-visible{outline-offset:-3px}
 :where(html.bd-page) .step .bsh{display:block;margin-top:3px;font:500 clamp(12px,calc(3.9 * var(--pu)),14px)/1 var(--cond);letter-spacing:.04em;color:var(--text-3)}
-:where(html.bd-page) .step.bs .s{min-width:64px;margin:-8px 0}
-:where(html.bd-page) .step.bs[data-wrap] .bsh{width:0;min-width:100%;white-space:normal}
+/* the right-hand part is at least 64 px wide. Its hint sits beside the state where the name's line has the room, else
+   under it on one line, else under it wrapping inside the state word's width ("where's the / grain?"): whichever makes
+   the row shortest without cutting the name or the state (bsFit: data-inl, data-wrap) */
+:where(html.bd-page) .step.bs .s{min-width:64px}
+:where(html.bd-page) .step:is(.bs,.mwrow)[data-wrap] .bsh{width:0;min-width:100%;white-space:normal}
+:where(html.bd-page) .step:is(.bs,.mwrow)[data-inl] .bsh{display:inline;margin:0 0 0 8px}
 /* in 12-hour, STARTS's time under the word where on one line it would cost the details a line (bsFit) */
 :where(html.bd-page) .step.bs[data-stack] .s .wt{display:block;margin-top:2px}
 :where(html.bd-page) .step[aria-current=step] .bsh{color:#dce9f7}
@@ -480,7 +488,7 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .step.mwrow[aria-current=step]:not([aria-disabled=true]):hover{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),#23629f}
 :where(html.bd-page) .step.mwrow[aria-disabled=true]{cursor:not-allowed}
 :where(html.bd-page) .steps .step.mwrow:focus-visible{outline-offset:-3px}
-:where(html.bd-page) .step.mwrow .s{min-width:64px;margin:-8px 0}
+:where(html.bd-page) .step.mwrow .s{min-width:64px}
 :where(html.bd-page) .step.mwrow:not([aria-current=step]):not([aria-disabled=true]):hover .bsh:not(.amb){color:var(--text-2)}
 :where(html.bd-page) .mwbox .swyou{font-size:15px}
 :where(html.bd-page) .mwbox .swyou b{font:700 15px/1.2 var(--cond);letter-spacing:.06em}
