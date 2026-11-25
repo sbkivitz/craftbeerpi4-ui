@@ -1722,11 +1722,12 @@ function spdDraw() {
   svTemps();
 }
 /* the chooser kept inside the window: what is under its title scrolls inside it where the window is too short for all
-   of it (a phone with RESET ALL's question open) */
+   of it (a phone with RESET ALL's question open). Its height is what the window has below where it starts on the page,
+   so scrolling the page never makes it taller */
 function spdFit(box) {
   const inner = box.querySelector(".spdin");
   if (!inner) return;
-  const h = `${Math.max(160, Math.floor(window.innerHeight - inner.getBoundingClientRect().top - 24))}px`;
+  const h = `${Math.max(160, Math.floor(window.innerHeight - inner.getBoundingClientRect().top - window.scrollY - 24))}px`;
   if (box.style.getPropertyValue("--spd-max") !== h) box.style.setProperty("--spd-max", h);
 }
 /* SIMULATOR VESSELS, the chooser's second part: the brewery's vessels whose probe is a simulated vessel (cbpi4-simvessel's
@@ -1775,7 +1776,7 @@ const svFocus = sel => setTimeout(() => $(sel)?.focus({preventScroll: true}), 0)
    VESSELS (vall-yes) resets each; RESET (vreset) one; SET TEMPERATURE (vset) one, to the figure typed in its box */
 function svCmd(x, y) {
   const lost = st.link === "lost";
-  if (x === "vall") { if (lost || svBusy()) return; st.svAsk = true; renderAll(); setTimeout(() => { const q = $("#sv-q"); if (q) { q.focus({preventScroll: true}); q.scrollIntoView({block: "nearest"}); } }, 0); return; }
+  if (x === "vall") { if (lost || svBusy()) return; st.svAsk = true; renderAll(); setTimeout(() => { const q = $("#sv-q"); if (q) { q.focus({preventScroll: true}); const i = q.closest(".spdin"); if (i) i.scrollTop = i.scrollHeight; } }, 0); return; }
   if (x === "vall-no") { st.svAsk = false; renderAll(); svFocus('#spd-box [data-cmd="spd:vall"]'); return; }
   if (lost) return;
   if (x === "vall-yes") return svGo(svList(), "reset_to_room");
