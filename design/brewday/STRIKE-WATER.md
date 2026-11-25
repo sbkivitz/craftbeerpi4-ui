@@ -635,8 +635,9 @@ FORECAST's details, under the head:
   the HERMS can bring it up." Then, each with its range: TO NEXT "0-10 min from the grain going in to pressing Next".
   TUN STEEL "45-100 % of it warmed by the water at once". TUN LOSS "4.45-15 W/K: how fast it loses heat with the pump
   running". ON THE WAY "0-2 °F lost between the HLT and the tun". COIL "150-600 W/K: how fast it passes heat to the
-  wort". TO GRAIN "2-10 min from the water reaching the tun to the grain going in". WORT PUMP "3-12 L/min through the
-  coil". MALT "0.38-0.42 cal/g °C: how much heat it holds". HLT LOSS "66-100 % of its heat loss at 15 gal, with
+  wort". TO GRAIN "2-10 min from the water reaching the tun to the grain going in". WORT PUMP "0.8-3.2 gal/min through
+  the coil" (the model's 3-12 L/min in the box's unit, "3-12 L/min" in a box in litres). MALT "0.38-0.42 cal/g °C: how
+  much heat it holds". HLT LOSS "66-100 % of its heat loss at 15 gal, with
   6.74 gal left in it". HLT STEEL "10-17 kg with its coil, still hot when the water goes". PROBE LAG "44-65 s: how far
   the mash probe's reading trails the wort". PUMP OFF "the Mash Tun probe taken to read the HLT's water, as still wort
   beside the coil would. Not checked on the rig yet" (the coil's outlet only; with `still_probe` above 0, "the Mash Tun

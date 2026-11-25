@@ -6901,7 +6901,8 @@ part is never drawn.
   focus in the chooser, closes the question, focus back on RESET ALL; a second Escape closes the chooser.
 - **Waiting and failing:** while a vessel's command waits, its RESET and SET TEMPERATURE are greyed with "Waiting for
   CraftBeerPi to answer.", and RESET ALL and the question's answers while any waits. LOG's line for what was done is
-  the simulator's own notice, "SimVessel: HLT back at room temperature, 68.0 °F, full of water: 96.1 L."; a command
+  the simulator's own notice, "SimVessel: HLT back at room temperature, 68.0 °F, full of water: 25.4 gal." (cbpi4-simvessel
+  0.0.21: the water in the strike water box's unit alone, one decimal; L on a °C brewery); a command
   refused or unanswered in 5 s gets a red line of its own, "HLT reset to room temperature · failed: no answer in 5 s",
   said aloud. No connection: everything greyed with the screen's reason.
 - **In the window:** what is under the chooser's title scrolls inside it (`.spdin`, its height at most what the window

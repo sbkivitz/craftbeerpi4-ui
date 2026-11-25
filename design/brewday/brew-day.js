@@ -1745,8 +1745,8 @@ function spdFit(box) {
    wait while its command does; the plugin's notice says what each did, in LOG. Here every vessel is a simulated one at
    room temperature 68 °F, and CraftBeerPi answers a moment later */
 const SV_U = "°F", SV_ROOM = 68;
-/* the vessels' water once refilled, in litres, as the simulator's own notice gives it: the HLT BrewStart's 25.4 gal, the
-   mash tun's and the boil kettle's Volume */
+/* the vessels' water once refilled, in litres, as the simulator keeps it: the HLT BrewStart's 25.4 gal, the mash tun's
+   and the boil kettle's Volume. Its notice says it as the strike water box shows volumes: one figure, one decimal, gal */
 const SV_WATER = {hlt: 96.1, mt: 30.0, bk: 40.0};
 const svList = () => ["hlt", "mt", "bk"].map(v => ({v, name: KNAME[v], probe: PROBE[v], room: SV_ROOM}));
 const svBusy = () => Object.keys(st.svPend || {}).length > 0;
@@ -1801,7 +1801,7 @@ function svGo(list, action, temp) {
     list.forEach(x => {
       delete st.svPend[x.v];
       st.v[x.v].pv = reset ? x.room : temp;
-      logEvent(reset ? `SimVessel: ${x.name} back at room temperature, ${(+x.room).toFixed(1)} ${SV_U}, full of water: ${SV_WATER[x.v].toFixed(1)} L.`
+      logEvent(reset ? `SimVessel: ${x.name} back at room temperature, ${(+x.room).toFixed(1)} ${SV_U}, full of water: ${(SV_WATER[x.v] / L_PER_GAL).toFixed(1)} gal.`
         : `SimVessel: ${x.probe} set to ${temp.toFixed(1)}`, "from CraftBeerPi", "");
     });
     const asked = st.svAsk;
@@ -3253,7 +3253,7 @@ const SW_GUESS = [
   ["transfer_f", "ON THE WAY", r => `${swTo(+r[0], +r[1])}&nbsp;°F lost between the HLT and the tun`, "the heat lost on the way"],
   ["coil_ua", "COIL", r => `${swTo(+r[0], +r[1])}&nbsp;W/K: how fast it passes heat to the wort`, "the coil"],
   ["dough_min", "TO GRAIN", r => `${swTo(+r[0], +r[1])}&nbsp;min from the water reaching the tun to the grain going in`, "the minutes from the water to the grain"],
-  ["flow", "WORT PUMP", r => `${swTo(+r[0], +r[1])}&nbsp;L/min through the coil`, "the wort pump's flow"],
+  ["flow", "WORT PUMP", r => `${swTo(+(r[0] / L_PER_GAL).toFixed(1), +(r[1] / L_PER_GAL).toFixed(1))}&nbsp;gal/min through the coil`, "the wort pump's flow"],
   ["grain_c", "MALT", r => `${swTo(r[0], r[1])}&nbsp;cal/g&nbsp;°C: how much heat it holds`, "the malt's heat"],
   ["hlt_loss", "HLT LOSS", (r, left) => `${swTo(Math.round(r[0] * 100), swPct(r[1]))} of its heat loss at 15&nbsp;gal, with ${left}&nbsp;gal left in it`, "the HLT's heat loss"],
   ["hlt_steel", "HLT STEEL", r => `${swTo(+r[0], +r[1])}&nbsp;kg with its coil, still hot when the water goes`, "the HLT's steel"],
