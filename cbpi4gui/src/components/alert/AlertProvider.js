@@ -176,13 +176,16 @@ export const AlertProvider = ({ children }) => {
     }));
   }, []);
 
-  const show = useCallback((id, title = "", message = "", type = "info", action = null, timeout = 5000) => {
+  // kind: the word the server tells a notification apart by, whatever its words say (the boil's lid reminder,
+  // "condenser_on", and the reminder to turn the steam condenser's mister off, "condenser_off"), kept with it.
+  const show = useCallback((id, title = "", message = "", type = "info", action = null, timeout = 5000, kind = null) => {
     const alert = {
       id,
       title,
       message,
       type,
       action,
+      ...(kind ? { kind: String(kind) } : {}),
     };
 
     if (action?.length > 0 && waiting.current) waiting.current.add(id);

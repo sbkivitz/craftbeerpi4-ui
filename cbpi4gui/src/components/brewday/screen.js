@@ -61,6 +61,11 @@
 //   is the reminder's own CraftBeerPi button; one that fails turns OK red, "tap to try again", under the reminder,
 //   rather than raising the title bar's alarm, which would take the reminder's place. While the connection is lost the
 //   title bar says so in the reminder's place: what was typed in the pH box stays, and comes back with the reminder.
+// - The boil kettle's steam condenser (design/brewday STEAM-SLAYER.md) is drawn where the Hardware page has one fitted on
+//   the boil kettle, its mister set by hand, or switched where steps_boil_actor names its actor; the drawing's name is the
+//   kettle's condenser_name. A mister set by hand is shown from what the boil step keeps (the lid reminder's DONE, the
+//   turn-off reminder's DONE), and CraftBeerPi's two reminders are told by their kind, not their words. ALL OFF switches
+//   a switched mister off too, as CraftBeerPi keeps it on after the boil until the wort has cooled.
 import { rigSVG, RIG_H } from "./rig";
 import * as DEMO from "./demo";
 import * as SWD from "./strike-demo";
@@ -239,7 +244,7 @@ const setText = (el, s) => { if (el && el.textContent !== s) el.textContent = s;
 // One screen at a time, as in the mockup: its state lives here. gen tells a command that finishes after the
 // screen has gone (or been opened again) to keep its answer to itself.
 let root = null, DEMO_MODE = false, opts = {}, gen = 0, PAGE = "";
-let st, M, timers = [], noteTimers = {}, hold = null, toastT = 0, raf = 0, rigW = 0, rigRs = 1, teardown = () => {};
+let st, M, timers = [], noteTimers = {}, hold = null, toastT = 0, raf = 0, rigW = 0, rigRs = 1, rigSs = "", teardown = () => {};
 // heldOn: the recipe the hold that is running its command now began on (holdStart, recipeOn)
 let heldOn = null;
 let last = null, everConnected = false, book = [], bookBusy = false, bookAgain = false, bookShown = false;
@@ -1083,7 +1088,7 @@ function plateHTML(v) {
       ${LAYOUT === "b" ? auxHTML(v) : ""}
       ${GRAPHS ? graphHTML(G(), v, "f") : ""}
     </div>
-    <p class="dev">${devHTML(v)}</p>
+    <p class="dev">${devHTML(v)}</p>${v === "bk" && slayer() ? `<p class="ssline">${slayerLine()}</p>` : ""}
     <div class="ctrls${nudge && !own ? " bkpow" : ""}">${lamps}</div>
     ${st.edit && st.edit.v === v ? editorHTML(v) : v === "hlt" && hermsOn() ? hermsRowHTML() : steps ? `<div class="mstack">${mode}${steps}</div>` : mode}
     <p class="note">${esc(st.notes[v] || "")}</p>
@@ -3833,9 +3838,81 @@ function renderRig() {
   const vn = $("#vnote-2");
   setText(vn, setNow ? `SET THEM FOR STEP ${ro + 1} (${M.RECIPE.steps[ro].n.toUpperCase()})` : out ? `SHOWN FOR STEP ${ro + 1} (${M.RECIPE.steps[ro].n.toUpperCase()})` : "SHOWN FOR RECIRCULATING");
   vn.classList.toggle("set", setNow);
-  setText($("#rig-d"), rigDesc(ro, held, setNow, post));
+  setText($("#rig-d"), rigDesc(ro, held, setNow, post) + slayerDesc());
+  renderSlayer(live);
   on("#el-hlt", live && a.hltEl.on); on("#el-bk", live && a.bkEl.on);
   ["hlt", "mt", "bk"].forEach(v => { const n = $("#needle-" + v); if (n && st.v[v].pv != null) n.setAttribute("transform", `rotate(${needleAngle(st.v[v].pv).toFixed(1)})`); });
+}
+/* ---------- the boil kettle's steam condenser (design/brewday STEAM-SLAYER.md) ---------- */
+/* none (as before), "hand" (its mister set by hand) or "switched" (CraftBeerPi switches its mister, the actor in
+   steps_boil_actor): live, the boil kettle's condenser field on the Hardware page and that setting (live.js model); in the
+   demo, a moment's own, or ?slayer=hand or ?slayer=switched, as in the mockup */
+const slayer = () => (M && M.SS) || "";
+/* its name as the drawing, the phone's line and the screen reader say it: the kettle's condenser_name, "steam condenser"
+   when blank; the demo's is the brewer's rig's, Steam Slayer */
+const ssName = () => (M && M.SS_NAME) || "steam condenser";
+const ssCap = () => { const n = ssName(); return n[0].toUpperCase() + n.slice(1); };
+/* the lid reminder's own temperature (BoilStep's lid_temp), on and off: 203 °F, or 95 °C on a °C brewery */
+const ssDeg = () => M.C === "C" ? "95 °C" : "203 °F";
+/* the lid reminder waiting, and the reminder to turn a hand-set mister off, shown or behind another question: in the demo
+   the moment's; live, CraftBeerPi's questions by their kind (condenser_on, condenser_off), whatever their words say */
+const lidAsk = () => DEMO_MODE ? !!(st.banner && st.banner.lid) : !!st.lidWait;
+const offAsk = () => !!st.offWait;
+/* the mister as the drawing shows it. Set by hand, CraftBeerPi can't see it, so it is drawn as the brew needs it, as the
+   hand valves are: open once the lid reminder is answered, through the boil and after it, until the reminder to turn it
+   off is answered; closed before. Live, both answers are what the boil step keeps (_lid_alert_answered,
+   _condenser_off_answered), so a reload or another screen shows the same. Switched, it is the actor's own state, as a
+   pump's is: CraftBeerPi switches it off when the wort falls below the lid's temperature after the boil */
+function misterOn() {
+  if (slayer() === "switched") return !!(st.mister && st.mister.on);
+  const bo = M.RECIPE.steps.findIndex(s => s.boil);
+  if (bo < 0 || !st.lidDone) return false;
+  const bs = stepStatus(bo);
+  return bs === "A" || bs === "S" || (bs === "D" && !st.ssOff);
+}
+function renderSlayer(live) {
+  const ss = slayer(), g = $("#slayer");
+  if (!ss || !g) return;
+  const on = misterOn(), ask = lidAsk() && live, off = offAsk() && live, hand = ss === "hand";
+  const mark = hand && ((ask && !on) || (off && on));
+  setText($("#slayer .ss-name"), ssName().toUpperCase());
+  /* set by hand, open: its water and spray in the liquor's blue, still, as the brew needs them, with no moving dashes
+     or arrows, so nothing says CraftBeerPi sees it flowing. Switched and on: lit as a running pump's line, its dashes
+     moving */
+  g.classList.toggle("on", on);
+  g.classList.toggle("need", hand && on);
+  g.classList.toggle("lit", !hand && on && live);
+  $("#vl-mist").classList.toggle("shut", !on);
+  $("#vl-mist").classList.toggle("set", mark);
+  $("#ln-mist").classList.toggle("on", !hand && on && live);
+  $("#ln-mist").classList.toggle("need", hand && on);
+  /* set by hand its tag is a hand valve's (CLOSED, SET OPEN, OPEN, SET CLOSED), under VALVES ARE SET BY HAND; switched,
+     the actor's state, as a pump's */
+  const t = $("#ss-st");
+  setText(t, hand ? (ask && !on ? "SET OPEN" : off && on ? "SET CLOSED" : on ? "OPEN" : "CLOSED") : `${live ? "" : "LAST: "}${on ? "ON" : "OFF"}`);
+  t.classList.toggle("set", mark);
+  t.classList.toggle("run", !hand && on && live);
+  /* the lid: asked, not ordered, as it may be on already */
+  $("#ss-lid").classList.toggle("set", ask);
+  setText($("#ss-lidt"), ask ? "LID ON?" : "");
+  $("#ss-lidt").classList.toggle("set", ask);
+}
+/* the drawing's words for the condenser, for a screen reader */
+function slayerDesc() {
+  const ss = slayer();
+  if (!ss) return "";
+  const on = misterOn(), ask = lidAsk(), off = offAsk(), name = ssName();
+  if (ss === "switched") return ` A ${name} on the boil kettle's lid condenses its steam; CraftBeerPi switches its mister's valve, which is ${on ? "on" : "off"}.${ask ? " The lid reminder is waiting: check the lid is on." : ""}`;
+  return ` A ${name} on the boil kettle's lid condenses its steam. Its mister's valve is set by hand, like the others, and CraftBeerPi can't see it: ${ask && !on ? "the lid reminder is waiting for you to open it, with the lid on." : off && on ? `the boil is over and the wort is below ${ssDeg()}, and the reminder to close it is waiting.` : on ? `it is shown open, as the brew needs it until the wort falls below ${ssDeg()} after the boil.` : "it is shown closed."}`;
+}
+/* on a phone, which has no drawing, the boil kettle's faceplate says what the drawing shows, in one quiet line under
+   its own, whenever the kettle has the condenser, so nothing under a hand moves as the mister comes on */
+function slayerLine() {
+  const ss = slayer();
+  if (!ss) return "";
+  /* set by hand, a valve's words, as the drawing's; switched, the actor's */
+  if (ss === "hand") return `${esc(ssCap())}: mister ${misterOn() ? "open" : "closed"} · set by hand`;
+  return `${esc(ssCap())}: mister ${st.link === "lost" ? "last " : ""}${misterOn() ? "on" : "off"}`;
 }
 function drawRig() {
   if (!root) return;
@@ -3845,10 +3922,10 @@ function drawRig() {
   const W = Math.max(1200, Math.round(RIG_H * w / h));
   /* with graphs in the faceplates the drawing gets shorter, so its labels grow to stay readable (up to 1.3 times) */
   const rs = GRAPHS === "face" ? Math.round(Math.min(1.3, Math.max(1, 0.68 / Math.min(h / RIG_H, w / 1200))) * 100) / 100 : 1;
-  if (Math.abs(W - rigW) < 4 && rs === rigRs && $("#rigsvg")) return;
-  rigW = W; rigRs = rs;
+  if (Math.abs(W - rigW) < 4 && rs === rigRs && slayer() === rigSs && $("#rigsvg")) return;
+  rigW = W; rigRs = rs; rigSs = slayer();
   // after the boil, the wort pump at the boil kettle on its loop through the chiller (the mockup's ?wp=chill)
-  box.innerHTML = rigSVG(LAYOUT === "b" ? "line" : "kettle", W, rs, "chill");
+  box.innerHTML = rigSVG(LAYOUT === "b" ? "line" : "kettle", W, rs, "chill", rigSs);
   renderRig();
   tsideCorner();
 }
@@ -3984,6 +4061,8 @@ function renderAll() {
   if (PAGE) return;
   keepStepInView();
   tPlaceFit();
+  // the boil kettle's condenser fitted or taken off (the Hardware page), or its mister's switch named: drawn again
+  if (slayer() !== rigSs && $("#rigsvg")) drawRig();
   renderRig();
   /* with no timers: + TIMER and SOUND placed clear of the drawing as it now reads */
   tsideCorner();
@@ -4711,9 +4790,16 @@ function swAsSaved() {
 function cmdBanner(x) {
   if (x === "added") send("b", "x", "Hop Alert answered: Added", () => { questionGone("Hop Alert"); st.banner = null; if (st.recipe) st.recipe.adds[0] = "done"; });
   else if (x === "boil") send("b", "x", `${M.RECIPE.steps[st.recipe.cur].n} answered: Start the boil`, boilStart);
+  /* the lid reminder's DONE (BoilStep's LidAlert): CraftBeerPi takes it down; set by hand, the drawing now shows the
+     mister open, as the brew needs it */
+  else if (x === "lid") send("b", "x", `${DEMO.LID_Q.title} answered: Done`, () => { questionGone(DEMO.LID_Q.title); st.banner = null; st.lidDone = true; });
+  /* the reminder to turn a hand-set mister off, once the boil kettle has cooled below the cut-off: answered, the drawing
+     shows it closed */
+  else if (x === "lidoff") send("b", "x", `${DEMO.OFF_Q.title} answered: Done`, () => { questionGone(DEMO.OFF_Q.title); st.banner = null; st.offWait = false; st.ssOff = true; });
   else if (x === "done") {
     const s = M.RECIPE.steps[st.recipe.cur];
-    send("b", "x", `${s.n} answered: Next Step`, () => { questionGone(s.n); st.banner = null; stepStart(st.recipe.cur + 1); });
+    /* a question waiting behind this one (the turn-off reminder, after the boil) comes up once it is answered */
+    send("b", "x", `${s.n} answered: Next Step`, () => { questionGone(s.n); st.banner = null; stepStart(st.recipe.cur + 1); if (st.offWait && !st.banner) st.banner = DEMO.offBanner(); });
   }
   /* the SpargeStep's "Sparge started": its timer starts (or it runs until NEXT STEP), the HLT's AUTO goes off, and the
      drawing goes over to the runoff */
@@ -5960,8 +6046,8 @@ function liveLoad(i, box = false) {
   exec("r:load", box ? String(i) : "load", `${x.n} loaded`, () => api.brew(x.file), {ok: () => { if (box) { st.rbOpen = false; st.cmpOpen = false; } }, fail: () => alarm(`${x.n} did not load.`, "OK", "b:ok")});
 }
 /* ALL OFF: the recipe stops first so it can't switch a kettle back on, then every kettle to
-   MANUAL, then both elements and both pumps. Kettle /off always answers 204, so what counts is the state
-   CraftBeerPi reports a moment later. */
+   MANUAL, then both elements and both pumps, and a steam condenser's mister CraftBeerPi switches. Kettle /off always
+   answers 204, so what counts is the state CraftBeerPi reports a moment later. */
 async function liveAllOff() {
   if (st.pend.alloff) return;
   const g = gen, running = st.recipe && st.recipe.state === "running";
@@ -5978,10 +6064,15 @@ async function liveAllOff() {
   const ids = ACTS.filter(id => M.ACT[id].id), seen = new Set();
   const uniq = ids.filter(id => !seen.has(M.ACT[id].id) && seen.add(M.ACT[id].id));
   (await Promise.all(uniq.map(id => api.actor(M.ACT[id].id, false)))).forEach((r, i) => { if (!r.ok) failed.push(M.ACT[uniq[i]].name); });
+  /* a steam condenser's mister CraftBeerPi switches (steps_boil_actor), which it keeps on after the boil until the wort
+     has cooled: off too */
+  const mister = M.MISTER && !seen.has(M.MISTER) ? M.MISTER : null, misterName = `the ${ssName()} mister`;
+  if (mister && !(await api.actor(mister, false)).ok) failed.push(misterName);
   await new Promise(res => setTimeout(res, 1500));
   if (g !== gen) return;
   if (last) applyLive(last);
   ACTS.forEach(id => { if (st.a[id].on && M.ACT[id].id && !failed.includes(M.ACT[id].name)) failed.push(M.ACT[id].name); });
+  if (mister && st.mister && st.mister.on && !failed.includes(misterName)) failed.push(misterName);
   ROLES.forEach(v => { if (st.v[v].mode === "auto" && !failed.includes(`${M.VNAME[v].toLowerCase()} AUTO`)) failed.push(`${M.VNAME[v].toLowerCase()} AUTO`); });
   delete st.pend.alloff;
   const label = `ALL OFF: elements and pumps off, every vessel MANUAL${running ? ", recipe stopped" : ""}`;
@@ -6784,6 +6875,17 @@ function applyLive(snap) {
   }
   liveLocks();
   st.prompts = (snap.alerts || []).filter(x => x && Array.isArray(x.action) && x.action.length);
+  /* the boil kettle's steam condenser (STEAM-SLAYER.md): the mister as the boil step keeps it - the lid reminder answered
+     (_lid_alert_answered), the reminder to turn it off answered (_condenser_off_answered) - CraftBeerPi's two reminders
+     waiting by their kind, shown or behind another question, and a switched mister's own state */
+  const boilStep = (snap.steps || []).find(x => x && x.type === "BoilStep" && M.RECIPE.steps.some(s => s.boil && s.id === x.id));
+  const bp = (boilStep && boilStep.props) || {};
+  st.lidDone = !!bp._lid_alert_answered;
+  st.ssOff = !!bp._condenser_off_answered;
+  st.lidWait = st.prompts.some(p => p.kind === "condenser_on");
+  st.offWait = st.prompts.some(p => p.kind === "condenser_off");
+  const mister = M.MISTER ? (snap.actors || []).find(x => x && x.id === M.MISTER) : null;
+  st.mister = {on: !!mister && mister.state === true};
   st.recipe = liveRecipe(snap);
   /* the strike water helper's state: CraftBeerPi's newest word (GET /step2/strike, the topic "strike"), or a command's own
      answer until that catches up. None from a CraftBeerPi without the helper: no box. Its forecast failing for these
@@ -7737,7 +7839,7 @@ export function createBrewDay(el, o = {}) {
   let kept = null;
   if (!DEMO_MODE) { try { kept = localStorage.getItem(GSPAN_KEY); } catch (e) { /* private mode */ } }
   for (const s of [o.span, kept]) if (GSPANS.some(x => x[0] === s)) { gSpan = s; break; }
-  rigRs = 1; H = null;
+  rigRs = 1; rigSs = ""; H = null;
   root.innerHTML = skeleton(DEMO_MODE, PAGE);
   // the name: the demo's (?name= tries another, as in the mockup); live, CraftBeerPi's once its settings arrive (applyLive)
   brewery = null;
@@ -7758,6 +7860,11 @@ export function createBrewDay(el, o = {}) {
       BOILPOWER: true, BKNEW: true, BKHAND: true, BOIL_TH: DEMO.BOIL_TH, TIMERS: true};
     DEMO.setClock(fmtNow());
     st = (DEMO.SCENES[key] || DEMO.EXTRA[key])();
+    /* the boil kettle's steam condenser: the moment's own (the #ss-… moments), or ?slayer=, as the mockup adds it to any
+       moment; named as on the brewer's rig */
+    M.SS = st.slayer || (["hand", "switched"].includes(o.slayer) ? o.slayer : "");
+    M.SS_NAME = "Steam Slayer";
+    delete st.slayer;
     // #unload-notinbook: steps built on Brew Steps under a name the Recipe Book doesn't have
     if (st.recipeName) { M.RECIPE = {...M.RECIPE, name: st.recipeName}; delete st.recipeName; }
     // the sparge-… moments run a recipe whose step 4 is a SpargeStep; every other moment keeps the MashStep

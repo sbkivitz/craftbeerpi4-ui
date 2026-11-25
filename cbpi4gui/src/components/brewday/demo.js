@@ -18,7 +18,8 @@
 // ph-fail, ph-slow, ph-noclose and ph-other, other-recipe, and BrewScribe's readings' rd-strike, rd-level, rd-first,
 // rd-first-bx, rd-first-nofactor, rd-first-noatc, rd-looks-sg, rd-nounit, rd-last, rd-last-all, rd-sparge,
 // rd-sparge-nolevel, rd-sparge-volume, rd-sparge-bad, rd-preboil, rd-postboil, rd-partial, rd-saved, rd-fail and
-// rd-final) runs on this, so it can be compared with the mockup pixel for pixel.
+// rd-final, and the Steam Slayer's ss-heat, ss-ask, ss-on, ss-sag, ss-after, ss-cool, ss-cooled and ss-switched) runs on
+// this, so it can be compared with the mockup pixel for pixel.
 import { swModel, SW_MORNING, SW_LEVER_S } from "./strike-demo";
 import { bsHoldWords } from "./live";
 import { formatTimeOfDay, TWELVE_HOUR } from "../util/timefmt";
@@ -872,6 +873,50 @@ const SCENES = {
      midnight (day0) and the screen's (pc) */
   "sim-clock": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {base: "sw-plan", sim: {scale: 60, day0: "2026-11-26", pc: "2026-11-22"}}),
   "sim-clock-1x": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {base: "sw-plan", sim: {scale: 1, day0: "2026-11-22", pc: "2026-11-22"}}),
+  /* the boil kettle's Steam Slayer (STEAM-SLAYER.md), its mister set by hand. #ss-heat: #heatup at 3:12 PM, the boil
+     heating, before the lid reminder: the mister shown off. #ss-ask: 3:24:40 PM, the boil kettle at 203.4 °F since
+     3:24:10, the lid reminder waiting: the lid asked about and the mister marked. #ss-on: #boiling, the reminder
+     answered at 3:25:02: the mister shown open. #ss-sag: a sag below 203 °F in the boil: still open. #ss-after: the boil
+     over, the wort at 207.6 °F: still open. #ss-cool: below 203 °F, the turn-off reminder waiting. #ss-cooled: the
+     whirlpool, closed. #ss-switched: #boiling with a mister CraftBeerPi switches (steps_boil_actor), on since the boil
+     kettle reached 203 °F */
+  "ss-heat": () => Object.assign(SCENES.heatup(), {slayer: "hand"}),
+  "ss-ask": () => {
+    const s = Object.assign(SCENES.heatup(), {slayer: "hand", t: 15 * 3600 + 24 * 60 + 40});
+    s.v.bk.pv = 203.4;
+    s.banner = {tone: "prompt", lid: true, title: LID_Q.title, text: LID_Q.text, act: "DONE", cmd: "b:lid"};
+    s.events.unshift(["15:24:10", `${LID_Q.title}: ${LID_Q.text}`, "waiting for you", "wait"]);
+    return s;
+  },
+  "ss-on": () => {
+    const s = Object.assign(SCENES.boiling(), {slayer: "hand", lidDone: true});
+    s.events.splice(1, 0, ["15:25:02", `${LID_Q.title} answered: Done`, "confirmed", "ok"], ["15:24:10", `${LID_Q.title}: ${LID_Q.text}`, "answered", ""]);
+    return s;
+  },
+  /* #ss-sag: #hop, the 60 min hops in at 4:00:31 PM and the wort dipped to 201.6 °F, below the lid's 203 °F, while the
+     boil step runs: still open, nothing asked */
+  "ss-sag": () => {
+    const s = Object.assign(SCENES.hop(), {slayer: "hand", lidDone: true, t: 16 * 3600 + 44, banner: null});
+    s.v.bk.pv = 201.6; s.recipe.left = 59 * 60 + 16; s.recipe.adds = ["done"];
+    s.events[0][2] = "answered"; s.events[0][3] = "";
+    s.events.unshift(["16:00:31", "Hop Alert answered: Added", "confirmed", "ok"]);
+    s.events.splice(s.events.findIndex(e => e[0] < "15:25:02"), 0, ["15:25:02", `${LID_Q.title} answered: Done`, "confirmed", "ok"], ["15:24:10", `${LID_Q.title}: ${LID_Q.text}`, "answered", ""]);
+    return s;
+  },
+  "ss-after": () => ssPostBoil(17 * 3600 + 40, 207.6, false),
+  "ss-cool": () => ssPostBoil(17 * 3600 + 60 + 30, 202.4, true),
+  /* #ss-cooled: #whirlpool, the turn-off reminder answered at 5:08:14 PM, after Whirlpool Hop's NEXT STEP */
+  "ss-cooled": () => {
+    const s = Object.assign(SCENES.whirlpool(), {slayer: "hand", lidDone: true, ssOff: true});
+    ssEv(s, ["17:08:14", `${OFF_Q.title} answered: Done`, "confirmed", "ok"]);
+    ssEv(s, ["17:01:22", `${OFF_Q.title}: ${OFF_Q.text}`, "answered", ""]);
+    return s;
+  },
+  "ss-switched": () => {
+    const s = Object.assign(SCENES.boiling(), {slayer: "switched", lidDone: true, mister: {on: true}});
+    s.events.splice(1, 0, ["15:25:02", `${LID_Q.title} answered: Done`, "confirmed", "ok"], ["15:24:10", `${LID_Q.title}: ${LID_Q.text}`, "answered", ""]);
+    return s;
+  },
   "sim-speed": () => Object.assign(SCENES["sim-clock"](), {open: {spdOpen: true}}),
   "sim-reset-all": () => Object.assign(SCENES["sim-clock"](), {open: {spdOpen: true, svAsk: true}}),
   "unload-held": () => Object.assign(SCENES["boil-hold"](), {base: "boil-hold", open: {confirmUnload: true}}),
@@ -1245,6 +1290,34 @@ const SW_NEED = 25.4;
 /* BrewStart's Ready by plan, from the rig's measured heat-up (rig page 9b: 15 gal from 60 to 152 °F in 42 min, so
    2.19 °F a minute, plus 10 spare minutes) */
 const SW_RATE = 2.19, SW_SPARE = 10;
+/* the Steam Slayer's moments just after the boil (#ss-after, #ss-cool): the boil over at 5:00:04 PM, Whirlpool Hop
+   asking to cool to 170 °F since 5:00:06, the boil kettle's AUTO off with the step's end and the wort cooling. ask: the
+   wort is below the lid's 203 °F (since 5:01:22), so the turn-off reminder is up, waiting behind Whirlpool Hop's
+   question, the older one, as the title bar shows them in turn */
+function ssPostBoil(t, pv, ask) {
+  const s = Object.assign(SCENES.hold(), {slayer: "hand", lidDone: true, t, base: "hold", offWait: ask});
+  s.v.bk = {pv, sv: null, mode: "manual"};
+  s.a.bkEl = {on: false, pct: 0};
+  s.recipe = {state: "running", cur: 5, left: 0, adds: []};
+  s.banner = {tone: "prompt", title: RECIPE.steps[5].n, text: RECIPE.steps[5].note, act: "NEXT STEP", cmd: "b:done", more: ask ? 1 : 0};
+  s.events = s.events.filter(e => e[0] <= "17:00:04");
+  s.events.unshift(["17:00:06", `${RECIPE.steps[5].n}: ${RECIPE.steps[5].note}`, "waiting for you", "wait"]);
+  if (ask) s.events.unshift(["17:01:22", `${OFF_Q.title}: ${OFF_Q.text}`, "waiting for you", "wait"]);
+  return s;
+}
+/* a line into LOG's events (newest first) in its place by time */
+function ssEv(s, e) {
+  const i = s.events.findIndex(x => x[0] < e[0]);
+  s.events.splice(i < 0 ? s.events.length : i, 0, e);
+}
+/* the lid reminder up in the title bar: the boil step's LidAlert, its words the steps_boil_lid_alert setting; and the
+   reminder to turn a mister set by hand off, once a brew, below the lid's own temperature (BoilStep's lid_temp, 203 °F)
+   after the boil */
+const SS_LID_F = 203;
+const LID_Q = {title: "Turn on the Steam Slayer mister", text: "Reached temp close to boiling"};
+const OFF_Q = {title: "Turn off the Steam Slayer mister", text: `The boil is over and the wort is below ${SS_LID_F} °F`};
+const offBanner = () => ({tone: "prompt", lidOff: true, title: OFF_Q.title, text: OFF_Q.text, act: "DONE", cmd: "b:lidoff"});
+export { LID_Q, OFF_Q, offBanner };
 /* the brew-day morning's moments run on from the night before, so the clock and the graphs carry on past midnight */
 const DAY2 = 24 * 3600;
 const pad2 = n => String(n).padStart(2, "0");

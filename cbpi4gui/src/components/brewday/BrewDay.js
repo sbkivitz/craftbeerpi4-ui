@@ -76,6 +76,8 @@ const BrewDay = () => {
       ver: qs.get("ver"),
       // with ?demo=, ?clock=24 shows the screen with CraftBeerPi's CLOCK_FORMAT 24-hour, as the mockup's does
       clock: qs.get("clock"),
+      // with ?demo=, ?slayer=hand or ?slayer=switched adds the boil kettle's steam condenser to any moment, as the mockup's does
+      slayer: qs.get("slayer"),
       navigate: (path, options) => go.current(path, options),
       removeAlert: (id) => remove(id),
     });

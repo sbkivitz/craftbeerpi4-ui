@@ -330,6 +330,14 @@ export function model(snap) {
   const steps = (snap.steps || []).filter(Boolean).map((s) => stepModel(s, roleOf, U, kname));
   // the new boil kettle: a BoilPower whose target is BOIL or a hold, from 0.0.3.post7
   const BKNEW = !!K.bk && declares(snap.logic, K.bk.type, "set_boil_at");
+  // the boil kettle's steam condenser on its lid (design/brewday STEAM-SLAYER.md), from its kettle fields: none (""), its
+  // mister set by hand ("hand"), or switched by CraftBeerPi ("switched": steps_boil_actor names an actor, MISTER). Its
+  // name, as the drawing, the phone's line and CraftBeerPi's reminder say it: "steam condenser" when blank
+  const fitted = !!K.bk && String(K.bk.condenser ?? "").trim().toLowerCase() === "fitted";
+  const misterId = cfg(snap.config, "steps_boil_actor");
+  const mister = misterId ? (snap.actors || []).find((a) => a && a.id === misterId) : null;
+  const SS = fitted ? (mister ? "switched" : "hand") : "";
+  const SS_NAME = (fitted && String(K.bk.condenser_name ?? "").trim()) || "steam condenser";
   return {
     K, A, VNAME, ACT, VACT, U, C,
     HERMS: isHerms(K.mt, herms),
@@ -342,6 +350,7 @@ export function model(snap) {
     // An older one heats by hand at the element's own level, so MANUAL stays as before there
     BKHAND: BKNEW && declares(snap.logic, K.bk.type, "heat_by_hand_at_boil_power"),
     BOIL_TH: boilThreshold(K.bk, C, BKNEW),
+    SS, SS_NAME, MISTER: SS === "switched" ? mister.id : null,
     // a waiting BrewStart takes a new day and time: one that declares change_time (1.2.0.post10), read from the step
     // types as BoilPower's markers are from the logic types. An older one can't, so its time is greyed while it waits
     BSRETIME: declares(snap.stepTypes, "BrewStart", "change_time"),

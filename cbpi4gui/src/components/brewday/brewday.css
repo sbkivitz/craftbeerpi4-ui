@@ -882,6 +882,28 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .rig-line .gone{display:none}
 :where(html.bd-page) .rig-line .chiller rect{fill:#1b2833;stroke:#b9c6d2;stroke-width:2.5}
 :where(html.bd-page) .rig-line .chiller text{font:600 18px var(--cond);letter-spacing:.06em;fill:#c3cfda;text-anchor:middle}
+/* the boil kettle's Steam Slayer (STEAM-SLAYER.md): drawn in the drawing's own steel, quiet while it is off. Its mister
+   on: its valve open and its spray drawn, a change of shape as well as words. Set by hand, its water line and spray are
+   in the liquor's blue, still: what the brew needs, not a reading, so no dashes move and no arrows show, and the hand
+   valve stays steel. Switched (CraftBeerPi's actor) and on, its line lights as a running pump's does, dashes moving,
+   with its actuator, and its state reads ON in Running Green. A reminder waiting (the lid's, or turning it off): the
+   valve and its words in Prompt Amber, as a valve to set is, and for the lid its seam too */
+:where(html.bd-page) .rig-line .ss-body{fill:#1b2833;stroke:#b9c6d2;stroke-width:3;stroke-linejoin:round}
+:where(html.bd-page) .rig-line .ss-cap{fill:none;stroke:#b9c6d2;stroke-width:3;stroke-linecap:round}
+:where(html.bd-page) .rig-line .ss-noz{fill:#b9c6d2}
+:where(html.bd-page) .rig-line .ss-spray{fill:none;stroke:#b9c6d2;stroke-width:3;stroke-linecap:round;stroke-dasharray:3 6;display:none}
+:where(html.bd-page) .rig-line .slayer.on .ss-spray{display:inline}
+:where(html.bd-page) .rig-line .slayer.lit .ss-spray,:where(html.bd-page) .rig-line .slayer.need .ss-spray{stroke:var(--liquor)}
+:where(html.bd-page) .rig-line .ln.need.mist .pf{stroke:var(--liquor)}
+:where(html.bd-page) .rig-line .ln.on.mist .pf{stroke:var(--liquor)}:where(html.bd-page) .rig-line .ln.on.mist .ch{fill:var(--liquor);stroke:var(--liquor)}
+:where(html.bd-page) .rig-line .valve.mist.set path{stroke:var(--prompt);stroke-width:3}
+:where(html.bd-page) .rig-line .slayer.lit .valve.mist path{stroke:var(--liquor)}
+:where(html.bd-page) .rig-line .ss-lid.set{stroke:var(--prompt)}
+:where(html.bd-page) .rig-line .ss-lidt{text-anchor:middle}
+:where(html.bd-page) .rig-line .ss-st.run{fill:var(--run)}
+:where(html.bd-page) .rig-line .ss-act{fill:#1b2833;stroke:#b9c6d2;stroke-width:2.5}
+:where(html.bd-page) .rig-line .slayer.lit .ss-act{stroke:var(--liquor)}
+:where(html.bd-page) .ssline{display:none;margin:-4px 0 0;font:500 15px/1.3 var(--cond);letter-spacing:.04em;color:var(--text-2)}
 :where(html.bd-page) .rig-line #ln-swirl:not(.on){display:none}
 :where(html.bd-page) .rig-line #ln-swirl .pf{stroke-width:3.5}
 :where(html.bd-page) .rig-line #ln-swirl .ch{transform-box:view-box}
@@ -993,6 +1015,7 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .clock .cdl{position:static;font-size:13px;letter-spacing:.05em}
 :where(html.bd-page) .clock .spd{min-height:44px;padding:0 10px}
 :where(html.bd-page) .clock .spd .lg{display:none}
+:where(html.bd-page) .ssline:not(:empty){display:block}
 :where(html.bd-page) .spdbox{right:var(--pad);width:min(360px,calc(100% - 2 * var(--pad)))}
 :where(html.bd-page) #link-t{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 :where(html.bd-page) .link{font-size:15px}

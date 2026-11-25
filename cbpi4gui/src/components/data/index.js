@@ -121,7 +121,7 @@ export const CBPiProvider = ({ children }) => {
           setConnection(false);
           break;
       case "notifiaction":
-        a.show(data.id, data.title, data.message, data.type, data.action);
+        a.show(data.id, data.title, data.message, data.type, data.action, undefined, data.kind);
         break;
       case "notification_retired":
         // Answered - on this page or another - or no longer applying. With the

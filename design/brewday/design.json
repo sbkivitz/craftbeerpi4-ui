@@ -1299,6 +1299,11 @@
         "section": "components"
       },
       {
+        "name": "The Asked Is Not Seen Rule",
+        "body": "What the brew needs and what CraftBeerPi can see are never drawn alike. A hand valve, the steam condenser's mister set by hand among them, is drawn as the brew needs it, its liquid still; only a line whose pump or switch CraftBeerPi reports on moves and lights. The steam condenser's mister goes on and off by one figure, the lid reminder's own temperature (203 °F, 95 °C): on as the wort rises past it in the boil, off once the boil step has ended and the wort falls back below it. CraftBeerPi asks once a brew for a mister set by hand to be turned off, and switches a switched one off itself, with a line in LOG; a dip during the boil changes nothing, and a reading that isn't a number never counts.",
+        "section": "components"
+      },
+      {
         "name": "The Hoses Rule",
         "body": "When a hose has to move, CraftBeerPi switches its pump off, not the screen: the wort pump as a SpargeStep starts, the HLT pump as the sparge water is ready and the step asks \"Sparge started\", the HLT pump as the runoff ends (the wort pump runs on, draining the mash tun), and whichever still runs as the boil starts. The screen shows the lamp go to OFF and says why in CraftBeerPi's own words: the sparge question names the pumps that are off (\"…ready at 168 °F, and both pumps are off.\"), and the event line carries CraftBeerPi's notification word for word. The brewer starts the pumps again by hand. The request, on 11 Nov, was \"Any time I need to change hoses or \"valves\" that respective pump should be off\".",
         "section": "components"
