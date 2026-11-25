@@ -47,6 +47,8 @@ Of four directions he chose A: brewery figures, learned from past brews. Each fi
 These parts of `analytics.js` stand in for CraftBeerPi:
 - the strip, `MOMENTS`, `moment()`, `views()` and `frame()`;
 - `BENCH_NOW` and `logNow()`, a still clock (the build uses CraftBeerPi's, as the frame does);
+- `clock()`, the title bar's clock drawn as the shared frame draws it: CraftBeerPi's date always, and on the bench (a
+  simulator) SPEED under it, so the frame is as tall as the build's and the page starts where the build's does;
 - `rigSpec` and `rigBrew()`, the rig's made-up brews, with the "Made-up figures" label (`.mockonly`);
 - `summary()`, which works out each figure's state in the page (the build gets `state` from C1);
 - the `measured()`, `values()` and agreement limits on each figure in `FIGS`, which are C1's job;

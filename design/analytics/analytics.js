@@ -11,6 +11,8 @@
   const DAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
   const MON = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
   const Mon = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const DAY_SAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const MON_SAY = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
   const S = { h24: params.get("clock") === "24" };
   const D = (t) => new Date(t * 1000);
   const hm = (t) => {
@@ -530,13 +532,24 @@
   }
   const pick = () => `<div class="pick" role="group" aria-label="Figure">${FIGS.map((F) => `<button type="button" data-act="pick" data-fig="${F.id}" aria-pressed="${st.pick === F.id}">${F.short}</button>`).join("")}</div>`;
 
+  /* the title bar's clock, as the shared frame draws it: the time, and left of it, one over the other, CraftBeerPi's
+     date, always, on a quiet line with no box, said to a screen reader; and on a simulator (the bench) SPEED, a button
+     in the title bar's button look. On a phone both go under the time */
+  function clock(now) {
+    const el = $("#clock"), d = D(now), n = (BENCH.sim && BENCH.sim.scale) || 1;
+    const t = S.h24 ? hm(now) : hm(now).replace(/ (AM|PM)/, '<span class="ap">$1</span>');
+    const sp = st.brewery === "bench" ? `<button type="button" class="spd" aria-haspopup="dialog" aria-label="Simulator speed, ${n}×. Change it">${n}×<span class="lg"> SPEED</span><svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg></button>` : "";
+    el.dataset.sim = "spd";
+    el.innerHTML = `<span class="ct">${t}</span><span class="cs"><span class="cdl" aria-hidden="true">${day(now)}</span><span class="sr">CraftBeerPi's clock, ${DAY_SAY[d.getDay()]} ${d.getDate()} ${MON_SAY[d.getMonth()]}</span>${sp}</span>`;
+  }
+
   function render() {
     const app = $("#app");
     app.dataset.link = st.link;
     $("#bname").textContent = st.brewery === "bench" ? "CraftBeerPi Brewery" : "EBrews";
     document.title = `${st.brewery === "bench" ? "CraftBeerPi Brewery" : "EBrews"} · Figures · CraftBeerPi proposal (mockup)`;
     const now = logNow();
-    $("#clock").innerHTML = S.h24 ? hm(now) : hm(now).replace(/ (AM|PM)/, '<span class="ap">$1</span>');
+    clock(now);
     $("#link").dataset.link = st.link;
     $("#link-t").textContent = st.link === "lost" ? "No connection" : "Connected";
     banner();
