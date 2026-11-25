@@ -940,6 +940,8 @@ const SCENES = {
   "sw-novol": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.sw.vol = null; return s; },
   "sw-missing": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); Object.assign(s.sw, {from: null, stepGrain: true}); return s; },
   "sw-missing-steps": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.sw.from = null; return s; },
+  /* #sw-give: #sw-missing-steps with GIVE THEM pressed, the figures open */
+  "sw-give": () => Object.assign(SCENES["sw-missing-steps"](), {base: "sw-missing-steps", open: {swOpen: true}}),
   "sw-noprobe": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.v.bk.pv = null; s.pb.none.bk = 300; return Object.assign(s, {pbLast: {bk: 61.4}, gap: {bk: 300}}); },
   "sw-grain-bad": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.sw.grain = 150; return s; },
   /* the strike water's temperature (BrewStart's, or with ?sws=step the strike water step's) typed on Brew Steps as
@@ -3032,6 +3034,14 @@ function swMissHTML(N) {
   if (st.swVol && st.swVol.at !== "row") return swVolHTML(N);
   if (st.swGrain) return swGrainHTML(N);
   if (st.swRec && st.swRec.at !== "row") return swRecHTML(N);
+  const B = swMissBits(N);
+  return `<p class="swl">${B.says}</p>${B.ask}<div class="swa three">${B.use}${B.hlt}${B.grain}</div>${B.sparge}${B.warn}`;
+}
+/* a figure's own box open in the strike water box, in its place */
+const swEditing = () => !!((st.swVol && st.swVol.at !== "row") || st.swGrain || (st.swRec && st.swRec.at !== "row"));
+/* the box without a forecast, in parts: why, the figures to give, USE greyed, HLT WATER and GRAIN, the sparge water left,
+   and CraftBeerPi's warnings about the HLT's water */
+function swMissBits(N) {
   const asks = swAsks(N), ask = asks.length ? `<div class="swa ${["one", "two", "three"][asks.length - 1]}">${asks.map(k => swRecBtn(N, k)).join("")}</div>` : "";
   const noVol = N.miss === "vol" || N.misses.includes("vol") || N.vol == null;
   const too = N.misses.filter(k => k !== N.miss && SW_MISS_TOO[k] && (k !== "room" || N.room != null)).map(k => ` ${SW_MISS_TOO[k](N)}`).join("");
@@ -3046,8 +3056,32 @@ function swMissHTML(N) {
     : probe ? `${N.room.toFixed(1)}&nbsp;°F · change` : "give it";
   /* the sparge water left, under the two figures, where MASH WATER is one of them */
   const sparge = asks.includes("water") && N.vol != null && N.gal != null ? `<p class="swn swsp">${spargeText(N.vol, N.gal, "gal")}.</p>` : "";
-  return `<p class="swl">${first}${too}${vq}</p>${ask}<div class="swa three">${use}${b("cmdbtn", "HLT WATER", water, {cmd: "swv:open", expanded: false})}`
-    + `${b("cmdbtn", "GRAIN", grain, {cmd: "swg:open", expanded: false})}</div>${sparge}${swLowHTML(N)}${N.vol != null ? hltOverHTML(N.vol) : ""}`;
+  return {says: `${first}${too}${vq}`, ask, use, hlt: b("cmdbtn", "HLT WATER", water, {cmd: "swv:open", expanded: false}),
+    grain: b("cmdbtn", "GRAIN", grain, {cmd: "swg:open", expanded: false}), sparge, warn: `${swLowHTML(N)}${N.vol != null ? hltOverHTML(N.vol) : ""}`};
+}
+/* the figures USE needs that are missing and can be given here, by their names in swRec: the recipe's grain weight and
+   mash water, and the room while the boil kettle's probe can't stand for it; with any of them, the HLT's water where it
+   is missing too. Those already given here aren't among them: they are changed in the open box */
+const SW_GIVE = {grain: "grain weight", water: "mash water", room: "room", vol: "HLT water"};
+function swGives(N) {
+  const g = swAsks(N).filter(k => k === "room" ? N.misses.includes("probe") || N.misses.includes("room") : swRecFig(N, k) == null);
+  if (g.length && (N.miss === "vol" || N.misses.includes("vol") || N.vol == null)) g.push("vol");
+  return g;
+}
+/* the closed box's one row: USE greyed, saying on a tap what it needs, and GIVE THEM (GIVE IT for one) naming them, in
+   two equal halves; two names fit there on one line at every size, so with more the first is named and the rest
+   counted ("grain weight and 2 more"), its name for a screen reader naming all. Opened, CLOSE in its place.
+   CraftBeerPi's warnings about the HLT's water stay under it either way */
+function swGiveRow(N, open) {
+  const B = swMissBits(N), names = swGives(N).map(k => SW_GIVE[k]);
+  const give = b("cmdbtn swgive", open ? "CLOSE" : names.length > 1 ? "GIVE THEM" : "GIVE IT", open ? "the figures" : names.length > 2 ? `${names[0]} and ${names.length - 1} more` : names.join(" · "),
+    {cmd: "sw:more", expanded: open, controls: open ? "sw-give" : "", label: open ? "Close the figures USE needs" : `Give the figures USE needs: the ${swAnd(names)}`});
+  return `<div class="swa two">${B.use}${give}</div>${B.warn}`;
+}
+/* opened: why, the figures' buttons, then HLT WATER and GRAIN, and the sparge water left */
+function swGiveDet(N) {
+  const B = swMissBits(N);
+  return `<div class="swdet swgive" id="sw-give"><p class="swl">${B.says}</p>${B.ask}<div class="swa two">${B.hlt}${B.grain}</div>${B.sparge}</div>`;
 }
 /* the figures given here: the recipe's grain weight and its strike water to the mash tun (the mash water), kept with
    the loaded recipe, and the room's temperature for this brew, which stands for the room while the boil kettle's probe
@@ -3425,7 +3459,16 @@ function swHTML() {
   if (!phase || st.pbOpen || st.cmpOpen || st.confirmNext || st.confirmReset || st.confirmUnload || st.bsOpen || st.mwOpen) return "";
   const N = swNumbers(), pend = st.pend.sw, why = st.link === "lost" ? PAUSED : pend || st.pend["r:unload"] || st.pend.bs ? WAIT : "", has = N.ok || !!N.wait, open = !!st.swOpen && has;
   const cls = `sw sw-${phase}${has ? "" : " sw-miss"}`;
-  if (!has) return `<section class="${cls}" aria-label="Strike water">${head0(N, swMissHTML(N))}</section>`;
+  /* figures USE needs that the brewer can give here (swGives): one row, USE greyed and GIVE THEM in FORECAST's place,
+     so the box is no taller than with a forecast and the step list keeps its room. GIVE THEM opens the box as FORECAST
+     does (swOpen): why, and the figures' buttons, under the head; once they are all given and USE is worked out, the
+     forecast is there in their place, under the same CLOSE. A figure's own box, open, takes the place of all of it, as
+     before */
+  if (!has) {
+    const give = swGives(N).length && !swEditing() ? (st.swOpen ? "open" : "closed") : "";
+    if (give) return `<section class="${cls}${give === "open" ? " open" : ""}" aria-label="Strike water">${head0(N, swGiveRow(N, give === "open"))}${give === "open" ? swGiveDet(N) : ""}</section>`;
+    return `<section class="${cls}" aria-label="Strike water">${head0(N, swMissHTML(N))}</section>`;
+  }
   /* USE, or once it is in use BACK TO, in one place. While the HLT heats the strike water, a temperature below the
      water's is greyed: the HLT can't cool it, and the step would ask for the water at once, hotter than the box says.
      While CraftBeerPi works USE out, USE is greyed, with the last figure if there is one: CraftBeerPi refuses a figure

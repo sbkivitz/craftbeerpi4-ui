@@ -201,9 +201,23 @@ So the box says only what's certain, and only when the reading is more than 3 °
 "The Mash Tun's 132.2 °F isn't the mash: with the pump stopped, its probe reads the water left in the HLT's coil." The
 mash itself lands 118-124 °F. Once the malt is in, the box goes.
 
-**No forecast: why, and what can be given** (`#sw-novol`, `#sw-missing`, `#sw-missing-steps`, `#sw-noprobe`,
-`#sw-interval`). Whenever a number the forecast needs is missing, the box says why where its buttons were, and under
-that keeps USE, HLT WATER and GRAIN side by side, as USE and FORECAST sit when there is a forecast (decision 15). USE
+**No forecast, with figures to give: one row** (`#sw-missing`, `#sw-missing-steps`, `#sw-noprobe`, `#sw-asks`, then
+`#sw-give`; decision 17). Where what stops the forecast is a figure the brewer can give in the box (the recipe's grain
+weight or mash water, or the room while the boil kettle's probe can't stand for it), the box is one row under its window,
+as tall as with a forecast, so the step list keeps the room it has on a recipe with BeerSmith's figures: USE in its
+place, greyed, "can't work it out", and GIVE THEM in FORECAST's place, naming them: "grain weight · mash water"; GIVE IT
+and "mash water" for one; with three or more, the first named and the rest counted, "grain weight and 2 more". The HLT's
+water is named among them where it is missing too. GIVE THEM opens the box as FORECAST does, CLOSE "the figures" in its
+place: under the head, the line saying why (as below), the figures' buttons, then HLT WATER and GRAIN, two to a row, and
+the sparge water left. Each figure's button opens its small box in place of all of it, and SET or CANCEL comes back to it
+open. Once the last is given and USE is worked out, the forecast is there in their place, still open, under the same
+CLOSE. MashIn's row already says "mash water not given" in Note Amber, and USE, tapped, says what it needs, so nothing
+is hidden that the closed box used to say.
+
+**No forecast: why, and what can be given** (`#sw-novol`, `#sw-grain-bad`, `#sw-interval`, `#sw-failed`, and the
+figures above once GIVE THEM is pressed). Whenever a number the forecast needs is missing, the box says why where its
+buttons were, and under that keeps USE, HLT WATER and GRAIN side by side, as USE and FORECAST sit when there is a forecast
+(decision 15). USE
 stays in its place with dashes, greyed, "can't work it out"; tapped, it says what it needs: "USE needs how much water is
 in the HLT, strike and sparge: set it with HLT WATER." HLT WATER and GRAIN show their figures with "change" (HLT WATER
 "set it" while there's none, GRAIN "give it" while nothing stands for the grain), and each opens its small box in place
@@ -267,10 +281,10 @@ water 8.26 gal to the mash tun, given here for this recipe.", each with CHANGE. 
 reading and the room's temperature given as 66 °F (`#sw-room`), USE is worked out from that: FROM YOU has "Room 66 °F,
 given here while the boil kettle's probe gives no reading a room can have.", with CHANGE, whose box has THE PROBE to
 take it back; the grain's line names "the room's temperature given here"; and MEASURED ON THE RIG has no ROOM. With the
-grain weight given but not the mash water, and the probe giving no reading (`#sw-asks`), the box asks for both: "This
-recipe has no mash water from BeerSmith. Type it here, or import its BeerSmith file again and choose UPDATE. The boil
-kettle's probe gives no reading either.", then GRAIN WEIGHT "20 lb · change", and MASH WATER and ROOM, "give it", over
-USE, HLT WATER and GRAIN.
+grain weight given but not the mash water, and the probe giving no reading (`#sw-asks`), the box asks for both: GIVE
+THEM, "mash water · room"; opened, "This recipe has no mash water from BeerSmith. Type it here, or import its BeerSmith
+file again and choose UPDATE. The boil kettle's probe gives no reading either.", then GRAIN WEIGHT "20 lb · change", and
+MASH WATER and ROOM, "give it", over HLT WATER and GRAIN.
 
 **On a phone** the box sits in the same place in the recipe column, with the same buttons at the same size.
 
@@ -433,8 +447,8 @@ no more than that, it moves nothing and says why. The same at any simulator spee
 13. **The recipe's grain weight and mash water can be typed in the box.** A missing figure may only improve things,
     never block the brewer. So where the loaded recipe has neither BeerSmith's figure nor one given here (nor, for the
     grain, a mash step's own Grain_Kg), the line names it and says "Type it here, or import its BeerSmith file again and
-    choose UPDATE.", and GRAIN WEIGHT and MASH WATER sit under it, above USE, HLT WATER and GRAIN, each with "give it",
-    then its figure and "change". UPDATE, on the Recipe Book's import of a name the book has, gives the loaded recipe
+    choose UPDATE.", and GRAIN WEIGHT and MASH WATER sit under it, above HLT WATER and GRAIN, each with "give it",
+    then its figure and "change", behind GIVE THEM since 25 Nov (decision 17). UPDATE, on the Recipe Book's import of a name the book has, gives the loaded recipe
     BeerSmith's mash figures at once, in place of any typed here, with nothing loaded again and no step changed, even
     while BrewStart waits (core post72); importing it as a new recipe would make a second copy and lose what was
     changed since loading. Each
@@ -485,6 +499,15 @@ no more than that, it moves nothing and says why. The same at any simulator spee
     another Recipe Book recipe of the same name with a grain bill within 2%, else, for the mash water, BeerSmith's mash
     ratio times the grain weight; never one made up. Nothing is saved until it is accepted, and a figure taken from the
     recipe's own BeerSmith file is kept as BeerSmith's.
+17. **Figures to give are asked for in one row, and opened on request** (25 Nov, from a bench measurement). With the
+    line, both figures' buttons and USE, HLT WATER and GRAIN, the box asking for a recipe's figures took 319 px on a
+    1920 × 950 window and left the step list 103-129 px: BrewStart's row and MashIn's, with the versions line hidden.
+    The figures only make USE possible; without them the strike water stays as planned, so the box is a notice, and
+    the step list, what's next, keeps its room. Closed, USE greyed and GIVE THEM sit where USE and FORECAST sit, so the
+    box is as tall as with a forecast and nothing under it moves when the figures come; opened, as FORECAST opens.
+    The other ways the forecast stops (no HLT water alone, a grain temperature it can't use, the control interval, USE
+    too far, a failure) are said as before: one line, with nothing to give but HLT WATER or GRAIN beside USE. Recipes
+    imported from BeerSmith since core post55 have the figures, so this is mostly older and hand-written recipes.
 
 ## The dead space in the BeerSmith profile
 
@@ -754,7 +777,9 @@ faceplates share their rows, so a box on one would push the other two out of lin
 - It makes way for the pre-brew check's box, the probes side by side, and NEXT STEP's or RESET's question, which sit
   in the same place. One box at a time.
 - On one screen it is 152-172 px tall, 180-194 px while USE is worked out, with its one line about it, and 215-226 px
-  during dough-in with its line about the Mash Tun's reading. The current step stays whole at every one-screen size,
+  during dough-in with its line about the Mash Tun's reading. Asking for figures to give, closed, it is as tall as with
+  a forecast (152-166 px); it was 298-336 px, which left a 1920 × 950 window's step list 103-124 px, one row. Opened
+  with GIVE THEM, it takes the step list's room as FORECAST does: 376-402 px. The current step stays whole at every one-screen size,
   from 1180 × 860 up.
 - FORECAST is long. Opened, its head stays where it was and only the details move. On one screen the box takes the room
   of the step list and the timers, as COMPARE PROBES and the pre-brew check's box now do too, and the details scroll
@@ -1008,6 +1033,7 @@ In `brew-day.html`, second in the strip:
 - `#sw-missing`: a recipe imported before CraftBeerPi kept BeerSmith's mash figures, its MashIn with a grain weight: the
   box asks for the mash water.
 - `#sw-missing-steps`: a recipe built on Brew Steps, with no grain weight either: the box asks for both.
+- `#sw-give`: the same, GIVE THEM pressed.
 - `#sw-noprobe`: the boil kettle's probe gives no reading.
 - `#sw-grain-bad`: BrewStart's grain temperature saved on Brew Steps as 150 °F.
 - `#sw-interval`: the mash tun's control interval set to 2.5 s.

@@ -7172,6 +7172,84 @@ moment.
   and the drawing's strip at 1180 × 860; its presses at 701 to 899 px wide are a brewer's clicks.
 - test_ui_brewday_identity: the mockup and the build alike at 1280 × 800 and 1180 × 860 too.
 
+## The strike water box asking for figures: one row, ready to build (25 Nov)
+
+From the bench: on a 1920 × 950 monitor, with a recipe that has no BeerSmith mash figures (Test Recipe v5), the box
+asking for them took 319 px and left the step list 129 px: BrewStart's row and MashIn's, with the versions line hidden.
+It is working as designed, but it is too much box for what it asks. The figures only make USE possible; without them the
+strike water stays as planned. So the step list, what's next, keeps its room, and the asking opens on request
+(STRIKE-WATER.md decision 17).
+
+### What to build (screen.js, brewday.css)
+
+1. **When:** no forecast (`!has`), and the figures USE needs include one the brewer can give in the box (`swGives`):
+   - the recipe's grain weight or mash water, missing and not given here;
+   - the room, while the boil kettle's probe can't stand for it (miss or misses "probe" or "room");
+   - with any of those, the HLT's water where it is missing too.
+
+   Figures already given here aren't among them; they are changed in the open box. A figure's own box open (HLT
+   WATER's, GRAIN's, or one of the recipe's or the room's, opened in the box, not from MashIn's row) shows as today, in
+   place of everything under the window. The other ways the forecast stops (no HLT water alone, a grain temperature it
+   can't use, the control interval, USE too far, a failure) are drawn as today.
+2. **Closed** (`swGiveRow`): the window, then one `.swa.two` row (two equal halves):
+   - USE, greyed, "can't work it out", as today, its tap saying what it needs (`swNoUse`, unchanged);
+   - GIVE THEM (GIVE IT for one), `class="cmdbtn swgive"`, its small line naming them: "grain weight · mash water",
+     "mash water", "mash water · room", "room". Three or more: the first and a count, "grain weight and 2 more", as
+     only two fit on one line at every width. `aria-label` names them all: "Give the figures USE needs: the grain weight,
+     mash water, room and HLT water". `aria-expanded="false"`. It is FORECAST's own command (`sw:more`, `st.swOpen`),
+     so it opens and closes as FORECAST does: one box at a time, Escape, the step list's and the timers' room on one
+     screen, closing as the malt goes in.
+   - Under them, CraftBeerPi's warnings about the HLT's water, as today (`swLowHTML`, `hltOverHTML`).
+
+   The box is then as tall as with a forecast: 166 px at 1920 × 950 and 1920 × 1080, 152 px from 1180 to 1440 wide,
+   156 px on a 390 × 844 phone. The box's kept height (`pbFit`) works as today: the asking box's class (`sw-miss`)
+   differs from the forecast's, so neither keeps the other's height.
+3. **Opened** (`swGiveDet`), `section.sw.open`, as FORECAST opened:
+   - in the head, CLOSE "the figures" in GIVE THEM's place, `aria-expanded="true"`, `aria-controls="sw-give"`;
+   - under the head, `div.swdet.swgive#sw-give`: today's line saying why, word for word (`swMissRecipe` and the
+     others after it); the figures' buttons as today (`swAsks`, `swRecBtn`); then HLT WATER and GRAIN, two to a row
+     (`.swa.two`), without USE, which is in the head; and the sparge water left, where MASH WATER is asked for.
+
+   A figure's button opens its own box as today; SET or CANCEL comes back to this, still open. Once the last figure is
+   given and USE is worked out, the box is FORECAST's, still open, under the same CLOSE: the same command, so nothing
+   moves and focus stays on it. Opened, it is 376-402 px on one screen, less than FORECAST opened, and like FORECAST
+   it takes the step list's room.
+4. **Nothing else changes.** MashIn's row keeps "mash water not given" in Note Amber and its own box. The mash water's
+   rules (the HLT's least water, the ratio, the suggestion) are as today, in the figure's own box.
+
+### In CraftBeerPi
+
+Nothing new: what the state already reports (miss, misses, the recipe's figures and those given here).
+
+### Moments
+
+`#sw-missing-steps` (GIVE THEM, "grain weight · mash water"), `#sw-missing` (GIVE IT, "mash water"), `#sw-asks` ("mash
+water · room"), `#sw-noprobe` (GIVE IT, "room"), and the new `#sw-give`, `#sw-missing-steps` with GIVE THEM pressed.
+
+### Checked
+
+- `files\give_presses.py` (new): 80 checks, all passing, no page errors.
+  - Closed, at 11 sizes from 2000 × 1000 to 360 × 740, in the four moments and with four figures missing: as tall as
+    the box with a forecast in `#sw-plan`; both buttons the forecast row's height, their words on one line and not cut;
+    on one screen the step list as tall as with a forecast and the versions line as there (256 px and three rows at
+    1920 × 950, against 103 px and one).
+  - USE's tap words; GIVE THEM's name for a screen reader, with two figures and with four.
+  - At 1920 × 950 and 390 × 844: GIVE THEM opens (CLOSE, expanded, controlling `#sw-give`, focus kept); the line, the
+    figures' buttons, HLT WATER and GRAIN under it; on one screen, the page doesn't scroll. GRAIN WEIGHT's box, focused;
+    SET logs "Grain weight set to 20.0 lb for this recipe" and comes back open, asking for the mash water alone; CLOSE
+    leaves GIVE IT, "mash water", as tall as with a forecast; the mash water given: FORECAST's details open under the
+    same CLOSE; CLOSE, once USE is worked out: FORECAST in its place. Escape closes `#sw-give`. `#sw-novol` as today.
+- `sw7_presses`, `sw8_presses` and `bs_presses` fail the same on main 12d5056 as with this change (4, a stop part-way,
+  and 32): they predate BrewStart's two timings and the mash water's rows, and need bringing up to date separately.
+  The one check here whose words change, the probe's sentence first in `#sw-noprobe`, already fails on main.
+- Pictures against UI main 12d5056 at 1920 × 950, 1440 × 900 and 390 × 844: only the asking moments differ.
+
+### Changed
+
+`proposal\brew-day.js` (`swHTML`'s no-forecast branch; `swMissHTML` split into `swMissBits`; `swEditing`, `SW_GIVE`,
+`swGives`, `swGiveRow`, `swGiveDet`; the `#sw-give` moment); `proposal\brew-day.html` (its link); `STRIKE-WATER.md`
+(what the brewer sees, where it sits, decisions 13 and 17, the moments); this section.
+
 ## Open questions about the drawing
 
 Both were answered on 10 Nov. The valves have been in the drawing since then; the path after the boil was
