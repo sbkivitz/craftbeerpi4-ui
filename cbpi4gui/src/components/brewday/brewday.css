@@ -688,22 +688,36 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .tfield label{min-width:62px;font:600 15px/1 var(--cond);letter-spacing:.05em;color:var(--text-2);text-transform:uppercase}
 :where(html.bd-page) .tedit input{min-width:0;min-height:52px;padding:0 12px;border:2px solid #3d7fd0;border-radius:var(--r);background:var(--face);color:var(--text);font:600 22px/1 var(--cond)}
 :where(html.bd-page) .tedit input::placeholder{color:#8a9bad;opacity:1}
-/* a stopped or new timer's time: MINUTES and SECONDS side by side, each its label over its −, box and + */
-:where(html.bd-page) .ttime{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-:where(html.bd-page) .ttime .tfield{grid-template-columns:48px minmax(0,1fr) 48px;row-gap:5px;column-gap:6px}
-:where(html.bd-page) .ttime .tfield label{grid-column:1/-1;min-width:0}
-:where(html.bd-page) .ttime input{padding:0;text-align:center;font-size:28px;font-variant-numeric:tabular-nums}
-/* under 400 px the keys are 44 px wide and the figures 24 px, so 300 still fits its box on a 360 px phone */
-@media (max-width:399px){
-:where(html.bd-page) .ttime{column-gap:8px}
-:where(html.bd-page) .ttime .tfield{grid-template-columns:44px minmax(0,1fr) 44px;column-gap:4px}
-:where(html.bd-page) .ttime input{font-size:24px}
+/* a stopped or new timer's time (.tset, a container so its parts fit its width): the presets, the time, then the two
+   groups of fine adjustment */
+:where(html.bd-page) .tset{container-type:inline-size;display:grid;gap:8px}
+/* six presets in one row, each at least 48 px: 4 px apart they need 308 px, a 390 px phone's editor. Narrower (a 360 px
+   phone, 278 px) they are two rows of three, each still whole. The unit is smaller than its figure, on the same line */
+:where(html.bd-page) .tpre{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}
+@container (max-width:307px){
+:where(html.bd-page) .tpre{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
+:where(html.bd-page) .tedit .tpre .cmdbtn{padding:0 2px;letter-spacing:.02em;white-space:nowrap}
+:where(html.bd-page) .tpre .tu{font-size:13px;font-weight:600;letter-spacing:.03em;color:var(--text-2)}
+:where(html.bd-page) .tpre .cmdbtn[aria-pressed=true] .tu{color:#cfdcea}
+/* the time, the one place it is read whole: large, in the middle */
+:where(html.bd-page) .ttot{justify-self:center;margin:2px 0 0;font:600 46px/1 var(--cond);letter-spacing:.02em;color:var(--text);font-variant-numeric:tabular-nums}
+:where(html.bd-page) .ttot.none{color:var(--text-3)}
+/* fine adjustment: each group its − and + (52 px square) either side of its figure and unit, the whole field a tap target
+   for the figure. One over the other in a box under 484 px wide; side by side in a wider one, 28 px apart, so the two
+   groups' + and − in the middle don't read as a pair. A group never breaks */
+:where(html.bd-page) .ttime{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,228px),1fr));gap:8px 28px}
+:where(html.bd-page) .tgrp{display:grid;grid-template-columns:52px minmax(0,1fr) 52px;gap:6px}
+:where(html.bd-page) .tedit .tgrp .cmdbtn{min-height:52px;padding:0;font-size:30px;font-weight:600}
+:where(html.bd-page) .tval{display:flex;align-items:baseline;justify-content:center;gap:6px;min-width:0;min-height:52px;padding:0 8px;border:2px solid #3d7fd0;border-radius:var(--r);background:var(--face);cursor:text}
+:where(html.bd-page) .tval:focus-within{outline:3px solid #8cc2ff;outline-offset:2px}
+:where(html.bd-page) .tedit .tval input{flex:none;width:calc(3ch + 2px);height:48px;min-height:0;padding:0;border:0;background:none;text-align:right;font:600 28px/48px var(--cond);font-variant-numeric:tabular-nums}
+:where(html.bd-page) .tedit .tval input:focus-visible{outline:0}
+:where(html.bd-page) .tedit #tsec{width:calc(2ch + 2px)}
+:where(html.bd-page) .tval .tu{font:600 17px/1 var(--cond);letter-spacing:.04em;color:var(--text-2)}
 :where(html.bd-page) .tsug,:where(html.bd-page) .tkeys{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 :where(html.bd-page) .tkeys{grid-template-columns:repeat(2,minmax(0,1fr))}
-:where(html.bd-page) .tpre{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:2px}
 :where(html.bd-page) .tedit .cmdbtn{min-height:48px;font-size:17px}
-:where(html.bd-page) .tedit .ttime .cmdbtn{min-height:52px;padding-left:0;padding-right:0}
 :where(html.bd-page) .tsug .cmdbtn[aria-pressed=true],:where(html.bd-page) .tpre .cmdbtn[aria-pressed=true]{background:#070c11;color:#fff;box-shadow:inset 0 0 0 2px #a9bfd4}
 :where(html.bd-page) .tsug .cmdbtn{padding-left:2px;padding-right:2px}
 :where(html.bd-page) .tsug .cmdbtn .lb{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;overflow-wrap:anywhere;line-height:1.1}

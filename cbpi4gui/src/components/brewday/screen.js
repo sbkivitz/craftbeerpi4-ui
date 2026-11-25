@@ -146,7 +146,7 @@ const CONNECTING_MS = 5000;
 const ROUTINE = /^(?:timer started|step finished|boiling completed)$/i;
 const WAITING_FOR_YOU = "WAITING FOR YOU";
 /* the timers: four at most, as the server keeps them. TPRE: the editor's minutes; TMINS the most minutes a timer's own
-   time has, and TSECS what its SECONDS keys take off or add. The names to pick are CraftBeerPi's
+   time has, and TSECS what its seconds' − and + take off or add. The names to pick are CraftBeerPi's
    BREWDAY_TIMER_NAMES, sent with the timers as `names`. TNAMES is its default, which the demo offers; TNLEN a name's
    length; TNMAX how many buttons the editor has room for: two rows of three */
 const TMAX = 4, TPRE = [5, 10, 15, 20, 30, 60], TMINS = 300, TSECS = 5;
@@ -6258,7 +6258,7 @@ function namesHTML(e, t) {
   }).join("");
   return `<div class="tsug" role="group" aria-label="Names to pick">${btns}</div>`;
 }
-/* a stopped or new timer's own time in its editor: MINUTES (0 to 300) and SECONDS (0 to 59) side by side, so a timer can
+/* a stopped or new timer's own time in its editor: its minutes (0 to 300) and its seconds (0 to 59), so a timer can
    be minutes and seconds, or seconds only. Each box keeps what was typed in it (e.mt, e.st) until a key or a preset sets
    the time again (teSet); a blank box counts as 0. The time they make is at least a second and at most 300 minutes:
    anything else greys START, SAVE and SET, which say why (teTime) */
@@ -6276,16 +6276,23 @@ function teTime(e) {
   return {set: m * 60 + s, why: ""};
 }
 function teSet(e, set) { e.set = set; delete e.mt; delete e.st; }
-/* the minutes' keys change the minutes and keep the seconds (to 300:00 at most); the seconds' keys take TSECS seconds off
-   or add them, into the minutes past 0:55 or under 1:00. The presets are whole minutes: each sets the seconds to 0, and
-   is pressed while the time is exactly its minutes */
+/* the time, as phone and kitchen timers set one (.tset): first the presets, one row of whole minutes with their unit
+   ("5 min" … "60 min"), each setting the seconds to 0 and lit while the time is exactly its minutes; then the time
+   itself, one large m:ss (te-tot), the one place the whole time is read; then fine adjustment, two groups apart, each
+   its −, its figure with its unit beside it and its +: "− 10 min +" and "− 0 sec +". The minutes' keys change the
+   minutes by 1 and keep the seconds (to 300:00 at most); the seconds' keys take TSECS seconds off or add them, into the
+   minutes past 0:55 or under 1:00. No figure on the setter stands without its unit */
+const teTot = tm => tm.why ? "–:––" : `${Math.floor(tm.set / 60)}:${String(tm.set % 60).padStart(2, "0")}`;
 function teTimeHTML(e, tm) {
   const x = teText(e);
-  return `<div class="ttime"><div class="tfield tmin"><label for="tmin">Minutes</label>${b("cmdbtn", "−1", "", {cmd: "te:step:-1", label: "One minute less"})}<input id="tmin" type="text" inputmode="numeric" maxlength="3" autocomplete="off" value="${esc(x.m)}">${b("cmdbtn", "+1", "", {cmd: "te:step:1", label: "One minute more"})}</div><div class="tfield tsec"><label for="tsec">Seconds</label>${b("cmdbtn", `−${TSECS}`, "", {cmd: `te:sec:-${TSECS}`, label: `${TSECS} seconds less`})}<input id="tsec" type="text" inputmode="numeric" maxlength="2" autocomplete="off" value="${esc(x.s)}">${b("cmdbtn", `+${TSECS}`, "", {cmd: `te:sec:${TSECS}`, label: `${TSECS} seconds more`})}</div></div>
-      <div class="tpre" role="group" aria-label="Minutes">${TPRE.map(m => b("cmdbtn", String(m), "", {cmd: `te:min:${m}`, pressed: tm.set === m * 60, label: `${m} minutes`})).join("")}</div>`;
+  const grp = (id, name, unit, max, dn, up) => `<div class="tgrp" role="group" aria-label="${name}">${dn}<label class="tval"><input id="${id}" type="text" inputmode="numeric" maxlength="${max}" autocomplete="off" aria-label="${name}" value="${esc(x[id === "tmin" ? "m" : "s"])}"><span class="tu" aria-hidden="true">${unit}</span></label>${up}</div>`;
+  const key = (sign, cmd, label) => b("cmdbtn tkey", sign, "", {cmd, label});
+  return `<div class="tset"><div class="tpre" role="group" aria-label="Whole minutes">${TPRE.map(m => b("cmdbtn", `${m}<span class="tu">&nbsp;min</span>`, "", {cmd: `te:min:${m}`, pressed: tm.set === m * 60, label: `${m} minutes`})).join("")}</div>
+      <output class="ttot${tm.why ? " none" : ""}" id="te-tot" for="tmin tsec" aria-label="Time">${teTot(tm)}</output>
+      <div class="ttime">${grp("tmin", "Minutes", "min", 3, key("−", "te:step:-1", "One minute less"), key("+", "te:step:1", "One minute more"))}${grp("tsec", "Seconds", "sec", 2, key("−", `te:sec:-${TSECS}`, `${TSECS} seconds less`), key("+", `te:sec:${TSECS}`, `${TSECS} seconds more`))}</div></div>`;
 }
-/* the editor drawn again in place as its time is typed: the presets and the greyed START, SAVE or SET follow the boxes,
-   and the box being typed in keeps what it has and its caret (patchNode) */
+/* the editor drawn again in place as its time is typed: the time, the presets and the greyed START, SAVE or SET follow
+   the boxes, and the box being typed in keeps what it has and its caret (patchNode) */
 function tePatch() {
   const el = $(".tedit");
   if (!el || !st.tedit) return;
