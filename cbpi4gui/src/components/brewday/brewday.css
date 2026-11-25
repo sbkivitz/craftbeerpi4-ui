@@ -78,11 +78,28 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .spdbox{position:absolute;right:var(--pad);top:calc(100% + 10px);z-index:45;display:flex;flex-direction:column;gap:12px;width:min(360px,calc(100% - 2 * var(--pad)));padding:14px 12px 12px;border:2px solid var(--select);border-radius:var(--r);background:var(--panel);box-shadow:0 18px 40px rgb(0 0 0/.5);font:400 16px/1.35 var(--sans);color:var(--text)}
 :where(html.bd-page) .spdbox[hidden]{display:none}
 :where(html.bd-page) .spdbox .spdt{align-self:flex-start;margin:-26px 0 -2px -4px;padding:0 6px;background:var(--panel);font:700 17px/1.2 var(--cond);letter-spacing:.06em}
+/* what is under the title, scrolling inside the box where the window is too short for all of it (--spd-max, set as
+   the box is drawn); the scroller reaches the box's edges, so a focused button's ring isn't cut */
+:where(html.bd-page) .spdbox .spdin{display:flex;flex-direction:column;gap:12px;max-height:var(--spd-max,none);overflow-y:auto;overscroll-behavior:contain;margin:-4px -12px -12px;padding:4px 12px 12px}
 :where(html.bd-page) .spdbox .seg{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
 :where(html.bd-page) .spdbox .seg button{min-height:48px;font:700 19px/1 var(--cond);letter-spacing:.04em}
 :where(html.bd-page) .spdbox .spdsay{margin:0;color:var(--text-2)}
-:where(html.bd-page) .spdbox .spdact{display:flex;justify-content:flex-end}
+/* SIMULATOR VESSELS, the chooser's second part, under a line: each vessel's name and its temperature, RESET at the
+   right, and under them a small box for a temperature with SET TEMPERATURE; every button 48px tall, on a phone too.
+   RESET ALL is at the left of CANCEL. RESET ALL's question has the recipe column's question look (.confirm) */
+:where(html.bd-page) .spdbox .spdact{display:flex;justify-content:flex-end;gap:8px}
 :where(html.bd-page) .spdbox .spdact .cmdbtn{min-height:48px;min-width:120px;padding:0 16px;font:700 17px/1 var(--cond)}
+:where(html.bd-page) .spdbox .spdact .svall{margin-right:auto}
+:where(html.bd-page) .spdbox .svh{margin:2px 0 0;padding-top:12px;border-top:1px solid var(--line);font:700 17px/1.2 var(--cond);letter-spacing:.06em}
+:where(html.bd-page) .spdbox .svl{display:flex;flex-direction:column;gap:12px}
+:where(html.bd-page) .spdbox .svrow{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 10px}
+:where(html.bd-page) .spdbox .svn{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 10px;min-width:0;margin:0;font:600 17px/1.2 var(--cond);letter-spacing:.06em;text-transform:uppercase}
+:where(html.bd-page) .spdbox .svt{font:600 22px/1 var(--cond);letter-spacing:0;text-transform:none;font-variant-numeric:tabular-nums;white-space:nowrap}
+:where(html.bd-page) .spdbox .svset{grid-column:1/-1;display:flex;align-items:center;gap:8px}
+:where(html.bd-page) .spdbox .svin{display:flex;align-items:center;gap:6px;font:600 15px/1 var(--cond);letter-spacing:.04em;color:var(--text-2)}
+:where(html.bd-page) .spdbox .svin input{width:76px;min-height:48px;padding:0 6px;border:2px solid #3d7fd0;border-radius:var(--r);background:var(--face);color:var(--text);font:600 22px/1 var(--cond);text-align:center;font-variant-numeric:tabular-nums}
+:where(html.bd-page) .spdbox .svrow .cmdbtn{min-height:48px;padding:0 14px;font:700 17px/1 var(--cond);letter-spacing:.05em;white-space:nowrap}
+:where(html.bd-page) .spdbox .svask button{min-height:48px}
 :where(html.bd-page) .status{display:grid;grid-template-columns:minmax(280px,34%) minmax(0,1fr);gap:var(--gap);padding:10px var(--pad) 0}
 :where(html.bd-page) .banner,:where(html.bd-page) .event{display:flex;align-items:center;gap:12px;min-height:58px;padding:8px 10px 8px 14px;border-radius:var(--r);background:var(--panel);border:1px solid var(--line)}
 :where(html.bd-page) .banner{font:600 18px/1.2 var(--cond);letter-spacing:.03em}

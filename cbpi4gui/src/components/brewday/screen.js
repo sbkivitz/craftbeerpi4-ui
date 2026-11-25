@@ -567,21 +567,35 @@ function clockWatch() {
   ["#clock", "#clock .cdr", "#clock .cdz", "#clock .ct"].forEach(s => { const n = $(s); if (n) clockRO.observe(n); });
 }
 /* the chooser SPEED opens: SIMULATOR SPEED set into its top edge, the speeds in the pressed look's row, the one
-   CraftBeerPi runs at pressed, what a new one does to its clock, and CANCEL; under the title bar at its right */
+   CraftBeerPi runs at pressed, what a new one does to its clock, SIMULATOR VESSELS (svHTML), then RESET ALL and CANCEL;
+   under the title bar at its right. Patched in place, so a temperature being typed keeps its caret; the vessels'
+   temperatures follow the readings in place (svTemps) */
 function spdDraw() {
   const box = root && $("#spd-box");
   if (!box) return;
   const c = st.spdOpen && isSim() ? clockNow() : null;
   if (!c) { if (!box.hidden) { box.hidden = true; box.innerHTML = ""; box._h = null; } return; }
-  const n = c.scale, P = st.spdPend, why = st.link === "lost" ? PAUSED : P ? WAIT : "";
-  const html = '<h3 class="spdt" id="spd-t">SIMULATOR SPEED</h3>'
+  const n = c.scale, P = st.spdPend, why = st.link === "lost" ? PAUSED : P ? WAIT : "", sv = svHTML();
+  const html = '<h3 class="spdt" id="spd-t">SIMULATOR SPEED</h3><div class="spdin">'
     + `<div class="seg spdsel" role="group" aria-label="Speeds">${spdList(n).map(v => b("", `${v}×`, "", {cmd: `spd:set:${v}`, pressed: v === (P || n), why: v === P ? "" : why})).join("")}</div>`
     + `<p class="spdsay">${P ? `Setting ${P}×: waiting for CraftBeerPi.` : esc(spdSay())}</p>`
-    + `<div class="spdact">${b("cmdbtn", "CANCEL", "", {cmd: "spd:x", why: P ? WAIT : ""})}</div>`;
-  if (box._h === html) return;
-  const a = document.activeElement, f = box.contains(a) ? a.dataset.cmd : null;
-  box.innerHTML = html; box._h = html; box.hidden = false;
-  if (f) box.querySelector(`[data-cmd="${f}"]`)?.focus({preventScroll: true});
+    + sv + (st.svAsk && sv ? "" : `<div class="spdact">${sv ? b("cmdbtn svall", "RESET ALL", "", {cmd: "spd:vall", why: st.link === "lost" ? PAUSED : svBusy() ? WAIT : ""}) : ""}${b("cmdbtn", "CANCEL", "", {cmd: "spd:x", why: P ? WAIT : ""})}</div>`) + "</div>";
+  if (box._h !== html) {
+    const a = document.activeElement, f = box.contains(a) ? a.dataset.cmd : null;
+    morph(box, html); box._h = html; box.hidden = false;
+    if (f && !box.contains(document.activeElement)) box.querySelector(`[data-cmd="${f}"]`)?.focus({preventScroll: true});
+  }
+  spdFit(box);
+  svTemps();
+}
+/* the chooser kept inside the window: what is under its title scrolls inside it where the window is too short for all
+   of it (a phone with RESET ALL's question open). Set on the box itself, which is never redrawn, so a redraw keeps
+   where it is scrolled to */
+function spdFit(box) {
+  const inner = box.querySelector(".spdin");
+  if (!inner) return;
+  const h = `${Math.max(160, Math.floor(window.innerHeight - inner.getBoundingClientRect().top - 24))}px`;
+  if (box.style.getPropertyValue("--spd-max") !== h) box.style.setProperty("--spd-max", h);
 }
 const spdFocus = sel => setTimeout(() => { if (root && st) $(sel)?.focus({preventScroll: true}); }, 0);
 /* SPEED opens and closes the chooser, LOG's list closing (one at a time), focus on the speed pressed; CANCEL, Escape
@@ -592,6 +606,7 @@ function spdCmd(x, y) {
   if (!isSim()) return;
   if (x === "open") { st.spdOpen = !st.spdOpen; if (st.spdOpen) st.logOpen = false; renderAll(); spdFocus(st.spdOpen ? '#spd-box [aria-pressed="true"]' : '#clock [data-cmd="spd:open"]'); return; }
   if (x === "x") return spdClose();
+  if (x.startsWith("v")) return svCmd(x, y);
   const c = clockNow();
   if (x !== "set" || !c || st.spdPend != null || st.link === "lost") return;
   const v = +y;
@@ -620,14 +635,124 @@ function spdCmd(x, y) {
 }
 function spdClose() {
   if (st.spdPend != null || !st.spdOpen) return;
-  st.spdOpen = false; renderAll();
+  st.spdOpen = false; st.svAsk = false; renderAll();
   spdFocus('#clock [data-cmd="spd:open"]');
 }
 /* the speed set: the box closes, and focus goes back to SPEED where it was in the box */
 function spdDone() {
   const was = st.spdOpen;
-  st.spdOpen = false; renderAll();
+  st.spdOpen = false; st.svAsk = false; renderAll();
   if (was) spdFocus('#clock [data-cmd="spd:open"]');
+}
+/* SIMULATOR VESSELS, the chooser's second part: Brew Day's vessels whose probe is a simulated vessel (cbpi4-simvessel's
+   SimVessel sensors), named as their kettles are in CraftBeerPi. Each has the temperature Brew Day reads for it, RESET,
+   and a small box for a temperature in the brewery's unit with SET TEMPERATURE; RESET ALL is beside CANCEL. RESET sends
+   the vessel's "Reset to room" (cbpi4-simvessel 0.0.18): room temperature (its Ambient), the probe with it at once,
+   water refilled, a strike water move and dough-in cleared. SET TEMPERATURE sends "Set Temperature", for a hot start.
+   RESET ALL asks first, naming each vessel's room temperature; neither answer is the default, and RESET THE VESSELS
+   sends every vessel's RESET at once. Neither RESET nor SET TEMPERATURE asks: each is quick to do again. Commands go
+   only to SimVessel sensors; with none (the rig, which has no chooser either) the part isn't drawn. A vessel's buttons
+   wait while its command does; the plugin's notice says what each did, in LOG; one that fails or gets no answer in 5 s
+   has a line of its own there, and is said aloud */
+const SIMVESSEL_TYPE = "SimVessel";
+const SV_NAME = {hlt: "HLT", mt: "Mash Tun", bk: "Boil Kettle"};
+/* the demo's vessels' water once refilled, in litres, as the simulator's own notice gives it: the HLT BrewStart's
+   25.4 gal, the mash tun's and the boil kettle's Volume */
+const SV_WATER = {hlt: 96.1, mt: 30.0, bk: 40.0};
+/* a vessel's room temperature as cbpi4-simvessel reads its Ambient: blank, 68 °F or 20 °C; on a °F brewery a 20, an
+   older plugin's Celsius default, is 68 °F */
+function svRoom(p) {
+  const F = M.U !== "°C", raw = p ? p.Ambient : null, x = raw == null || String(raw).trim() === "" ? NaN : Number(raw);
+  if (!Number.isFinite(x)) return F ? 68 : 20;
+  return F && x === 20 ? 68 : x;
+}
+function svList() {
+  if (DEMO_MODE) return ROLES.map(v => ({v, name: DEMO.KNAME[v], probe: DEMO.PROBE[v], room: M.U === "°C" ? 20 : 68}));
+  const S = last && Array.isArray(last.sensors) ? last.sensors : [];
+  return ROLES.map(v => {
+    const k = M.K && M.K[v], s = k && k.sensor ? S.find(x => x && x.id === k.sensor) : null;
+    return s && s.type === SIMVESSEL_TYPE ? {v, name: String(k.name || SV_NAME[v]), probe: String(s.name || ""), sid: s.id, room: svRoom(s.props)} : null;
+  }).filter(Boolean);
+}
+const svBusy = () => Object.keys(st.svPend || {}).length > 0;
+/* a temperature as the question says it, "68 °F" or "168.8 °F" */
+const svT = x => `${+(+x).toFixed(1)}&nbsp;${M.U}`;
+/* what SET TEMPERATURE takes: a number from freezing to boiling, in the brewery's unit */
+const svLim = () => M.U === "°C" ? [0, 100] : [32, 212];
+const svNum = t => { const s = String(t ?? "").trim(), x = s === "" ? NaN : Number(s); return Number.isFinite(x) ? Math.round(x * 10) / 10 : null; };
+const svWhy = t => { const [lo, hi] = svLim(), x = svNum(t); return x != null && x >= lo && x <= hi ? "" : `Type a temperature from ${lo} to ${hi} ${M.U} first.`; };
+function svHTML() {
+  const V = svList();
+  if (!V.length) return "";
+  const lost = st.link === "lost", P = st.svPend || {}, busy = svBusy() ? WAIT : "";
+  const rows = V.map(x => {
+    const why = lost ? PAUSED : P[x.v] ? WAIT : "", t = (st.svIn || {})[x.v] || "", room = `${+(+x.room).toFixed(1)} ${M.U}`;
+    return `<div class="svrow" role="group" aria-labelledby="sv-n-${x.v}"><p class="svn"><span id="sv-n-${x.v}">${esc(x.name)}</span><span class="svt" id="sv-t-${x.v}"></span></p>`
+      + b("cmdbtn svr", "RESET", "", {cmd: `spd:vreset:${x.v}`, label: `Reset the ${x.name} to room temperature, ${room}`, why})
+      + `<div class="svset"><span class="svin"><input id="sv-in-${x.v}" data-v="${x.v}" inputmode="decimal" autocomplete="off" maxlength="5" value="${esc(t)}" aria-label="New temperature for the ${esc(x.name)}, in ${M.U}"><span aria-hidden="true">${M.U}</span></span>`
+      + b("cmdbtn svs", "SET TEMPERATURE", "", {cmd: `spd:vset:${x.v}`, label: `Set temperature of the ${x.name}`, why: why || svWhy(t)}) + "</div></div>";
+  }).join("");
+  const ask = st.svAsk ? `<div class="confirm svask" role="group" aria-labelledby="sv-q"><p id="sv-q" tabindex="-1">Put every simulated vessel back at room temperature: ${V.map(x => `${esc(x.name)} ${svT(x.room)}`).join(", ")}, water refilled? A running recipe keeps running.</p>`
+    + `<div>${b("yes", "RESET THE VESSELS", "", {cmd: "spd:vall-yes", why: lost ? PAUSED : busy})}${b("", "CANCEL", "", {cmd: "spd:vall-no", why: busy})}</div></div>` : "";
+  return `<h3 class="svh" id="sv-h">SIMULATOR VESSELS</h3><div class="svl" role="group" aria-labelledby="sv-h">${rows}</div>${ask}`;
+}
+/* each vessel's temperature as Brew Day reads it, in place, as the readings come */
+function svTemps() {
+  svList().forEach(x => { const el = $(`#sv-t-${x.v}`); if (el) setText(el, `${f1(st.v[x.v].pv)} ${M.U}`); });
+}
+/* RESET ALL (vall) opens its question, focus on its words; CANCEL (vall-no) closes it, focus back on RESET ALL; RESET THE
+   VESSELS (vall-yes) resets each; RESET (vreset) one; SET TEMPERATURE (vset) one, to the figure typed in its box */
+function svCmd(x, y) {
+  const lost = st.link === "lost";
+  if (x === "vall") { if (lost || svBusy()) return; st.svAsk = true; renderAll(); timers.push(setTimeout(() => { const q = root && st && $("#sv-q"); if (q) { q.focus({preventScroll: true}); q.scrollIntoView({block: "nearest"}); } }, 0)); return; }
+  if (x === "vall-no") { st.svAsk = false; renderAll(); spdFocus('#spd-box [data-cmd="spd:vall"]'); return; }
+  if (lost) return;
+  if (x === "vall-yes") return svGo(svList(), "reset_to_room");
+  if (x === "vreset") return svGo(svList().filter(s => s.v === y), "reset_to_room");
+  if (x === "vset") {
+    const t = (st.svIn || {})[y] || "";
+    if (svWhy(t)) return;
+    return svGo(svList().filter(s => s.v === y), "set_temperature", svNum(t));
+  }
+}
+/* the vessels' command, to each SimVessel in `list`: "reset_to_room", or "set_temperature" to `temp`. The demo has
+   CraftBeerPi's answer a moment later: the vessel there, and the plugin's own notice in LOG */
+function svGo(list, action, temp) {
+  if (!list.length || list.some(x => st.svPend[x.v])) return;
+  const reset = action === "reset_to_room", what = reset ? "reset to room temperature" : `set to ${temp.toFixed(1)} ${M.U}`;
+  list.forEach(x => { st.svPend[x.v] = action; });
+  renderAll();
+  if (DEMO_MODE) {
+    timers.push(setTimeout(() => {
+      if (!st) return;
+      list.forEach(x => {
+        st.v[x.v].pv = reset ? x.room : temp;
+        logEvent(reset ? `SimVessel: ${x.name} back at room temperature, ${(+x.room).toFixed(1)} ${M.U}, full of water: ${SV_WATER[x.v].toFixed(1)} L.`
+          : `SimVessel: ${x.probe} set to ${temp.toFixed(1)}`, "from CraftBeerPi", "");
+      });
+      svDone(list, list.map(() => ({ok: true})), what);
+    }, 700));
+    return;
+  }
+  const g = gen;
+  Promise.all(list.map(x => api.sensorAction(x.sid, action, reset ? {} : {Temperature: temp}))).then(res => {
+    if (g !== gen || !st) return;
+    svDone(list, res, what);
+  });
+}
+/* answered: each that failed says so in LOG and aloud. RESET ALL's question closes, focus back on RESET ALL */
+function svDone(list, res, what) {
+  list.forEach(x => { delete st.svPend[x.v]; });
+  list.forEach((x, i) => {
+    if (res[i] && res[i].ok) return;
+    const w = failWhy(res[i]);
+    logEvent(`${x.name} ${what}`, "failed: " + w, "bad");
+    say(`${x.name} ${what}: failed, ${w}.`, true);
+  });
+  const asked = st.svAsk;
+  st.svAsk = false;
+  renderAll();
+  if (asked) spdFocus('#spd-box [data-cmd="spd:vall"]');
 }
 /* a speed pressed, live: saved as SIM_TIME_SCALE as the Settings page saves it. cbpi4-simvessel then has CraftBeerPi
    set its clock back to this computer's time at the new speed, which tells every screen (the topic "clock",
@@ -6386,7 +6511,7 @@ function blankMoment() {
   return {t: null, link: "lost", age: null, banner: null, v, a, recipe: null, timer: {left: 3600, running: false},
     tmrs: [], names: [], tedit: null, snd: soundInit(),
     events: loadEvents(), pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, logOpen: false, rbOpen: false,
-    sw: null, swOpen: false, swVol: null, swGrain: null, swRec: null, bsOpen: false, bs: null, simCfg: false, spdOpen: false, spdPend: null,
+    sw: null, swOpen: false, swVol: null, swGrain: null, swRec: null, bsOpen: false, bs: null, simCfg: false, spdOpen: false, spdPend: null, svAsk: false, svPend: {}, svIn: {},
     fail: {}, expect: {}, alarm: null, errors: [], warnings: [], prompts: [], lostAt: null, openedAt: Date.now(),
     waitN: 0, oldAt: 0, seenN: 0, seenDone: new Set()};
 }
@@ -7052,6 +7177,13 @@ const handlers = {
     if (e.target.id === "swvin" && e.key === "Enter") { e.preventDefault(); swVol("set"); return; }
     if (e.target.id === "swgin" && e.key === "Enter") { e.preventDefault(); swGrain("set"); return; }
     if (e.target.id === "swrin" && e.key === "Enter") { e.preventDefault(); swRec("set"); return; }
+    /* Enter in a simulated vessel's temperature box is its SET TEMPERATURE; greyed, it says why */
+    if (e.key === "Enter" && e.target.dataset && e.target.dataset.v && e.target.closest && e.target.closest("#spd-box")) {
+      e.preventDefault();
+      const go = $(`#spd-box [data-cmd="spd:vset:${e.target.dataset.v}"]`);
+      if (go) { if (go.getAttribute("aria-disabled") === "true") explain(go); else run(go.dataset.cmd); }
+      return;
+    }
     /* Enter in BrewStart's time box, or its grain figure, is SET; a greyed SET says why. The box drawn again keeps the
        caret, at its end */
     if ((e.target.id === "bstin" || e.target.id === "bsgin") && e.key === "Enter" && st.bs) {
@@ -7066,7 +7198,9 @@ const handlers = {
     /* the pH box: Escape closes it while focus is in it or on its reminder; from elsewhere, once nothing else open is left
        to close first (below) */
     if (e.key === "Escape" && st.ph && st.ph.open && e.target.closest && e.target.closest("#ph-box, #banner")) { phClose(); return; }
-    /* the speed chooser: Escape closes it while focus is in it or on SPEED, before anything else open */
+    /* the speed chooser: Escape closes RESET ALL's question while it is open, focus back on RESET ALL; else the chooser,
+       while focus is in it or on SPEED, before anything else open */
+    if (e.key === "Escape" && st.spdOpen && st.svAsk && e.target.closest && e.target.closest("#spd-box")) { svCmd("vall-no"); return; }
     if (e.key === "Escape" && st.spdOpen && e.target.closest && e.target.closest("#spd-box, #clock")) { spdClose(); return; }
     /* a timer's editor: with the timers in the column on one screen, a box open in the column has them make way, the editor
        with them, so Escape is for the box. Beside the drawing the editor is in a box of its own and closes first, unless
@@ -7086,6 +7220,8 @@ const handlers = {
   /* BrewStart's time box left: looked at once focus has settled, as the column drawn again puts focus back in a new one */
   focusout: e => { if (e.target && e.target.id === "bstin" && st && st.bs) timers.push(setTimeout(bsLeft, 0)); },
   input: e => {
+    /* a simulated vessel's temperature box: kept as typed, its SET TEMPERATURE following it in place */
+    if (e.target.dataset && e.target.dataset.v && e.target.closest("#spd-box") && st.spdOpen) { st.svIn[e.target.dataset.v] = e.target.value; spdDraw(); return; }
     /* the pH box's figures: kept as typed, SAVE and the sample's range line following them in place, so the caret
        stays where it is (phDraw) */
     if ((e.target.id === "phin" || e.target.id === "phtin") && st.ph) { st.ph[e.target.id === "phin" ? "txt" : "ttxt"] = e.target.value; phDraw(); return; }
@@ -7405,7 +7541,7 @@ export function createBrewDay(el, o = {}) {
     // a moment can open an editor (open) and borrow another moment's graph history (base)
     const open = st.open, base = st.base || key;
     delete st.open; delete st.base;
-    Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, logOpen: false, pbOpen: false, cmpOpen: false, rbOpen: false, swOpen: false, swVol: null, swGrain: null, swRec: null, bsOpen: false, bs: null, spdOpen: false, spdPend: null}, open);
+    Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, logOpen: false, pbOpen: false, cmpOpen: false, rbOpen: false, swOpen: false, swVol: null, swGrain: null, swRec: null, bsOpen: false, bs: null, spdOpen: false, spdPend: null, svAsk: false, svPend: {}, svIn: {}}, open);
     /* BrewScribe as the moment has it, and Brew Day's copy of its answer (phLoad) */
     phLoad();
     /* the strike water box: CraftBeerPi's answer for the moment's numbers, worked out already, unless the moment has it

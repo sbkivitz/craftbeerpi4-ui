@@ -137,4 +137,7 @@ export const api = {
   setting: (name, value) => call("PUT", `/config/${id(name)}/`, { value }),
   // The plugins installed, each with its package's metadata ({Name, Version, ...}).
   plugins: () => get("/plugin/list"),
+  // An action a sensor's plugin declares, e.g. the simulator's reset_to_room, or set_temperature {Temperature}
+  // (cbpi4-simvessel). Not run, 400 {error: "action not run"}.
+  sensorAction: (sensorId, action, parameter) => post(`/sensor/${id(sensorId)}/action`, { action, parameter }),
 };

@@ -12,8 +12,8 @@
 // sw-refused, sw-refused-moved, sw-failed, sw-tunprobe, sw-wait, sw-heat, sw-move, sw-late, sw-doughin, sw-hand,
 // sw-novol, sw-missing, sw-missing-steps, sw-noprobe, sw-grain-bad, sw-interval, sw-typed, sw-room and sw-asks, the
 // vessels' bs-over, sw-hw and
-// sw-over, the one clock's sim-clock and
-// sim-clock-1x, the timers' timer-change, timer-removed, timer-secs and timer-zero, the boil kettle's MANUAL's bk-hand, bk-hand-off and
+// sw-over, the one clock's sim-clock,
+// sim-clock-1x, sim-speed and sim-reset-all, the timers' timer-change, timer-removed, timer-secs and timer-zero, the boil kettle's MANUAL's bk-hand, bk-hand-off and
 // bk-man-boil, the mash pH's ph, ph-open, ph-set, ph-target, ph-had, ph-end, ph-warm, ph-nolog, ph-vessel, ph-saved,
 // ph-fail, ph-slow, ph-noclose and ph-other, other-recipe, and BrewScribe's readings' rd-strike, rd-level, rd-first,
 // rd-first-bx, rd-first-nofactor, rd-first-noatc, rd-looks-sg, rd-nounit, rd-last, rd-last-all, rd-sparge,
@@ -866,11 +866,13 @@ const SCENES = {
      bar's clock included, which isn't the real time: its date and time in italics and Note Amber, SPEED left of them;
      past its midnight the date moves on, and LOG's lines from the day before say theirs. #sim-clock-1x: the same evening
      on a simulator at 1×, its clock the screen's, the real time: the date beside the time in the usual look, SPEED left
-     of them. #sim-speed: #sim-clock with SPEED pressed, its chooser open. sim: the speed, CraftBeerPi's date at the
-     moment's midnight (day0) and the screen's (pc) */
+     of them. #sim-speed: #sim-clock with SPEED pressed, its chooser open, SIMULATOR VESSELS under the speeds;
+     #sim-reset-all: RESET ALL pressed in it, its question open. sim: the speed, CraftBeerPi's date at the moment's
+     midnight (day0) and the screen's (pc) */
   "sim-clock": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {base: "sw-plan", sim: {scale: 60, day0: "2026-11-26", pc: "2026-11-22"}}),
   "sim-clock-1x": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {base: "sw-plan", sim: {scale: 1, day0: "2026-11-22", pc: "2026-11-22"}}),
   "sim-speed": () => Object.assign(SCENES["sim-clock"](), {open: {spdOpen: true}}),
+  "sim-reset-all": () => Object.assign(SCENES["sim-clock"](), {open: {spdOpen: true, svAsk: true}}),
   "unload-held": () => Object.assign(SCENES["boil-hold"](), {base: "boil-hold", open: {confirmUnload: true}}),
   "unload-running": () => Object.assign(mash(), {base: "mash", open: {tap: "r:unload"}}),
   "unload-wait": () => Object.assign(SCENES["sw-wait"](), {base: "sw-wait", open: {tap: "r:unload"}}),
