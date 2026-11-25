@@ -90,7 +90,7 @@ LOAD has the same rules everywhere: on a book row, at the top of an open recipe,
 
 IMPORT opens on the right, in three parts:
 
-- **From a file:** drop the file, or CHOOSE FILE. That's a BeerXML file from BeerSmith or most brewing programs, an MMuM file, or a Kleiner Brauhelfer database. Its recipes are listed straight away, with no page reload, each with IMPORT. The last file sent stays listed, so after changing a setting you can import again without sending it again. A line says how to export from BeerSmith.
+- **From a file:** drop the file, or CHOOSE FILE. That's a BeerXML file from BeerSmith or most brewing programs, an MMuM file, or a Kleiner Brauhelfer database. Its recipes are listed straight away, with no page reload, each with IMPORT. Once you have chosen a file, its recipes' IMPORT buttons are blue and CHOOSE FILE is grey, so the blue button is always the next thing to press. A recipe you have imported goes grey, as IMPORT AGAIN. When every recipe in the file has been imported, CHOOSE FILE is blue again. The last file sent stays listed, so after changing a setting you can import again without sending it again; its IMPORT buttons stay grey, since you didn't just choose it. A line says how to export from BeerSmith.
 - **From Brewfather:** if your Brewfather user ID and API key are in Settings, your Brewfather recipes are listed A to Z, with FIND and REFRESH LIST. Today's "50 at a time" page picker goes. If they aren't set, a line says where to set them.
 - **Imports use these settings:** the mash tun, the boil kettle, the boil and whirlpool temperatures, the sparge step, and whether mash in and mash out are added. These are the things a recipe file can't say. The whirlpool temperature matters most, because a BeerXML file never gives one.
 

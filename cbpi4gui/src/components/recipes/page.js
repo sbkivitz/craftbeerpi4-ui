@@ -1090,16 +1090,19 @@ function nameHTML() {
 }
 /* ---------- importing ---------- */
 const bfSet = () => norm(C("brewfather_user_id")) !== "" && norm(C("brewfather_api_key")) !== "";
+/* the step that's ready is blue: a just-sent file's IMPORT until that recipe is imported from it (I.sent.done), and
+   CHOOSE FILE again once none of that file's recipes is left to import */
 function importHTML() {
   const I = st.imp;
   const lists = I.lists ? FILES.filter(f => (I.lists[f.kind] || []).length && (!I.sent || I.sent.kind === f.kind)) : [];
   const fileH = lists.map(f => {
     const L = I.lists[f.kind], sent = I.sent && I.sent.kind === f.kind;
     const rows = L.map(x => {
-      const busy = I.busy && I.busy.kind === f.kind && I.busy.id === x.value, got = I.result && I.result.ok && I.result.kind === f.kind && I.result.id === x.value;
+      const busy = I.busy && I.busy.kind === f.kind && I.busy.id === x.value, last = I.result && I.result.ok && I.result.kind === f.kind && I.result.id === x.value ? I.result : null;
+      const done = sent && I.sent.done[x.value], got = !!(last || done);
       const asks = f.kind === "xml" && updates(), there = asks && sameNamed(x.label).length, asking = I.ask && I.ask.kind === f.kind && I.ask.id === x.value;
-      const is = got ? (I.result.updated ? "Updated" : "Imported") : there ? "In the book: IMPORT asks whether to update it or add a new recipe" : !asks && inBook(x.label) ? "Its earlier import is in the book; importing replaces it" : "Not in the book yet";
-      return `<li class="imr${got ? " got" : ""}"><span class="in">${esc(x.label)}</span><span class="is">${is}</span>${cmd("", busy ? "IMPORTING…" : got ? "IMPORT AGAIN" : "IMPORT", busy ? "waiting for CraftBeerPi" : there ? "asks first" : "into the book", {busy, why: busy || I.busy ? WAIT : "", data: ` data-imp="${esc(x.value)}" data-ik="${f.kind}"`, live: true, label: `Import ${x.label} into the Recipe Book`})}${asking ? importAskHTML(I.ask) : ""}</li>`;
+      const is = last ? (last.updated ? "Updated" : "Imported") : done ? done : there ? "In the book: IMPORT asks whether to update it or add a new recipe" : !asks && inBook(x.label) ? "Its earlier import is in the book; importing replaces it" : "Not in the book yet";
+      return `<li class="imr${got ? " got" : ""}"><span class="in">${esc(x.label)}</span><span class="is">${is}</span>${cmd(sent && (busy || !got) ? "go" : "", busy ? "IMPORTING…" : got ? "IMPORT AGAIN" : "IMPORT", busy ? "waiting for CraftBeerPi" : there ? "asks first" : "into the book", {busy, why: busy || I.busy ? WAIT : "", data: ` data-imp="${esc(x.value)}" data-ik="${f.kind}"`, live: true, label: `Import ${x.label} into the Recipe Book`})}${asking ? importAskHTML(I.ask) : ""}</li>`;
     }).join("");
     return `<p class="fileh"><b>${esc(sent ? I.sent.name : f.file)}</b><span>${sent ? "just sent" : "the last file sent, kept by CraftBeerPi"} · ${esc(f.label)} · ${L.length} ${L.length === 1 ? "recipe" : "recipes"}</span></p><ul class="iml">${rows}</ul>`;
   }).join("");
@@ -1117,10 +1120,11 @@ function importHTML() {
       <dt>Mash in and mash out<small>Added when the recipe has none.</small></dt><dd>${inOut}<small>AddMashInStep, AddMashOutStep</small></dd></dl>
       <p class="addf">${cmd("", "SETTINGS", "change them", {data: ' data-tabgo="Settings"'})}</p>`;
   const over = st.dragOver ? " over" : "", up = st.pend.upload;
+  const left = I.sent && I.lists ? (I.lists[I.sent.kind] || []).some(x => !I.sent.done[x.value]) : false;
   return `<a href="#list" class="back" data-back="list">‹ All recipes</a><div class="plates">
     <section class="plate pick" id="p-file" aria-labelledby="h-file"><div class="phd"><h2 id="h-file">From a file</h2><p class="sum">A BeerXML file from BeerSmith or most brewing programs, an MMuM file, or a Kleiner Brauhelfer database.</p></div>
       ${res}
-      <div class="drop${over}" id="drop"><p class="big">Drop a recipe file here</p><p class="or">or</p>${cmd("go", up ? "SENDING…" : "CHOOSE FILE", up ? "waiting for CraftBeerPi" : ".xml, .json or .sqlite", {busy: up, why: up ? WAIT : "", data: " data-choose", live: true})}<p class="note" id="file-note" role="status">${esc(st.notes.file || "")}</p></div>
+      <div class="drop${over}" id="drop"><p class="big">Drop a recipe file here</p><p class="or">or</p>${cmd(up || !left ? "go" : "", up ? "SENDING…" : "CHOOSE FILE", up ? "waiting for CraftBeerPi" : ".xml, .json or .sqlite", {busy: up, why: up ? WAIT : "", data: " data-choose", live: true})}<p class="note" id="file-note" role="status">${esc(st.notes.file || "")}</p></div>
       <p class="how"><b>From BeerSmith:</b> select the recipe in My Recipes, then File, Export Selected Items, BeerXML. One recipe a file is simplest.</p>
       ${fileH}
       <p class="how">IMPORT puts the recipe in your Recipe Book; Brew Day isn't changed until you LOAD it. ${updates() ? "A BeerXML recipe whose name is in the book already asks first: UPDATE that recipe, which adds BeerSmith's mash figures and keeps your steps, or ADD AS A NEW RECIPE. Other files replace an earlier import of the same name, never a recipe you've changed or saved here." : "Importing a recipe again under the same name replaces the earlier import, never a recipe you've changed or saved here."}</p></section>
@@ -1828,7 +1832,7 @@ async function sendFile(f) {
   delete st.pend.upload;
   if (!ok) { render(); return sayAt("file", null, why.startsWith("CraftBeerPi said no") ? `${f.name} wasn't kept: CraftBeerPi says why in the title bar.` : `${f.name} wasn't sent: ${why}.`); }
   const kind = FILES.find(x => x.ext.test(f.name));
-  st.imp.sent = {kind: kind ? kind.kind : "", name: f.name};
+  st.imp.sent = {kind: kind ? kind.kind : "", name: f.name, done: {}};
   st.imp.result = null;
   await readLists();
   if (st) render();
@@ -1840,7 +1844,7 @@ async function doImport(kind, id, label, how) {
   const I = st.imp;
   if (I.busy) return;
   if (!how && kind === "xml" && updates() && sameNamed(label).length) { I.ask = {kind, id, label}; I.result = null; render(); return focusImq(); }
-  const before = st.book.some(r => r.name === label && r.imported_from);
+  const before = st.book.some(r => r.name === label && r.imported_from), sent = I.sent && I.sent.kind === kind ? I.sent : null;
   I.busy = {kind, id}; I.result = null; I.ask = null; render();
   const g = gen, res = await call("POST", `/${I.path}/${kind}`, how ? {id, ...how} : {id}, 30000);
   if (g !== gen || !st) return;
@@ -1860,6 +1864,7 @@ async function doImport(kind, id, label, how) {
   I.result = {ok: true, from, kind, id, file, name, replaced: "replaced" in R ? !!R.replaced : before,
     updated: !!R.updated, steps: R.steps === "file" ? "file" : "kept", loaded: !!R.loaded,
     warnings: Array.isArray(R.warnings) ? R.warnings.filter(w => w && (w.title || w.text)) : []};
+  if (sent) sent.done[id] = R.updated ? "Updated" : "Imported";
   if (file) st.open = file;
   render();
 }
