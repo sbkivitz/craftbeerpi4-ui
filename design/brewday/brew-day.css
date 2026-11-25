@@ -25,7 +25,10 @@ button{cursor:pointer}
 .mock a[aria-current=true]{background:#1d232a;color:#f2efe6;text-decoration:none}
 html.bare .mock{display:none}
 
-.app{display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;min-height:calc(100dvh - var(--mock-h))}
+/* one column as wide as the window, never sized from what it holds: sized from its contents, the drawing's aspect ratio
+   (under 1180 px) has the browser try the faceplates at another width first, and as their sizes follow their own width
+   (.plates' --pu, in cqi), each change anywhere on the page, a second ticking by included, laid all three out again */
+.app{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto;min-height:calc(100dvh - var(--mock-h))}
 
 /* top bar */
 .topbar{display:flex;align-items:center;gap:16px;padding:10px var(--pad);background:var(--bar);border-bottom:1px solid var(--line)}
