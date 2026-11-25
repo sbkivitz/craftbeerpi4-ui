@@ -7255,6 +7255,27 @@ water · room"), `#sw-noprobe` (GIVE IT, "room"), and the new `#sw-give`, `#sw-m
 `swGives`, `swGiveRow`, `swGiveDet`; the `#sw-give` moment); `proposal\brew-day.html` (its link); `STRIKE-WATER.md`
 (what the brewer sees, where it sits, decisions 13 and 17, the moments); this section.
 
+### Built (web UI 0.5.1.a3.post67)
+
+- `screen.js` as above: `swMissHTML` split into `swMissBits`; `swEditing`, `SW_GIVE`, `SW_GIVES`, `swGives`,
+  `swGiveRow`, `swGiveDet`; `swHTML`'s branch without a forecast. Nothing new in brewday.css: GIVE THEM is a
+  `.cmdbtn` in `.swa.two`, and the figures are a `.swdet`, so they take the step list's and the timers' room on one
+  screen as FORECAST's details do. Live, the figures to give are those CraftBeerPi's state names (`miss`, `misses`,
+  `recipe.typed`, `inputs.room_from`), so a core that takes no figures in the box has none, and the box is drawn as
+  before. The demo has `#sw-give`.
+- The box closed, measured on the screen against CraftBeerPi's state (test_ui_strike_live.py): as tall as the box
+  with a forecast at 1920 × 1080 and 1920 × 950 (166 px), 1440 × 900, 1280 × 800 and 1180 × 860 (152 px), 1179, 1024,
+  900, 899 and 701 px wide (166 px) and 390 × 844 (156 px), with two figures, one, the mash water and the room, the
+  room, and all four; at 1920 × 950 the step list 256 px, three rows, and the versions line shown.
+- Opened, CLOSE keeps its top and its right edge as the forecast comes in its place: the figures' row is two halves,
+  the forecast's USE's two thirds and CLOSE's third, as the mockup draws them.
+- Checked: test_ui_brewday_identity.py (`#sw-give`, `#sw-missing`, `#sw-missing-steps`, `#sw-asks` and `#sw-noprobe`
+  at seven sizes; GIVE THEM, the figures' CLOSE and GRAIN WEIGHT pressed; `#sw-asks`'s MASH WATER behind GIVE THEM);
+  test_ui_strike_live.py (the sizes above, GIVE THEM opening and closing as FORECAST does, Escape, COMPARE PROBES and
+  on a phone MashIn's row closing it, figures given from it, the forecast in its place under the same CLOSE, the
+  interval unusable drawn as before); test_e2e_strike_water.py (the same on CraftBeerPi's own helper, at 1440 × 900);
+  test_e2e_brewday_reset.py (the versions line shown on both screens with Test Recipe v5 asking for its mash water).
+
 ## The line saying USE is being worked out, under USE's row: ready to build (25 Nov)
 
 You asked for the closed box to match a fresh load once the forecast is in, rather than keeping 194 px (STRIKE-WATER.md
@@ -7285,6 +7306,15 @@ taller. So:
   both for `#sw-working` and for the HLT's water changed in FORECAST and the box closed while USE is worked out again.
 - `files\give_presses.py`: the last figure given, then CLOSE: once USE is worked out, the box as on a fresh load, with
   no height kept.
+
+### Built (web UI 0.5.1.a3.post67)
+
+- `screen.js`'s `swHTML`: the working line after USE's row, the Mash Tun's line before it, and `sw-wk` on the box
+  while CraftBeerPi works USE out; `pbFit` as it was. `swWorkSays`'s comment.
+- Checked: test_ui_brewday_identity.py (`#sw-working`, `#sw-working-open`, `#sw-reworking` and `#bs-set` at seven
+  sizes); test_ui_strike_live.py (the last figure given, CLOSE while USE is worked out: the box `sw-wk`, its line under
+  USE's row and USE where a fresh load has it; once the forecast is in, the box as on a fresh load, 166 px at
+  1920 × 950, with no height kept).
 
 ## Open questions about the drawing
 
