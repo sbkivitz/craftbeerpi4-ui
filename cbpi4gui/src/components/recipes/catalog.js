@@ -82,7 +82,7 @@ const CATALOG = (() => {
           Heat_Kettle: {n: "Vessel", h: "The vessel with the element, holding all the strike and sparge water.", blank: "None chosen"},
           Ready_Temp: {n: "Water temperature", unit: "deg", h: "How hot the water is heated, and held until you press NEXT."},
           Volume: {n: "HLT water", unit: "vol", h: "All the water in the HLT, strike and sparge. Also sets the Campden dose."},
-          Volume_Unit: {n: "Water in", opts: {gal: "GAL", L: "L"}},
+          Volume_Unit: {n: "Water in", h: "The unit for HLT water: gal or L. Blank: gal on a °F brewery, L on a °C one.", opts: {gal: "GAL", L: "L"}},
           Grain_Temp: {n: "Grain temperature", unit: "deg", h: "Only for grain that spends the night away from the boil kettle. Blank: the boil kettle's probe.", blank: "The boil kettle's probe"},
           Heater_Watts: {n: "Element", unit: "W", h: "Volts × amps, measured if you can. Ready by works out from it when to start heating."},
           NotifyBefore: {n: "Notice before", unit: "min", h: "A notification this long before heating starts. Blank: 15. 0: none.", blank: "15"},
