@@ -279,6 +279,7 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .swm.hot,:where(html.bd-page) .swm.hot .swk{color:var(--prompt)}
 :where(html.bd-page) .swa{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:8px}
 :where(html.bd-page) .swa.one{grid-template-columns:minmax(0,1fr)}
+:where(html.bd-page) .swa.two{grid-template-columns:repeat(2,minmax(0,1fr))}
 :where(html.bd-page) .swa.three{grid-template-columns:repeat(3,minmax(0,1fr))}
 :where(html.bd-page) .sw .cmdbtn{min-height:54px}
 :where(html.bd-page) .sw .swuse{background:var(--select);border-color:var(--select);color:#fff}

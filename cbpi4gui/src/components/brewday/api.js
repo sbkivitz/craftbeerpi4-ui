@@ -113,6 +113,11 @@ export const api = {
   strikeBack: (temp, steps) => post("/step2/strike", { do: "back", temp, steps }),
   strikeWater: (vol, steps) => post("/step2/strike/water", { vol, steps }),
   strikeGrain: (grain, steps, place) => post("/step2/strike/grain", place ? { grain, place, steps } : { grain, steps }),
+  // The recipe's figures given on Brew Day where BeerSmith's are missing ({grain} in the state's mass_unit, {strike_vol}
+  // in its vol_unit), kept with the loaded recipe; and the room's temperature for this brew while the boil kettle's
+  // probe can't stand for it (null takes it back).
+  strikeRecipe: (figures, steps) => post("/step2/strike/recipe", { ...figures, steps }),
+  strikeRoom: (room, steps) => post("/step2/strike/room", { room, steps }),
   // Its whole state, as the websocket's topic "strike" sends it: asked for where a refusal brings none (recipe_changed).
   strikeState: () => get("/step2/strike"),
   // A step's settings, all of them ({name, type, props}): refused with 409 while the step runs, {error} CraftBeerPi's

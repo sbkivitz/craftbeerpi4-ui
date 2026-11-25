@@ -128,7 +128,8 @@ export const SW_MORNING = SW_MODEL.morning;
    night, where), where the mash probe sits (probe),
    the mash tun's control interval (interval: the rig's 2 s unless the moment sets one), the strike water before the
    first USE (was), the numbers the last answer was worked out from (has), and CraftBeerPi working one out (work: since,
-   why) */
+   why). Given on Brew Day: the recipe's grain weight and mash water where it has no figures (rec: grain, water), and
+   the room's temperature for the brew day (room), which stands for the room while the boil kettle's probe can't */
 const swGal = F => +(F.forGrain + (F.dead || 0)).toFixed(2);
 /* the numbers CraftBeerPi works USE out from now, as its answer keeps them; none while one is missing */
 export function swNow(st, M) {
@@ -143,24 +144,29 @@ function strikeInputs(st, M) {
   const S = M.RECIPE.steps, {bi, si, mi} = swSteps(S), F = d.from;
   if (mi < 0) return null;
   const rest = S[mi].temp, planned = si >= 0 ? S[si].temp : st.v.hlt.sv;
-  const room = st.v.bk.pv == null ? null : +(st.v.bk.pv - ((st.poff || {}).bk || 0)).toFixed(1);
-  const given = bi >= 0 ? S[bi].grain ?? null : d.grain ?? null, vol = bi >= 0 ? S[bi].vol ?? null : d.vol ?? null;
+  const probeRoom = st.v.bk.pv == null ? null : +(st.v.bk.pv - ((st.poff || {}).bk || 0)).toFixed(1);
+  const usable = probeRoom != null && probeRoom >= ROOM_LO && probeRoom <= ROOM_HI, given = !usable && d.room != null;
+  const room = given ? d.room : probeRoom, roomFrom = given ? "you" : "probe";
+  const grainT = bi >= 0 ? S[bi].grain ?? null : d.grain ?? null, vol = bi >= 0 ? S[bi].vol ?? null : d.vol ?? null;
   /* a grain temperature that isn't a number is sent as none (typed null), with miss "grain" */
-  const typed = given == null || !Number.isFinite(given) ? null : given;
-  const gal = F && F.grainLb && F.forGrain ? swGal(F) : null, interval = d.interval === undefined ? 2 : d.interval;
-  let miss = null;
-  if (gal == null || rest == null) miss = "recipe";
-  else if (!swIntervalOk(interval)) miss = "sample_time";
-  else if (room == null) miss = "probe";
-  else if (room < ROOM_LO || room > ROOM_HI) miss = "room";
-  else if (given != null && !swGrainOk(given)) miss = "grain";
-  else if (vol == null || vol < gal) miss = "vol";
+  const typed = grainT == null || !Number.isFinite(grainT) ? null : grainT;
+  /* the recipe's grain weight and strike water: BeerSmith's (from), else given here (rec), else for the grain a mash
+     step's own */
+  const rec = d.rec || {}, beer = !!(F && F.grainLb && F.forGrain), stepKg = S.map(x => x.kg).find(k => k > 0);
+  const grainLb = beer ? F.grainLb : rec.grain ?? (stepKg ? +(stepKg / 0.45359237).toFixed(1) : null);
+  const strikeVol = beer ? swGal(F) : rec.water ?? null, gal = grainLb != null && strikeVol != null ? strikeVol : null;
+  const interval = d.interval === undefined ? 2 : d.interval;
+  const misses = [(gal == null || rest == null) && "recipe", !swIntervalOk(interval) && "sample_time",
+    roomFrom === "probe" && probeRoom == null && "probe", roomFrom === "probe" && probeRoom != null && !usable && "room",
+    grainT != null && !swGrainOk(grainT) && "grain", (vol == null || (gal != null && vol < gal)) && "vol"].filter(Boolean);
+  const miss = misses[0] || null;
   /* BrewStart's Campden dose for its water, while its Campden reminder is on */
   const campden = bi >= 0 && S[bi].campden && vol != null && vol > 0 ? campdenTablets(vol) : null;
   const inputs = {rest, planned: planned ?? null, vol, vol_from: bi >= 0 ? "brewstart" : "brewday", left: vol != null && gal != null ? +(vol - gal).toFixed(2) : null,
-    campden, room, room_why: room == null ? "stale" : null, typed, grain: typed ?? room, grain_from: typed != null ? "you" : "probe",
+    campden, room, room_why: room == null ? "stale" : null, room_from: roomFrom, room_given: d.room ?? null, room_probe: probeRoom,
+    typed, grain: typed ?? room, grain_from: typed != null ? "you" : "probe",
     grain_place: bi >= 0 && (S[bi].where === "garage" || S[bi].where === "indoors") ? S[bi].where : null, probe: d.probe || "coil"};
-  return {S, bi, si, mi, F, gal, miss, inputs, sample: swRuns(interval)};
+  return {S, bi, si, mi, F, gal, miss, misses, inputs, sample: swRuns(interval), beer, grainLb, strikeVol, rec, stepKg};
 }
 /* the recipe's place: "plan" before the strike water is heated, "heat" while the strike water step runs, "moved" once the
    water is in the mash tun; brewing by hand (no strike water step) "moved" once MashIn on the mash tun has started. None
@@ -176,7 +182,7 @@ function strikePhase(st, bi, si, mi) {
 export function strikeState(st, M) {
   const s = strikeInputs(st, M);
   if (!s) return null;
-  const d = st.swd, {S, bi, si, mi, F, gal, inputs, sample} = s, phase = strikePhase(st, bi, si, mi);
+  const d = st.swd, {S, bi, si, mi, F, gal, inputs, sample, beer, grainLb, strikeVol, rec} = s, phase = strikePhase(st, bi, si, mi);
   /* the HLT's own figures fix the guess about its steel, so it is no longer a guess, nor among the levers */
   const vessels = strikeVessels(st, F), open = ([k]) => !(k === "hlt_steel" && vessels.hlt.from === "hardware");
   let miss = s.miss, answer = null;
@@ -220,13 +226,15 @@ export function strikeState(st, M) {
   const failed = d.failed && !A && !d.work && swSameIn(swNow(st, M), d.failed.for) ? {at: d.failed.at, detail: d.failed.detail} : null;
   return {
     version: 1, unit: "F", vol_unit: "gal", mass_unit: "lb", ceiling: SW_CEIL, now: st.t, scale: 1, received: Date.now(),
-    recipe: F ? {name: M.RECIPE.name, steps: ids, grain: F.grainLb, strike_vol: gal, for_grain: F.forGrain, dead: F.dead || 0, tun: F.tunLb ?? null, tun_heat: F.tunLb ? 0.12 : null,
-      beersmith: F.bs ? {strike: F.bs, grain: F.bsGrain ?? null, tun: F.bsTun ?? null} : null, lacks: []}
-      : {name: M.RECIPE.name, steps: ids, grain: null, strike_vol: null, for_grain: null, dead: null, tun: null, tun_heat: null, beersmith: null,
-        lacks: ["grain", "water", "tun", "infuse_temp", "grain_temp", "tun_temp"]},
+    recipe: beer ? {name: M.RECIPE.name, steps: ids, grain: F.grainLb, strike_vol: gal, for_grain: F.forGrain, dead: F.dead || 0, tun: F.tunLb ?? null, tun_heat: F.tunLb ? 0.12 : null,
+      beersmith: F.bs ? {strike: F.bs, grain: F.bsGrain ?? null, tun: F.bsTun ?? null} : null, lacks: [], typed: [], grain_from: "beersmith"}
+      : {name: M.RECIPE.name, steps: ids, grain: grainLb, strike_vol: strikeVol, for_grain: null, dead: null, tun: null, tun_heat: null, beersmith: null,
+        lacks: ["grain", "water", "tun", "infuse_temp", "grain_temp", "tun_temp"].filter(x => rec[x] == null),
+        typed: ["grain", "water"].filter(x => rec[x] != null), grain_from: rec.grain != null ? "typed" : grainLb != null ? "step" : null},
     applies: phase != null, off: phase != null ? null : "malt_in", phase, by: si >= 0 ? "step" : "hand",
     step_ids: {brewstart: bi >= 0 ? ids[bi] : null, strike: si >= 0 ? ids[si] : null, mash_in: ids[mi]},
-    inputs, rig: {through_coil: true, still_probe: 0.0}, sample_time: sample, guesses, vessels, miss, was: d.was ?? null,
+    inputs, rig: {through_coil: true, still_probe: 0.0}, sample_time: sample, guesses, vessels, miss, misses: miss === "far" ? ["far"] : s.misses,
+    was: d.was ?? null,
     working: d.work ? {since: d.work.since, why: d.work.why === "load" ? "recipe" : d.work.why} : null, failed, answer
   };
 }

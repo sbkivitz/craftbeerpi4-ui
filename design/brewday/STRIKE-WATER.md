@@ -104,8 +104,8 @@ rest would take it too.
   - **the rig's setup**: where the mash probe sits (the coil's outlet) and that the strike water goes through the coil;
   - **not measured yet**: the eleven numbers below, each a range.
 - It takes the grain's temperature and the room's separately. The grain goes in at the grain's. The empty mash tun
-  starts at the room's, and both vessels lose heat to it. With no usable reading for the room there is no forecast: a
-  guessed room could make USE err high.
+  starts at the room's, and both vessels lose heat to it. With no usable reading for the room there is no forecast
+  until the room's temperature is given in the box: a guessed room could make USE err high.
 - USE is the hottest strike water, rounded down to a tenth of a degree, that in every case takes the mash no higher
   than water heated only to the rest would. "Every case" means every unmeasured number anywhere in its range: the
   model searches the ranges for the case that takes the mash highest. So a wrong guess lands the mash low, where the
@@ -277,9 +277,9 @@ dough-in line and no "may read" sentence.
 - **On brew morning:** CHANGE in FORECAST, if the grain ended up somewhere else after all. THE PROBE goes back to the
   boil kettle's probe.
 - **Brewing by hand,** with no BrewStart: the same box keeps a figure for the brew day, as the HLT's water is kept.
-- **The room is always the boil kettle's probe,** grain given or not, since the forecast uses the room for more than
-  the grain. Without a usable reading from it, the box says so rather than guessing the room: a guessed room could
-  make USE err high.
+- **The room is the boil kettle's probe,** grain given or not, since the forecast uses the room for more than the
+  grain. Without a usable reading from it, the box says so and asks for the room's temperature rather than guessing
+  it: a guessed room could make USE err high (decision 14).
 - How much it matters, for Test Recipe v5: grain at 70 °F with the garage at 60.4 °F makes USE 131.8 °F instead of
   132.4 °F. Grain warmer than the box knows about lands the mash higher, so the figure needs to be right.
 
@@ -334,6 +334,37 @@ dough-in line and no "may read" sentence.
 12. **A refused USE says so under the box, and offers the new figure in USE's place**, as START's refusal does: a note
     for 6 s, said to a screen reader, and no LOG line, since nothing changed. The window keeps showing the strike water
     as it is. Nothing is applied until USE is pressed again.
+13. **The recipe's grain weight and mash water can be typed in the box.** A missing figure may only improve things,
+    never block the brewer. So where the loaded recipe has neither BeerSmith's figure nor one given here (nor, for the
+    grain, a mash step's own Grain_Kg), the line names it and says "Type it here, or import its BeerSmith file again and
+    choose UPDATE.", and GRAIN WEIGHT and MASH WATER sit under it, above USE, HLT WATER and GRAIN, each with "give it",
+    then its figure and "change". UPDATE, on the Recipe Book's import of a name the book has, gives the loaded recipe
+    BeerSmith's mash figures at once, in place of any typed here, with nothing loaded again and no step changed, even
+    while BrewStart waits (core post72); importing it as a new recipe would make a second copy and lose what was
+    changed since loading. Each
+    opens its own small box in place of the line and the buttons, as HLT WATER's does: "Grain weight, in pounds" (or
+    kilograms) and "Mash water, in gallons" (or litres), the strike water that goes to the mash tun, not the sparge.
+    SET keeps the figure with the loaded recipe (POST /step2/strike/recipe): CraftBeerPi writes it into the recipe's
+    mash figures as given here, never as BeerSmith's, takes it out of what the recipe lacks, and works USE out from it
+    at once. The box refuses a figure no brew comes near (0.5-200 lb, 0.5-100 gal), as CraftBeerPi does, and
+    CraftBeerPi refuses to replace a figure BeerSmith gave. FORECAST shows a given figure under From you, with CHANGE,
+    in place of its line under From the recipe; a grain weight MashIn keeps itself shows as "MashIn's own, on Brew
+    Steps". LOG: "Mash water set to 8.26 gal for this recipe", "Grain weight set to 20.0 lb for this recipe, was 18.0
+    lb". Not given here: the mash step's temperature (Brew Steps), the mash tun's weight (the Hardware page or the
+    recipe; it only narrows the forecast), the mash tun's control interval (Hardware), and BeerSmith's own strike,
+    grain and tun temperatures, which FORECAST only compares against.
+14. **The room's temperature can be given in the box while the boil kettle's probe can't stand for it.** With no
+    reading from the probe, or one outside a room's range (35-120 °F), the line says so and ROOM, under it, asks for
+    the room's temperature, kept for this brew (POST /step2/strike/room). USE is worked out from it, and where no
+    grain temperature is given the grain is taken to be at it, which the grain's line and box say ("the room's
+    temperature given here"; GRAIN's box offers THE ROOM in place of THE PROBE). It is used only while the probe gives
+    no reading a room can have: once the probe reads within that range again, its reading is the room, and FORECAST
+    says so: "Room 66 °F given here, kept aside: the boil kettle's probe reads the room again, at 60.4 °F, so it is
+    used." While it stands for the room, MEASURED ON THE RIG has no ROOM, as nothing on the rig measured it. THE PROBE
+    in ROOM's box takes it back. A given room is never one of BeerSmith's figures, and a new brew day starts without
+    one. LOG: "Room temperature set to 66.0 °F for this brew", with ": kept aside, as the boil kettle's probe reads the
+    room" where the probe reads one, and "Room temperature from the boil kettle's probe, the 66.0 °F given taken
+    back".
 
 ## The dead space in the BeerSmith profile
 
@@ -541,15 +572,19 @@ When CraftBeerPi doesn't answer, or answers with an error that isn't one of thes
 When a number is missing, the reason takes the buttons' place, and each says what to do:
 
 - "How much water is in the HLT, strike and sparge? The forecast needs it." with `HLT WATER` / "set it" beside it.
-- What the recipe lacks, from CraftBeerPi's `recipe.lacks`, named: "This recipe has no mash water or mash tun weight
-  from BeerSmith, so where the mash lands isn't known. Import it again and load it." That is a recipe imported before
+- What the recipe lacks for USE, named: "This recipe has no mash water from BeerSmith, so where the mash lands isn't
+  known. Type it here, or import its BeerSmith file again and choose UPDATE." That is a recipe imported before
   CraftBeerPi kept BeerSmith's mash figures (core post55), as every recipe in the rig's book is; its MashIn has a grain
-  weight, so the grain weight isn't named. With no grain weight in any step either (a recipe built on Brew Steps): "…
-  no grain weight, mash water or mash tun weight from BeerSmith, …". One missing: "it", as "no mash water from
-  BeerSmith". BeerSmith's own strike temperature and the grain's and the tun's, which only FORECAST's comparison
-  uses, aren't named; the same import brings them. Importing again changes the recipe book's copy only, so the loaded
-  recipe has to be loaded again. The mash step with no temperature: "MashIn has no temperature, so where the mash
-  lands isn't known. Give it one in Brew Steps."
+  weight, which CraftBeerPi uses, so the grain weight isn't named. With no grain weight in any step either (a recipe
+  built on Brew Steps): "… no grain weight or mash water from BeerSmith, … Type them here, or …". Only the grain
+  weight and the mash water are named, as only they stop USE: the mash tun's weight comes from the Hardware page or
+  the recipe and only narrows the forecast, and BeerSmith's own strike temperature and the grain's and the tun's are
+  only FORECAST's comparison. GRAIN WEIGHT and MASH WATER, "give it", sit under the line, above USE, HLT WATER and
+  GRAIN (decision 13). Where another sentence follows it (the probe's, or the water's question), it leaves out "so
+  where the mash lands isn't known", so the box still fits one screen with every figure it asks for. UPDATE gives the
+  loaded recipe the figures at once, so nothing has to be loaded again. From a CraftBeerPi that takes no figures in
+  the box, the line ends "Import it again and load it." The mash step with no temperature: "MashIn has no
+  temperature, so where the mash lands isn't known. Give it one in Brew Steps."
 - "The mash tun's control interval is 2.5 s. The forecast can't use it: set it to 2 or 5 s in Hardware." It comes only
   for a fraction from 1 to 60 s, such as 2.5: PID_HERMS runs a SampleTime from 1 to 60 s as it is, but one that's
   blank, not a number, or outside 1-60 s at its 5 s default, and says so in a notice. The forecast does the same, so
@@ -559,9 +594,14 @@ When a number is missing, the reason takes the buttons' place, and each says wha
   sentence, as a setting made before brew night. Without it, the box would vanish from brew night for one setting, and
   nothing would say why.
 - "The boil kettle's probe gives no reading, so the room's temperature isn't known, nor the grain's. Check its plug and
-  cable." With the grain's temperature given, without "nor the grain's".
-- "The boil kettle's probe reads 140.0 °F, warmer than any room, so it can't stand for the room or the grain."
-  (outside 35-120 °F, the same limits as COMPARE PROBES; with the grain's temperature given, without "or the grain")
+  cable, or type the room's temperature here." With the grain's temperature given, without "nor the grain's". ROOM,
+  "give it", sits under the line (decision 14).
+- "The boil kettle's probe reads 140.0 °F, warmer than any room, so it can't stand for the room or the grain. Type the
+  room's temperature here." (outside 35-120 °F, the same limits as COMPARE PROBES; with the grain's temperature given,
+  without "or the grain"), with ROOM under it.
+- Either of those behind another missing number is said after that number's line, short, as ROOM under it asks for the
+  room and the box has to fit one screen with every figure it asks for: "The boil kettle's probe gives no reading
+  either." and "The boil kettle's probe reads 140.0 °F, warmer than any room."
 - "It works out at 160.5 °F, more than 27 °F above the rest: too far to trust. Check the grain weight and the water in
   BeerSmith." (MashInStep's own limit, 15 °C) Within 27 °F of the rest but over the ceiling, which only a rest above
   152.6 °F can bring: "It works out at 181.2 °F, over 179.6 °F: too hot for strike water. Check the grain weight and the
