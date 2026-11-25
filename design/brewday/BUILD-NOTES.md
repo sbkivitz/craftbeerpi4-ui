@@ -7094,6 +7094,29 @@ moment.
   `proposal\brew-day.css` (the condenser's rules, `.ssline`); `proposal\brew-day.html` (the moments and the
   condenser's row in the strip); `proposal\STEAM-SLAYER.md` (new); this section.
 
+### Built (web UI 0.5.1.a3.post64, core 4.7.7.post81)
+
+- The drawing (`rig.js`'s `slayerSVG`, `vesselB` and `rigSVG`, the mockup's own; the liquid in each vessel the
+  mockup proposes behind `?levels` isn't built), its states (`screen.js`'s `slayer`, `misterOn`, `renderSlayer`,
+  `slayerDesc`), the phone's line (`slayerLine` in `plateHTML`), and brewday.css's condenser rules and `.ssline`,
+  as above. The demo has the eight moments (`?demo=ss-heat` …), and `?slayer=hand` or `?slayer=switched` adds the
+  condenser to any moment there too.
+- Live: the condenser and its name are the boil kettle's fields, `condenser` ("fitted") and `condenser_name`
+  (`live.js` `model`: `SS`, `SS_NAME`, and `MISTER`, the actor steps_boil_actor names). A mister set by hand is drawn
+  from what the boil step keeps, `_lid_alert_answered` and `_condenser_off_answered`, so a reload or another screen
+  shows the same; the two reminders are told by their kind, `condenser_on` and `condenser_off`, which the page keeps
+  with each notification (AlertProvider's `kind`). The drawing is drawn again when the condenser is fitted or taken
+  off. ALL OFF switches a switched mister off too, as CraftBeerPi keeps it on after the boil.
+- The Hardware page: the boil kettle's Vessel group has "Steam condenser on the lid", Not fitted or Fitted, and once
+  Fitted its name (design/hardware HARDWARE-BUILD-NOTES.md, `#vesselslayer`), where CraftBeerPi's kettles have the
+  fields.
+- CraftBeerPi: the watch after the boil (`cbpi/extension/condenser`), the two kettle fields and BoilStep's part, as
+  "In CraftBeerPi" says.
+- Checked: test_ui_slayer_identity.py (the eight moments at nine sizes from 390 to 1920 wide, 820, 900, 1024 and 1180
+  among them; DONE and NEXT STEP pressed; `?slayer=` on four other moments; LOG's lines), test_ui_hardware_vessel_identity.py
+  (`#vesselslayer`, and `#vesselnone` with the condenser's row), test_ui_condenser_live.py (a boil on a server of its
+  own, set by hand and switched, ALL OFF, and not fitted) and test_boil_condenser.py (the core's watch).
+
 ## The title bar's date, and the screen between phone and laptop
 
 ### The date, beside the time (screen.js `clockSet`, `clockRoom`; brewday.css; the mockup's `spdClock` alike)
