@@ -39,7 +39,8 @@ export const liveSnap = (state, alerts, retired, waiting = null, answer = null, 
 // React: screen.js is the brew-day mockup's own code, so that it looks exactly like the mockup, and this
 // component only hands it CraftBeerPi's state. It sits outside the app's menu bar and page frame - it has
 // its own title bar and tabs - and while it is open the corner stack of notifications is hidden: its title
-// bar shows CraftBeerPi's prompts instead.
+// bar shows CraftBeerPi's prompts instead. The buzzer (PLAY_BUZZER) is quiet too: the screen beeps for itself, two
+// beeps for a new alert, question or error with SOUND on.
 //
 // ?demo=mash, sparge, hop, boilpower, fail, manual or offline shows one of the mockup's moments, on its demo data, instead of
 // CraftBeerPi (cbpi-testbench's test_ui_brewday_identity.py compares it with the mockup). ?demo=resume and longprompt are the
@@ -52,7 +53,7 @@ const BrewDay = () => {
   const navigate = useNavigate();
   const go = useRef(navigate);
   go.current = navigate;
-  const { remove, hideStack, alerts, retiredReason, retiredAnswer, waitingNow, waitingN, seenNow, seenN } = alert;
+  const { remove, hideStack, quietBuzzer, alerts, retiredReason, retiredAnswer, waitingNow, waitingN, seenNow, seenN } = alert;
 
   useEffect(() => {
     const qs = new URLSearchParams(window.location.search);
@@ -61,6 +62,7 @@ const BrewDay = () => {
     // the screen puts the brewery's name first, once CraftBeerPi's settings arrive (screen.js, setBrewery)
     document.title = "Brew day · CraftBeerPi";
     if (hideStack) hideStack(true);
+    if (quietBuzzer) quietBuzzer(true);
     screen.current = createBrewDay(ref.current, {
       demo,
       // the temperature graphs: ?graphs=none leaves them out; ?span=10, 30 or day picks the span they start at
@@ -80,8 +82,9 @@ const BrewDay = () => {
       screen.current = null;
       document.title = title;
       if (hideStack) hideStack(false);
+      if (quietBuzzer) quietBuzzer(false);
     };
-  }, [remove, hideStack]);
+  }, [remove, hideStack, quietBuzzer]);
 
   useEffect(() => {
     if (!screen.current) return;

@@ -12,6 +12,7 @@ import { createSettings } from "./page";
 // live title bar, last event and tabs with SETTINGS lit (screen.js, page "settings"), and the page itself is page.js, the
 // mockup's own code. Like the brew-day screen it isn't drawn by React and sits outside the app's menu bar and page frame,
 // and while it is open the corner stack of notifications is hidden: the title bar shows CraftBeerPi's prompts instead.
+// The buzzer (PLAY_BUZZER) is quiet here too, as on the brew-day screen: the frame beeps as that screen does.
 //
 // ?demo=<scene> shows one of the mockup's scenes (page.js SCENES) on its demo data instead of CraftBeerPi:
 // test_ui_settings_identity.py compares it with the mockup. ?name= and ?brewscribe=none work as on the brew-day screen;
@@ -25,7 +26,7 @@ const Settings = () => {
   const navigate = useNavigate();
   const go = useRef(navigate);
   go.current = navigate;
-  const { remove, hideStack, alerts, retiredReason, retiredAnswer, waitingNow, waitingN, seenNow, seenN } = alert;
+  const { remove, hideStack, quietBuzzer, alerts, retiredReason, retiredAnswer, waitingNow, waitingN, seenNow, seenN } = alert;
 
   useEffect(() => {
     const qs = new URLSearchParams(window.location.search);
@@ -34,6 +35,7 @@ const Settings = () => {
     // the frame puts the brewery's name first, once CraftBeerPi's settings arrive (screen.js, setBrewery)
     document.title = "Settings · CraftBeerPi";
     if (hideStack) hideStack(true);
+    if (quietBuzzer) quietBuzzer(true);
     frame.current = createBrewDay(ref.current, {
       page: "settings",
       demo,
@@ -56,8 +58,9 @@ const Settings = () => {
       frame.current = null;
       document.title = title;
       if (hideStack) hideStack(false);
+      if (quietBuzzer) quietBuzzer(false);
     };
-  }, [remove, hideStack]);
+  }, [remove, hideStack, quietBuzzer]);
 
   useEffect(() => {
     if (frame.current) frame.current.update(liveSnap(state, alerts, retiredReason, waitingN ? { ids: waitingNow, n: waitingN } : null, retiredAnswer,

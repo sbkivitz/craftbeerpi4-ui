@@ -55,7 +55,7 @@ const M = {
 
   BREWDAY_TIMER_NAMES: {n: "Timer names to pick", h: "Separated by commas, up to 24 characters each; the first six show, in this order. You can still type any name on brew day. Blank shows none.", syn: "timers"},
   BREWDAY_ALARM_SOUND: {n: "Timer alarm sound", ctl: "sound", order: ["kitchen", "alarm", "high", "soft"], h: "What the brew-day screen plays when a timer runs out, every 3 seconds until you answer it. For a new hop alert, question or error, the screen plays just the first two beeps, once.", syn: "sound beep alarm kitchen high ping"},
-  PLAY_BUZZER: {n: "Buzzer for notifications", h: "The browser beeps when a notification arrives.", syn: "sound beep"},
+  PLAY_BUZZER: {n: "Buzzer for notifications", h: "The browser beeps when a notification arrives, on every page but Brew Day and Settings. Those two play Brew Day's own two beeps instead: only for an alert, a question or an error, and only with Brew Day's SOUND on.", syn: "sound beep"},
   NOTIFY_ON_ERROR: {n: "Warnings and errors as notifications", h: "When CraftBeerPi logs a warning or an error.", syn: "log error notify"},
 
   CSVLOGFILES: {n: "Save readings to log files", restart: "on", h: "Each probe's readings, as CSV files.", syn: "csv logging sensor data"},

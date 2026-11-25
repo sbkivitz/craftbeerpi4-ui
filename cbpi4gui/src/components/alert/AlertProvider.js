@@ -107,6 +107,14 @@ export const AlertProvider = ({ children }) => {
   const hideStack = useCallback((hide) => {
     setStackHidden((n) => Math.max(0, n + (hide ? 1 : -1)));
   }, []);
+  // The buzzer (PLAY_BUZZER) is quiet while the brew-day screen or the Settings page is open. Their frame has its own
+  // sound, with its SOUND switch: two beeps for a new alert, question or error, nothing for a routine notice. With the
+  // buzzer as well, an alert would sound twice. A count, as above; a ref, so a notification that arrives as the page
+  // changes is judged by the page open when the buzzer would play.
+  const buzzerQuiet = useRef(0);
+  const quietBuzzer = useCallback((quiet) => {
+    buzzerQuiet.current = Math.max(0, buzzerQuiet.current + (quiet ? 1 : -1));
+  }, []);
   const audio = new Audio(buzzer);
 
   const remove = useCallback((id, reason, answer) => {
@@ -186,15 +194,11 @@ export const AlertProvider = ({ children }) => {
     }
     shown.current.add(id);
 
-    configapi.getone('PLAY_BUZZER', (data) => {
-      if (data){
-        if (data ==="Yes"){
-          audio.play();
-          }
-         }
-        });
-
-
+    if (!buzzerQuiet.current) {
+      configapi.getone('PLAY_BUZZER', (data) => {
+        if (data === "Yes" && !buzzerQuiet.current) audio.play();
+      });
+    }
 
     // Without a button there is nothing to wait for: gone after five seconds.
     // With one, it stays until the button is pressed.
@@ -220,6 +224,7 @@ export const AlertProvider = ({ children }) => {
     seenNow,
     seenN,
     hideStack,
+    quietBuzzer,
   };
 
   return (
