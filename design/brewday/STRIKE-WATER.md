@@ -398,6 +398,22 @@ USE, HLT WATER and GRAIN.
     /step2/strike/water refuses too little only where the recipe gives its strike water). CraftBeerPi reports every
     missing number (misses, beside the first of them, miss, which older screens read), so the water is asked for
     whenever it is missing, whatever else is: its question follows the first line, and HLT WATER says "set it".
+16. **The recipe's mash water and grain weight are changed in the recipe editor too, and they are the box's.** The
+    recipe editor (Brew Steps for the loaded recipe, the Recipe Book's editor for a book recipe) shows and changes the
+    same two figures on BrewStart's plate, under The water, beside its HLT water, with the mash water's ratio and the
+    sparge water left; without BrewStart, on the MashIn that heats the strike water, else the mash tun's
+    (design/recipes/RECIPES.md decision 15). There, unlike in the box, BeerSmith's own figure can be changed: it is then
+    the brewer's, named in the recipe's typed, with BeerSmith's own kept beside it for BEERSMITH'S, the way back. On Brew
+    Steps, SAVE sends it through the box's own command (POST /step2/strike/recipe with "edit"), so the box shows it and
+    works USE out from it at once, and the same refusal holds: mash water that would leave the HLT less than covers its
+    element and coil. A figure changed from BeerSmith's isn't one given here: the state names it in recipe.changed, with
+    BeerSmith's own. A MashIn's own grain weight and mash water aren't a second copy: MashIn works its strike out from
+    the recipe's figures where it has them, and a figure saved, in the box or the editor, clears the copy of each MashIn
+    still to come. Where the recipe has no mash water or grain weight, a box asking for it opens with a suggestion from
+    BeerSmith's data, saying where it came from (GET /step2/strike/suggest): the recipe's kept BeerSmith file, else
+    another Recipe Book recipe of the same name with a grain bill within 2%, else, for the mash water, BeerSmith's mash
+    ratio times the grain weight; never one made up. Nothing is saved until it is accepted, and a figure taken from the
+    recipe's own BeerSmith file is kept as BeerSmith's.
 
 ## The dead space in the BeerSmith profile
 
