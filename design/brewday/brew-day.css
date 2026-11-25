@@ -868,20 +868,34 @@ button.step{width:100%;margin:0;color:inherit;text-align:left;touch-action:manip
 .tfield label{min-width:62px;font:600 15px/1 var(--cond);letter-spacing:.05em;color:var(--text-2);text-transform:uppercase}
 .tedit input{min-width:0;min-height:52px;padding:0 12px;border:2px solid #3d7fd0;border-radius:var(--r);background:var(--face);color:var(--text);font:600 22px/1 var(--cond)}
 .tedit input::placeholder{color:#8a9bad;opacity:1}
-/* a stopped or new timer's time: MINUTES and SECONDS side by side, each its label over its −, box and + */
-.ttime{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.ttime .tfield{grid-template-columns:48px minmax(0,1fr) 48px;row-gap:5px;column-gap:6px}
-.ttime .tfield label{grid-column:1/-1;min-width:0}
-.ttime input{padding:0;text-align:center;font-size:28px;font-variant-numeric:tabular-nums}
-/* under 400 px the keys are 44 px wide and the figures 24 px, so 300 still fits its box on a 360 px phone */
-@media (max-width:399px){.ttime{column-gap:8px}.ttime .tfield{grid-template-columns:44px minmax(0,1fr) 44px;column-gap:4px}.ttime input{font-size:24px}}
+/* a stopped or new timer's time (.tset, a container so its parts fit its width): the presets, the time, then the two
+   groups of fine adjustment */
+.tset{container-type:inline-size;display:grid;gap:8px}
+/* six presets in one row, each at least 48 px: 4 px apart they need 308 px, a 390 px phone's editor. Narrower (a 360 px
+   phone, 278 px) they are two rows of three, each still whole. The unit is smaller than its figure, on the same line */
+.tpre{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}
+@container (max-width:307px){.tpre{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.tedit .tpre .cmdbtn{padding:0 2px;letter-spacing:.02em;white-space:nowrap}
+.tpre .tu{font-size:13px;font-weight:600;letter-spacing:.03em;color:var(--text-2)}
+.tpre .cmdbtn[aria-pressed=true] .tu{color:#cfdcea}
+/* the time, the one place it is read whole: large, in the middle */
+.ttot{justify-self:center;margin:2px 0 0;font:600 46px/1 var(--cond);letter-spacing:.02em;color:var(--text);font-variant-numeric:tabular-nums}
+.ttot.none{color:var(--text-3)}
+/* fine adjustment: each group its − and + (52 px square) either side of its figure and unit, the whole field a tap target
+   for the figure. One over the other in a box under 484 px wide; side by side in a wider one, 28 px apart, so the two
+   groups' + and − in the middle don't read as a pair. A group never breaks */
+.ttime{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,228px),1fr));gap:8px 28px}
+.tgrp{display:grid;grid-template-columns:52px minmax(0,1fr) 52px;gap:6px}
+.tedit .tgrp .cmdbtn{min-height:52px;padding:0;font-size:30px;font-weight:600}
+.tval{display:flex;align-items:baseline;justify-content:center;gap:6px;min-width:0;min-height:52px;padding:0 8px;border:2px solid #3d7fd0;border-radius:var(--r);background:var(--face);cursor:text}
+.tval:focus-within{outline:3px solid #8cc2ff;outline-offset:2px}
+.tedit .tval input{flex:none;width:calc(3ch + 2px);height:48px;min-height:0;padding:0;border:0;background:none;text-align:right;font:600 28px/48px var(--cond);font-variant-numeric:tabular-nums}
+.tedit .tval input:focus-visible{outline:0}
+.tedit #tsec{width:calc(2ch + 2px)}
+.tval .tu{font:600 17px/1 var(--cond);letter-spacing:.04em;color:var(--text-2)}
 .tsug,.tkeys{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .tkeys{grid-template-columns:repeat(2,minmax(0,1fr))}
-/* six presets share the editor's width, 282 px on a monitor's recipe column and 278 px on a 360 px phone: a 2 px gap
-   leaves each at least 44 px */
-.tpre{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:2px}
 .tedit .cmdbtn{min-height:48px;font-size:17px}
-.tedit .ttime .cmdbtn{min-height:52px;padding-left:0;padding-right:0}
 .tsug .cmdbtn[aria-pressed=true],.tpre .cmdbtn[aria-pressed=true]{background:#070c11;color:#fff;box-shadow:inset 0 0 0 2px #a9bfd4}
 /* the names to pick (BREWDAY_TIMER_NAMES): a long one wraps, up to three lines, rather than being cut short. 2 px of
    padding a side leaves a 9-letter word like WHIRLPOOL (80 px) room in a monitor's three-to-a-row (84 px) */

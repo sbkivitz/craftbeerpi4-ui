@@ -899,12 +899,14 @@ more than 3 flashes a second: this is one slow pulse) are met.
   - NAME, a text box (placeholder: the default name), and under it the names to pick from Settings (see "Names from
     Settings" below; HOP STAND, YEAST and VORLAUF unless the brewer changes them). A tap fills the name; a second tap
     clears it.
-  - For a stopped or new timer: its own time as MINUTES and SECONDS side by side, each its label over −, its box and
-    +. MINUTES 0 to 300, whose −1 and +1 keep the seconds; SECONDS 0 to 59, whose −5 and +5 carry into the minutes
-    (0:55 and +5 is 1:00). A timer is minutes and seconds, or seconds only, from 1 second to 300 minutes; a blank box
-    counts as 0. Under them six presets of whole minutes: 5, 10, 15, 20, 30, 60; a preset sets the seconds to 0, and
-    is lit only while the time is exactly its minutes. While the boxes make no time, START, SAVE and SET are greyed,
-    and a tap or Enter says why ("A timer needs at least 1 second.", and the like).
+  - For a stopped or new timer: its own time, set as phone and kitchen timers set one. First six presets of whole
+    minutes, "5 min" to "60 min", in one row; a preset sets the seconds to 0, and is lit only while the time is
+    exactly its minutes. Then the time itself, one large m:ss ("10:00"). Then fine adjustment, two groups apart:
+    "− 10 min +", whose − and + change the minutes by 1 and keep the seconds, 0 to 300; and "− 0 sec +", whose − and
+    + take 5 seconds off or add them and carry into the minutes (0:55 and + is 1:00), 0 to 59. A timer is minutes and
+    seconds, or seconds only, from 1 second to 300 minutes; a blank box counts as 0. While the boxes make no time, the
+    time shows "–:––", START, SAVE and SET are greyed, and a tap or Enter says why ("A timer needs at least 1
+    second.", and the like).
     New: CANCEL, SAVE ("start it later") and START ("counts down now"). Stopped: REMOVE, CANCEL, SET.
   - For a running or paused timer: "Time left 7:08" with −1 MIN and +1 MIN, which apply at once ("Changes
     the time left at once, on every screen."), then REMOVE and DONE. Removing a timer that has time left (running
@@ -6949,11 +6951,11 @@ bar's alarm, on a monitor and on a phone. A running or paused timer's editor has
 
 ### What the editor does (screen.js and the mockup's brew-day.js alike)
 
-- `teTimeHTML`: MINUTES and SECONDS side by side (`.ttime`), each its label over −, its box and +: `te:step:±1` for the
-  minutes, which keep the seconds and stop at 300:00; `te:sec:±5` (`TSECS`) for the seconds, which carry into the
-  minutes (0:55 and +5 is 1:00; 1:00 and −5 is 0:55) and stop at 0:00 and 300:00. The keys are 48 px wide and 52 px
-  tall (44 px wide under 400 px, with the figures at 24 px, so 300 fits its box on a 360 px phone). Then the six
-  presets, `te:min:N`, whole minutes: each sets the seconds to 0, and is pressed while the time is exactly its minutes.
+- `teTimeHTML`: the presets, the time, then the two groups (see "The timer's time: presets first, one large time, then
+  − min + and − sec +", below). The presets, `te:min:N`, are whole minutes: each sets the seconds to 0, and is pressed
+  while the time is exactly its minutes. `te:step:±1` for the minutes, which keep the seconds and stop at 300:00;
+  `te:sec:±5` (`TSECS`) for the seconds, which carry into the minutes (0:55 and +5 is 1:00; 1:00 and −5 is 0:55) and
+  stop at 0:00 and 300:00. The keys are 52 px square.
 - The boxes keep what is typed in them (`e.mt`, `e.st`) until a key or a preset sets the time again (`teSet`); a blank
   box counts as 0. `teTime` makes the time from them, or says why it can't be sent: "A timer needs at least 1
   second.", "Minutes are a whole number from 0 to 300.", "Seconds are a whole number from 0 to 59.", or "300 minutes is
@@ -7562,6 +7564,70 @@ any row whose details wrapped beside the state now across the row. The hold word
   strike water step's own note no longer makes its row tall.
 - Pictures, as built beside proposed: `files\steprows-pics\rows-390x844.png`, `rows-800x900.png`,
   `rows-1180x860.png`, `rows-1920x950.png`.
+
+## The timer's time: presets first, one large time, then − min + and − sec +: ready to build (25 Nov)
+
+The brewer, with a picture of a new timer's time: "This is a confusing way to present minutes/seconds. It is not
+obvious that the second row (5,10,15,...60) is only for minutes." The six presets sat in one row under MINUTES and
+SECONDS, so 20, 30 and 60 sat under SECONDS. He decided the layout: as phone and kitchen timers set a time, presets
+first with their unit, one large time, and fine adjustment under it, no figure without its unit.
+
+### What to build (screen.js `teTimeHTML` and `tePatch`, brewday.css; the mockup's alike)
+
+For a new or stopped timer, in the editor after NAME and the names to pick, one block, `.tset`:
+
+1. **The presets**, `.tpre`, a group named "Whole minutes": six buttons, `5 min` `10 min` `15 min` `20 min` `30 min`
+   `60 min` (the figure, then `<span class="tu">&nbsp;min</span>`: 13 px, Steel Mist, Text 2; on the pressed one
+   `#cfdcea`). Each is named "5 minutes" and so on, sends `te:min:N` as now (the minutes N, the seconds 0), and is
+   pressed (lit) only while the time is exactly N minutes. One row of six, 4 px apart, each at least 48 px wide and
+   48 px tall: that needs 308 px, the editor on a 390 px phone. In a narrower editor (a 360 px phone, 278 px; the
+   recipe column with `?tplace=today` at 1180-1440 px, 282 px) two rows of three, each button whole:
+   `.tset{container-type:inline-size}` and `@container (max-width:307px){.tpre{grid-template-columns:repeat(3,…)}}`.
+2. **The time**, `<output class="ttot" id="te-tot" for="tmin tsec" aria-label="Time">`: the whole time in m:ss,
+   minutes not hours ("10:00", "60:00", "300:00", "0:45"), 46 px Barlow Condensed 600, tabular figures, centred, the
+   one place the whole time is read. While the boxes make no time (`teTime` gives a reason) it reads "–:––" in
+   Text 3 (`.none`), and START, SAVE and SET are greyed as now.
+3. **Fine adjustment**, `.ttime`: two groups, `.tgrp`, named "Minutes" and "Seconds". Each is − (52 px square), its
+   field, + (52 px square), 6 px apart:
+   - the field is a `<label class="tval">` holding the box (`#tmin`, `aria-label="Minutes"`, maxlength 3; `#tsec`,
+     `aria-label="Seconds"`, maxlength 2) and its unit, `<span class="tu" aria-hidden="true">min</span>` or `sec`
+     (17 px, Text 2) on the figure's baseline. The box has no border of its own: the field has the 2 px blue border,
+     and a tap anywhere on it puts the caret in the box. The focus ring is the field's (`:focus-within`).
+   - the box is as wide as its longest figure (`3ch`, `2ch`), its figure right-aligned to the unit, 28 px.
+   - − and + are the glyphs alone (30 px), named "One minute less", "One minute more", "5 seconds less" and "5 seconds
+     more". They do what −1, +1, −5 and +5 did: `te:step:±1`, `te:sec:±5`.
+   - The two groups are one over the other, 8 px apart, in an editor under 484 px wide (the box beside the drawing,
+     the event line's and the bottom bar's, both phones); side by side, 28 px apart, in a wider one (the stacked
+     column from 701 to 1179 px), so the middle + and − don't read as a pair:
+     `grid-template-columns:repeat(auto-fit,minmax(min(100%,228px),1fr))`. A group never breaks across lines.
+4. `tePatch`, as a box is typed in: the time (`#te-tot`, its text and `.none`) follows too, with the presets and the
+   greyed buttons, so the box keeps its caret.
+
+Nothing else changes: the limits (1 second to 300 minutes, a blank box 0), the reasons a greyed button gives, Enter in
+a box, a running or paused timer's −1 MIN and +1 MIN, REMOVE and its UNDO, and what START, SAVE and SET send. The
+MINUTES and SECONDS labels, the 44 px keys under 400 px and the 2 px preset gap go.
+
+### What it gives
+
+Measured with every placement of the timers at 1920 × 1080, 1920 × 950, 1440 × 900, 1180 × 860, 1179 × 860,
+1000 × 900, 800 × 900, 701 × 900, 390 × 844 and 360 × 740 (`files\tset_measure.py`):
+
+- No key or field under 48 px, no text cut, no group broken, no sideways scroll. Presets one row everywhere from a
+  390 px phone up; two rows of three only at 282 px and narrower.
+- The new timer's editor is taller: 312 → 408 px beside the drawing (it still fits 1920 × 950, kept on screen as
+  before, ending 22 px above the bottom), 396 → 492 px on a 390 px phone, 342 → 378 px in the stacked column.
+
+### Checked
+
+- `files\tset_presses.py` (new), at 1920 × 950 and 390 × 844, 36 checks, all passing: opens at 10:00 with 10 min lit;
+  the presets' and keys' words and names; 5 min → 5:00; + min → 6:00 with no preset lit; + sec → 6:05; − sec twice →
+  5:55; − min → 4:55; 60 min → 60:00; 300:05 typed → –:–– and START greyed; 300:00 typed → 300:00; + min at 300:00
+  stays; 0:00 → –:––, and START tapped says "A timer needs at least 1 second."; 0:45 typed; a tap on the unit or the
+  field's empty end puts the caret in its box; Enter starts the timer.
+- Suites: `tm2_presses` 72, `tm2_col_presses` 41, `tplace_side` 267, `twelve_presses` 188, `simspeed_presses` 59,
+  `clock_presses` 17, all passing, none changed. `tplace_presses` stops after 93 passing checks, at UNDO after REMOVE
+  in the recipe column; main (b80e7ae) stops at the same place, so it isn't this change, and it is being looked at
+  separately.
 
 ## Open questions about the drawing
 

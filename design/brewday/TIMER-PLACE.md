@@ -27,9 +27,9 @@ vessels' size in mm. The build notes are BUILD-NOTES, "The timers beside the dra
 - The column: TIMERS with a count ("TIMERS · 2"), + TIMER and SOUND along its top, then one row for each timer with its
   name, state, time, REMOVE and START or PAUSE, and its bar along the foot. Rows that don't fit scroll inside the
   column. A run-out timer's row is amber and pulses, with OK, and its alarm in the title bar, whose one button is OK.
-- A timer's box opens to the column's left, 380 px wide. A new or stopped timer's time is MINUTES and SECONDS side by
-  side, each its label over −, its box and +, then the minute presets; a timer counting down or paused has −1 MIN and
-  +1 MIN, which change its time left at once. Every key in it is at least 48 px tall.
+- A timer's box opens to the column's left, 380 px wide. A new or stopped timer's time is six minute presets ("5 min"
+  to "60 min"), the time in large m:ss, then "− 10 min +" and "− 0 sec +"; a timer counting down or paused has −1 MIN
+  and +1 MIN, which change its time left at once. Every key in it is at least 48 px tall.
 - With no timers the drawing is full width, as today, and + TIMER and SOUND sit in its top-right corner, right of the
   boil kettle, clear of every part of the drawing. Where they can't clear it (from the boil on at 1180 × 860, or a
   drawing under about 100 px tall), the drawing leaves room for them at its right, narrower but no smaller.
