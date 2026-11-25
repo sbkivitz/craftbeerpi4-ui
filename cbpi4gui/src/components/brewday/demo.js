@@ -10,7 +10,8 @@
 // check-many, check-noanswer, check-noprobe, check-slow and check-unsure, and the strike water's sw-plan, sw-forecast,
 // sw-volume, sw-grain-edit, sw-grain, sw-hot, sw-used, sw-backhot, sw-working, sw-working-open, sw-reworking, sw-levers,
 // sw-refused, sw-refused-moved, sw-failed, sw-tunprobe, sw-wait, sw-heat, sw-move, sw-late, sw-doughin, sw-hand,
-// sw-novol, sw-missing, sw-missing-steps, sw-noprobe, sw-grain-bad and sw-interval, the vessels' bs-over, sw-hw and
+// sw-novol, sw-missing, sw-missing-steps, sw-noprobe, sw-grain-bad, sw-interval, sw-typed, sw-room and sw-asks, the
+// vessels' bs-over, sw-hw and
 // sw-over, the one clock's sim-clock and
 // sim-clock-1x, the timers' timer-change, timer-removed, timer-secs and timer-zero, the boil kettle's MANUAL's bk-hand, bk-hand-off and
 // bk-man-boil, the mash pH's ph, ph-open, ph-set, ph-target, ph-had, ph-end, ph-warm, ph-nolog, ph-vessel, ph-saved,
@@ -1051,8 +1052,12 @@ const SCENES = {
      (core post55), as every recipe in the rig's book is, its MashIn with a grain weight (swd.stepGrain);
      #sw-missing-steps, a recipe built on Brew Steps, with no grain weight either;
      #sw-noprobe, the boil kettle's probe giving no reading; #sw-grain-bad, BrewStart's grain temperature saved on Brew
-     Steps as 150 °F; #sw-interval, the mash tun's control interval set to 2.5 s. swd: the moment's numbers, which the
-     demo's stand-in for CraftBeerPi works the box's state out from (strike-demo.js) */
+     Steps as 150 °F; #sw-interval, the mash tun's control interval set to 2.5 s. Figures given in the box: #sw-typed, a
+     recipe built on Brew Steps, its grain weight and mash water given there, FORECAST opened; #sw-room, the boil
+     kettle's probe giving no reading and the room's temperature given as 66 °F, FORECAST opened; #sw-asks, a recipe
+     built on Brew Steps, its grain weight given, with the probe giving no reading: the box asks for the mash water and
+     the room. swd: the moment's numbers, which the demo's stand-in for CraftBeerPi works the box's state out from
+     (strike-demo.js) */
   "sw-plan": () => swDay(21 * 3600 + 12 * 60 + 5, {}),
   "sw-forecast": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {open: {swOpen: true}}),
   "sw-volume": () => Object.assign(swDay(21 * 3600 + 12 * 60 + 5, {}), {open: {swOpen: true, swVol: {val: 13.5}}}),
@@ -1136,6 +1141,25 @@ const SCENES = {
     return s;
   },
   "sw-interval": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.interval = 2.5; return s; },
+  "sw-typed": () => {
+    const s = swDay(21 * 3600 + 12 * 60 + 5, {});
+    Object.assign(s.swd, {from: null, rec: {grain: 20, water: 8.26}});
+    s.events.unshift(["21:10:40", "Mash water set to 8.26 gal for this recipe", "confirmed", "ok"], ["21:10:31", "Grain weight set to 20.0 lb for this recipe", "confirmed", "ok"]);
+    return Object.assign(s, {open: {swOpen: true}});
+  },
+  "sw-room": () => {
+    const s = swDay(21 * 3600 + 12 * 60 + 5, {});
+    s.v.bk.pv = null; s.pb.none.bk = 300; s.swd.room = 66;
+    s.events.unshift(["21:11:20", "Room temperature set to 66.0 °F for this brew", "confirmed", "ok"]);
+    return Object.assign(s, {pbLast: {bk: 61.4}, gap: {bk: 300}, open: {swOpen: true}});
+  },
+  "sw-asks": () => {
+    const s = swDay(21 * 3600 + 12 * 60 + 5, {});
+    Object.assign(s.swd, {from: null, rec: {grain: 20}});
+    s.v.bk.pv = null; s.pb.none.bk = 300;
+    s.events.unshift(["21:10:31", "Grain weight set to 20.0 lb for this recipe", "confirmed", "ok"]);
+    return Object.assign(s, {pbLast: {bk: 61.4}, gap: {bk: 300}});
+  },
   /* BrewStart's box (screen.js bsHTML), the #sw-plan night before at 21:12. #bs-edit: opened from BrewStart's row, whose
      hint asks where the grain is: Ready by 07:00, TOMORROW pressed, the grain not answered yet, focus on IN THE GARAGE
      with the two answers in view. #bs-indoors: the same with INDOORS pressed, at 68 °F, the box scrolled to it.
