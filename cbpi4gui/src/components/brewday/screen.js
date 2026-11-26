@@ -6870,8 +6870,10 @@ function liveRecipe(snap) {
     if (mn != null) wait = `STARTS ${tod(mn * 60)}`;
   }
   if (!wait && state === "running" && left == null && text && (s.min || s.temp != null)) {
-    const pv = st.v[s.k] ? st.v[s.k].pv : null;
-    wait = /cool/i.test(s.type || "") || (/target temp/i.test(text) && pv != null && s.temp != null && pv > s.temp + 0.5) ? "COOLING"
+    /* the reading against what the step's kettle is heated to now, its target in CraftBeerPi: a MashIn heating to its
+       pre-heat has that above its own Temp, the rest. The step's Temp only where the kettle has no target */
+    const V = st.v[s.k], pv = V ? V.pv : null, to = V && V.sv != null ? V.sv : s.temp;
+    wait = /cool/i.test(s.type || "") || (/target temp/i.test(text) && pv != null && to != null && pv > to + 0.5) ? "COOLING"
       : /target temp/i.test(text) ? "HEATING" : "WAITING";
   }
   const adds = (s.adds || []).map(a => {
