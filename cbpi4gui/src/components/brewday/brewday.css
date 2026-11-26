@@ -482,6 +482,68 @@ html.bd-page body{margin:0;background:var(--bg);color:var(--text);font:400 16px/
 :where(html.bd-page) .swvol .swvq{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;margin:0;font:500 14px/1.35 var(--sans);color:var(--text-2)}
 :where(html.bd-page) .swvol .swvq input{width:96px;min-height:44px;font-size:22px}
 :where(html.bd-page) .swsp{margin:0}
+/* the strike water card (STRIKE-CARD.md): one shape in every moment. Three figures, each a button: its name, the figure
+   large, and where it comes from under it; a tap opens its editor under them, in a Selection Blue frame joined to it. A
+   warning is one short line in Note Amber. CHECK is one row, its USE beside it; opened, its own figures as the same
+   buttons */
+:where(html.bd-page) .swcard{container-type:inline-size;gap:8px;padding:10px}
+:where(html.bd-page) .cfigs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+:where(html.bd-page) .cfigs[data-n="2"]{grid-template-columns:repeat(2,minmax(0,1fr))}
+:where(html.bd-page) .cfig{display:grid;align-content:start;justify-items:start;gap:4px;min-width:0;min-height:72px;padding:8px 9px 7px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel);color:var(--text);text-align:left;cursor:pointer;touch-action:manipulation}
+:where(html.bd-page) .cfig:not([aria-disabled=true]):hover{background:#253545}
+:where(html.bd-page) .cfig[aria-expanded=true]{border-color:var(--select);box-shadow:inset 0 0 0 1px var(--select);background:var(--face)}
+:where(html.bd-page) .cfig[aria-disabled=true]{cursor:default;background:var(--panel-2)}
+:where(html.bd-page) .cfig[aria-disabled=true] .cv{color:var(--text-2)}
+:where(html.bd-page) .cfig .ck{max-width:100%;overflow:hidden;font:600 13px/1 var(--cond);letter-spacing:.07em;color:var(--text-2);white-space:nowrap;text-overflow:ellipsis}
+:where(html.bd-page) .cfig .cv{max-width:100%;overflow:hidden;font:600 25px/1 var(--cond);font-variant-numeric:tabular-nums;white-space:nowrap}
+:where(html.bd-page) .cfig .cv .u{margin-left:3px;font-size:15px;color:var(--text-2)}
+:where(html.bd-page) .cfig .cs{max-width:100%;overflow:hidden;font:600 13px/1.1 var(--cond);letter-spacing:.06em;color:var(--text-3);white-space:nowrap;text-overflow:ellipsis}
+:where(html.bd-page) .cfig .cs.amb{color:#ffd9a0}
+:where(html.bd-page) .swcard .cwarn,:where(html.bd-page) .swcard .cnote{margin:0;font:500 15px/1.35 var(--sans);color:#ffd9a0}
+:where(html.bd-page) .swcard .cnote{color:var(--text-2)}
+:where(html.bd-page) .cchkr{display:flex;flex-wrap:wrap;gap:6px}
+/* CHECK as the figures are: its name small on top, ▾ or CLOSE ✕ on the right, and its words on a line of their own under
+   them, so they are never squeezed beside a button. USE beside it where both fit, else on a line of its own */
+:where(html.bd-page) .cchk{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:baseline;gap:5px 10px;flex:1 1 214px;min-width:0;min-height:48px;padding:8px 10px 9px;border:1px solid var(--edge);border-radius:var(--r);background:var(--panel);color:var(--text);text-align:left;cursor:pointer;touch-action:manipulation}
+:where(html.bd-page) .cchk:hover{background:#253545}
+:where(html.bd-page) .cchk .ck{font:600 13px/1 var(--cond);letter-spacing:.07em;color:var(--text-2)}
+:where(html.bd-page) .cchk .cw{grid-column:1/-1;min-width:0;font:500 16px/1.25 var(--sans)}
+:where(html.bd-page) .cchk .cw b{font-weight:600}
+:where(html.bd-page) .cchk .cx{font:600 13px/1 var(--cond);letter-spacing:.06em;color:var(--text-2)}
+:where(html.bd-page) .cchk.off .cw,:where(html.bd-page) .cchk.off .cw b{color:#ffd9a0}
+:where(html.bd-page) .cchk.quiet .cw{color:var(--text-2)}
+:where(html.bd-page) .cchk[aria-expanded=true]{border-color:var(--select);border-bottom-left-radius:0;border-bottom-right-radius:0}
+:where(html.bd-page) .sw .cchkr .cuse{flex:1 0 auto;min-height:48px;padding:0 16px;background:var(--select);border-color:var(--select);color:#fff;font-size:18px}
+:where(html.bd-page) .sw .cchkr .cuse:not([aria-disabled=true]):hover{background:#3477c8}
+:where(html.bd-page) .sw .cchkr .cuse[aria-disabled=true]{background:var(--panel-2);border-color:var(--edge);color:var(--text-3)}
+:where(html.bd-page) .cpanel{display:grid;gap:8px;margin-top:-8px;padding:8px;border:1px solid var(--select);border-top:0;border-radius:0 0 var(--r) var(--r);background:var(--panel)}
+:where(html.bd-page) .cpanel .cl{margin:0;font:500 15px/1.35 var(--sans);color:var(--text-2)}
+:where(html.bd-page) .cpanel .cxed{padding:4px}
+/* on one screen the column has a fixed height: the card gives way only inside CHECK opened, which scrolls under its
+   row, and the step list keeps at least its current row */
+@media (min-width:1180px){
+:where(html.bd-page) .recipe .swcard{flex:none}
+:where(html.bd-page) .recipe .swcard:has(>.cpanel){display:flex;flex-direction:column;flex:0 1 auto;min-height:0}
+:where(html.bd-page) .recipe .swcard>*{flex:none}
+:where(html.bd-page) .recipe .swcard>.cpanel{flex:0 1 auto;min-height:0;overflow:auto;overscroll-behavior:contain}
+:where(html.bd-page) .recipe:has(.swcard) .steps{min-height:68px}
+}
+/* a card under about 320 px (the recipe column at 1180 px, a 360 px phone): the buttons' words a little tighter, so a
+   tag such as "sparge 6.7 gal" stays whole */
+@container (max-width:320px){
+:where(html.bd-page) .cfig{padding:8px 6px 7px}
+:where(html.bd-page) .cfig .ck{letter-spacing:.03em}
+:where(html.bd-page) .cfig .cs{font-size:12px;letter-spacing:.01em}
+:where(html.bd-page) .cfig .cv{font-size:23px}
+}
+:where(html.bd-page) .cxed{padding:8px;border:2px solid var(--select);border-radius:var(--r);background:var(--panel)}
+:where(html.bd-page) .cfig{position:relative}
+:where(html.bd-page) .cfig .cxx{position:absolute;top:7px;right:9px;font:600 20px/1 var(--sans);color:var(--text)}
+:where(html.bd-page) .cxed .swvo{min-height:0}
+:where(html.bd-page) .cxed .ok{grid-column:1/-1}
+:where(html.bd-page) .cxed.hasback .ok{grid-column:1/4}
+:where(html.bd-page) .cxed .cback{grid-column:4/6;line-height:1}
+:where(html.bd-page) .cxed .cback small{margin-top:3px}
 /* the MashIn row as the way to the mash water's box, as BrewStart's row is (mwRowHTML), and the box itself in
    BrewStart's box's look (mwHTML) */
 :where(html.bd-page) .step.mwrow:not([aria-disabled=true]):hover{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transparent 48px),#253545}

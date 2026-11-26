@@ -1275,6 +1275,65 @@ const SCENES = {
   "sw-missing-steps": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.from = null; return s; },
   "sw-give-open": () => Object.assign(SCENES["sw-missing-steps"](), {base: "sw-missing-steps", open: {swOpen: "give"}}),
   "sw-gave": () => Object.assign(SCENES["sw-typed"](), {base: "sw-typed", open: {swOpen: "give"}}),
+  /* the strike water card (STRIKE-CARD.md), the strike water moments with BeerSmith's figures as the plan: BrewStart's
+     temperature is BeerSmith's strike, 134.6 °F for Test Recipe v5 (swd.plan), and the card stands in the box's place.
+     #card-plan the night before; #card-low with 10 gal of HLT water, under its minimum once the 8.26 gal of mash water
+     has gone; #card-water its MASH WATER opened, 7.00 typed; #card-yours 7.00 set, BeerSmith's strike then for other
+     figures; #card-yours-edit MASH WATER opened again, BEERSMITH'S beside SET; #card-strike STRIKE opened, 136.0 typed;
+     #card-mine 136.0 set; #card-mine-edit opened again, BEERSMITH'S beside SET; #card-cold the grain given as 45 °F, the
+     check offering USE; #card-used USE pressed; #card-check CHECK opened; #card-check-grain its GRAIN TEMP opened;
+     #card-hlt HLT WATER opened, 10.0 typed; #card-novol by hand, no HLT water given; #card-nobs a recipe without
+     BeerSmith's figures; #card-working the check being worked out; #card-heat BrewStart heating; #card-move the water
+     hot and held; #card-moved the water in the mash tun, MashIn's pre-heat; #card-stall the pre-heat stalled;
+     #card-asked the malt asked for, the strike done. bss: where the strike in use came from as the moment set it
+     (from), and a stalled pre-heat (stall), as CraftBeerPi keeps them. then: finished once the recipe is built, with the
+     card's figures (H.K(), strike-demo.js cardK) */
+  "card-plan": () => cardOf(swDay(21 * 3600 + 12 * 60 + 5, {})),
+  "card-low": () => { const s = SCENES["card-plan"](); s.swd.vol = 10; return s; },
+  "card-water": () => Object.assign(SCENES["card-low"](), {base: "card-plan", open: {sx: {k: "water", val: 7}}}),
+  "card-yours": () => { const s = SCENES["card-low"](); s.swd.rec = {water: 7}; s.events.unshift(["21:12:20", "Mash water set to 7.00 gal, was 8.26 gal", "confirmed", "ok"]); return Object.assign(s, {base: "card-plan"}); },
+  "card-yours-edit": () => Object.assign(SCENES["card-yours"](), {open: {sx: {k: "water", val: 7}}}),
+  "card-strike": () => Object.assign(SCENES["card-plan"](), {base: "card-plan", open: {sx: {k: "strike", val: 136}}}),
+  "card-mine": () => { const s = SCENES["card-plan"](); s.swd.plan = 136; s.bss = {from: "you"}; s.events.unshift(["21:12:20", "Strike set to 136.0 °F, was 134.6 °F", "confirmed", "ok"]); return Object.assign(s, {base: "card-plan"}); },
+  "card-mine-edit": () => Object.assign(SCENES["card-mine"](), {open: {sx: {k: "strike", val: 136}}}),
+  "card-cold": () => { const s = SCENES["card-plan"](); s.swd.grain = 45; s.events.unshift(["21:12:20", "Grain temperature set to 45.0 °F, was the probe's 60.6 °F", "confirmed", "ok"]); return Object.assign(s, {base: "card-plan"}); },
+  "card-used": () => {
+    const s = SCENES["card-cold"]();
+    s.bss = {from: "check"};
+    s.then = (st, H) => { const K = H.K(), u = K.use(K.grain); st.events.unshift(["21:12:40", `Strike set to ${u.toFixed(1)} °F, the check's, was 134.6 °F`, "confirmed", "ok"]); H.swSet(u); };
+    return s;
+  },
+  "card-check": () => Object.assign(SCENES["card-plan"](), {base: "card-plan", open: {swOpen: true}}),
+  "card-check-grain": () => Object.assign(SCENES["card-plan"](), {base: "card-plan", open: {swOpen: true, sx: {k: "grain", val: 45}}}),
+  "card-hlt": () => Object.assign(SCENES["card-plan"](), {base: "card-plan", open: {sx: {k: "hlt", val: 10}}}),
+  "card-novol": () => { const s = SCENES["card-plan"](); s.swd.vol = null; return Object.assign(s, {base: "card-plan"}); },
+  "card-nobs": () => { const s = cardOf(swDay(21 * 3600 + 12 * 60 + 5, {})); s.swd.from = null; s.swd.plan = 126; return Object.assign(s, {base: "card-plan"}); },
+  "card-working": () => { const s = SCENES["card-plan"](); s.swd.has = null; s.swd.work = {since: s.t - 8, why: "recipe"}; return Object.assign(s, {base: "card-plan"}); },
+  "card-heat": () => cardOf(swMorning(DAY2 + 6 * 3600 + 41 * 60 + 30, SW_FROM.bs)),
+  "card-move": () => cardOf(swMorning(DAY2 + 6 * 3600 + 51 * 60 + 10, SW_FROM.bs)),
+  /* the water in the mash tun 40 s after NEXT: MashIn heats it to its pre-heat with the pump running, and asks for the
+     malt there. Its target and reading follow the card's figures, set once the recipe is built */
+  "card-moved": () => {
+    const s = cardOf(swMorning(SW_MOVED + 40, SW_FROM.bs));
+    s.banner = null; s.recipe.wait = true; s.a.wortPump = {on: true};
+    s.events = s.events.filter(e => !/add malt/.test(e[1]));
+    s.then = (st, H) => {
+      const t = H.K().pre(st.swd.plan);
+      st.events = st.events.map(e => e[1].startsWith("MashIn started") ? [e[0], `MashIn started, mash tun target ${t.toFixed(1)} °F`, e[2], e[3]] : e);
+      Object.assign(st.v.mt, {sv: t, own: t, pv: +(t - 1.6).toFixed(1), mode: "auto"});
+    };
+    return s;
+  },
+  "card-stall": () => { const s = SCENES["card-moved"](), f = s.then; s.t += 15 * 60; s.bss = {stall: {short: 0.4, min: 10}}; s.then = (st, H) => { f(st, H); st.v.mt.pv = +(st.v.mt.sv - 0.4).toFixed(1); }; return s; },
+  /* the pre-heat reached and the malt asked for: the pump stopped for the dough-in, the Mash Tun's probe reading the
+     water left in the HLT's coil, and the strike done */
+  "card-asked": () => {
+    const s = SCENES["card-moved"](), f = s.then;
+    s.t += 6 * 60; s.recipe.wait = WFY; s.a.wortPump = {on: false};
+    s.banner = {tone: "prompt", title: "MashIn", text: "Target temperature reached. Please add malt.", act: "NEXT STEP", cmd: "b:done"};
+    s.then = (st, H) => { f(st, H); st.v.mt.pv = +(st.v.mt.sv + 3.4).toFixed(1); st.events.unshift([hhmmss(st.t - 4), "MashIn: Target temperature reached. Please add malt.", "waiting for you", "wait"]); };
+    return s;
+  },
   "sw-noprobe": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.v.bk.pv = null; s.pb.none.bk = 300; return Object.assign(s, {pbLast: {bk: 61.4}, gap: {bk: 300}}); },
   "sw-grain-bad": () => { const s = swDay(21 * 3600 + 12 * 60 + 5, {}); s.swd.grain = 150; return s; },
   /* the strike water step's temperature typed on Brew Steps as 185 °F, and USE pressed at 21:12:31. The model's
@@ -1462,6 +1521,14 @@ function swDay(t, o) {
   if (used) s.events.unshift(["21:12:31", `Strike water set to ${hot.toFixed(1)} °F, was 126.0 °F`, "confirmed", "ok"]);
   if (o.state) s.events.unshift(["21:13:04", swPlanLine(s.swd.plan, 60.6), "from CraftBeerPi", ""], ["21:13:02", "Recipe started", "confirmed", "ok"],
     ["21:13:01", "Checked before starting: probes, clock, reminders", "all passed", "ok"]);
+  return s;
+}
+/* a strike water moment as the card has it (STRIKE-CARD.md): BrewStart's temperature BeerSmith's strike, as ADD
+   BREWSTART fills it, and nothing in LOG about USE, which the card doesn't have */
+function cardOf(s) {
+  if (s.swd.from && s.swd.from.bs != null) s.swd.plan = s.swd.from.bs;
+  s.swd.was = null;
+  s.events = s.events.filter(e => !/^Strike water set to/.test(e[1]));
   return s;
 }
 /* brew day, from BrewStart's heating start: BrewStart (1.3.0) heats the HLT on its own AUTO at the rig's rate to plan,

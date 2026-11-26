@@ -115,6 +115,10 @@ export const api = {
   // ignores it.
   strikeUse: (temp, plan, steps) => post("/step2/strike", { do: "use", temp, plan, steps }),
   strikeBack: (temp, steps) => post("/step2/strike", { do: "back", temp, steps }),
+  // The strike water card's STRIKE: the brewer's own figure (set), or BeerSmith's again (beersmith). Before the water
+  // moves they write what USE writes; after it, MashIn's pre-heat alone; once the malt is asked for, 409 asked.
+  strikeSet: (temp, steps) => post("/step2/strike", { do: "set", temp, steps }),
+  strikeBeerSmith: (steps) => post("/step2/strike", { do: "beersmith", steps }),
   strikeWater: (vol, steps) => post("/step2/strike/water", { vol, steps }),
   strikeGrain: (grain, steps, place) => post("/step2/strike/grain", place ? { grain, place, steps } : { grain, steps }),
   // The recipe's figures given on Brew Day where BeerSmith's are missing ({grain} in the state's mass_unit, {strike_vol}

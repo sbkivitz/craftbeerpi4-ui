@@ -151,11 +151,11 @@ function strikeInputs(st, M) {
   const grainT = bi >= 0 ? S[bi].grain ?? null : d.grain ?? null, vol = bi >= 0 ? S[bi].vol ?? null : d.vol ?? null;
   /* a grain temperature that isn't a number is sent as none (typed null), with miss "grain" */
   const typed = grainT == null || !Number.isFinite(grainT) ? null : grainT;
-  /* the recipe's grain weight and strike water: BeerSmith's (from), else given here (rec), else for the grain a mash
-     step's own */
+  /* the recipe's grain weight and strike water: given here (rec), which stand for BeerSmith's where it has them, else
+     BeerSmith's (from), else for the grain a mash step's own */
   const rec = d.rec || {}, beer = !!(F && F.grainLb && F.forGrain), stepKg = S.map(x => x.kg).find(k => k > 0);
-  const grainLb = beer ? F.grainLb : rec.grain ?? (stepKg ? +(stepKg / 0.45359237).toFixed(1) : null);
-  const strikeVol = beer ? swGal(F) : rec.water ?? null, gal = grainLb != null && strikeVol != null ? strikeVol : null;
+  const grainLb = rec.grain ?? (beer ? F.grainLb : stepKg ? +(stepKg / 0.45359237).toFixed(1) : null);
+  const strikeVol = rec.water ?? (beer ? swGal(F) : null), gal = grainLb != null && strikeVol != null ? strikeVol : null;
   const interval = d.interval === undefined ? 2 : d.interval;
   const misses = [(gal == null || rest == null) && "recipe", !swIntervalOk(interval) && "sample_time",
     roomFrom === "probe" && probeRoom == null && "probe", roomFrom === "probe" && probeRoom != null && !usable && "room",
@@ -182,6 +182,56 @@ function strikePhase(st, bi, si, mi) {
   if (!r || r.held || r.cur > mi) return null;
   if (si < 0) return r.cur === mi && r.state !== "ready" ? "moved" : "plan";
   return r.cur === mi ? "moved" : (r.cur === si && si !== bi && !(r.state === "ready" && r.cur === 0)) || (r.cur === bi && si === bi && !!r.bsHeat) ? "heat" : "plan";
+}
+/* ---------- the strike water card's figures (design/brewday STRIKE-CARD.md), as the mockup works them out ----------
+   BeerSmith's own heat balance with its figures (from): the share of the tun's steel BeerSmith counted (Cs) worked out
+   from its strike, else the Mash Tun's whole steel from the Hardware page, else none for the pre-heat and the rig's
+   usual tun for the check. CraftBeerPi sends the results as the state's strike (with its balance) and check */
+const BS_MALT = 0.38, BS_STEEL = 0.12, L_PER_GAL = 3.785411784, KG_PER_LB = 0.45359237, SW_TUN_LB = 33;
+const weighed = v => !!v && v.empty_weight != null && v.empty_weight > 0 && !(v.material === "other" && !(v.specific_heat > 0));
+/* -> {bs, R, top, known, W, Cs, Tt, G, tmi, pre, land, use, plan, grain}, or null without the strike water's numbers:
+   BeerSmith's strike (bs) and the rest (R); where the moved water is before the malt for a strike (tmi: never under the
+   rest, at most 27 °F over it, never over the ceiling); MashIn's pre-heat (pre: that where the steel counted is known,
+   else the rest); where the mash lands for a strike and a grain temperature (land); the strike that lands it on the
+   rest (use); the strike in use (plan) and the grain's temperature in use (grain) */
+export function cardK(st, M) {
+  const s = strikeInputs(st, M);
+  if (!s) return null;
+  const {F, inputs, grainLb, strikeVol} = s, R = inputs.rest, bs = F && F.bs != null ? F.bs : null;
+  const Tt = F && F.bsTun != null ? F.bsTun : inputs.room ?? 68;
+  const cG = lb => BS_MALT * lb * KG_PER_LB, W = strikeVol == null ? null : strikeVol * L_PER_GAL, G = grainLb == null ? null : cG(grainLb);
+  const hw = (st.vessels || {}).mt, known = bs != null || weighed(hw);
+  let Cs = SW_TUN_LB * KG_PER_LB * BS_STEEL;
+  if (bs != null && R != null) Cs = Math.max(0, Math.min(F.tunLb * KG_PER_LB * BS_STEEL, (swGal(F) * L_PER_GAL * (bs - R) - cG(F.grainLb) * (R - F.bsGrain)) / (R - Tt)));
+  else if (weighed(hw)) Cs = hw.empty_weight * KG_PER_LB * BS_STEEL;
+  const top = R == null ? null : Math.min(R + SW_MAX_RISE, SW_CEIL);
+  const cap = x => +Math.min(top, Math.max(R, x)).toFixed(1);
+  const tmi = x => R == null || W == null ? R : cap((W * x + Cs * Tt) / (W + Cs));
+  const land = (x, tg) => R == null || W == null || G == null || x == null || tg == null ? null : ((W + Cs) * tmi(x) + G * tg) / (W + Cs + G);
+  const use = tg => {
+    if (R == null || W == null || G == null || tg == null) return null;
+    const m = (R * (W + Cs + G) - G * tg) / (W + Cs);
+    return +Math.min(top, Math.max(R, (m * (W + Cs) - Cs * Tt) / W)).toFixed(1);
+  };
+  return {bs, R, top, known, W, Cs, Tt, G, tmi, pre: x => known ? tmi(x) : R, land, use, plan: inputs.planned, grain: inputs.grain};
+}
+/* the state's strike and check from them. The strike's from: BeerSmith's where it is BeerSmith's to 0.1, the rest on a
+   recipe without BeerSmith's figures, else as the moment last set it (st.bss.from: the check's USE, or the brewer's) */
+function cardState(st, M, s, phase) {
+  const K = cardK(st, M), d = st.swd, rec = d.rec || {}, B = st.bss || {};
+  if (!K) return {strike: null, check: null};
+  const S0 = K.plan, from = S0 == null ? "yours" : K.bs != null && Math.abs(S0 - K.bs) < 0.05 ? "beersmith"
+    : K.bs == null && K.R != null && Math.abs(S0 - K.R) < 0.05 ? "rest" : B.from === "check" ? "check" : "yours";
+  const strike = {value: S0, from, beersmith: K.bs, stale: from === "beersmith" && (rec.water != null || rec.grain != null),
+    mashin: S0 == null || !K.known ? null : K.tmi(S0), asked: phase === "moved" && st.recipe && st.recipe.wait === "WAITING FOR YOU",
+    stall: B.stall || null, range: K.R == null ? null : [K.R, K.top],
+    balance: {water: K.W, steel: K.known ? K.Cs : null, tun: K.Tt, grain: K.G, rest: K.R, top: K.top}};
+  let check = null;
+  if (!s.miss && d.has && !d.work) {
+    const L = K.land(S0, K.grain), note = L != null && Math.abs(L - K.R) > 1;
+    check = {landing: L, note, within: 1, use: note && phase !== "moved" ? K.use(K.grain) : null};
+  }
+  return {strike, check};
 }
 export function strikeState(st, M) {
   const s = strikeInputs(st, M);
@@ -228,18 +278,21 @@ export function strikeState(st, M) {
   /* CraftBeerPi's work on USE failed for the numbers as they are now (d.failed.for): nothing is offered until one
      changes */
   const failed = d.failed && !A && !d.work && swSameIn(swNow(st, M), d.failed.for) ? {at: d.failed.at, detail: d.failed.detail} : null;
+  const kept = {...(rec.grain != null ? {grain: F && F.grainLb} : {}), ...(rec.water != null && beer ? {strike_vol: swGal(F)} : {})};
+  const typed = ["grain", "water"].filter(x => rec[x] != null);
   return {
     version: 1, unit: "F", vol_unit: "gal", mass_unit: "lb", ceiling: SW_CEIL, now: st.t, scale: 1, received: Date.now(),
-    recipe: beer ? {name: M.RECIPE.name, steps: ids, grain: F.grainLb, strike_vol: gal, for_grain: F.forGrain, dead: F.dead || 0, tun: F.tunLb ?? null, tun_heat: F.tunLb ? 0.12 : null,
-      beersmith: F.bs ? {strike: F.bs, grain: F.bsGrain ?? null, tun: F.bsTun ?? null} : null, lacks: [], typed: [], grain_from: "beersmith"}
+    recipe: beer ? {name: M.RECIPE.name, steps: ids, grain: grainLb, strike_vol: strikeVol, for_grain: F.forGrain, dead: +Math.max(0, strikeVol - F.forGrain).toFixed(2), tun: F.tunLb ?? null, tun_heat: F.tunLb ? 0.12 : null,
+      beersmith: F.bs ? {strike: F.bs, grain: F.bsGrain ?? null, tun: F.bsTun ?? null} : null, lacks: [], typed, grain_from: rec.grain != null ? "typed" : "beersmith", changed: beer ? kept : {}}
       : {name: M.RECIPE.name, steps: ids, grain: grainLb, strike_vol: strikeVol, for_grain: null, dead: null, tun: null, tun_heat: null, beersmith: null,
         lacks: ["grain", "water", "tun", "infuse_temp", "grain_temp", "tun_temp"].filter(x => rec[x] == null),
-        typed: ["grain", "water"].filter(x => rec[x] != null), grain_from: rec.grain != null ? "typed" : grainLb != null ? "step" : null},
+        typed, grain_from: rec.grain != null ? "typed" : grainLb != null ? "step" : null, changed: {}},
     applies: phase != null, off: phase != null ? null : "malt_in", phase, by: si >= 0 ? "step" : "hand",
     step_ids: {brewstart: bi >= 0 ? ids[bi] : null, strike: si >= 0 ? ids[si] : null, mash_in: ids[mi]},
     inputs, rig: {through_coil: true, still_probe: 0.0}, sample_time: sample, guesses, vessels, miss, misses: miss === "far" ? ["far"] : s.misses,
     warnings: inputs.left != null && inputs.left < inputs.least - 1e-9 ? ["hlt_low"] : [],
     was: d.was ?? null,
-    working: d.work ? {since: d.work.since, why: d.work.why === "load" ? "recipe" : d.work.why} : null, failed, answer
+    working: d.work ? {since: d.work.since, why: d.work.why === "load" ? "recipe" : d.work.why} : null, failed, answer,
+    ...cardState(st, M, s, phase)
   };
 }
