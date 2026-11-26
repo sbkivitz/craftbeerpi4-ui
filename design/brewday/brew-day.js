@@ -989,6 +989,11 @@ const SCENES = {
   "card-check-grain": () => Object.assign(SCENES["card-plan"](), {base: "card-plan", open: {swOpen: true, sx: {k: "grain", val: 45}}}),
   "card-hlt": () => Object.assign(SCENES["card-plan"](), {base: "card-plan", open: {sx: {k: "hlt", val: 10}}}),
   "card-novol": () => { const s = SCENES["card-plan"](); s.sw.vol = null; return Object.assign(s, {base: "card-plan"}); },
+  /* #card-nostrike: BrewStart with no temperature, so there's no strike to check: STRIKE "not given", and CHECK leading
+     to it. #card-bs: BrewStart's box opened from its row with the card: no grain question, and its water and
+     temperature changed on the card too */
+  "card-nostrike": () => { const s = SCENES["card-plan"](); s.sw.plan = null; return Object.assign(s, {base: "card-plan"}); },
+  "card-bs": () => Object.assign(SCENES["card-plan"](), {base: "card-plan", open: {bsAt: {}}}),
   "card-nobs": () => { const s = cardOf(swDay(21 * 3600 + 12 * 60 + 5, {})); s.sw.from = null; s.sw.plan = 126; return Object.assign(s, {base: "card-plan"}); },
   "card-working": () => { const s = SCENES["card-plan"](); s.sw.has = null; s.sw.work = {since: s.t - 8, why: "recipe"}; return Object.assign(s, {base: "card-plan"}); },
   "card-heat": () => cardOf(swMorning(DAY2 + 6 * 3600 + 41 * 60 + 30, SW_FROM.bs)),
@@ -3716,7 +3721,7 @@ function cxNow(k, N, K) {
   }
   if (k === "strike") {
     const from = bssFrom(N.plan, K), stale = from === "bs" && (rec.water != null || rec.grain != null);
-    return {v: N.plan, tag: BSS_TAG[from], say: from === "rest" ? "the rest" : from === "check" ? "the check's" : from === "bs" ? "BeerSmith's" : "yours", amb: stale,
+    return {v: N.plan, tag: N.plan == null ? "not given" : BSS_TAG[from], say: from === "rest" ? "the rest" : from === "check" ? "the check's" : from === "bs" ? "BeerSmith's" : "yours", amb: stale,
       back: K.bs != null && N.plan != null && Math.abs(N.plan - K.bs) >= 0.05 ? K.bs : null, backSays: "BEERSMITH'S"};
   }
   if (k === "hlt") {
@@ -3790,6 +3795,8 @@ function cardCheck(N, K) {
   if (st.sw.failed && !st.sw.work && swSameIn(swNow(), st.sw.failed.for)) return {st: "failed"};
   if (!st.sw.has) return {st: "wait"};
   if (st.sw.work) return {st: "work"};
+  /* no strike to check: said as what it needs, before the recipe's figures */
+  if (N.plan == null) return {st: "miss", m: "strike"};
   const L = K.land(N.plan, N.grain);
   if (L == null) return {st: "miss", m: "recipe"};
   const off = Math.abs(L - K.R) > BSS_OFF, u = off && swPhase() !== "moved" ? K.use(N.grain) : null;
@@ -3797,6 +3804,7 @@ function cardCheck(N, K) {
 }
 /* what the check still needs, in a few words */
 function cardNeeds(N, m) {
+  if (m === "strike") return "needs the strike";
   if (m === "vol") return N.vol == null ? "needs the HLT water" : "needs more HLT water";
   if (m === "probe" || m === "room") return "needs the room temperature";
   if (m === "grain") return `grain at ${f1(N.typed)} °F can't be right`;
@@ -3816,6 +3824,7 @@ function cardChkRow(N, K, C) {
   else {
     says = cardNeeds(N, C.m); cls = " quiet";
     if (!open && C.m === "vol") cmd = "sx:open:hlt";
+    else if (!open && C.m === "strike" && !cxWhy("strike")) cmd = "sx:open:strike";
     else if (!open && C.m === "recipe" && N.rest != null && N.gal == null) cmd = "sx:open:water";
   }
   const toggles = cmd === "sx:chk", plain = says.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ");
@@ -3934,7 +3943,7 @@ function cxCmd(x, y) {
   const e = st.sx;
   if (!e || st.pend.sx) return;
   if (x === "step") {
-    const q = CX[e.k].places, from = e.val ?? cxNow(e.k, N, K).v ?? (e.k === "hlt" ? N.gal : null) ?? (CX[e.k].unit === "°F" ? 68 : 0);
+    const q = CX[e.k].places, from = e.val ?? cxNow(e.k, N, K).v ?? (e.k === "hlt" ? N.gal : e.k === "strike" ? K.R : null) ?? (CX[e.k].unit === "°F" ? 68 : 0);
     e.val = Math.max(0, Math.round((from + parseFloat(y)) * 10 ** q) / 10 ** q);
     return renderAll();
   }
@@ -4213,13 +4222,14 @@ function bsRowWhy() {
   return ["bs", "r:start", "r:stop", "r:next", "r:reset", "r:unload", "r:load"].some(k => P[k]) ? WAIT : "";
 }
 /* what BrewStart's row asks first, in the order of what waits on the brewer: no time set ("time"), then where the grain
-   spent the night ("grain"); nothing once both are given */
-const bsRowAsks = s => !(s.start || s.ready) ? "time" : !bsGrainSaid(s) ? "grain" : "";
+   spent the night ("grain"); nothing once both are given. With the strike water card nothing waits on the grain, so the
+   row only asks for a time */
+const bsRowAsks = s => !(s.start || s.ready) ? "time" : !bssOn() && !bsGrainSaid(s) ? "grain" : "";
 /* BrewStart's row as a button (stepHTML): the row as it was, with the day in its details before its heating, and under
    its state a small hint for what it asks: "set a time", "where's the grain?", or "change". Holding the water it keeps
    its question as its note line (nt). Its label says the same in words */
 function bsRowHTML(s, i, state, p, right, nt) {
-  const tm = s.start || s.ready, grain = !bsGrainSaid(s), d = s.date ? dayIdx(s.date) : null, why = bsRowWhy(), asks = bsRowAsks(s), heat = state === "cur" && bsRuns() ? st.recipe.bsHeat : null;
+  const tm = s.start || s.ready, grain = !bssOn() && !bsGrainSaid(s), d = s.date ? dayIdx(s.date) : null, why = bsRowWhy(), asks = bsRowAsks(s), heat = state === "cur" && bsRuns() ? st.recipe.bsHeat : null;
   const hint = asks === "time" ? '<small class="bsh amb">set a time</small>' : asks === "grain" ? "<small class=\"bsh amb\">where's the grain?</small>" : '<small class="bsh">change</small>';
   const said = `BrewStart: ${tm ? `${s.start ? "start at" : "ready by"} ${todS(tm)}${d != null ? ` ${dLong(d)}` : ""}` : "no time set"}${s.temp != null ? `, ${stepTemp(s)} °F` : ""}${s.vol != null ? `, ${+s.vol.toFixed(2)} gallon${s.vol === 1 ? "" : "s"}` : ""}${heat === "heating" ? ", heating the water" : heat === "holding" ? ", holding the water, waiting for you" : ""}. ${tm ? "Change it" : "Set a time"}${grain ? ". Where the grain spent the night isn't given yet" : ""}`;
   const note = nt ? `<span class="p pn${state === "cur" && st.banner && st.banner.title === s.n ? " asked" : ""}">${nt}</span>` : "";
@@ -4258,7 +4268,12 @@ function bsAddHTML() {
 /* a time not yet set takes its day by the noon rule: TOMORROW from noon on CraftBeerPi's clock, TODAY before it */
 const bsNoon = () => dayOf(st.t) + (st.t % 86400 >= 12 * 3600 ? 1 : 0);
 /* a new BrewStart's temperature: the strike water step's, or without one the first mash step's */
-function bsNewTemp() { const {S, si, mi} = swSteps(); return si >= 0 ? S[si].temp : mi >= 0 ? S[mi].temp : null; }
+/* a new BrewStart's temperature: with the strike water card, BeerSmith's strike where the recipe has it (ADD BREWSTART
+   fills it); else the strike water step's, or the mash step's */
+function bsNewTemp() {
+  if (bssOn() && st.sw.from && st.sw.from.bs != null) return st.sw.from.bs;
+  const {S, si, mi} = swSteps(); return si >= 0 ? S[si].temp : mi >= 0 ? S[mi].temp : null;
+}
 /* how long until then, in words; on a simulator not at 1×, in real time too */
 function bsIn(sec) {
   const m = Math.round(sec / 60), sc = SC();
@@ -4297,14 +4312,19 @@ function bsSays(B) {
    is known and the water is more (hltOver) */
 function swWaterAt() {
   if (!swPhase()) return "";
+  /* the strike water card always offers the water, as HLT WATER, and the strike temperature, as STRIKE */
+  if (bssOn()) return "the strike water card";
   const N = swNumbers();
   return N.ok || N.wait ? "CHANGE in the strike water box's FORECAST" : N.miss === "vol" ? "HLT WATER in the strike water box" : "";
 }
 function bsWater(B) {
   const {S, bi} = swSteps(), s = B.neu ? null : S[bi], W = s ? s.watts : SW_WATTS, T = s ? s.temp : bsNewTemp(), sw = swWaterAt();
   const el = `The ${KNAME[s ? s.k : "hlt"]}'s ${W ? `${W} W ` : ""}element heats`, to = T == null ? "" : ` to ${T.toFixed(1)} °F`;
-  if (!s) return `<p class="bswat">${el} ${+SW_NEED.toFixed(2)} gal${to}, worked out from the recipe.</p>${hltOverHTML(SW_NEED)}`;
-  if (s.vol == null) return `<p class="bswat">${el} the water${to}. <b>How much water isn't known yet</b>: give it with ALL SETTINGS${sw ? `, or ${sw},` : ""} before you START.</p>`;
+  /* with the card: where the temperature comes from, as the card's STRIKE tags it, and the card changing both */
+  const from = bssOn() && T != null ? (st.sw.from && st.sw.from.bs != null && Math.abs(T - st.sw.from.bs) < 0.05 ? ", BeerSmith's strike" : "") : "";
+  if (!s) return `<p class="bswat">${el} ${+SW_NEED.toFixed(2)} gal${to}${from}, worked out from the recipe.</p>${hltOverHTML(SW_NEED)}`;
+  if (s.vol == null) return `<p class="bswat">${el} the water${to}${from}. <b>How much water isn't known yet</b>: give it with ALL SETTINGS${sw ? `, or ${bssOn() ? "HLT WATER on the strike water card" : sw},` : ""} before you START.</p>`;
+  if (bssOn()) return `<p class="bswat">${el} ${+s.vol.toFixed(2)} gal${to}${from}. ALL SETTINGS changes them, and so does the strike water card.</p>${hltOverHTML(s.vol)}`;
   return `<p class="bswat">${el} ${+s.vol.toFixed(2)} gal${to}. ALL SETTINGS changes them.${sw ? ` ${sw[0].toUpperCase()}${sw.slice(1)} changes the water too.` : ""}</p>${hltOverHTML(s.vol)}`;
 }
 /* the vessels' own figures, from the Hardware page (CraftBeerPi's kettle fields capacity, empty_weight, material and
@@ -4374,7 +4394,9 @@ function bsHTML() {
   const day = `<div class="bsday" role="group" aria-label="Day">${b("cmdbtn", "TODAY", dKey(now), {cmd: "bs:day:0", pressed: B.day === now, why: off})}${b("cmdbtn", "TOMORROW", dKey(now + 1), {cmd: "bs:day:1", pressed: B.day === now + 1, why: off})}</div>`;
   const chips = B.where !== "indoors" ? "" : `<div class="bsin" role="group" aria-label="The grain's temperature indoors">${[64, 68, 72].map(c => b("cmdbtn bschip", `${c} °F`, "", {cmd: `bs:chip:${c}`, pressed: B.chip === c, why: off})).join("")}`
     + `<span class="bsor"><span aria-hidden="true">or</span><input id="bsgin" inputmode="decimal" autocomplete="off" maxlength="5" value="${esc(B.fig)}" aria-label="Or another figure, in °F"${busy ? " readonly" : ""}><span aria-hidden="true">°F</span></span></div>`;
-  const grain = `<div class="bsgrain"><p class="bsl" id="bs-gl">Where is the grain tonight?</p><p class="bsgh">Asked once a brew: USE depends on it.</p>`
+  /* with the strike water card the grain isn't asked here: the boil kettle's probe stands for it unless GRAIN TEMP, in
+     the card's CHECK, is given */
+  const grain = bssOn() ? "" : `<div class="bsgrain"><p class="bsl" id="bs-gl">Where is the grain tonight?</p><p class="bsgh">Asked once a brew: USE depends on it.</p>`
     + `<div class="bswhere" role="group" aria-labelledby="bs-gl">${b("cmdbtn", "IN THE GARAGE", `the boil kettle's probe, ${f1(st.v.bk.pv)} °F`, {cmd: "bs:where:garage", pressed: B.where === "garage", why: off})}${b("cmdbtn", "INDOORS", "give its temperature", {cmd: "bs:where:indoors", pressed: B.where === "indoors", why: off})}</div>${chips}</div>`;
   bsGoLast = bsGoHTML(B, ws); bsClkLast = bsClockHTML();
   const foot = B.ask ? bsAskHTML(B, ws) : `<div class="bsact">${bsGoLast}${b("cmdbtn", "CANCEL", "", {cmd: "bs:x", why: off})}</div>${b("cmdbtn bsall", "ALL SETTINGS", "every setting, on Brew Steps", {cmd: "bs:all", why: off})}`;

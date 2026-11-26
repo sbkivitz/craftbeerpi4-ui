@@ -44,8 +44,9 @@ for 8.26 gal." While a figure's editor is open, the editor says it instead.
 - "CHECK / mash 125.6 °F · rest 126 °F", quiet where it agrees within 1 °F.
 - Where it doesn't, the words are Note Amber and **USE 136.8 °F** sits beside it, or under it where there's no room.
   USE sets the strike that lands the mash on the rest, tagged CHECK.
-- Where it can't check, it says what it needs in a few words ("needs the HLT water"). Where that's one of the three
-  figures, its tap opens that figure.
+- Where it can't check, it says what it needs in a few words ("needs the HLT water"), in the order it needs them: the
+  strike first, then the HLT water and the recipe's figures. Where that's one of the three figures, its tap opens that
+  figure. A missing figure's button says "– –" and "not given".
 - Opened (▾, then CLOSE ✕): "BeerSmith took the grain at 65.0 °F.", and the figures it works from that the card
   doesn't show, as the same buttons: GRAIN TEMP (PROBE, YOURS) and GRAIN WEIGHT (BEERSMITH, YOURS, MASHIN), and ROOM
   only while the boil kettle's probe can't stand for it.
@@ -53,6 +54,12 @@ for 8.26 gal." While a figure's editor is open, the editor says it instead.
 **MashIn's row** says its pre-heat: "132.5 °F, then malt · mash water 8.26 gal · 1.5 qt/lb". Its "change" opens the
 card's MASH WATER: there is no second box. A pre-heat stalled short says so in Note Amber on the row: "0.4 °F short for
 10 min: lower the strike."
+
+**BrewStart's row and box** ask nothing about the grain: the row's hint is "set a time" or "change", and the box has
+no grain question. The box's water line says where its temperature comes from and that the card changes both: "The
+HLT's 6500 W element heats 15 gal to 134.6 °F, BeerSmith's strike. ALL SETTINGS changes them, and so does the strike
+water card." With no water figure: "How much water isn't known yet: give it with ALL SETTINGS, or HLT WATER on the
+strike water card, before you START." ADD BREWSTART on Brew Day fills BeerSmith's strike where the recipe has one.
 
 ## Decisions
 
@@ -94,8 +101,8 @@ Everything the card can say: 54 pieces, 249 words (the review counted 1,303 toda
 
 - **Buttons:** MASH WATER, STRIKE, HLT WATER, GRAIN TEMP, GRAIN WEIGHT, ROOM. Tags: BEERSMITH, YOURS, CHECK, REST,
   BREWSTART, PROBE, MASHIN, "not given", "sparge 6.7 gal", "no sparge".
-- **CHECK:** "mash 125.6 °F · rest 126 °F", "working it out", "working it out again", "failed: see LOG", "needs the HLT
-  water", "needs more HLT water", "needs the mash water", "needs the grain weight", "needs the room temperature", "grain at 150.0 °F can't be
+- **CHECK:** "mash 125.6 °F · rest 126 °F", "working it out", "working it out again", "failed: see LOG", "needs the
+  strike", "needs the HLT water", "needs more HLT water", "needs the mash water", "needs the grain weight", "needs the room temperature", "grain at 150.0 °F can't be
   right", "needs a 2 or 5 s control interval", "MashIn has no temperature". USE 136.8 °F. ▾ and CLOSE ✕.
 - **Opened CHECK:** "BeerSmith took the grain at 65.0 °F.", "MashIn has no temperature. Set it in Brew Steps.", "Set the
   mash tun's control interval to 2 or 5 s, on the Hardware page.", "No forecast for these figures. LOG says why."
@@ -152,7 +159,9 @@ Everything the card can say: 54 pieces, 249 words (the review counted 1,303 toda
 
 `#card-plan`, `#card-low`, `#card-water`, `#card-yours`, `#card-yours-edit`, `#card-strike`, `#card-mine`,
 `#card-mine-edit`, `#card-cold`, `#card-used`, `#card-check`, `#card-check-grain`, `#card-hlt`, `#card-novol`,
-`#card-nobs`, `#card-working`, `#card-heat`, `#card-move`, `#card-moved`, `#card-stall`, `#card-asked`. Their figures
+`#card-nobs`, `#card-working`, `#card-heat`, `#card-move`, `#card-moved`, `#card-stall`, `#card-asked`, and since the
+build, `#card-nostrike` (BrewStart with no temperature: no strike to check) and `#card-bs` (BrewStart's box with the
+card). Their figures
 are Test Recipe v5's: BeerSmith's strike 134.6 °F for 8.26 gal and 20 lb, the 126 °F rest, MashIn's pre-heat 132.5 °F.
 
 ## How it was checked

@@ -7734,6 +7734,29 @@ able to get out of this screen", and makes BeerSmith's strike the plan, with Cra
 this build: the recipe editor's parts (BrewStart's "Water temperature" with its tag and BEERSMITH'S, MashIn's plate
 line), which aren't drawn yet.
 
+## The strike water card after its build: BrewStart without the grain question, its box's words, and no strike to check: ready to build (25 Nov)
+
+From the build of the card (UI post78). Three faults in the mockup, now drawn:
+
+1. **BrewStart's row** still asked "where's the grain?" (decision 9 drops it). With the card its hint is "set a time" or
+   "change" only, and its label no longer says the grain isn't given (screen.js `bsRowAsks`, `bsRowHTML`).
+2. **BrewStart's box** still asked where the grain spent the night ("Asked once a brew: USE depends on it.") and said
+   "CHANGE in the strike water box's FORECAST changes the water too." With the card:
+   - no grain question: the whole "Where is the grain tonight?" part goes (`bsHTML`'s grain);
+   - the water line: "The HLT's 6500 W element heats 15 gal to 134.6 °F, BeerSmith's strike. ALL SETTINGS changes
+     them, and so does the strike water card." (", BeerSmith's strike" only while the temperature is BeerSmith's to
+     0.1); with no water figure: "… How much water isn't known yet: give it with ALL SETTINGS, or HLT WATER on the
+     strike water card, before you START." (`bsWater`, `swWaterAt`);
+   - a new BrewStart's temperature is BeerSmith's strike where the recipe has one (`bsNewTemp`), as built.
+3. **No strike to check** (BrewStart, or by hand the HLT, with no temperature): CHECK said "needs the grain weight".
+   It now says "needs the strike", before anything else it needs, and its tap opens STRIKE; STRIKE's button says "– –"
+   and "not given", and its editor steps from the rest (`cardCheck`, `cardNeeds`, `cardChkRow`, `cxNow`, `cxCmd`).
+   "needs the grain weight" stays for what it says: no grain weight, from BeerSmith, MashIn or the card.
+
+New moments: `#card-nostrike` and `#card-bs`. Checked: the 21 card moments at 1920 × 950, 1180 × 860 and 390 × 844
+(nothing cut or squeezed, no target under 44 px), the card's presses (79) and `bs_presses` (293), all passing; every
+BrewStart moment drawn with the card has no grain question and no USE or FORECAST in its row or box.
+
 ## Open questions about the drawing
 
 Both were answered on 10 Nov. The valves have been in the drawing since then; the path after the boil was
