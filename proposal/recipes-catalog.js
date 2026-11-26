@@ -67,28 +67,28 @@ window.CBPI_STEP_CATALOG = (() => {
       ActorStep: {n: "Run a switch", g: "any", h: "Runs a switch for a number of minutes, then switches it off.",
         parts: [{rows: ["Actor", "Timer"]}],
         p: {Actor: {n: "Switch", blank: "None chosen"}, Timer: {n: "Minutes", unit: "min"}}},
-      BrewStart: {n: "BrewStart", g: "before", h: "Has the HLT's water hot by a set time, or starts the next step at one.",
+      BrewStart: {n: "BrewStart", g: "before", h: "Heats the HLT's water, hot by a set time or starting at one, and holds it until you press NEXT.",
         parts: [{h: "When", rows: ["Timing", "Mode", "StartDate", "StartTime"], when: true},
           {h: "The water", rows: ["Ready_Temp", "Volume", "Volume_Unit", "Grain_Temp", "Campden_Reminder"], fill: true},
-          {h: "The HLT and the notice", rows: ["Heat_Kettle", "Heater_Watts", "NotifyBefore", "AutoNext"]}],
-        p: {Timing: {n: "Timing", h: "Ready by: the water is hot by the time, heating starting as early as it needs to. Start at: the next step begins at the time.", opts: {"Ready by": "READY BY", "Start at": "START AT"}, blankAs: "Start at"},
+          {h: "The HLT and the notice", rows: ["Heat_Kettle", "Heater_Watts", "NotifyBefore"]}],
+        /* settings an older BrewStart still declares that nothing reads any more: never shown, never written. AutoNext
+           went with BrewStart 1.3.0.post7, as nothing but NEXT moves BrewStart on */
+        drop: ["AutoNext"],
+        p: {Timing: {n: "Timing", h: "Ready by: hot by the time, heating starting as early as it needs to. Start at: heating starts at the time. Either way the water is held until you press NEXT.", opts: {"Ready by": "READY BY", "Start at": "START AT"}, blankAs: "Ready by"},
           Mode: {n: "Day", h: "Today and Tomorrow count from when START is pressed.", opts: {Today: "TODAY", Tomorrow: "TOMORROW", Date: "DATE"}, blankAs: "Today"},
           StartDate: {n: "Date"},
-          StartTime: {n: "Time", h: "Ready by: when the water must be hot. Start at: when the next step begins."},
+          StartTime: {n: "Time", h: "Ready by: when the water must be hot. Start at: when heating starts."},
           Heat_Kettle: {n: "Vessel", h: "The vessel with the element, holding all the strike and sparge water.", blank: "None chosen"},
-          Ready_Temp: {n: "Water temperature", unit: "deg", h: "How hot the water must be by the time."},
-          Volume: {n: "Water", unit: "vol", h: "All the water in the HLT, strike and sparge. Also sets the Campden dose."},
-          Volume_Unit: {n: "Water in", opts: {gal: "GAL", L: "L"}},
+          Ready_Temp: {n: "Water temperature", unit: "deg", h: "How hot the water is heated, and held until you press NEXT."},
+          Volume: {n: "HLT water", unit: "vol", h: "All the water in the HLT, strike and sparge. Also sets the Campden dose."},
+          Volume_Unit: {n: "Water in", h: "The unit for HLT water: gal or L. Blank: gal on a °F brewery, L on a °C one.", opts: {gal: "GAL", L: "L"}},
           Grain_Temp: {n: "Grain temperature", unit: "deg", h: "Only for grain that spends the night away from the boil kettle. Blank: the boil kettle's probe.", blank: "The boil kettle's probe"},
           Heater_Watts: {n: "Element", unit: "W", h: "Volts × amps, measured if you can. Ready by works out from it when to start heating."},
-          NotifyBefore: {n: "Notice before", unit: "min", h: "A notification this long before heating starts, or before the start. Blank: 15. 0: none.", blank: "15"},
-          Campden_Reminder: {n: "Campden reminder", h: "Yes: saving the step shows the Campden dose for the water.", opts: {Yes: "YES", No: "NO"}, blankAs: "No"},
-          AutoNext: {n: "Then", h: "Move on: the next step begins at the time. Wait: it waits for NEXT STEP.", opts: {Yes: "MOVE ON", No: "WAIT"}, blankAs: "Yes"}},
+          NotifyBefore: {n: "Notice before", unit: "min", h: "A notification this long before heating starts. Blank: 15. 0: none.", blank: "15"},
+          Campden_Reminder: {n: "Campden reminder", h: "Yes: saving the step shows the Campden dose for the water.", opts: {Yes: "YES", No: "NO"}, blankAs: "No"}},
         /* which settings show, as the plugin's own form shows them (its show_if): any one of the conditions is enough.
-           A blank setting counts as its blankAs, as the plugin reads it: no Timing is Start at */
-        show: {StartDate: [{Mode: ["Date"]}], Heat_Kettle: [{Timing: ["Ready by"]}], Ready_Temp: [{Timing: ["Ready by"]}], Heater_Watts: [{Timing: ["Ready by"]}],
-          Volume: [{Timing: ["Ready by"]}, {Campden_Reminder: ["Yes"]}], Volume_Unit: [{Timing: ["Ready by"]}, {Campden_Reminder: ["Yes"]}],
-          Grain_Temp: [{Timing: ["Ready by"]}, {Campden_Reminder: ["Yes"]}], AutoNext: [{Timing: ["", "Start at"]}]}}
+           Both timings heat the water, so every heating setting shows for either; the date only for a Date */
+        show: {StartDate: [{Mode: ["Date"]}]}}
     },
     /* what each of a step's settings is, as CraftBeerPi declares it (its type and choices), for every kind above */
     TYPES: {
@@ -103,7 +103,7 @@ window.CBPI_STEP_CATALOG = (() => {
       ToggleStep: {toggle_type: ["On", "Off"], Actor: "actor"},
       ActorStep: {Timer: "number", Actor: "actor"},
       NotificationStep: {Notification: "text", AutoNext: ["Yes", "No"]},
-      BrewStart: {Timing: ["Start at", "Ready by"], Mode: ["Today", "Tomorrow", "Date"], StartDate: "date", StartTime: "time", Heat_Kettle: "kettle", Ready_Temp: "number", Volume: "number", Volume_Unit: ["gal", "L"], Grain_Temp: "number", Heater_Watts: "number", Campden_Reminder: ["No", "Yes"], NotifyBefore: "number", AutoNext: ["Yes", "No"]}
+      BrewStart: {Timing: ["Ready by", "Start at"], Mode: ["Today", "Tomorrow", "Date"], StartDate: "date", StartTime: "time", Heat_Kettle: "kettle", Ready_Temp: "number", Volume: "number", Volume_Unit: ["gal", "L"], Grain_Temp: "number", Heater_Watts: "number", Campden_Reminder: ["No", "Yes"], NotifyBefore: "number"}
     },
     /* what a new step of each kind starts with: CraftBeerPi's own defaults for it, so a new step heats as it should.
        A new BrewStart is filled in from the rig instead (brewStartProps in recipes.js) */
