@@ -1,9 +1,10 @@
-# The strike water card: ready to build, for the simulators first (25 Nov 2026)
+# The strike water card: approved by the brewer (25 Nov 2026), ready to build, for the simulators first
 
 The strike water box redrawn as one card. In the mockup it is behind `?strike=bs`, and the `#card-…` moments show it
-without the flag. It was shown to the brewer and is built as drawn for the simulators only: he tries it there before it
-goes to the rig. The recipe editor's parts (below) aren't drawn yet, so they aren't in this build. Two wrong figures the
-review found are fixed with it, and the box as built already warns instead of refusing (BUILD-NOTES).
+without the flag. The brewer saw it step by step, each picture with what changed and why, and approved it: "looks
+good". It is built as drawn for the simulators first: he tries it there before it goes to the rig. The recipe editor's
+parts (below) aren't drawn yet, so they aren't in this build. Two wrong figures the review found are fixed with it, and
+the box as built already warns instead of refusing (BUILD-NOTES).
 
 ## Why
 
