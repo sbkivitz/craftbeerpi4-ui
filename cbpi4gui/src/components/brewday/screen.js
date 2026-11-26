@@ -72,7 +72,9 @@
 //   water helper, the sparge water and the boil volume from the recipe's mash numbers, each kettle's capacity and least
 //   water from the Hardware page; where one is missing, the vessel it decides shows nothing rather than a guess.
 //   CraftBeerPi has no volume after the boil yet, so from the boil's start the boil kettle keeps the boil volume, said
-//   as before the boil-off. There are no level sensors yet.
+//   as before the boil-off. Once the strike water has moved, the HLT is CraftBeerPi's own figure, the water it was
+//   given less the strike water, not a strike water volume read in BrewScribe worked forward, as the mockup has it.
+//   There are no level sensors yet.
 import { rigSVG, RIG_H, r1 } from "./rig";
 import * as DEMO from "./demo";
 import * as SWD from "./strike-demo";
@@ -3612,9 +3614,10 @@ function lvWhen(R) {
    vessel since the point it describes, it stands as READ; from then on the estimate works forward from it, by the
    recipe's figures for each move. A reading for a point the steps haven't reached yet (typed ahead, or a recipe started
    again) isn't used. One taken while liquid was on its way says where it was then: it stands until that move is over,
-   and the vessel goes back to the estimate after it, as it does after a move to a figure the recipe sets. Where the
-   recipe's figure for a move isn't known, an HLT reading isn't worked forward past it; the boil kettle's is kept, said
-   as before the boil-off */
+   and the vessel goes back to the estimate after it, as it does after a move to a figure the recipe sets. The HLT's
+   read before the strike water moved is worked forward only while it moves: once it has, the HLT is CraftBeerPi's own
+   figure where it has one. Where the recipe's figure for a move isn't known, an HLT reading isn't worked forward past
+   it; the boil kettle's is kept, said as before the boil-off */
 function lvRead(L, P, F) {
   const A = st.scribe;
   ["hlt", "mt", "bk"].forEach(v => {
@@ -3629,6 +3632,11 @@ function lvRead(L, P, F) {
       return;
     }
     if (Mv[p] || after.some(m => Mv[m].to)) return;
+    /* the HLT, read before the strike water moved, once that move is over: CraftBeerPi's own figure where it has one
+       (o: the HLT water it was given less the strike water, GET /step2/strike's inputs.left, then less the sparge
+       water), the figure the strike water card and the HLT's least water go by. BrewScribe's strike water volume can be
+       the strike water alone rather than all the HLT held, and worked forward from it the HLT would look all but empty */
+    if (v === "hlt" && p < 1 && P > 1 && o) return;
     let g = gal;
     const gone = [];
     for (const m of after) {
