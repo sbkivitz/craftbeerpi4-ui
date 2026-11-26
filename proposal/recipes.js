@@ -118,8 +118,9 @@ function additions(p) {
   return out;
 }
 /* a step as Brew Day's recipe column lists it (live.js stepModel): its name, its temperature and minutes, a note, the
-   boil's additions; a BrewStart gives the water's temperature, when it's ready by or starts heating and how much there is */
-function stepView(s) {
+   boil's additions; a BrewStart gives the water's temperature, when it's ready by or starts heating and how much there is;
+   the dough-in MashIn its pre-heat (pre), where it has one over its rest, as Brew Day's row says it */
+function stepView(s, pre) {
   const p = s.props || {}, temp = num(p.Temp), t = num(p.Timer), v = {n: s.name || kindName(s.type)};
   if (s.type === "BrewStart") {
     const rt = num(p.Ready_Temp), vol = num(p.Volume), at = hm(p.StartTime), kw = readyBy(p) ? "ready by" : "start at";
@@ -127,7 +128,9 @@ function stepView(s) {
     const on = norm(p.Mode) === "Date" && ymd(p.StartDate) ? WEEK[dateAt(ymd(p.StartDate)).getDay()] : "";
     v.p = [rt != null ? `${fmt(rt)}${NB}${U}` : "", at ? `${kw} ${timeOfDay(at)}${on ? NB + on : ""}` : "", vol != null && vol > 0 ? `${fmt(vol)}${NB}${p.Volume_Unit === "L" || p.Volume_Unit === "gal" ? p.Volume_Unit : D.UNIT === "C" ? "L" : "gal"}` : ""].filter(Boolean).join(`${NB}· `);
   } else v.p = [temp != null ? `${s.type === "SpargeStep" ? "water " : ""}${fmt(temp)}${NB}${U}` : "", t ? `${fmt(t)}${NB}min` : ""].filter(Boolean).join(`${NB}· `);
-  if (s.type === "MashInStep") v.note = temp != null ? `Add the malt when it reaches ${fmt(temp)} ${U}` : "Add the malt when it is up to temperature";
+  // the malt is asked for at the pre-heat, so "132.5 °F, then malt" takes the place of "Add the malt when…"
+  if (s.type === "MashInStep" && pre != null) v.p = [`${pre.toFixed(1)}${NB}${U}, then malt`, t ? `${fmt(t)}${NB}min` : ""].filter(Boolean).join(`${NB}· `);
+  else if (s.type === "MashInStep") v.note = temp != null ? `Add the malt when it reaches ${fmt(temp)} ${U}` : "Add the malt when it is up to temperature";
   else if (s.type === "NotificationStep" && p.Notification) v.note = unitText(p.Notification);
   if (s.type === "BoilStep") { const a = additions(p); if (a.length) v.adds = a; }
   return v;
@@ -162,6 +165,7 @@ function fresh() {
     q: "",
     loaded: null,       // the recipe on Brew Day: CraftBeerPi's brew steps
     pend: {},           // commands waiting for CraftBeerPi's answer
+    figTxt: null,       // what is typed in a figure's box, as typed, while it has the focus
     ask: null,          // a question that waits for an answer, in the place it was asked
     notes: {},          // why a control can't be used, said where it was pressed, for six seconds
     ed: null,           // the Recipe Book's copy being changed
@@ -253,7 +257,7 @@ function stepChange(ed, s) {
   return {tag: n ? (keys.length ? "changed" : "moved") : "", n, keys, moved: !!s._moved};
 }
 const recipeKeys = ed => ed.doc.author === undefined ? [] : ["name", "author", "desc"].filter(k => norm(ed.doc[k]) !== norm(ed.orig[k]));
-const changes = ed => !ed ? 0 : recipeKeys(ed).length + ed.doc.steps.reduce((n, s) => n + stepChange(ed, s).n, 0);
+const changes = ed => !ed ? 0 : recipeKeys(ed).length + ed.doc.steps.reduce((n, s) => n + stepChange(ed, s).n, 0) + figChanges(ed);
 const dirty = () => changes(E()) > 0;
 // a move is undone by moving the step back; once the steps are in their first order again, no step counts as moved
 function settleMoves(ed) {
@@ -363,15 +367,367 @@ function recipeWater(mn) {
 const v1 = n => (Math.round(n * 10) / 10).toFixed(1);
 // the recipe a new BrewStart joins: Brew Day's copy on Brew Steps, else the book's copy being changed
 const recipeNumbers = () => st.page === "steps" ? (st.loaded || {}).mash_numbers : st.ed && book(st.ed.file) ? book(st.ed.file).mash_numbers : null;
+/* ---------- the recipe's mash figures and its strike ----------
+   The recipe's grain weight and mash water (decision 15), as Brew Day's strike water card shows them: the recipe's
+   mash_numbers, BeerSmith's from its import, or given on Brew Day or here. One figure, shown and changed on one plate:
+   BrewStart's, beside its HLT water, with the sparge water left; with no BrewStart, the MashIn that heats the strike
+   water on the HLT, else the mash tun's MashIn. A change is kept in the editor's copy (doc.figs: grain, water, each a
+   number or "back" for BeerSmith's own) until SAVE. Changing BeerSmith's own figure is allowed here: it says it was
+   changed, with BeerSmith's beside it and BEERSMITH'S to go back.
+   The strike is the strike water step's figure, as CraftBeerPi's strike water helper takes it: BrewStart's Water
+   temperature (Ready_Temp), where BrewStart heats the HLT before the dough-in MashIn, or a MashIn on the HLT's Temp.
+   The dough-in MashIn is the first step on the mash tun, where that is a MashIn. Its Temp is the rest; before the malt
+   it heats the moved water to its pre-heat, the strike settled after warming the share of the tun's steel BeerSmith
+   counted (cbpi.api.strike dough_in_temperature, worked out here from the figures as they are typed) */
+const FIG = {
+  grain: {field: "grain_kg", name: "grain", places: 1, label: "Grain weight", one: "grain weight", prop: "Grain_Kg", help: "All the grain in the mash, as the recipe's grain bill has it."},
+  water: {field: "infuse_l", name: "water", places: 2, label: "Mash water", one: "mash water", prop: "Mash_Water", help: "The strike water that goes to the mash tun, not the sparge."}
+};
+const FIG_KEYS = ["water", "grain"];
+const MU = D.UNIT === "F" ? "lb" : "kg";
+/* the least water the HLT keeps over its element and coil: the mockup has no Hardware figures, so CraftBeerPi's default */
+const LEAST = D.UNIT === "F" ? 3 : 11.4;
+const RATIO = D.UNIT === "F" ? {u: "qt/lb", lo: 0.75, hi: 3} : {u: "L/kg", lo: 1.6, hi: 6.3};
+/* MashIn's limits for the water it heats before the malt, over the rest and at most; BeerSmith's malt specific heat */
+const RISE = D.UNIT === "F" ? 27 : 15, CEIL = D.UNIT === "F" ? 179.6 : 82, MALT_HEAT = 0.38;
+const toUnit = c => D.UNIT === "F" ? c * 1.8 + 32 : c;
+const toShown = (k, si, vu) => si == null ? null : k === "grain" ? (MU === "lb" ? si / LB_KG : si) : (vu === "gal" ? si / GAL_L : si);
+const toSi = (k, v, vu) => k === "grain" ? (MU === "lb" ? v * LB_KG : v) : (vu === "gal" ? v * GAL_L : v);
+const roundTo = (v, p) => v == null ? null : Math.round(v * 10 ** p) / 10 ** p;
+const typedOf = mn => mn && Array.isArray(mn.typed) ? mn.typed : [];
+/* the figures in words, as util/mashwater.js says them on every page */
+const volText = (x, vu) => `${(+x).toFixed(2)}${NB}${vu}`;
+const ratioText = q => `${+(+q).toFixed(2)}${NB}${RATIO.u}`;
+function waterRatio(w, vu, g) {
+  if (!(w > 0) || !(g > 0)) return null;
+  const L = vu === "L" ? w : w * GAL_L, kg = MU === "kg" ? g : g * LB_KG;
+  return D.UNIT === "C" ? L / kg : (L / GAL_L * 4) / (kg / LB_KG);
+}
+function waterForRatio(q, g, vu) {
+  if (!(q > 0) || !(g > 0)) return null;
+  const kg = MU === "kg" ? g : g * LB_KG, L = D.UNIT === "C" ? q * kg : q * (kg / LB_KG) / 4 * GAL_L;
+  return vu === "L" ? L : L / GAL_L;
+}
+function ratioWarning(q) {
+  const x = q == null ? null : Math.round(q * 100) / 100;
+  if (x == null || (x >= RATIO.lo && x <= RATIO.hi)) return "";
+  return `${ratioText(q)} is unusual: most mashes take ${RATIO.lo} to ${RATIO.hi}${NB}${RATIO.u}. ${x > RATIO.hi ? "Is that the mash water alone, not all the HLT's water?" : "Check the mash water and the grain weight."}`;
+}
+/* figures to one place, or two where one would show a and b the same */
+const placesOf = (a, b) => (+a).toFixed(1) === (+b).toFixed(1) ? 2 : 1;
+function hltLowText(left, vu) {
+  const l = Math.max(0, +left), p = Math.round(l * 10) < Math.round(LEAST * 10) ? 1 : 2;
+  return `Leaves ${l.toFixed(p)}${NB}${vu} in the HLT, under its ${LEAST.toFixed(p)}${NB}${vu} minimum.`;
+}
+/* the recipe's mash figures as CraftBeerPi keeps them: Brew Day's copy's on Brew Steps, the book's in the Recipe Book */
+function figNumbers(ed) {
+  const mn = st.page === "steps" ? (st.loaded || {}).mash_numbers : (book(ed.file) || {}).mash_numbers;
+  return mn && typeof mn === "object" && !Array.isArray(mn) ? mn : null;
+}
+/* the water's unit: BrewStart's Volume_Unit, as the strike water card takes it, else the brewery's */
+function figVolUnit(ed) {
+  const b = live(ed).find(s => s.type === "BrewStart"), u = norm(b && b.props.Volume_Unit).toLowerCase();
+  return u.startsWith("gal") ? "gal" : u === "l" ? "L" : D.UNIT === "C" ? "L" : "gal";
+}
+/* the plate the figures are on: the first BrewStart; with none, the MashIn on the HLT, else the mash tun's, else the
+   first MashIn. None in a recipe with neither */
+function figHost(ed) {
+  const L = live(ed), b = L.find(s => s.type === "BrewStart");
+  if (b) return b;
+  const mi = L.filter(s => s.type === "MashInStep"), hlt = hltOf(L);
+  return mi.find(s => norm(s.props.Kettle) === hlt) || mi.find(s => norm(s.props.Kettle) === D.CONFIG.MASH_TUN) || mi[0] || null;
+}
+/* each figure as the editor shows it, in the brewery's units: now (with any change not saved), as saved (was), where it
+   comes from (beersmith; typed: given on Brew Day or here where BeerSmith gave none; changed: from BeerSmith's; step: a
+   MashIn's own, where the recipe has none), BeerSmith's own (bs), and the change not saved (edit) */
+function figsOf(ed) {
+  const mn = figNumbers(ed) || {}, vu = figVolUnit(ed), typed = typedOf(mn), kept = mn.beersmith && typeof mn.beersmith === "object" ? mn.beersmith : {};
+  const out = {mu: MU, vu, numbers: mn};
+  for (const k of FIG_KEYS) {
+    const f = FIG[k], si = num(mn[f.field]) > 0 ? num(mn[f.field]) : null, keptSi = num(kept[f.field]) > 0 ? num(kept[f.field]) : null;
+    let from = si == null ? null : !typed.includes(f.name) ? "beersmith" : keptSi != null ? "changed" : "typed";
+    let was = roundTo(toShown(k, si, vu), f.places), stepOwn = null;
+    if (was == null) {
+      const own = live(ed).find(s => s.type === "MashInStep" && num(s.props[f.prop]) > 0);
+      if (own) { stepOwn = own; was = roundTo(toShown(k, num(own.props[f.prop]), vu), f.places); from = "step"; }
+    }
+    const bs = from === "beersmith" ? was : from === "changed" ? roundTo(toShown(k, keptSi, vu), f.places) : null;
+    const e = (ed.doc.figs || {})[k], now = e === "back" ? bs : e != null ? e : was;
+    out[k] = {now, was, from, bs, edit: e, stepOwn};
+  }
+  // the dead space BeerSmith adds to the mash water (its infuse_l less for_grain_l): the ratio counts the water for the grain
+  const fg = num(mn.for_grain_l), bsW = num(kept.infuse_l) > 0 ? num(kept.infuse_l) : out.water.from === "beersmith" ? num(mn.infuse_l) : null;
+  out.dead = fg != null && bsW != null ? Math.max(0, toShown("water", bsW - fg, vu)) : 0;
+  return out;
+}
+const figChanges = ed => Object.keys((ed && ed.doc.figs) || {}).length;
+/* a figure typed or tapped: kept as a change unless it is the figure as saved */
+function setFig(ed, k, v) {
+  const x = figsOf(ed)[k];
+  ed.doc.figs = ed.doc.figs || {};
+  if (v == null) delete ed.doc.figs[k];
+  else if (v === "back") { if (x.from === "changed") ed.doc.figs[k] = "back"; else delete ed.doc.figs[k]; }
+  else if (x.was != null && roundTo(v, FIG[k].places) === x.was) delete ed.doc.figs[k];
+  else ed.doc.figs[k] = roundTo(v, FIG[k].places);
+}
+const ratioNow = F => F.water.now != null && F.grain.now != null ? waterRatio(Math.max(0, F.water.now - F.dead), F.vu, F.grain.now) : null;
+/* BrewStart's HLT water, which the mash water comes out of, or null */
+const figHlt = ed => { const b = live(ed).find(s => s.type === "BrewStart"); return b ? num(b.props.Volume) : null; };
+/* the mash water leaving the HLT less than covers its element and coil, or more than the HLT's water: said, never refused */
+function figLow(ed, F) {
+  const h = figHlt(ed), w = F.water.now;
+  if (h == null || w == null) return "";
+  if (h < w - 1e-9) return `Less than the ${(+w).toFixed(placesOf(h, w))}${NB}${F.vu} of mash water.`;
+  return h - w < LEAST - 1e-9 ? hltLowText(h - w, F.vu) : "";
+}
+/* the mash water's line: the figure and its ratio for the grain, then what needs a look, in the note colour */
+function figLineHTML(ed, k, F) {
+  const id = `fig-${k}-l`;
+  if (k !== "water") return `<p class="figl" id="${id}"></p>`;
+  const x = F.water, r = ratioNow(F), warn = [r != null ? ratioWarning(r) : "", figLow(ed, F)].filter(Boolean).join(" ");
+  const line = x.now == null ? "" : `${volText(x.now, F.vu)}${r != null ? ` · ${ratioText(r)} for ${+(+F.grain.now).toFixed(1)}${NB}${F.mu}` : ""}`;
+  return `<p class="figl" id="${id}">${esc(line)}${warn ? `${line ? ". " : ""}<span class="amb">${esc(warn)}</span>` : ""}</p>`;
+}
+/* where a figure comes from; what it was and UNDO, for a change not saved; BeerSmith's own with BEERSMITH'S, the way
+   back, where it isn't the figure now and UNDO doesn't already go back to it */
+function figStHTML(ed, k, F) {
+  const f = FIG[k], x = F[k], unit = k === "grain" ? F.mu : F.vu, changed = x.edit != null, toBs = x.edit === "back" || (changed && x.bs != null && x.now === x.bs);
+  const wasShown = x.was == null ? "blank" : `${x.was} ${unit}`;
+  const undo = changed ? `<span class="was">was ${esc(wasShown)}</span><button type="button" class="lnk" data-figundo="${k}" aria-label="Undo the ${f.one}, back to ${esc(wasShown)}">UNDO</button>` : "";
+  const beer = x.bs != null && !toBs && x.now !== x.bs && (x.from === "changed" || (changed && x.was !== x.bs));
+  const back = beer ? `<span class="was">BeerSmith's: ${esc(`${x.bs} ${unit}`)}</span><button type="button" class="lnk" data-figback="${k}" aria-label="The ${f.one} back to BeerSmith's ${esc(`${x.bs} ${unit}`)}">BEERSMITH'S</button>` : "";
+  const says = toBs ? "BeerSmith's own, at SAVE." : changed ? (x.from === "beersmith" || x.from === "changed" ? "Changed from BeerSmith's: kept as yours, not BeerSmith's." : "")
+    : x.from === "beersmith" ? "BeerSmith's." : x.from === "changed" ? "Changed from BeerSmith's." : x.from === "typed" ? "Given for this recipe, not BeerSmith's."
+    : x.from === "step" ? `${nameIn(x.stepOwn)}'s own: a change here makes it the recipe's.` : "";
+  return `<p class="st" id="st-fig-${k}">${says ? `<span class="from">${esc(says)}</span>` : ""}${undo}${back}</p>`;
+}
+/* a figure's row: its box and unit, and for the mash water the ratio's box beside it; the line under them; where it
+   comes from */
+function figRowHTML(ed, k, F) {
+  const f = FIG[k], x = F[k], id = `fig-${k}`, unit = k === "grain" ? F.mu : F.vu, dis = st.link === "lost" ? " disabled" : "";
+  const typing = (st.figTxt || {})[k], shown = typing != null ? typing : x.now == null ? "" : String(x.now);
+  const box = `<span class="numf"><input id="${id}" inputmode="decimal" autocomplete="off" value="${esc(shown)}" data-fig="${k}" aria-describedby="${id}-h"${dis}><span>${esc(unit)}</span></span>`;
+  let ratio = "";
+  if (k === "water") {
+    const r = ratioNow(F), rt = (st.figTxt || {}).ratio, rs = rt != null ? rt : r == null ? "" : String(+r.toFixed(2));
+    ratio = `<span class="numf"><input id="fig-ratio" inputmode="decimal" autocomplete="off" value="${esc(rs)}" data-fig="ratio" aria-label="Mash water as a ratio, ${RATIO.u} of grain"${F.grain.now == null ? ` disabled title="Give the grain weight first"` : dis}><span>${RATIO.u}</span></span>`;
+  }
+  return `<div class="row figrow${x.edit != null ? " chg" : ""}" id="r-fig-${k}" data-fig="${k}"><div class="lb"><label class="nm" for="${id}" id="n-fig-${k}">${f.label}</label><p class="wh" id="${id}-h">${esc(f.help)} The recipe's, as Brew Day's strike water card has it.</p><p class="ky">the recipe's · ${f.field}</p></div>
+    <div class="ct"><div class="figbox">${box}${ratio}</div>${figLineHTML(ed, k, F)}${figStHTML(ed, k, F)}</div></div>`;
+}
+/* the figures on their plate, under BrewStart's water or a MashIn's grain: mash water, grain weight, and with BrewStart's
+   HLT water the sparge water left */
+const figsHTML = ed => { const F = figsOf(ed); return `${figRowHTML(ed, "water", F)}${figRowHTML(ed, "grain", F)}${figLeftHTML(ed, F)}`; };
+function figLeftHTML(ed, F) {
+  const h = figHlt(ed), w = F.water.now, left = h == null || w == null || h < w - 1e-9 ? "" : `Sparge water left: ${volText(Math.round((h - w) * 100) / 100, F.vu)}: the HLT water less the mash water.`;
+  return `<p class="foot figleft" id="fig-left">${esc(left)}</p>`;
+}
+/* on a MashIn that isn't the figures' plate: where they are, and what they are now */
+function figsElsewhereHTML(ed, host, s) {
+  if (!host) return "";
+  const F = figsOf(ed), w = F.water.now, g = F.grain.now, i = live(ed).indexOf(host);
+  const what = [g != null && `${g}${NB}${F.mu} of grain`, w != null && `${w}${NB}${F.vu} of mash water`].filter(Boolean);
+  return `<p class="foot figelse" id="figelse-${s._k}" data-s="${s._k}">The grain weight and the mash water are the recipe's${what.length ? `, ${esc(andList(what))}` : ""}: they are set under ${esc(nameIn(host))}, step ${i + 1}.</p>`;
+}
+/* SAVE: the recipe's mash figures with the changes, as CraftBeerPi keeps those changed in the recipe editor: a figure
+   changed from BeerSmith's is named in typed, BeerSmith's own kept in beersmith for the way back; back to BeerSmith's,
+   or changed to it, is BeerSmith's again */
+function figNumbersSaved(ed) {
+  const F = figsOf(ed), mn = clone(Object.keys(F.numbers).length ? F.numbers : {lacks: ["grain", "water", "tun", "infuse_temp", "grain_temp", "tun_temp"]});
+  const kept = {...(mn.beersmith && typeof mn.beersmith === "object" ? mn.beersmith : {})};
+  let typed = typedOf(mn).filter(t => t === "grain" || t === "water");
+  for (const [k, v] of Object.entries(ed.doc.figs || {})) {
+    const f = FIG[k], x = F[k], own = x.from === "beersmith" ? num(mn[f.field]) : num(kept[f.field]);
+    if (v === "back" || (own != null && roundTo(toShown(k, own, F.vu), f.places) === v)) {
+      if (own != null) mn[f.field] = own;
+      delete kept[f.field]; typed = typed.filter(t => t !== f.name);
+      continue;
+    }
+    if (x.from === "beersmith") kept[f.field] = num(mn[f.field]);
+    mn[f.field] = Math.round(toSi(k, v, F.vu) * 1000) / 1000;
+    mn.lacks = (Array.isArray(mn.lacks) ? mn.lacks : []).filter(n => n !== f.name);
+    typed.push(f.name);
+  }
+  if (Object.keys(kept).length) mn.beersmith = kept; else delete mn.beersmith;
+  mn.typed = [...new Set(typed)].sort();
+  return mn;
+}
+/* BeerSmith's strike (mash_numbers' infuse_temp_c) in the brewery's unit, to 0.1, or null */
+const beerSmithStrike = mn => mn && num(mn.infuse_temp_c) != null ? roundTo(toUnit(num(mn.infuse_temp_c)), 1) : null;
+/* BeerSmith's own mash water or grain weight: the one kept aside when it was changed, else the recipe's unless it was
+   given on Brew Day or here where BeerSmith gave none */
+function bsOwn(mn, field, name) {
+  const kept = mn.beersmith && typeof mn.beersmith === "object" ? mn.beersmith : {};
+  if (num(kept[field]) > 0) return num(kept[field]);
+  return typedOf(mn).includes(name) || !(num(mn[field]) > 0) ? null : num(mn[field]);
+}
+/* the tun's steel BeerSmith counted in its strike, as kg of water, from its own figures (cbpi.api.strike steel_counted):
+   0 with "Adjust Temp for Equip" off or no tun, null where a figure it needs is missing */
+function steelCounted(mn) {
+  if (mn.equip_adjust === false) return 0;
+  const whole = num(mn.tun_kg) > 0 && num(mn.tun_cal_g_c) > 0 ? num(mn.tun_kg) * num(mn.tun_cal_g_c) : 0;
+  if (whole <= 0) return 0;
+  const W = bsOwn(mn, "infuse_l", "water"), G = bsOwn(mn, "grain_kg", "grain"), S = num(mn.infuse_temp_c), R = num(mn.rest_c), Tg = num(mn.grain_temp_c), Tt = num(mn.tun_temp_c);
+  if ([W, G, S, R, Tg, Tt].some(x => x == null)) return null;
+  if (R - Tt <= 0) return 0;
+  return Math.max(0, Math.min(whole, (W * (S - R) - MALT_HEAT * G * (R - Tg)) / (R - Tt)));
+}
+/* what the dough-in MashIn heats the moved water to before the malt, for strike S, its rest, and the mash water in force
+   in litres: (W S + Cs Tt) / (W + Cs), within the rest and 27 °F over it, 179.6 °F at most (cbpi.api.strike
+   dough_in_temperature). Null where BeerSmith's figures for it are missing: without them Brew Day works it out from the
+   Hardware page's mash tun at the room's temperature, which the recipe pages don't have */
+function doughIn(S, mn, rest, waterL) {
+  const W = waterL > 0 ? waterL : num(mn.infuse_l);
+  if (S == null || rest == null || !(W > 0) || num(mn.infuse_temp_c) == null) return null;
+  const Cs = steelCounted(mn), Tt = num(mn.tun_temp_c) == null ? null : toUnit(num(mn.tun_temp_c));
+  if (Cs == null || (Cs > 0 && Tt == null)) return null;
+  const v = (W * S + Cs * (Tt || 0)) / (W + Cs);
+  return roundTo(Math.max(rest, Math.min(Math.min(rest + RISE, CEIL), v)), 1);
+}
+/* the strike in a recipe's steps L, as CraftBeerPi's strike water helper finds it: the strike water step (si) and its
+   setting (prop), the dough-in MashIn (mi) and its rest, the range a strike can have (lim), BeerSmith's strike (bs), the
+   strike now (S), and the pre-heat for a strike (pre), for the mash water in force (waterL, litres; else the recipe's) */
+function strikeIn(L, mn, waterL) {
+  const at = L.findIndex(s => norm((s.props || {}).Kettle) === D.CONFIG.MASH_TUN), mi = at >= 0 && L[at].type === "MashInStep" ? L[at] : null;
+  const before = mi ? L.slice(0, at) : [], hlt = hltOf(L), m = mn || {};
+  let si = before.find(s => s.type === "MashInStep" && norm(s.props.Kettle) === hlt) || null, prop = si ? "Temp" : null;
+  if (!si) { const b = before.find(s => s.type === "BrewStart"); if (b && norm(b.props.Heat_Kettle) === hlt) { si = b; prop = "Ready_Temp"; } }
+  const rest = mi ? num(mi.props.Temp) : null, lim = rest == null ? null : [rest, Math.min(rest + RISE, CEIL)];
+  return {mi, si, prop, rest, lim, bs: beerSmithStrike(m), S: si ? num(si.props[prop]) : null, pre: v => mi && lim && v != null ? doughIn(v, m, rest, waterL) : null};
+}
+/* the same for the recipe being changed, with its mash water as typed */
+const strikeOf = ed => { const F = figsOf(ed); return {...strikeIn(live(ed), F.numbers, F.water.now != null ? toSi("water", F.water.now, F.vu) : null), F}; };
+/* the dough-in MashIn's pre-heat where it is over the rest: {mi, t}, or null. A strike out of range gives the most
+   MashIn heats to, as Brew Day's strike water card says it, while SAVE waits */
+function preheatIn(K) {
+  const t = K.S != null ? K.pre(K.S) : null;
+  return t != null && t > K.rest + 0.05 ? {mi: K.mi, t} : null;
+}
+/* where a strike comes from, told by its figure as CraftBeerPi tells it: BeerSmith's to 0.1; the rest, on a recipe
+   without BeerSmith's strike; on Brew Steps CHECK's, while it holds what USE wrote on Brew Day; else yours */
+function strikeFrom(v, K, s, label) {
+  if (v == null) return null;
+  if (K.bs != null && Math.abs(v - K.bs) < 0.05) return "beersmith";
+  if (K.bs == null && K.rest != null && Math.abs(v - K.rest) < 0.05) return "rest";
+  const u = st.page === "steps" && st.loaded && st.loaded.use;
+  if (u && u.type === s.type && u.prop === label && Math.abs(v - u.value) < 0.05) return "check";
+  return "yours";
+}
+/* a strike MashIn can't take: outside the rest to 27 °F over it, 179.6 °F at most. SAVE waits, as Brew Day's SET does */
+function strikeRange(s) {
+  const ed = E(), K = ed ? strikeOf(ed) : null;
+  if (!K || K.si !== s || !K.lim) return "";
+  const v = num(s.props[K.prop]), [lo, hi] = K.lim;
+  if (v == null || (v >= lo - 1e-9 && v <= hi + 1e-9)) return "";
+  return `${fmt(lo)}–${fmt(hi)}${NB}${U} only: from ${nameIn(K.mi)}'s rest to ${hi < lo + RISE - 1e-9 ? `${fmt(hi)}${NB}${U}, the most it heats to` : `${RISE}${NB}${U} over it`}.`;
+}
+/* BeerSmith's strike in use while the mash water or the grain weight isn't BeerSmith's any more: it was worked out for
+   BeerSmith's own, said in the strike water card's words */
+function staleWords(K) {
+  const F = K.F, w = F.water, g = F.grain;
+  const wd = w.bs != null && w.now != null && w.now !== w.bs ? w.bs : null, gd = g.bs != null && g.now != null && g.now !== g.bs ? g.bs : null;
+  const fig = [wd != null ? `${wd.toFixed(2)}${NB}${F.vu}` : "", gd != null ? `${gd.toFixed(1)}${NB}${F.mu} of grain` : ""].filter(Boolean).join(" and ");
+  return fig && K.bs != null ? `BeerSmith's ${K.bs.toFixed(1)}${NB}${U} is for ${fig}.` : "";
+}
+/* the strike's row, laid out as the mash water's: its box; what it does, under it, as it's typed; where it comes from */
+function strikeRowHTML(ed, s, label, locked) {
+  const k = s._k, m = meta(s.type, label), o = origOf(ed, s), changed = !!o && !same(s.props[label], o.props[label]);
+  return `<div class="row figrow${changed ? " chg" : ""}" id="r-${k}-${label}" data-s="${k}" data-p="${label}"><div class="lb"><label class="nm" for="i-${k}-${label}" id="n-${k}-${label}">${esc(m.n)}</label>${m.h ? `<p class="wh" id="wh-${k}-${label}">${esc(m.h)}</p>` : ""}<p class="ky">${esc(label)}</p></div>
+    <div class="ct"><div class="figbox">${ctlHTML(s, label, s.props[label], locked)}</div>${strikeLineHTML(ed, s, label)}${strikeStHTML(ed, s, label)}<p class="why" id="need-${k}-${label}">${esc(needOf(s, label))}</p></div></div>`;
+}
+/* what the strike does, as the strike water card's editor says it: the dough-in MashIn's pre-heat, or that it heats to
+   the rest; then BeerSmith's strike worked out for other figures, in the note colour. Nothing while it is blank, nor
+   where it can't be worked out here: a strike of your own on a recipe without BeerSmith's figures */
+function strikeLineHTML(ed, s, label) {
+  const K = strikeOf(ed), v = num(s.props[label]), id = `sl-${s._k}`;
+  if (K.si !== s || !K.mi || v == null) return `<p class="figl" id="${id}"></p>`;
+  const t = K.pre(v), from = strikeFrom(v, K, s, label), nm = nameIn(K.mi);
+  const does = t != null && t > K.rest + 0.05 ? `${nm} heats to ${t.toFixed(1)}${NB}${U} before the malt.` : t != null || from === "rest" ? `${nm} heats to the ${fmt(K.rest)}${NB}${U} rest.` : "";
+  const sw = from === "beersmith" ? staleWords(K) : "";
+  return `<p class="figl" id="${id}">${esc(does)}${sw ? `${does ? " " : ""}<span class="amb">${esc(sw)}</span>` : ""}</p>`;
+}
+/* where the strike comes from; what it was and UNDO, for a change not saved; BeerSmith's own with BEERSMITH'S, where it
+   isn't the figure now and UNDO doesn't already go back to it */
+function strikeStHTML(ed, s, label) {
+  const K = strikeOf(ed), k = s._k, o = origOf(ed, s), v = num(s.props[label]), was = o ? num(o.props[label]) : null;
+  const changed = !!o && !same(s.props[label], o.props[label]), from = strikeFrom(v, K, s, label), what = meta(s.type, label).n.toLowerCase();
+  const says = !changed ? ({beersmith: "BeerSmith's strike.", check: "Set by CHECK on Brew Day, for this brew only.", rest: "The rest: the recipe has no BeerSmith strike.",
+      yours: K.bs != null ? "Changed from BeerSmith's." : "Yours: the recipe has no BeerSmith strike."})[from] || ""
+    : v == null ? "" : from === "beersmith" ? "BeerSmith's own, at SAVE." : K.bs != null ? "Changed from BeerSmith's: kept as yours, not BeerSmith's." : "";
+  const wasShown = changed ? shownValue(s, label, o.props[label]) : "";
+  const undo = changed ? `<span class="was">was ${esc(wasShown)}</span><button type="button" class="lnk" data-undo="${k}" data-p="${label}" aria-label="Undo the ${esc(what)}, back to ${esc(wasShown)}">UNDO</button>` : "";
+  const back = K.bs != null && from !== "beersmith" && !(changed && was != null && Math.abs(was - K.bs) < 0.05)
+    ? `<span class="was">BeerSmith's: ${fmt(K.bs)}${NB}${U}</span><button type="button" class="lnk" data-strikebs="${k}" data-p="${label}" aria-label="The ${esc(what)} back to BeerSmith's ${fmt(K.bs)} ${U}">BEERSMITH'S</button>` : "";
+  return `<p class="st" id="st-${k}-${label}">${says ? `<span class="from">${esc(says)}</span>` : ""}${undo}${back}</p>`;
+}
+/* the dough-in MashIn's pre-heat, under its rest, where it is over it: worked out from the strike, the mash water and
+   the rest as they are typed */
+function preLineHTML(ed, s) {
+  const K = strikeOf(ed), p = K.mi === s ? preheatIn(K) : null;
+  return `<p class="figl" id="pre-${s._k}">${p ? `Heats to ${p.t.toFixed(1)}${NB}${U} before the malt.` : ""}</p>`;
+}
+/* the note under a MashIn's grain probe, where its grain weight and mash water are the recipe's: with a pre-heat, the
+   pre-heat comes first and the probe isn't used */
+function grainNote(ed, s, K) {
+  if (s === K.mi && K.S != null && K.pre(K.S) != null) return "While it has a pre-heat, the grain temperature probe isn't used.";
+  return `With no grain temperature probe, it heats to the ${s === K.mi ? "rest" : "strike"} temperature only.`;
+}
+/* after a figure is typed or tapped: every line that follows it, on every plate, while the box being typed in keeps its
+   focus and what is typed: the strike's row, the dough-in MashIn's pre-heat and its grain probe's note, the mash water's
+   and the grain weight's rows, the sparge water left, and where the figures are said on other MashIns */
+function paintFigs() {
+  const ed = E();
+  if (!ed) return;
+  // a line is redrawn only where it says something else, so a button in it that is being pressed stays
+  const put = (id, html) => { const n = document.getElementById(id); if (n && n.outerHTML !== html.replace(/\u00a0/g, "&nbsp;")) n.outerHTML = html; };
+  const K = strikeOf(ed), F = K.F;
+  if (K.si) {
+    const s = K.si, p = K.prop, k = s._k, o = origOf(ed, s), row = $(`#r-${k}-${p}`);
+    if (row) {
+      row.classList.toggle("chg", !!o && !same(s.props[p], o.props[p]));
+      put(`sl-${k}`, strikeLineHTML(ed, s, p)); put(`st-${k}-${p}`, strikeStHTML(ed, s, p));
+      const nd = $(`#need-${k}-${p}`); if (nd) nd.textContent = needOf(s, p);
+    }
+  }
+  if (K.mi) { put(`pre-${K.mi._k}`, preLineHTML(ed, K.mi)); const gn = $(`#gn-${K.mi._k}`); if (gn) gn.textContent = grainNote(ed, K.mi, K); }
+  for (const f of FIG_KEYS) {
+    const row = $(`#r-fig-${f}`);
+    if (!row) continue;
+    row.classList.toggle("chg", (ed.doc.figs || {})[f] != null);
+    put(`fig-${f}-l`, figLineHTML(ed, f, F)); put(`st-fig-${f}`, figStHTML(ed, f, F));
+    const box = $(`#fig-${f}`);
+    if (box && box !== document.activeElement) box.value = F[f].now == null ? "" : String(F[f].now);
+  }
+  const rb = $("#fig-ratio");
+  if (rb) {
+    const r = ratioNow(F);
+    if (rb !== document.activeElement) rb.value = r == null ? "" : String(+r.toFixed(2));
+    rb.disabled = F.grain.now == null || st.link === "lost";
+  }
+  put("fig-left", figLeftHTML(ed, F));
+  $$(".figelse").forEach(n => { const s = stepByKey(n.dataset.s); if (s) put(n.id, figsElsewhereHTML(ed, figHost(ed), s)); });
+}
+/* a figure's box typed in: the mash water, the grain weight, or the mash water as a ratio of the grain, which gives the
+   mash water (with the dead space BeerSmith adds). What is typed stays in its box as typed until it is left (figTxt);
+   blank or not a number over 0 is no change */
+function figInput(f) {
+  const ed = E(), k = f.dataset.fig, v = num(f.value), F = figsOf(ed);
+  st.figTxt = {[k]: f.value};
+  if (k === "ratio") {
+    const g = F.grain.now, w = v != null && v > 0 && g != null ? waterForRatio(v, g, F.vu) : null;
+    setFig(ed, "water", w == null ? null : w + F.dead);
+  } else setFig(ed, k, v != null && v > 0 ? v : null);
+  paintFigs(); paintCounts();
+}
 /* a new BrewStart: Ready by, with the HLT, its element and the Campden choice of the newest BrewStart, the water this
-   recipe needs (else the newest BrewStart's: the last brew's), and the water temperature of its mash in. The time is
-   left for the brewer: it is the one thing only he knows, and SAVE waits for it. The day is Tomorrow from noon by
-   CraftBeerPi's clock (the night before), Today before */
+   recipe needs (else the newest BrewStart's: the last brew's), and as its water temperature BeerSmith's strike, else
+   the rest of its mash in. The time is left for the brewer: it is the one thing only he knows, and SAVE waits for it.
+   The day is Tomorrow from noon by CraftBeerPi's clock (the night before), Today before */
 function brewStartProps(ed) {
   const L = ed ? live(ed) : [], src = newestBrewStart(), q = src ? src.s.props : {}, mi = L.find(s => s.type === "MashInStep");
-  const w = recipeWater(recipeNumbers()), unit = D.UNIT === "F" ? "gal" : "L";
+  const w = recipeWater(recipeNumbers()), unit = D.UNIT === "F" ? "gal" : "L", bsT = beerSmithStrike(recipeNumbers());
   const props = {Timing: "Ready by", Mode: st.clock >= "12:00" ? "Tomorrow" : "Today", StartDate: "", StartTime: "",
-    Heat_Kettle: q.Heat_Kettle || hltOf(L), Ready_Temp: mi && num(mi.props.Temp) != null ? mi.props.Temp : q.Ready_Temp ?? "",
+    Heat_Kettle: q.Heat_Kettle || hltOf(L), Ready_Temp: bsT != null ? bsT : mi && num(mi.props.Temp) != null ? mi.props.Temp : q.Ready_Temp ?? "",
     Volume: w ? Math.round(w.total * 10) / 10 : q.Volume ?? "", Volume_Unit: w ? unit : q.Volume_Unit || unit, Grain_Temp: "", Heater_Watts: q.Heater_Watts ?? "",
     Campden_Reminder: q.Campden_Reminder || "No", NotifyBefore: ""};
   const got = [props.Heat_Kettle && `the ${nameOf(D.KETTLES, props.Heat_Kettle)}`, num(props.Heater_Watts) != null && `its ${fmt(num(props.Heater_Watts))} W element`,
@@ -379,7 +735,8 @@ function brewStartProps(ed) {
   const from = src && got.length ? `Filled in from ${src.from}, the newest recipe with a BrewStart: ${andList(got)}.` : "No recipe has a BrewStart yet, so the element is blank.";
   const water = w ? ` The water, ${v1(w.total)} ${w.unit}, is what this recipe needs, worked out from the recipe file: ${v1(w.before)} ${w.unit} before the boil, and ${v1(w.kept)} ${w.unit} the grain keeps (Grain absorption in Settings, ${w.rate})${w.lost ? `, and ${v1(w.lost)} ${w.unit} lost under the mash` : ""}.`
     : num(props.Volume) == null ? " No water figure yet: Brew Day asks for it." : "";
-  const temp = mi && num(mi.props.Temp) != null ? ` The water temperature is ${nameIn(mi)}'s, ${fmt(num(mi.props.Temp))} ${U}; on Brew Day the strike water box can change it.` : "";
+  const temp = bsT != null ? ` The water temperature is BeerSmith's strike, ${fmt(bsT)} ${U}.`
+    : mi && num(mi.props.Temp) != null ? ` The water temperature is the rest, ${nameIn(mi)}'s ${fmt(num(mi.props.Temp))} ${U}: the recipe has no BeerSmith strike.` : "";
   return {props, fill: `${from}${water}${temp}`};
 }
 const ymd = t => /^\d{4}-\d{2}-\d{2}$/.test(norm(t)) ? norm(t) : "";
@@ -408,13 +765,15 @@ function whenHTML(ed, s) {
   return mode === "Date" ? `${what[0].toUpperCase()}${what.slice(1)}` : `With START pressed today, ${what}`;
 }
 /* what a BrewStart still needs before it can be saved, for a setting (said under it) or for the whole step (said by
-   SAVE): the time always; the vessel and the element's watts for Ready by, which works out from them when to heat */
+   SAVE): the time always; the vessel and the element's watts for Ready by, which works out from them when to heat; the
+   water temperature, which as the strike must be one MashIn takes */
 function needOf(s, label) {
   if (s.type !== "BrewStart" || s._removed) return "";
   const p = s.props || {}, ready = readyBy(p);
   // what's typed but isn't a time is said once the box is left, not while it's being typed
   if (label === "StartTime" && !hm(p.StartTime)) return !norm(s._tt) ? "Needed: without a time, BrewStart can't start." : s._typing ? ""
     : TWELVE ? "That isn't a time: type it as 7, 7:30 or 730, and tap AM or PM." : "That isn't a time: type it as 7, 7:30 or 19:30.";
+  if (label === "Ready_Temp") return num(p.Ready_Temp) == null ? "Needed: how hot to heat the water." : strikeRange(s);
   if (label === "StartDate" && p.Mode === "Date" && !ymd(p.StartDate)) return "Needed with DATE.";
   if (label === "Heat_Kettle" && shows(s, "Heat_Kettle") && !norm(p.Heat_Kettle)) return "Needed: the vessel to heat.";
   if (label === "Heater_Watts" && ready && num(p.Heater_Watts) == null) return "Needed for Ready by: it works out when to start heating from the element's watts.";
@@ -422,10 +781,12 @@ function needOf(s, label) {
 }
 function needsWhy(ed) {
   if (!ed) return "";
-  const words = {StartTime: "Set BrewStart's time first.", StartDate: "Give BrewStart its date first.", Heat_Kettle: "Choose BrewStart's vessel first.", Heater_Watts: "Give BrewStart the element's watts first."};
+  const words = {StartTime: "Set BrewStart's time first.", StartDate: "Give BrewStart its date first.", Heat_Kettle: "Choose BrewStart's vessel first.", Heater_Watts: "Give BrewStart the element's watts first.", Ready_Temp: "Give BrewStart's water temperature first."};
+  const K = strikeOf(ed);
   for (const s of live(ed)) {
-    if (s.type !== "BrewStart" || !stepChange(ed, s).tag) continue;
-    for (const l of Object.keys(words)) if (needOf(s, l)) return words[l];
+    // the strike is checked against the rest too, where only the rest changed
+    if (s.type !== "BrewStart" || !(stepChange(ed, s).tag || (s === K.si && K.mi && stepChange(ed, K.mi).tag))) continue;
+    for (const l of Object.keys(words)) if (needOf(s, l)) return l === "Ready_Temp" && num(s.props.Ready_Temp) != null ? "Bring BrewStart's water temperature into range first." : words[l];
   }
   return "";
 }
@@ -510,7 +871,7 @@ function stepsListHTML(steps, o = {}) {
     return `<li class="slot"><button type="button" class="put" data-put="${g}" aria-label="Put ${esc(nameIn(mv))} here, as step ${n}">PUT IT HERE<small>as step ${n}</small></button></li>`;
   };
   const rows = steps.map((s, i) => {
-    const v = stepView(s), ch = ed ? stepChange(ed, s) : {tag: ""};
+    const v = stepView(s, o.pre && o.pre.mi === s ? o.pre.t : null), ch = ed ? stepChange(ed, s) : {tag: ""};
     let right;
     if (o.run) {
       right = s.status === "D" ? "✓ DONE" : s.status === "A" ? `<span class="run"><i aria-hidden="true"></i>RUNNING</span>${st.loaded.left != null && i === b.cur ? `<span class="left">${mmss(st.loaded.left)} LEFT</span>` : ""}`
@@ -546,7 +907,7 @@ function colHTML() {
       <p class="rmeta">Changing the Recipe Book's copy${n ? ` · <b>${n} ${n === 1 ? "change" : "changes"} not saved</b>` : ""}</p>
       <div class="rctl">${cmd("", "+ STEP", "add one", {data: " data-addstep"})}${cmd("", "NAME", "and notes", {data: ' data-go="r"'})}${cmd("", "CLOSE", "back to the book", {data: " data-close"})}</div>
       ${st.ask && st.ask.kind === "leave" && narrow() ? leaveHTML() : ""}
-      ${ed.mv ? moveBarHTML(ed) : ""}${d.steps.length ? stepsListHTML(d.steps, {ed, cur: ed.cur, bsadd: !hasBrewStart(d.steps)}) : `<p class="empty"><b>No steps yet</b>+ STEP adds the first.</p>`}`;
+      ${ed.mv ? moveBarHTML(ed) : ""}${d.steps.length ? stepsListHTML(d.steps, {ed, cur: ed.cur, bsadd: !hasBrewStart(d.steps), pre: preheatIn(strikeOf(ed))}) : `<p class="empty"><b>No steps yet</b>+ STEP adds the first.</p>`}`;
   }
   const b = brew(), on = isLoaded(r.file) && b.state !== "finished";
   const meta = on ? `<span class="on${b.state === "running" ? " run" : ""}">On Brew Day · ${statusWords(b).toLowerCase().replace("ready to start", "ready to start")}</span>`
@@ -558,7 +919,7 @@ function colHTML() {
     ${r.desc ? `<p class="desc">${esc(r.desc)}</p>` : ""}
     <div class="rctl">${first}${cmd("", "EDIT", "steps and name", {data: " data-edit"})}${cmd("", "COPY", "as a new recipe", {data: " data-copy"})}</div>
     ${ask}${offerHTML(r.file)}<p class="note" id="col-note">${esc(st.notes.col || "")}</p>
-    ${stepsListHTML(r.steps, {bsadd: !hasBrewStart(r.steps)})}`;
+    ${stepsListHTML(r.steps, {bsadd: !hasBrewStart(r.steps), pre: preheatIn(strikeIn(r.steps, r.mash_numbers, null))})}`;
 }
 /* after SAVE on the recipe that is on Brew Day: Brew Day keeps the copy it loaded, so the page says so, and LOAD AGAIN
    brings the change across, by LOAD's own rules */
@@ -591,7 +952,7 @@ function colStepsHTML() {
     <p class="rmeta"><span class="on${b.state === "running" ? " run" : ""}">On Brew Day · ${statusWords(b).toLowerCase()}</span>${n ? ` · <b>${n} ${n === 1 ? "change" : "changes"} not saved</b>` : ""}</p>
     <div class="rctl">${cmd("", "BREW DAY", b.state === "running" ? "running there" : "start it there", {data: ' data-tabgo="Brew Day"'})}${cmd("", pendB ? "SAVING…" : "SAVE TO BOOK", pendB ? "waiting for CraftBeerPi" : "keep for next time", {busy: pendB, data: " data-tobook", why: pendB ? WAIT : n ? "SAVE your changes to the brew steps first, then keep them in the book." : "", live: true})}${cmd("", pendU ? "UNLOADING…" : "UNLOAD", pendU ? "waiting for CraftBeerPi" : "brew by hand", {busy: pendU, data: " data-unload", why: pendU ? WAIT : un.why || ""})}</div>
     ${ask || ""}<p class="note" id="col-note">${esc(st.notes.col || "")}</p>
-    ${ed.mv ? moveBarHTML(ed) : ""}${stepsListHTML(ed.doc.steps, {ed, cur: ed.cur, run: true, bsadd: b.state === "ready" && !b.begun && !hasBrewStart(ed.doc.steps)})}
+    ${ed.mv ? moveBarHTML(ed) : ""}${stepsListHTML(ed.doc.steps, {ed, cur: ed.cur, run: true, bsadd: b.state === "ready" && !b.begun && !hasBrewStart(ed.doc.steps), pre: preheatIn(strikeOf(ed))})}
     ${ed.mv ? "" : cmd("addstep", "+ STEP", "add one to this brew", {data: " data-addstep"})}`;
 }
 function unloadRule() {
@@ -611,10 +972,13 @@ function unloadAskHTML() {
 }
 /* a brew step as CraftBeerPi's book_data() keeps it (server change 8): the recipe, not this brew. A BrewStart's day,
    which Brew Day sets as a date so that a START after midnight still means the same morning, goes in as Tomorrow with
-   its time; its grain temperature goes in blank, since Brew Day asks where the grain is for every brew. CraftBeerPi
-   also puts the strike water back to its temperature before USE; this mockup has no USE, so nothing here does. */
+   its time; its grain temperature goes in blank, as tonight's grain belongs to the brew. A strike that still holds the
+   figure CHECK's USE wrote on Brew Day goes in as it was before the first USE (StrikeController.recipe_temps), as USE
+   is worked out for each brew; BeerSmith's own strike, or one typed here or on Brew Day, goes in as it is */
 function bookStep(s) {
   delete s.status;
+  const u = st.loaded && st.loaded.use;
+  if (u && s.type === u.type && s.props && num(s.props[u.prop]) != null && Math.abs(num(s.props[u.prop]) - u.value) < 0.05) s.props[u.prop] = u.was;
   if (s.type === "BrewStart" && s.props) {
     if (s.props.Mode === "Date") Object.assign(s.props, {Mode: "Tomorrow", StartDate: ""});
     s.props.Grain_Temp = "";
@@ -651,7 +1015,7 @@ function toolHTML() {
 }
 function saveBtns(n, where) {
   const s = st.pend.save, need = !s && n ? needsWhy(E()) : "";
-  return `<div class="btns ed sv">${cmd("", "UNDO", n ? `all ${n}` : "nothing yet", {data: " data-undoall", why: s ? WAIT : n ? "" : "Nothing to undo."})}${cmd("go", s ? "SAVING…" : "SAVE", s ? "waiting for CraftBeerPi" : need ? need.replace(/^Set/, "set").replace(/^Give/, "give").replace(/^Choose/, "choose").replace(/\.$/, "") : n ? `${n} ${n === 1 ? "change" : "changes"}, ${where}` : "nothing to save yet", {busy: s, data: " data-save", why: s ? WAIT : !n ? "Nothing has changed yet: change a step, then SAVE." : need, live: true})}</div>`;
+  return `<div class="btns ed sv">${cmd("", "UNDO", n ? `all ${n}` : "nothing yet", {data: " data-undoall", why: s ? WAIT : n ? "" : "Nothing to undo."})}${cmd("go", s ? "SAVING…" : "SAVE", s ? "waiting for CraftBeerPi" : need ? need.replace(/^./, c => c.toLowerCase()).replace(/\.$/, "") : n ? `${n} ${n === 1 ? "change" : "changes"}, ${where}` : "nothing to save yet", {busy: s, data: " data-save", why: s ? WAIT : !n ? "Nothing has changed yet: change a step, then SAVE." : need, live: true})}</div>`;
 }
 
 /* ---------- the right-hand side ---------- */
@@ -752,17 +1116,31 @@ function stepPlateHTML(ed, s, i) {
   const moving = ed.mv === s._k ? `<p class="pnote mv">Moving it: tap <b>PUT IT HERE</b> in the steps where it goes, or FIRST or LAST above them.</p>` : "";
   const placed = ch.tag === "new" && s._where ? `<p class="pnote"><b>Went in as step ${li + 1}, ${esc(s._where)}.</b> MOVE puts it elsewhere.</p>` : "";
   const parts = kc ? kc.parts : [{rows: Object.keys(s.props || {})}];
+  const K = strikeOf(ed), host = figHost(ed);
   const body = [{rows: ["name", "type"]}, ...parts].map(p => {
-    const rows = p.adds ? addsHTML(ed, s, run) : (p.rows || []).filter(l => shows(s, l)).map(l => rowHTML(ed, s, l, run)).join("");
+    // the recipe's grain weight and mash water: under BrewStart's water, beside its HLT water; on a MashIn in place of
+    // its own Grain_Kg and Mash_Water, on the figures' plate or saying where they are
+    const figPart = (s.type === "BrewStart" && p.fill) || (s.type === "MashInStep" && (p.rows || []).includes("Grain_Kg"));
+    const labels = (p.rows || []).filter(l => shows(s, l) && !(figPart && s.type === "MashInStep" && (l === "Grain_Kg" || l === "Mash_Water")));
+    const rowList = labels.map(l => s === K.si && l === K.prop ? strikeRowHTML(ed, s, l, run) : rowHTML(ed, s, l, run));
+    if (figPart) {
+      const figs = host === s ? figsHTML(ed) : s.type === "MashInStep" ? figsElsewhereHTML(ed, host, s) : "";
+      const at = Math.max(labels.lastIndexOf("Volume"), labels.lastIndexOf("Volume_Unit"));
+      rowList.splice(at >= 0 ? at + 1 : rowList.length, 0, figs);
+    }
+    const rows = p.adds ? addsHTML(ed, s, run) : rowList.join("");
     const when = p.when ? `<p class="whenl" id="when-${s._k}">${whenHTML(ed, s)}</p>` : "";
     const fill = p.fill && s._fill && ch.tag === "new" ? `<p class="pnote fill">${esc(s._fill)}</p>` : "";
-    return `<div class="part">${p.h ? `<h3>${esc(p.h)}</h3>` : ""}${p.when ? cbClockHTML() : ""}${fill}${rows}${when}${p.note ? `<p class="foot">${esc(p.note)}</p>` : ""}</div>`;
+    const grain = figPart && s.type === "MashInStep", note = grain ? grainNote(ed, s, K) : p.note;
+    return `<div class="part">${p.h ? `<h3>${esc(p.h)}</h3>` : ""}${p.when ? cbClockHTML() : ""}${fill}${rows}${when}${note ? `<p class="foot"${grain ? ` id="gn-${s._k}"` : ""}>${esc(note)}</p>` : ""}</div>`;
   }).join("");
   return `<section class="plate${run ? " locked" : ""}${pickCls(s._k)}" id="p-${s._k}" data-k="${s._k}" aria-labelledby="h-${s._k}">${head}${lockNote}${moving}${placed}${body}</section>`;
 }
 function rowHTML(ed, s, label, locked) {
   const o = origOf(ed, s), isName = label === "name", isType = label === "type";
-  const m = isName ? {n: "Name", h: "As Brew Day, the event line and BrewScribe show it."} : isType ? {n: "Kind of step", h: "What it does. Changing it keeps the settings the new kind also has."} : meta(s.type, label);
+  // the dough-in MashIn's temperature is the rest: the strike is BrewStart's, and the pre-heat is said under it
+  const rest = s.type === "MashInStep" && label === "Temp" && !!meta(s.type, label).rest && strikeOf(ed).mi === s;
+  const m = isName ? {n: "Name", h: "As Brew Day, the event line and BrewScribe show it."} : isType ? {n: "Kind of step", h: "What it does. Changing it keeps the settings the new kind also has."} : rest ? meta(s.type, label).rest : meta(s.type, label);
   const v = isName ? s.name : isType ? s.type : (s.props || {})[label];
   const ov = !o ? undefined : isName ? o.name : isType ? o.type : (o.props || {})[label];
   const changed = !!o && !same(v, ov);
@@ -771,7 +1149,7 @@ function rowHTML(ed, s, label, locked) {
   // a time box says what it reads, as it's typed now rather than picked
   const help = m.h && !isName && !isType && typeOf(s.type, label) === "time" ? `${m.h} ${TWELVE ? "Type it as 7, 7:30 or 730, and tap AM or PM." : "Type it as 7, 7:30 or 19:30."}` : m.h;
   return `<div class="row${changed ? " chg" : ""}" id="r-${s._k}-${label}" data-s="${s._k}" data-p="${label}"><div class="lb"><label class="nm" for="i-${s._k}-${label}" id="n-${s._k}-${label}">${esc(m.n)}</label>${help ? `<p class="wh" id="wh-${s._k}-${label}">${esc(help)}</p>` : ""}<p class="ky">${esc(key)}</p></div>
-    <div class="ct">${ctlHTML(s, label, v, locked)}${stHTML(changed, ov, s._k, label, was)}<p class="why" id="need-${s._k}-${label}">${esc(needOf(s, label))}</p></div></div>`;
+    <div class="ct">${ctlHTML(s, label, v, locked)}${rest ? preLineHTML(ed, s) : ""}${stHTML(changed, ov, s._k, label, was)}<p class="why" id="need-${s._k}-${label}">${esc(needOf(s, label))}</p></div></div>`;
 }
 function ctlHTML(s, label, v, locked) {
   const id = `i-${s._k}-${label}`, dis = locked ? " disabled" : "", data = ` data-s="${s._k}" data-p="${label}"`;
@@ -935,13 +1313,20 @@ function paintEdit(k, label) {
       else {
         const v = label === "name" ? s.name : s.props[label], ov = label === "name" ? o.name : o.props[label], ch = !same(v, ov);
         row.classList.toggle("chg", ch);
-        $(`#st-${k}-${label}`).outerHTML = stHTML(ch, ov, k, label, ch ? (label === "name" ? ov : shownValue(s, label, ov)) : null);
+        // the strike's row says where it comes from as well: paintFigs draws it
+        const K = strikeOf(ed);
+        if (!(K.si === s && K.prop === label)) $(`#st-${k}-${label}`).outerHTML = stHTML(ch, ov, k, label, ch ? (label === "name" ? ov : shownValue(s, label, ov)) : null);
       }
     }
     if (s.type === "BrewStart") { const w = $(`#when-${k}`), nd = $(`#need-${k}-${label}`); if (w) w.innerHTML = whenHTML(ed, s); if (nd) nd.textContent = needOf(s, label); }
     if (label === "name") { const h = $(`#h-${k}`); if (h) h.innerHTML = `<span class="n">${ed.doc.steps.indexOf(s) + 1}</span>${esc(s.name || kindName(s.type))}`; }
   }
-  const sc = $("#steps"), top = sc ? sc.scrollTop : 0;
+  paintFigs();
+  paintCounts();
+}
+/* after a change typed: the column, the tool row and the save bar follow, the column keeping its place */
+function paintCounts() {
+  const ed = E(), sc = $("#steps"), top = sc ? sc.scrollTop : 0;
   $("#col").innerHTML = colHTML();
   if ($("#steps")) $("#steps").scrollTop = top;
   $("#tool").innerHTML = toolHTML();
@@ -1078,8 +1463,12 @@ function save() {
   st.pend.save = true; render();
   later(() => {
     delete st.pend.save;
+    const figs = figChanges(ed) ? {mn: figNumbersSaved(ed), keys: Object.keys(ed.doc.figs)} : null;
     const keep = ed.doc.steps.filter(s => !s._removed).map(s => { const c = clone(s); for (const x of ["_moved", "_where", "_fill", "_tt", "_half", "_base", "_typing"]) delete c[x]; return c; });
-    ed.doc.steps = keep;
+    // a MashIn's own copy of a figure changed goes, as it reads the recipe's: on Brew Steps only the steps still to come
+    if (figs) keep.forEach(s => { if (s.type === "MashInStep" && (st.page !== "steps" || s.status === "I")) figs.keys.forEach(k => { if (norm(s.props[FIG[k].prop]) !== "") s.props[FIG[k].prop] = ""; }); });
+    ed.doc.steps = keep; ed.doc.figs = {}; st.figTxt = null;
+    if (figs) { if (st.page === "steps") st.loaded.mash_numbers = figs.mn; else book(ed.file).mash_numbers = figs.mn; }
     if (st.page === "steps") {
       st.loaded.steps = keep.map(s => { const c = clone(s); delete c._k; return c; });
       ed.orig = clone(ed.doc);
@@ -1180,8 +1569,9 @@ document.addEventListener("click", e => {
       return later(() => {
         delete st.pend.tobook;
         const steps = clone(st.loaded.steps).map(bookStep);
-        if (ds.yes === "replace") { const r = book(st.loaded.file); Object.assign(r, {steps, modified: fileNow()}); delete r.imported_from; event(`${r.name} replaced in the Recipe Book`, "confirmed", "ok"); }
-        else { const f = "new" + (KEY++); st.book.push({file: f, name: nm, author: D.CONFIG.AUTHOR, steps, modified: fileNow()}); st.loaded.file = f; st.loaded.name = nm; if (st.bs) st.bs.doc.name = st.bs.orig.name = nm; event(`${nm} saved in the Recipe Book`, "confirmed", "ok"); }
+        const mn = st.loaded.mash_numbers ? clone(st.loaded.mash_numbers) : undefined;
+        if (ds.yes === "replace") { const r = book(st.loaded.file); Object.assign(r, {steps, modified: fileNow()}, mn ? {mash_numbers: mn} : {}); delete r.imported_from; event(`${r.name} replaced in the Recipe Book`, "confirmed", "ok"); }
+        else { const f = "new" + (KEY++); st.book.push({file: f, name: nm, author: D.CONFIG.AUTHOR, steps, modified: fileNow(), mash_numbers: mn}); st.loaded.file = f; st.loaded.name = nm; if (st.bs) st.bs.doc.name = st.bs.orig.name = nm; event(`${nm} saved in the Recipe Book`, "confirmed", "ok"); }
         render();
       });
     }
@@ -1286,13 +1676,21 @@ document.addEventListener("click", e => {
     if (sk && sk.type === "BrewStart" && (ds.p === "Timing" || ds.p === "Mode")) keepWhenInView(ds.s);
     return;
   }
+  if (ds.figundo) { st.figTxt = null; setFig(E(), ds.figundo, null); return render(); }
+  if (ds.figback) { st.figTxt = null; setFig(E(), ds.figback, "back"); return render(); }
+  if (ds.strikebs) {
+    const K = strikeOf(E());
+    if (K.bs != null) setProp(ds.strikebs, ds.p, String(K.bs));
+    render(); const n = $(`#i-${ds.strikebs}-${ds.p}`); if (n) n.focus({preventScroll: true});
+    return;
+  }
   if (ds.undo) {
     const ed = E(), k = ds.undo, label = ds.p;
     if (k === "r") ed.doc[label] = ed.orig[label];
     else { const s = stepByKey(k), o = origOf(ed, s); delete s._tt; delete s._typing; if (label === "name") s.name = o.name; else if (label === "type") { s.type = o.type; s.props = clone(o.props); } else s.props[label] = o.props[label]; }
     return render();
   }
-  if ("undoall" in ds) { const ed = E(); ed.doc = clone(ed.orig); ed.kinds = false; event(st.page === "steps" ? "Brew Steps: changes put back" : `${ed.doc.name}: changes put back`, "done", "ok"); return render(); }
+  if ("undoall" in ds) { const ed = E(); st.figTxt = null; ed.doc = clone(ed.orig); ed.kinds = false; event(st.page === "steps" ? "Brew Steps: changes put back" : `${ed.doc.name}: changes put back`, "done", "ok"); return render(); }
   if ("save" in ds) return save();
   if (ds.rmadd) { const s = stepByKey(ds.s), i = +ds.rmadd; s.props[`Hop_${i}`] = null; s.props[`Hop_${i}_text`] = null; return render(); }
   if (ds.addadd) {
@@ -1332,6 +1730,7 @@ document.addEventListener("input", e => {
   if (f.id === "q") { st.q = f.value; const pos = f.selectionStart; $("#work").innerHTML = bookHTML(); $(".clr").hidden = !st.q; return; }
   if (f.id === "bq") { st.imp.bq = f.value; const pos = f.selectionStart; render(); const n = $("#bq"); n.focus(); n.setSelectionRange(pos, pos); return; }
   if (f.id === "nm-in" || f.id === "tb-name") return;
+  if (f.dataset.fig) return figInput(f);
   const k = f.dataset.s, label = f.dataset.p;
   if (!k || !label || f.tagName === "SELECT") return;
   if (f.classList.contains("tmbox")) {
@@ -1357,6 +1756,15 @@ document.addEventListener("focusin", e => {
   if (!f.classList || !f.classList.contains("tmbox")) return;
   const s = stepByKey(f.dataset.s), t = s && hm(s.props[f.dataset.p]);
   if (s) s._base = t ? halfOf(t) : s._half || "am";
+});
+/* a figure's box, once left, shows the figure as kept. Only the box changes: what follows it is drawn as it's typed, and
+   a line redrawn now could take away the button the pointer is pressing */
+document.addEventListener("focusout", e => {
+  const f = e.target;
+  if (!f || !f.dataset || !f.dataset.fig || !st.figTxt || !E()) return;
+  st.figTxt = null;
+  const F = figsOf(E()), r = f.dataset.fig === "ratio" ? ratioNow(F) : null;
+  f.value = f.dataset.fig === "ratio" ? (r == null ? "" : String(+r.toFixed(2))) : F[f.dataset.fig].now == null ? "" : String(F[f.dataset.fig].now);
 });
 document.addEventListener("change", e => {
   const f = e.target;
@@ -1437,6 +1845,33 @@ const SCENES = {
   // + BrewStart just tapped, with no time yet; then its time set
   "brewstart-sim-added": () => { evening(false, SIM30); addedBrewStart(); },
   "brewstart-sim": () => { evening(false, SIM30); addedBrewStart().props.StartTime = "07:00"; },
+  // the strike, BeerSmith's: + BrewStart takes it; a saved BrewStart holding it, changed, kept as yours in the book, set by
+  // CHECK's USE, with the mash water changed, out of range; MashIn's pre-heat; a recipe without BeerSmith's strike
+  "strike-added": () => { evening(); const s = addedBrewStart(); st.after = () => showPart(s._k, `r-${s._k}-Ready_Temp`); },
+  "strike-bs": () => { const {bs} = strikeNight(134.6); st.after = () => showPart(bs._k, `r-${bs._k}-Ready_Temp`); },
+  "strike-typed": () => { const {bs} = strikeNight(134.6); bs.props.Ready_Temp = "136"; st.after = () => showPart(bs._k, `r-${bs._k}-Ready_Temp`); },
+  "strike-yours": () => { loadFrom(V5); book(V5).steps.unshift({name: "BrewStart", type: "BrewStart", props: nightBrewStart(136)}); st.open = V5; startEdit(V5); st.view = "recipe"; const bs = st.ed.doc.steps[0]; st.after = () => showPart(bs._k, `r-${bs._k}-Ready_Temp`); },
+  "strike-check": () => {
+    const {bs} = strikeNight(135.4);
+    st.loaded.use = {type: "BrewStart", prop: "Ready_Temp", value: 135.4, was: 134.6};
+    at("20:52", [["20:52:31", "Strike set to 135.4 °F, the check's, was 134.6 °F", "confirmed", "ok"]]);
+    st.after = () => showPart(bs._k, `r-${bs._k}-Ready_Temp`);
+  },
+  "strike-stale": () => {
+    const {bs} = strikeNight(134.6);
+    Object.assign(st.loaded.mash_numbers, {infuse_l: 26.498, typed: ["water"], beersmith: {infuse_l: 31.2675}});
+    at("20:47", [["20:47:05", "Mash water set to 7.00 gal, was 8.26 gal", "confirmed", "ok"]]);
+    st.after = () => showPart(bs._k, `r-${bs._k}-Ready_Temp`);
+  },
+  "strike-range": () => { const {bs} = strikeNight(134.6); bs.props.Ready_Temp = "160"; st.after = () => showPart(bs._k, `r-${bs._k}-Ready_Temp`); },
+  "strike-mashin": () => { const {mi} = strikeNight(134.6); st.after = () => showPart(mi._k, `r-${mi._k}-Temp`); },
+  "strike-rest": () => {
+    const f = "demoHousePaleAle0000001";
+    loadFrom(V5); st.open = f; startEdit(f); st.view = "recipe";
+    const ed = st.ed, s = newStep("BrewStart");
+    insertAt(ed, s, 0); s._where = "before everything else"; ed.cur = s._k;
+    st.after = () => showPart(s._k, `r-${s._k}-Ready_Temp`);
+  },
   move: () => { evening(true); const ed = st.bs, s = ed.doc.steps[ed.doc.steps.length - 1]; ed.mv = s._k; ed.cur = s._k; st.after = () => inColumn(s._k); },
   moved: () => { evening(true); const ed = st.bs, s = ed.doc.steps[ed.doc.steps.length - 1]; moveTo(ed, s, 0); s._moved = true; ed.cur = s._k; st.after = () => inColumn(s._k); },
   offline: () => { loadFrom(V5); st.open = V4; st.link = "lost"; }
@@ -1452,7 +1887,7 @@ function evening(withLast, o = {}) {
   loadFrom(V5); st.loaded.at = o.at || "20:31"; st.page = "steps"; st.view = "recipe";
   at(o.clock || "20:40", [[`${o.at || "20:31"}:12`, "Craftbeerpi Test Recipe v5 loaded", "confirmed", "ok"]]);
   if (withLast) st.loaded.steps.push({name: "BrewStart", type: "BrewStart", status: "I", props: {Timing: "Ready by", Mode: "Tomorrow", StartDate: "", StartTime: "07:00",
-    Heat_Kettle: D.KETTLES[0].id, Ready_Temp: 126, Volume: 20, Volume_Unit: "gal", Grain_Temp: "", Heater_Watts: 6500, Campden_Reminder: "Yes", NotifyBefore: ""}});
+    Heat_Kettle: D.KETTLES[0].id, Ready_Temp: 134.6, Volume: 20, Volume_Unit: "gal", Grain_Temp: "", Heater_Watts: 6500, Campden_Reminder: "Yes", NotifyBefore: ""}});
   ensureBs();
 }
 function addedBrewStart() {
@@ -1460,6 +1895,25 @@ function addedBrewStart() {
   insertAt(ed, s, 0); s._where = "before everything else"; ed.cur = s._k;
   st.after = () => showWhen(s._k);
   return s;
+}
+/* a saved BrewStart for the night before, as + BrewStart fills it in for v5, its water temperature t */
+const nightBrewStart = t => ({Timing: "Ready by", Mode: "Tomorrow", StartDate: "", StartTime: "07:00", Heat_Kettle: D.KETTLES[0].id, Ready_Temp: t,
+  Volume: 25.4, Volume_Unit: "gal", Grain_Temp: "", Heater_Watts: 6500, Campden_Reminder: "Yes", NotifyBefore: ""});
+/* the night before, v5 loaded on Brew Day with that BrewStart saved as step 1: its BrewStart (bs) and its MashIn (mi) */
+function strikeNight(t) {
+  evening();
+  st.loaded.steps.unshift({name: "BrewStart", type: "BrewStart", status: "I", props: nightBrewStart(t)});
+  st.bs = null; ensureBs();
+  const S = st.bs.doc.steps;
+  return {bs: S[0], mi: S[1]};
+}
+/* a moment that opens at one part of a step's plate: the part at the top of what scrolls, clear of what is pinned */
+function showPart(k, rowId) {
+  jump(k);
+  const r = $(`#${rowId}`), part = r && r.closest(".part");
+  if (!part) return;
+  if (wide()) { const pane = $("#pane"); pane.scrollTop += part.getBoundingClientRect().top - pane.getBoundingClientRect().top - 8; }
+  else window.scrollTo(0, part.getBoundingClientRect().top + scrollY - (stickTop() ? stickTop() + 16 : 8));
 }
 /* a simulator's clock counts on at its speed, a minute of CraftBeerPi's every 60/scale real seconds, and what is on that
    clock follows it: the title bar, the clock in BrewStart's settings and the time in words */

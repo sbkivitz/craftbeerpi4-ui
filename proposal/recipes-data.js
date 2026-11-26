@@ -24,11 +24,15 @@ window.CBPI_RECIPES = (() => {
     wpHop("Cool down to 170 F. Then add 1.50 oz Calypso."), wp(170, 20)];
 
   /* the Recipe Book, as GET /recipe/ lists it (basic data, file, modified) with each recipe's steps (GET /recipe/{file}).
-     v5's mash_numbers are its BeerSmith export's, as the import keeps them in its basic data, in litres and kg, with
-     the three the HLT's water is worked out from (boil_l, top_up_kettle_l, lauter_dead_l: server change 7) */
+     v5's mash_numbers are its BeerSmith export's, as the import keeps them in its basic data, in litres, kg and °C, with
+     the three the HLT's water is worked out from (boil_l, top_up_kettle_l, lauter_dead_l: server change 7) and what
+     MashIn's pre-heat is worked out from: BeerSmith's strike (infuse_temp_c, 134.6 °F), the rest it was for (rest_c,
+     126 °F), the grain's and the tun's temperatures it took (65 °F, 72 °F), the tun (33 lb of steel at 0.12) and
+     "Adjust Temp for Equip" (equip_adjust) */
   const BOOK = [
     {file: "YhweWUoDCyYKB887DJ9EXd", name: "Craftbeerpi Test Recipe v5", author: "John Doe", imported_from: "BeerXML", modified: at("2026-11-13T13:53:00"), steps: v5steps,
-      mash_numbers: {grain_kg: 9.07184, infuse_l: 31.2675, for_grain_l: 28.390752, infusions_l: 40.731, boil_l: 87.0649728, top_up_kettle_l: 0, lauter_dead_l: 0}},
+      mash_numbers: {grain_kg: 9.07184, infuse_l: 31.2675, for_grain_l: 28.390752, infusions_l: 40.731, boil_l: 87.0649728, top_up_kettle_l: 0, lauter_dead_l: 0,
+        infuse_temp_c: 57.0, rest_c: 52.2222, grain_temp_c: 18.3333, tun_temp_c: 22.2222, tun_kg: 14.968536, tun_cal_g_c: 0.12, equip_adjust: true}},
     {file: "FtHtz5YsgsSFEikqEieXJb", name: "Craftbeerpi Test Recipe v4", author: "John Doe", imported_from: "BeerXML", modified: at("2026-11-05T15:50:00"),
       steps: [mashIn(126), rest("Saccharification", 126, 20), rest("Mash Step", 149, 40),
         boil(90, [[15, "6.00 oz Willamette"], [15, "1 Whirlfloc Tablet"], [5, "3.00 oz Citra"]]),

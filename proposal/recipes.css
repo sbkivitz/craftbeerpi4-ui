@@ -331,6 +331,15 @@ button.step:hover{background:linear-gradient(90deg,rgb(0 0 0/.26) 0 48px,transpa
 .row.chg{background:rgb(42 111 192/.12);box-shadow:inset 0 0 0 2px var(--select)}
 .st{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin:0;min-height:24px;font:600 15px/1.25 var(--cond);letter-spacing:.06em;text-transform:uppercase;color:var(--text-2)}
 .st .was{text-transform:none;letter-spacing:.02em;font-weight:500;color:var(--active-ink)}
+/* a figure's row (the strike, the mash water, the grain weight) and the dough-in MashIn's rest: the boxes side by side,
+   then what the figure does in one quieter line, anything in it that needs a look in the note colour, as on Brew Day's
+   strike water card; then where it comes from, in the quieter type of "was" */
+.figbox{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.figbox .numf input:disabled{color:var(--text-3)}
+.figl{margin:0;max-width:62ch;font:500 15px/1.35 var(--sans);color:var(--text-2)}
+.figl .amb{color:var(--note)}
+.figl:empty,.part .foot:empty{display:none}
+.st .from{text-transform:none;letter-spacing:.02em;font-weight:500;color:var(--text-2)}
 .st:empty{display:none}
 .seg{display:inline-grid;grid-auto-flow:column;grid-auto-columns:minmax(96px,auto);justify-self:start;max-width:100%;border:1px solid var(--edge);border-radius:var(--r);overflow:hidden}
 .seg button{min-height:48px;padding:0 16px;border:0;background:var(--panel-2);color:var(--text-2);font:700 18px/1 var(--cond);letter-spacing:.06em;text-transform:uppercase;touch-action:manipulation}
