@@ -2818,6 +2818,11 @@ function mashWaterText({water, forGrain, vu, grain, mu, C}) {
 const swLeast = () => leastWater((st.vessels || {}).hlt, "F", "gal");
 const swMashText = R => mashWaterText({water: R.strike_vol ?? null, forGrain: R.for_grain ?? null, vu: "gal", grain: R.grain ?? null, mu: "lb", C: "F"});
 const swRatio = R => waterRatio(R.for_grain ?? R.strike_vol ?? null, "gal", R.grain ?? null, "lb", "F");
+/* the one rule for a mash water being typed, as for the figure in force: its ratio is the water less BeerSmith's water
+   under the false bottom, where the recipe has it, against the grain weight; a ratio typed gives the water for the
+   grain, plus that */
+const swRatioOf = (R, v) => v == null ? null : waterRatio(Math.max(0, v - (R.dead || 0)), "gal", R.grain ?? null, "lb", "F");
+const swWaterOf = (R, q) => { const w = waterForRatio(q, R.grain ?? null, "lb", "gal", "F"); return w == null ? null : w + (R.dead || 0); };
 /* the figures leave the HLT less than covers its element and coil (CraftBeerPi's warning hlt_low), or less than the
    mash water: one short line in Note Amber, once, under the strike water box (swHTML) or in the MashIn row's box, until
    they no longer do. It blocks nothing; the Hardware page's Least water line says where the minimum comes from */
@@ -3228,14 +3233,14 @@ function swRecOther(N, v) {
 /* the mash water being given with a ratio no usual mash has: said, never refused. The ratio is the mash water less the
    water under the false bottom where BeerSmith gives it, as everywhere else */
 function swRecWarn(N, v) {
-  return ratioWarning(waterRatio(v == null ? null : Math.max(0, v - (N.R.dead || 0)), "gal", N.R.grain ?? null, "lb", "F"), "F");
+  return ratioWarning(swRatioOf(N.R, v), "F");
 }
 /* the ratio, typed instead of the mash water: it fills the mash water from the grain weight, and the water typed shows
    the ratio it gives. Without a grain weight, what it needs */
 function swRatioHTML(N, v) {
   const g = N.R.grain ?? null;
   if (g == null) return `<p class="swvo swvq" id="swr-q">The ratio needs the grain weight: give it with GRAIN WEIGHT.</p>`;
-  const q = waterRatio(v, "gal", g, "lb", "F");
+  const q = swRatioOf(N.R, v);
   return `<p class="swvq"><label for="swrq">or as a ratio, in ${ratioUnit("F")}</label><input id="swrq" inputmode="decimal" autocomplete="off" value="${q == null ? "" : +q.toFixed(2)}" aria-describedby="swr-q">`
     + `<span id="swr-q">for ${massText(g, "lb")}</span></p>`;
 }
@@ -3847,7 +3852,7 @@ function cxSays(k, v, N, K) {
   /* where the HLT's warning says what is left there, the line doesn't say it too */
   const low = (vol, gal) => vol != null && gal != null && vol - gal < swLeast().value - 1e-9;
   if (k === "water") {
-    const q = N.R.grain != null ? waterRatio(Math.max(0, v - (N.R.dead || 0)), "gal", N.R.grain, "lb", "F") : null;
+    const q = swRatioOf(N.R, v);
     const parts = [N.vol != null && !low(N.vol, v) ? `sparge left ${(N.vol - v).toFixed(2)} gal` : "", q != null ? ratioText(q, "F") : ""].filter(Boolean);
     return parts.length ? parts.join(" · ").replace(/^./, c => c.toUpperCase()) : "";
   }
@@ -3864,7 +3869,7 @@ function cxWarn(k, v, N) {
   if (k === "water") {
     const w = cxHltWarn(N.vol, v);
     if (w.length) return w.join(" ");
-    const q = N.R.grain != null ? waterRatio(Math.max(0, v - (N.R.dead || 0)), "gal", N.R.grain, "lb", "F") : null;
+    const q = swRatioOf(N.R, v);
     if (ratioUnusual(q, "F")) return `${ratioText(q, "F")} is ${mwR2(q) > RATIO_RANGE["qt/lb"][1] ? "high" : "low"} (most mashes: ${RATIO_RANGE["qt/lb"].join("–")}).`;
   }
   return "";
@@ -7833,7 +7838,7 @@ document.addEventListener("input", e => {
     /* the mash water: the ratio it gives, the sparge water it leaves and what it shouldn't do follow it in place */
     if (st.swRec.kind === "water") {
       const N = swNumbers(), r = $("#swrq"), o = $("#swr-o"), w = $("#swr-w");
-      const ratio = waterRatio(st.swRec.val, "gal", N.R.grain ?? null, "lb", "F");
+      const ratio = swRatioOf(N.R, st.swRec.val);
       if (r) r.value = ratio == null ? "" : String(+ratio.toFixed(2));
       if (o) o.textContent = swRecOther(N, st.swRec.val);
       if (w) w.textContent = swRecWarn(N, st.swRec.val);
@@ -7842,7 +7847,7 @@ document.addEventListener("input", e => {
   }
   /* the mash water's ratio typed instead: it fills the mash water from the grain weight */
   if (e.target.id === "swrq" && st.swRec && st.swRec.kind === "water") {
-    const N = swNumbers(), w = waterForRatio(parseFloat(String(e.target.value).replace(",", ".")), N.R.grain ?? null, "lb", "gal", "F");
+    const N = swNumbers(), w = swWaterOf(N.R, parseFloat(String(e.target.value).replace(",", ".")));
     st.swRec.val = w == null ? null : Math.round(w * 100) / 100;
     st.swRec.typed = true;
     const i = $("#swrin"), ok = $("#swrok"), o = $("#swr-o"), warn = $("#swr-w");

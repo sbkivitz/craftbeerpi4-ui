@@ -7713,7 +7713,9 @@ An independent review of the strike water flow found two wrong figures. Both are
    editor): the mash water in force, less BeerSmith's water under the false bottom where the recipe has it, against
    the grain weight in force. BeerSmith's own 19.51 gal gives 3.75 qt/lb (18.75 gal for 20 lb); 8.00 gal gives 1.45.
    The mockup: `swIn` gives `R.for_grain` as the mash water given less BeerSmith's `dead` once it is changed, and
-   `swRecWarn` takes the same off.
+   `swRatioOf` and `swWaterOf` hold the rule for a figure being typed: the card's MASH WATER line, and the box's "or as
+   a ratio" field both ways (a ratio typed gives the water for the grain, plus BeerSmith's water under the false
+   bottom: 3.75 qt/lb fills 19.51 gal).
 2. **"changed from BeerSmith's 19.51 gal in the recipe editor"** after a change made on Brew Day (MashIn's box and
    FORECAST, build only). Say "BeerSmith: 19.51 gal", without where it was changed.
 
