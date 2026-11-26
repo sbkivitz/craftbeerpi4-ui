@@ -1307,6 +1307,11 @@ const SCENES = {
   "card-check-grain": () => Object.assign(SCENES["card-plan"](), {base: "card-plan", open: {swOpen: true, sx: {k: "grain", val: 45}}}),
   "card-hlt": () => Object.assign(SCENES["card-plan"](), {base: "card-plan", open: {sx: {k: "hlt", val: 10}}}),
   "card-novol": () => { const s = SCENES["card-plan"](); s.swd.vol = null; return Object.assign(s, {base: "card-plan"}); },
+  /* #card-nostrike: BrewStart with no temperature, so there's no strike to check: STRIKE "not given", and CHECK leading
+     to it. #card-bs: BrewStart's box opened from its row with the card: no grain question, and its water and
+     temperature changed on the card too */
+  "card-nostrike": () => { const s = SCENES["card-plan"](); s.swd.plan = null; return Object.assign(s, {base: "card-plan"}); },
+  "card-bs": () => Object.assign(SCENES["card-plan"](), {base: "card-plan", open: {bsAt: {}}}),
   "card-nobs": () => { const s = cardOf(swDay(21 * 3600 + 12 * 60 + 5, {})); s.swd.from = null; s.swd.plan = 126; return Object.assign(s, {base: "card-plan"}); },
   "card-working": () => { const s = SCENES["card-plan"](); s.swd.has = null; s.swd.work = {since: s.t - 8, why: "recipe"}; return Object.assign(s, {base: "card-plan"}); },
   "card-heat": () => cardOf(swMorning(DAY2 + 6 * 3600 + 41 * 60 + 30, SW_FROM.bs)),

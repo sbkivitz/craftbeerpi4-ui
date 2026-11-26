@@ -83,8 +83,8 @@ import { GSPANS, GSAY, graphHTML, graphSVG, graphETA } from "./graphs";
 import { createHistory } from "./history";
 import { settingsClockFormat, formatTimeOfDay, timeParts, parseTypedTime, TWELVE_HOUR, TWENTY_FOUR_HOUR } from "../util/timefmt";
 import { clearKeyboard } from "../util/keyboard";
-import { MASH_WATER, HLT_WATER, leastWater, hltLowText, hltUnderText, spargeText, RATIO_RANGE, ratioUnusual,
-  waterRatio, waterForRatio, ratioText, ratioUnit, ratioWarning, mashWaterText, volText, massText, KG_PER_LB, LEAST_SHARE } from "../util/mashwater";
+import { leastWater, hltLowText, hltUnderText, RATIO_RANGE, ratioUnusual, waterRatio, ratioText, ratioUnit, mashWaterText,
+  volText, KG_PER_LB, LEAST_SHARE } from "../util/mashwater";
 // As text, exactly as written (config-overrides.js): the CSS pipeline would rewrite the mockup's colours.
 import BREWDAY_CSS from "./brewday.css";
 import EXTRA_CSS from "./brewday-extra.css";
@@ -1151,7 +1151,7 @@ function recipeHTML() {
     <div class="rctl">${start}${stop}${next}</div>
     ${st.confirmNext ? confirmHTML() : st.confirmReset && !run && begun ? resetConfirmHTML() : st.confirmUnload && !run && unloadAsks(r) ? unloadAskHTML() : st.pbOpen ? pbHTML() : pbFresh() ? nbHTML() : ""}
     ${swHTML()}
-    ${st.bsOpen ? bsHTML() : st.mwOpen ? mwHTML() : `<p class="note">${esc(st.notes.r || "")}</p>`}
+    ${st.bsOpen ? bsHTML() : `<p class="note">${esc(st.notes.r || "")}</p>`}
     <ol class="steps" aria-label="Recipe steps">${bsAddHTML()}${S.map(stepHTML).join("")}</ol>${M.TIMERS ? timersHTML() : ""}`;
 }
 /* NEXT STEP's question. Skipping BrewStart as the strike water step before it holds the water (while it waits or heats)
@@ -1281,18 +1281,17 @@ function pbEnd(why) {
   delete st.pend["r:check"]; st.pbOpen = false;
   lostSay(why, st.pbFor);
 }
-/* the check's box, the probes' panel and the strike water box keep, as they are drawn again, the tallest their contents
-   have needed since they opened at this column width, with the box's answers at its foot, so a line that gets shorter as
+/* the check's box and the probes' panel keep, as they are drawn again, the tallest their contents have needed since
+   they opened at this column width, with the box's answers at its foot, so a line that gets shorter as
    CraftBeerPi's answers change (the clock set, a probe back, the grain a degree warmer) moves no button under a reaching
    hand. pbKeep: {cls, w, h}, the box's class, the recipe column's width and that height. Every height is measured
    without the one kept, so the box is never taller than its contents have needed; none is kept across a change of the
-   column's width, where the lines wrap anew, nor of the box's class (the strike water box's phase), nor measured while
-   the fonts are still loading, which the lines lose once they come. The strike water box keeps one only while closed:
-   opened out, its buttons are in its head, above everything in it that changes */
+   column's width, where the lines wrap anew, nor of the box's class, nor measured while the fonts are still loading,
+   which the lines lose once they come */
 let pbKeep = null;
 // the box on screen as it is about to be drawn again: the height its contents need now, at the column's width now
 function pbMeasure() {
-  const kp = $("#recipe .pbc, #recipe .cmp, #recipe .sw:not(.open):not(.swcard)");
+  const kp = $("#recipe .pbc, #recipe .cmp");
   if (!kp || (document.fonts && document.fonts.status === "loading")) return null;
   const kept = kp.style.minHeight;
   kp.style.minHeight = "";
@@ -1302,8 +1301,7 @@ function pbMeasure() {
 }
 // after it is drawn again (before: pbMeasure's, from just before): the tallest of what its contents need, at this width
 function pbFit(before = null) {
-  /* not the strike water card: it grows only as the brewer opens it, and nothing under a reaching hand moves in it */
-  const kp = $("#recipe .pbc, #recipe .cmp, #recipe .sw:not(.open):not(.swcard)");
+  const kp = $("#recipe .pbc, #recipe .cmp");
   if (!kp) { pbKeep = null; return; }
   kp.style.minHeight = "";
   if (document.fonts && document.fonts.status === "loading") { pbKeep = null; return; }
@@ -1682,31 +1680,28 @@ function brewQuestions() {
 }
 /* the title bar's question is one of them: BrewScribe's are titled "BrewScribe: …", so they go by its name */
 const brewAsks = (q, x) => q.has(x.title) || (x.title.startsWith("BrewScribe: ") && q.has("BrewScribe"));
-/* ---------- the strike water box (design/brewday/STRIKE-WATER.md) ----------
-   Under START, STOP and NEXT STEP (and COMPARE PROBES), from the recipe's loading until the malt goes in: how much
-   water goes to the mash tun and how hot, where the mash lands once the grain is in, and the forecast and its numbers.
-   It offers USE, which puts the strike temperature the forecast works out in the recipe for the strike water, and then
-   BACK TO, in the same place; not pressing it is Kal's way. It never changes anything by itself. It gives way to a
-   question or a panel in the same place, as they give way to each other.
+/* ---------- the strike water (design/brewday/STRIKE-WATER.md, STRIKE-CARD.md) ----------
+   Under START, STOP and NEXT STEP (and COMPARE PROBES), from the recipe's loading until the malt goes in, the strike
+   water card (cardHTML): the mash water, the strike and the HLT's water, and CraftBeerPi's check of where the mash
+   lands. It never changes anything by itself. It gives way to a question or a panel in the same place, as they give
+   way to each other.
    CraftBeerPi works its figures out (core's strike water helper: GET /step2/strike, and the topic "strike", whose state
-   is st.sw), and USE, BACK TO, the HLT's water and the grain's temperature are its calls. The demo makes the same state
-   from the mockup's numbers (strike-demo.js). The strike water step is a MashInStep on the HLT where the recipe has one;
-   without one it is a Ready by BrewStart, which heats the HLT itself and holds the water (BrewStart 1.3.0). Its
-   phases, by the recipe's place: "plan" while BrewStart is next or waits, "heat" while BrewStart or the strike water
-   step heats and holds the water, "moved" while MashIn on the Mash Tun brings the water to the rest before the malt. A
-   recipe without the brewer's flow in front (no strike water step) has the box only while it waits to start and the
-   HLT heats the strike water by hand; there USE sets the HLT's target, as SET would */
-/* the limits, in the brewery's unit: within half a degree the strike water is USE's (SW_SAME); a room's reading is
-   35-120 °F; a figure more than 27 °F above the rest is too far to trust, and so is one over MashInStep's ceiling, the
-   hottest strike water the box sets; with the pump stopped, a Mash Tun reading 3 °F over the forecast isn't the mash */
+   is st.sw), and each figure set on the card is its call. The demo makes the same state from the mockup's numbers
+   (strike-demo.js). The strike water step is a MashInStep on the HLT where the recipe has one; without one it is a
+   Ready by BrewStart, which heats the HLT itself and holds the water (BrewStart 1.3.0). Its phases, by the recipe's
+   place: "plan" while BrewStart is next or waits, "heat" while BrewStart or the strike water step heats and holds the
+   water, "moved" while MashIn on the Mash Tun brings the water to the rest before the malt. A recipe without the
+   brewer's flow in front (no strike water step) has the card only while it waits to start and the HLT heats the
+   strike water by hand; there the strike sets the HLT's target */
+/* the limits, in the brewery's unit: a room's reading is 35-120 °F; a strike more than 27 °F above the rest is more
+   than CraftBeerPi takes, and so is one over MashInStep's ceiling; with the pump stopped, a Mash Tun reading 3 °F over
+   where the mash lands isn't the mash */
 const swC = () => M.U === "°C";
-const swHalf = () => swC() ? 0.3 : 0.5;
 const swRoom = () => swC() ? [1.5, 49] : [35, 120];
 const swRise = () => swC() ? 15 : 27;
 /* the ceiling, as CraftBeerPi sends it in its state; one that doesn't send it has MashInStep's own, 179.6 °F (82 °C).
    A temperature is over it as CraftBeerPi counts it, to 0.1, the figure its button shows */
 const swCeil = () => num(st.sw && st.sw.ceiling) ?? (swC() ? 82 : 179.6);
-const swOverCeil = T => T != null && Math.round(T * 10) > Math.round(swCeil() * 10);
 const swDough = () => swC() ? 1.7 : 3;
 const swVU = () => (st.sw && st.sw.vol_unit) || "gal";
 const swMU = () => (st.sw && st.sw.mass_unit) || "lb";
@@ -1736,17 +1731,6 @@ const swRatioOf = (R, v) => waterRatio(swForGrain(R, v), swVU(), num(R.grain), s
 /* the mash water as the box and the MashIn row show it, "8.26 gal · 1.5 qt/lb for 20 lb", and its ratio */
 const swMashText = R => mashWaterText({water: num(R.strike_vol), forGrain: swForGrain(R, num(R.strike_vol)), vu: swVU(), grain: num(R.grain), mu: swMU(), C: swCU()});
 const swRatio = R => swRatioOf(R, num(R.strike_vol));
-/* the figures leave the HLT less than covers its element and coil (CraftBeerPi's warning hlt_low): one short line in
-   Note Amber, once, under the strike water box (swHTML) or in the MashIn row's box, until they no longer do; HLT water
-   less than the mash water (hlt_under) says that instead, and the sparge water line under the figures leaves it to
-   this one. It blocks nothing; the Hardware page's Least water line says where the minimum comes from */
-function swLowHTML(N) {
-  if (N.vol == null || N.gal == null) return "";
-  if (swWarns("hlt_under")) return `<p class="vover swlow">${hltUnderText(N.vol, N.gal, swVU())}</p>`;
-  return swWarns("hlt_low") ? `<p class="vover swlow">${hltLowText(N.vol - N.gal, swLeast().value, swVU())}</p>` : "";
-}
-/* CraftBeerPi warns of w: hlt_low, or hlt_under, the HLT water less than the mash water, said in its place */
-const swWarns = w => !!(st.sw && Array.isArray(st.sw.warnings) && st.sw.warnings.includes(w));
 /* the recipe's step ids, as START sends them, so CraftBeerPi changes only the recipe this screen shows */
 const swIds = () => M.RECIPE.steps.map(s => s.id).filter(x => x != null);
 /* the state belongs to the recipe this screen shows: one that hasn't caught up with it shows no box */
@@ -1788,12 +1772,7 @@ function swNumbers() {
   if (S.miss && S.miss !== "far") return Object.assign(N, {miss: S.miss});
   N.work = S.working || null;
   if (!A) return Object.assign(N, S.failed && !N.work ? {failed: S.failed} : {wait: true});
-  if (S.miss === "far" || A.use == null || swOverCeil(A.use)) return Object.assign(N, {miss: "far", strike: A.use});
-  /* the levers come a few minutes after USE: "working" while they are still coming, "ready" with them, and none come for
-     this answer once they failed, were overtaken by new numbers, or USE is too far above the rest */
-  const L = A.levers || null, lvs = A.levers_status || (L ? "ready" : null);
-  return Object.assign(N, {ok: true, stale: !!N.work, A: A.numbers || {}, strike: A.use, restPeak: A.rest_peak, lvWait: lvs === "working",
-    mid: L ? L.mid : null, top: L && Array.isArray(L.top) ? L.top : [], lv: (L && L.rise) || {}, fc: T => swFc(A, T)});
+  return Object.assign(N, {ok: true, stale: !!N.work, A: A.numbers || {}, strike: A.use, restPeak: A.rest_peak, fc: T => swFc(A, T)});
 }
 const swFc = (A, T) => T == null ? null : (A.forecasts || []).find(f => f && Math.round(f.strike * 10) === Math.round(T * 10)) || null;
 /* the mash step's name: the step CraftBeerPi takes the rest from (step_ids.mash_in), else the first on the mash tun */
@@ -1802,190 +1781,6 @@ function swMashName(S) {
   const s = (id != null && steps.find(x => String(x.id ?? x.n) === String(id))) || steps.find(x => x.k === "mt");
   return s ? s.n : "The mash step";
 }
-/* how long CraftBeerPi has been working USE out, on its brewing clock: counted on from its state as the timers are */
-function swElapsed() {
-  const S = st.sw, w = S && S.working;
-  if (!w) return 0;
-  const gone = DEMO_MODE ? 0 : Math.max(0, Date.now() - (S.received || Date.now())) / 1000 * (num(S.scale) || 1);
-  return Math.max(0, Math.floor((DEMO_MODE ? st.t : num(S.now) + gone) - num(w.since)));
-}
-const swSecs = s => s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${s % 60} s`;
-const swT = x => `${+(+x).toFixed(1)}&nbsp;${M.U}`;
-/* over the rest by the strike's doing: the forecast's highest point more than half a degree above both the rest and
-   where water heated only to the rest would take the mash, as CraftBeerPi counts a target reached */
-const swOver = (N, F) => F.peak > Math.max(N.rest, N.restPeak ?? N.rest) + swHalf();
-/* the other choice beside the strike water as planned: USE's temperature, until it is the one planned; then BACK TO's,
-   the temperature before the first USE, or the rest. None once the water has gone to the mash tun, nor where USE comes
-   out at the rest itself with the strike water at the rest already */
-function swAlt(N) {
-  if (!N.ok || N.strike == null || swPhase() === "moved") return null;
-  if (N.plan == null || Math.abs(N.plan - N.strike) >= swHalf()) return N.strike;
-  if (st.sw.was != null) return st.sw.was;
-  return Math.abs(N.plan - N.rest) < swHalf() ? null : N.rest;
-}
-/* what stands for the grain's temperature when none is given: the room, from the boil kettle's probe or given here */
-const swRoomSrc = N => N.roomFrom === "you" ? "the room's temperature given here" : "the boil kettle's probe";
-/* a figure's own box open in the strike water box, in its place */
-const swEditing = () => !!((st.swVol && st.swVol.at !== "row") || st.swGrain || (st.swRec && st.swRec.at !== "row"));
-const SW_GIVES = ["recipe", "probe", "room", "vol"];
-function swGives(N) {
-  if (N.failed || N.rest == null || ![N.miss, ...(N.misses || [])].every(k => SW_GIVES.includes(k))) return [];
-  const g = swAsks(N).filter(k => k === "room" ? N.misses.includes("probe") || N.misses.includes("room") : swRecFig(N, k) == null);
-  if (g.length && (N.miss === "vol" || N.misses.includes("vol") || N.vol == null)) g.push("vol");
-  return g;
-}
-/* the closed box is the one row with GIVE THEM (or GIVE IT) in FORECAST's place */
-function swGiveOpen() {
-  if (!st.sw) return false;
-  const N = swNumbers();
-  return !(N.ok || N.wait) && swGives(N).length > 0 && !swEditing();
-}
-/* the figures CraftBeerPi can't have without the brewer, given here: the recipe's grain weight and its strike water to
-   the mash tun (the mash water), kept with the loaded recipe (POST /step2/strike/recipe), and the room's temperature
-   for this brew, which stands for the room while the boil kettle's probe gives no reading a room can have (POST
-   /step2/strike/room). Each with its button's words, its box's label and line, its unit and decimal places, the range
-   CraftBeerPi takes, and its name in LOG's lines */
-const SW_REC = {
-  grain: {btn: "GRAIN WEIGHT", name: "Grain weight", places: 1, unit: () => swMU(), many: () => swMU() === "kg" ? "kilograms" : "pounds",
-    one: () => swMU() === "kg" ? "kilogram" : "pound", range: () => swMU() === "kg" ? [0.2, 90] : [0.5, 200],
-    help: "All the grain in the mash, as the recipe's grain bill has it. Kept with this recipe as given here, not as BeerSmith's."},
-  water: {btn: MASH_WATER.label, name: "Mash water", places: 2, unit: () => swVU(), many: () => swUnitWords()[0],
-    one: () => swUnitWords()[1], range: () => swVU() === "L" ? [2, 380] : [0.5, 100],
-    help: "Not the sparge. Kept with this recipe as given here, not as BeerSmith's."},
-  room: {btn: "ROOM", name: "Room temperature", places: 1, unit: () => M.U, many: () => M.U, one: () => "degree", range: () => swRoom(),
-    help: "Where the mash tun and the grain stand, for this brew. Used while the boil kettle's probe gives no reading a room can have; once it reads one again, the probe's is used."}
-};
-const swRecPlaces = k => SW_REC[k].places;
-/* a figure's value as CraftBeerPi has it now, whoever gave it, and whether it was given here */
-const swRecFig = (N, k) => k === "grain" ? num(N.R.grain) : k === "water" ? num(N.R.strike_vol) : N.roomGiven;
-const swRecGiven = (N, k) => k === "room" ? N.roomGiven != null : N.recTyped.includes(k);
-/* which to ask for: the recipe's figures CraftBeerPi lacks for USE, or gave here, while the recipe is what's missing; the
-   room while the probe can't stand for it, or the one given here stands for it. Only from a CraftBeerPi that takes them
-   (its recipe's typed, its room_from) */
-function swAsks(N) {
-  const out = [];
-  if (N.canRec && N.misses.includes("recipe") && N.rest != null) out.push(...["grain", "water"].filter(k => swRecFig(N, k) == null || swRecGiven(N, k)));
-  if (N.canRoom && (N.misses.includes("probe") || N.misses.includes("room") || N.roomFrom === "you")) out.push("room");
-  return out;
-}
-/* the figure's box, as the HLT water's: −1 −.1, the number, +.1 +1, then SET and CANCEL. The room given has THE PROBE
-   too, which takes it back. The mash water's names itself as MASH WATER, the strike water that goes to the mash tun,
-   with HLT WATER and the sparge water left beside it, and takes its water-to-grain ratio instead where the grain weight
-   is known (swRatioHTML); SET sets a figure that leaves the HLT less than covers its element and coil too, and the
-   box closes on the one line saying so (swLowHTML). Opened with no figure, it is filled with CraftBeerPi's suggestion
-   from BeerSmith's data where there is one (swSuggest), saying where it comes from; SET takes it, and nothing is kept
-   before */
-function swRecHTML(N) {
-  const e = st.swRec, k = e.kind, D = SW_REC[k], q = D.places, v = e.val, x = v == null ? "" : v.toFixed(q), pend = st.pend.swr;
-  const why = st.link === "lost" ? PAUSED : pend ? WAIT : "", dis = why ? ` aria-disabled="true" data-why="${esc(why)}"` : "";
-  const key = (d, l) => `<button type="button" data-cmd="swr:step:${d}" aria-label="${l}">${d < 0 ? "−" : "+"}${Math.abs(d) === 1 ? "1" : ".1"}</button>`;
-  const back = k === "room" && N.roomGiven != null ? `<button type="button" class="swprobe" data-cmd="swr:back"${dis}>${pend === "back" ? "SETTING…" : "THE PROBE"}<small>the ${swT(N.roomGiven)} given taken back</small></button>` : "";
-  const water = k === "water", sug = e.sug && v != null && Math.abs(v - e.sug.value) < 0.5 / 10 ** q ? ` Suggested ${esc(e.sug.says)}: SET keeps it.` : "";
-  const label = water ? `<span class="swvk">${MASH_WATER.label}</span><span class="swvs">: ${MASH_WATER.says}, in ${D.many()}</span>` : `${D.name}, in ${D.many()}`;
-  const more = water ? `<p class="swvo" id="swr-o">${swRecOther(N, v)}</p>${swRatioHTML(N, v)}<p class="vover" id="swr-w" aria-live="polite">${swRecWarn(N, v)}</p>` : "";
-  return `<div class="editor swvol" role="group" aria-labelledby="swr-l"><label class="swvl" id="swr-l" for="swrin">${label}</label>`
-    + `<p class="swvh" id="swr-h">${D.help}${sug}</p>`
-    + `${key(-1, `1 ${D.one()} less`)}${key(-0.1, `0.1 ${D.one()} less`)}<input id="swrin" inputmode="decimal" autocomplete="off" value="${x}" aria-describedby="swr-h${water ? " swr-o swr-w" : ""}">${key(0.1, `0.1 ${D.one()} more`)}${key(1, `1 ${D.one()} more`)}`
-    + `${more}<button type="button" class="ok" data-cmd="swr:set"${dis}>${pend === "set" ? "SETTING…" : `SET <span id="swrok">${x || "– –"}</span> ${D.unit()}`}</button><button type="button" class="no" data-cmd="swr:x">CANCEL</button>${back}</div>`;
-}
-/* beside the mash water being given: HLT WATER, the other figure, and under them the sparge water it leaves */
-function swRecOther(N, v) {
-  const vu = swVU();
-  if (N.vol == null) return `${HLT_WATER.label}: not given yet.`;
-  return `${HLT_WATER.label}: ${volText(N.vol, vu)}.${v != null ? ` ${spargeText(N.vol, v, vu)}.` : ""}`;
-}
-/* the mash water being given with a ratio no usual mash has: said, never refused. The ratio by the one rule (swRatioOf) */
-function swRecWarn(N, v) {
-  return ratioWarning(swRatioOf(N.R, v), swCU());
-}
-/* the ratio, typed instead of the mash water: it fills the water from the grain weight, BeerSmith's water under the false
-   bottom added, and the water typed shows the ratio it gives. Without a grain weight, what it needs */
-function swRatioHTML(N, v) {
-  const g = num(N.R.grain), C = swCU(), u = ratioUnit(C);
-  if (g == null) return `<p class="swvo swvq" id="swr-q">The ratio needs the grain weight: give it with GRAIN WEIGHT.</p>`;
-  const q = swRatioOf(N.R, v);
-  return `<p class="swvq"><label for="swrq">or as a ratio, in ${u}</label><input id="swrq" inputmode="decimal" autocomplete="off" value="${q == null ? "" : +q.toFixed(2)}" aria-describedby="swr-q">`
-    + `<span id="swr-q">for ${massText(g, swMU())}</span></p>`;
-}
-/* a figure given here (swRecHTML): SET sends it, and CraftBeerPi works USE out from it at once; changed back the same way,
-   so nothing asks first. One no brew comes near is refused here, as CraftBeerPi refuses it. A recipe changed or gone, or
-   a figure BeerSmith gave meanwhile, closes the box; one out of range keeps it open with the figure, to be put right */
-function swRec(x, y, at) {
-  const N = swNumbers(), e = st.swRec;
-  if (x === "open") {
-    st.swVol = null;
-    st.swGrain = null;
-    st.swRec = {kind: y, val: swRecFig(N, y), at: at === "row" ? "row" : "box"};
-    if (st.swRec.val == null && (y === "water" || y === "grain")) swSuggest(st.swRec);
-    renderAll();
-    return swOpened("#swrin");
-  }
-  if (x === "x") { st.swRec = null; return renderAll(); }
-  if (!e || st.pend.swr) return;
-  const k = e.kind, D = SW_REC[k], q = D.places, U = D.unit(), was = swRecFig(N, k), given = swRecGiven(N, k), [lo, hi] = D.range();
-  const fmt = v => `${v.toFixed(q)} ${U}`, small = D.name.toLowerCase();
-  if (x === "step") {
-    const from = e.val ?? (k === "room" ? (M.U === "°C" ? 20 : 68) : 0);
-    e.val = Math.max(0, Math.round((from + parseFloat(y)) * 10 ** q) / 10 ** q);
-    e.typed = true;
-    return renderAll();
-  }
-  const refused = head => (d, status) => {
-    if (status === 400) return d.error === "out_of_range" ? `${head}: it has to be between ${num(d.low) ?? lo} and ${num(d.high) ?? hi} ${U}.` : "";
-    if (d.error === "beersmith") { st.swRec = null; return `${head}: the recipe has BeerSmith's own, which stays.`; }
-    const why = d.error === "recipe_changed" || d.error === "off" ? swWhyNot(d) : "";
-    if (why) st.swRec = null;
-    return why ? `${head}: ${why}.` : "";
-  };
-  const fail = `The ${small} did not change. ${given && was != null ? `It is still ${fmt(was)}.` : "None is given yet."}`;
-  if (x === "back") {
-    if (N.roomGiven == null) { st.swRec = null; return renderAll(); }
-    const label = `Room temperature from the boil kettle's probe, the ${fmt(N.roomGiven)} given taken back`;
-    if (DEMO_MODE) return send("swr", "back", label, swDemoRec("room", null));
-    return swExec("swr", "back", label, () => api.strikeRoom(null, swIds()), {ok: () => { st.swRec = null; return label; },
-      refused: refused(`The ${fmt(N.roomGiven)} given wasn't taken back`), fail});
-  }
-  const v = e.val;
-  if (v == null) return note("r", `Type the ${small}, in ${D.many()}.`);
-  if (v < lo || v > hi) return note("r", `The ${small} has to be between ${lo} and ${hi} ${U}.`);
-  if (given && was != null && Math.abs(v - was) < 0.5 / 10 ** q) { st.swRec = null; return renderAll(); }
-  /* BeerSmith's own figure, changed here, where CraftBeerPi keeps BeerSmith's beside it (recipe.changed) */
-  const edit = k !== "room" && !given && was != null && N.R.changed && typeof N.R.changed === "object";
-  const sug = e.sug && Math.abs(v - e.sug.value) < 0.5 / 10 ** q ? `, ${e.sug.says}` : "";
-  const label = `${D.name} set to ${fmt(v)} ${k === "room" ? "for this brew" : "for this recipe"}${given && was != null ? `, was ${fmt(was)}` : edit ? `, was BeerSmith's ${fmt(was)}` : sug}`;
-  if (DEMO_MODE) return send("swr", "set", label, swDemoRec(k, v));
-  const body = Object.assign(k === "grain" ? {grain: v} : {strike_vol: v}, edit ? {edit: true} : {});
-  swExec("swr", "set", label, () => k === "room" ? api.strikeRoom(v, swIds()) : api.strikeRecipe(body, swIds()), {
-    ok: d => { st.swRec = null; return k === "room" && d.applied && d.applied.used === false ? `${label}: kept aside, as the boil kettle's probe reads the room` : label; },
-    refused: refused(`The ${small} wasn't set to ${fmt(v)}`), fail
-  });
-}
-/* the grain weight's or the mash water's box opened with no figure: CraftBeerPi's suggestion from BeerSmith's data (GET
-   /step2/strike/suggest: the recipe's own BeerSmith file, the same recipe imported again into the Recipe Book, or
-   BeerSmith's mash ratio times the grain weight) fills it, with where it comes from, unless something was typed first.
-   Nothing is kept until SET. With no suggestion, or a CraftBeerPi that has none to give, the box stays empty */
-function swSuggest(e) {
-  if (DEMO_MODE) return;
-  const g = gen, k = e.kind, q = SW_REC[k].places;
-  api.strikeSuggest().then(r => {
-    if (g !== gen || st.swRec !== e || e.val != null || e.typed || !r.ok || !r.data || typeof r.data !== "object") return;
-    const S = r.data[k === "water" ? "strike_vol" : "grain"], v = S && num(S.value);
-    if (v == null || !(v > 0)) return;
-    e.val = Math.round(v * 10 ** q) / 10 ** q;
-    e.sug = {value: e.val, says: String(S.says || "from BeerSmith's data")};
-    renderAll();
-    const i = root && $("#swrin");
-    if (i && document.activeElement !== i) { i.focus(); i.select(); }
-  }, () => {});
-}
-/* a grain temperature in LOG's words: BrewStart's can be saved as something that isn't a number */
-const swGrainSays = t => Number.isFinite(t) ? `${t.toFixed(1)} ${M.U}` : "not a number";
-/* the strike water as planned without its forecast yet, changed elsewhere (its Temp edited on Brew Steps, or by hand
-   the HLT's target set): CraftBeerPi sends one within a second or so, and the screen doesn't ask for it. MASH says it
-   is working out for the first SW_FC_WAIT ms (swFcGap: that strike, and since when), then shows its dashes alone, so
-   nothing claims to be working when nothing comes */
-const SW_FC_WAIT = 10000;
-let swFcGap = null;
 /* Campden tablets, as BrewStart writes them (format_tablets): quarters, ¼ to ¾, after the whole ones */
 const QUARTERS = ["", "¼", "½", "¾"];
 function swTablets(x) {
@@ -1993,164 +1788,11 @@ function swTablets(x) {
   return `${whole ? whole : ""}${QUARTERS[rest]}` || "0";
 }
 const swCampdenText = x => `${swTablets(x)} tablet${x > 1 ? "s" : ""}`;
-/* the HLT's water, typed or stepped as in TARGET's box: −1 −.1, the number, +.1 +1, then SET and CANCEL. Its label gives
-   the unit, and the line under it says what the figure is (WAI's form instructions) */
-const swUnitWords = () => swVU() === "L" ? ["litres", "litre"] : ["gallons", "gallon"];
-function swVolHTML(N) {
-  const v = st.swVol.val, x = v == null ? "" : v.toFixed(1), pend = st.pend.swv, why = st.link === "lost" ? PAUSED : pend ? WAIT : "", [many, one] = swUnitWords();
-  const key = (d, l) => `<button type="button" data-cmd="swv:step:${d}" aria-label="${l}">${d < 0 ? "−" : "+"}${Math.abs(d) === 1 ? "1" : ".1"}</button>`;
-  return `<div class="editor swvol" role="group" aria-labelledby="swv-l"><label class="swvl" id="swv-l" for="swvin"><span class="swvk">${HLT_WATER.label}</span><span class="swvs">: ${HLT_WATER.says}, in ${many}</span></label>`
-    + `<p class="swvh" id="swv-h">${swBrewStart() ? "It is BrewStart's water volume, which also sets the Campden dose." : "What is in the HLT now."}</p>`
-    + `${key(-1, `1 ${one} less`)}${key(-0.1, `0.1 ${one} less`)}<input id="swvin" inputmode="decimal" autocomplete="off" value="${x}" aria-describedby="swv-h swv-o swv-over">${key(0.1, `0.1 ${one} more`)}${key(1, `1 ${one} more`)}`
-    + `<p class="swvo" id="swv-o">${swVolOther(N, v)}</p><p class="vover" id="swv-over" aria-live="polite">${hltOver(v, swVU())}</p>`
-    + `<button type="button" class="ok" data-cmd="swv:set"${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}>${pend ? "SETTING…" : `SET <span id="swvok">${x || "– –"}</span> ${swVU()}`}</button><button type="button" class="no" data-cmd="swv:x">CANCEL</button></div>`;
-}
-/* beside the HLT water being given: MASH WATER, the other figure, and under them the sparge water it leaves */
-function swVolOther(N, v) {
-  const vu = swVU();
-  if (N.gal == null) return `${MASH_WATER.label}: not given yet.`;
-  return `${MASH_WATER.label}: ${swMashText(N.R)}.${v != null ? ` ${spargeText(v, N.gal, vu)}.` : ""}`;
-}
-/* a small box opening in FORECAST's details: they are drawn from their top, as the box opens in its place, and the
-   input's focus then brings the box into view (the mockup draws them afresh) */
-function swOpened(input) {
-  const d = root && $("#sw-det");
-  if (d) d.scrollTop = 0;
-  return setTimeout(() => { const i = root && $(input); if (i) { i.focus(); i.select(); } }, 0);
-}
-/* the HLT's water (swVolHTML): SET writes BrewStart's water volume where the recipe has BrewStart, or by hand the figure
-   CraftBeerPi keeps for the brew day, and CraftBeerPi works USE out again for it. It can be changed back the same way,
-   so nothing asks first. Water that leaves the HLT less than covers its element and coil once the mash water has gone
-   is set too, and so is water less than the mash water: the box closes on the one line saying so (swLowHTML) */
-function swVol(x, y) {
-  const N = swNumbers(), e = st.swVol, VU = swVU();
-  if (x === "open") {
-    st.swGrain = null;
-    st.swRec = null;
-    st.swVol = {val: N.vol, at: y === "row" ? "row" : "box"};
-    renderAll();
-    return swOpened("#swvin");
-  }
-  if (x === "x") { st.swVol = null; return renderAll(); }
-  if (!e || st.pend.swv) return;
-  if (x === "step") { e.val = Math.max(0, Math.round(((e.val ?? N.gal ?? 0) + parseFloat(y)) * 10) / 10); return renderAll(); }
-  const v = e.val, was = N.vol;
-  if (v == null) return note("r", `Type how much water is in the HLT, in ${swUnitWords()[0]}.`);
-  if (was != null && Math.abs(v - was) < 0.05) { st.swVol = null; return renderAll(); }
-  const label = `HLT water set to ${v.toFixed(1)} ${VU}${was != null ? `, was ${was.toFixed(1)} ${VU}` : ""}`;
-  if (DEMO_MODE) {
-    /* while BrewStart's Campden reminder is on, LOG gives the dose for the new water, as BrewStart works it out */
-    const {S, bi} = swDemoSteps(), camp = bi >= 0 && S[bi].campden ? ` · Campden ${swCampdenText(SWD.campdenTablets(v))}` : "";
-    return send("swv", "set", label + camp, () => { if (bi >= 0) S[bi].vol = v; else st.swd.vol = v; st.swVol = null; swRework("vol"); });
-  }
-  swExec("swv", "set", label, () => api.strikeWater(v, swIds()), {
-    ok: d => {
-      st.swVol = null;
-      const a = d.applied || {}, to = num(a.to) ?? v, from = num(a.from), c = num(a.campden);
-      return `HLT water set to ${to.toFixed(1)} ${VU}${from != null ? `, was ${from.toFixed(1)} ${VU}` : ""}${c != null && c > 0 ? ` · Campden ${swCampdenText(c)}` : ""}`;
-    },
-    /* under the strike water, the box stays open with the figure, to be put right; a recipe changed or gone closes it */
-    refused: (d, status) => {
-      const head = `The HLT's water wasn't set to ${v.toFixed(1)} ${VU}`;
-      if (status === 400) return "";
-      const why = d.error === "recipe_changed" || d.error === "off" ? swWhyNot(d) : "";
-      if (why) st.swVol = null;
-      return why ? `${head}: ${why}.` : "";
-    },
-    fail: `The HLT's water did not change. ${was == null ? "None is given yet." : `It is still ${was.toFixed(1)} ${VU}.`}`
-  });
-}
-/* the grain's temperature: SET writes BrewStart's grain temperature where the recipe has BrewStart, or by
-   hand the figure CraftBeerPi keeps for the brew day, and THE PROBE blanks it; either way CraftBeerPi works USE out
-   again. Changed back the same way, so nothing asks first. A figure no room has is refused, as COMPARE PROBES counts a
-   reading like that a probe looking off. One saved on BrewStart that the forecast can't use (bad) opens the box at the
-   probe's reading, and LOG says what it was: its figure, or "not a number". Each also answers where the grain spent
-   the night, as BrewStart's box asks it (place, core post59): a figure is indoors, the probe the garage. While that
-   isn't answered yet on a recipe with BrewStart, IN THE GARAGE answers it, and SET answers indoors even with the same
-   figure, its LOG line saying so ("Grain indoors at 61.4 °F") */
-function swGrain(x, y) {
-  const N = swNumbers(), e = st.swGrain, U = M.U, [lo, hi] = swRoom(), bad = N.miss === "grain", ask = bsGrainAsk();
-  if (x === "open") {
-    st.swVol = null;
-    st.swRec = null;
-    st.swGrain = {val: !bad && Number.isFinite(N.typed) ? N.typed : N.room};
-    renderAll();
-    return swOpened("#swgin");
-  }
-  if (x === "x") { st.swGrain = null; return renderAll(); }
-  if (!e || st.pend.swg) return;
-  if (x === "step") { e.val = Math.round(((e.val ?? N.grain ?? N.room ?? 0) + parseFloat(y)) * 10) / 10; return renderAll(); }
-  const was = bad || N.typed != null ? swGrainSays(N.typed) : null, src = swRoomSrc(N);
-  /* a call that fails leaves the grain's temperature as it is: the figure in use, or the room's */
-  const fail = `The grain's temperature did not change. It is still ${was || `${N.roomFrom === "you" ? "the room's given here" : "the boil kettle's probe's"}, ${f1(N.room)} ${U}`}.`;
-  /* a recipe changed or gone closes the box; a figure out of range keeps it open with the figure, to be put right */
-  const refused = head => (d, status) => {
-    if (status === 400) return d.error === "out_of_range" ? `${head}: it has to be between ${num(d.low) ?? lo} and ${num(d.high) ?? hi} ${U}.` : "";
-    const why = d.error === "recipe_changed" || d.error === "off" ? swWhyNot(d) : "";
-    if (why) st.swGrain = null;
-    return why ? `${head}: ${why}.` : "";
-  };
-  if (x === "probe") {
-    if (N.typed == null && !bad && !ask) { st.swGrain = null; return renderAll(); }
-    const label = ask ? `Grain in the garage: the boil kettle's probe, ${f1(st.v.bk.pv)} ${U}` : `Grain temperature from ${src}, was ${was}`;
-    if (DEMO_MODE) return send("swg", "probe", label, swDemoGrain(null));
-    return swExec("swg", "probe", label, () => api.strikeGrain(null, swIds(), "garage"), {ok: () => { st.swGrain = null; return label; },
-      refused: refused(`The grain's temperature wasn't changed to ${src}`), fail});
-  }
-  const v = e.val;
-  if (v == null) return note("r", `Type the grain's temperature, in ${U}.`);
-  if (v < lo || v > hi) return note("r", `The grain's temperature has to be between ${lo} and ${hi} ${U}.`);
-  if (!bad && !ask && N.typed != null && Math.abs(v - N.typed) < 0.05) { st.swGrain = null; return renderAll(); }
-  const label = ask ? `Grain indoors at ${v.toFixed(1)} ${U}` : `Grain temperature set to ${v.toFixed(1)} ${U}, was ${was || src}`;
-  if (DEMO_MODE) return send("swg", "set", label, swDemoGrain(v));
-  swExec("swg", "set", label, () => api.strikeGrain(v, swIds()), {
-    ok: d => {
-      st.swGrain = null;
-      const a = d.applied || {}, to = num(a.to) ?? v, from = num(a.from);
-      return ask ? `Grain indoors at ${to.toFixed(1)} ${U}` : `Grain temperature set to ${to.toFixed(1)} ${U}, was ${from != null ? `${from.toFixed(1)} ${U}` : bad ? was : src}`;
-    },
-    refused: refused(`The grain's temperature wasn't set to ${v.toFixed(1)} ${U}`), fail
-  });
-}
-/* FORECAST's chart, as the graphs draw theirs: the mash's temperature for an hour from the grain going in, on the PID
-   windows' black face. The rest in Setpoint Green; the band the forecast spans for the strike water as planned, in the
-   readings' red, or Prompt Amber when it goes over the rest; the other choice's band as a grey dashed outline. Degrees
-   down the right-hand side, minutes along the foot. While USE is worked out again, the bands are the last answer's, in
-   the stale grey */
-function drawSw() {
-  const box = root && $("#swc");
-  if (!box || !st.sw) return;
-  const N = swNumbers();
-  if (!N.ok) return;
-  const w = Math.floor(box.clientWidth), h = Math.floor(box.clientHeight);
-  if (w < 60 || h < 40) return;
-  const alt = swAlt(N), P = N.plan != null ? N.fc(N.plan) : null, Q = alt != null ? N.fc(alt) : null, all = [P, Q].filter(Boolean);
-  if (!all.length) { box.innerHTML = ""; return; }
-  const lo = Math.min(...all.map(F => Math.min(...F.lo))) - 1, hi = Math.max(N.rest + 1.5, ...all.map(F => Math.max(...F.hi) + 0.8));
-  const yT = 6, yB = h - 20, X = i => 1 + i / 60 * (w - 2), Y = T => yB - (T - lo) / (hi - lo) * (yB - yT), q = v => v.toFixed(1);
-  const gs = [1, 2, 5, 10].find(s => (yB - yT) * s / (hi - lo) >= 22) || 10;
-  let grid = "", gl = "", tl = "";
-  for (let v = Math.ceil(lo / gs) * gs; v <= hi; v += gs) {
-    const y = Y(v);
-    if (y < yT + 10 || y > yB - 4) continue;
-    grid += `M0 ${q(y)}H${w}`;
-    if (Math.abs(Y(N.rest) - y) >= 14) gl += `<text x="${w - 4}" y="${q(y - 3)}" text-anchor="end">${v}</text>`;
-  }
-  for (const m of [0, 15, 30, 45, 60]) {
-    if (m > 0 && m < 60) grid += `M${q(X(m))} ${yT}V${yB}`;
-    tl += `<text x="${q(m === 0 ? 3 : m === 60 ? w - 3 : X(m))}" y="${h - 5}" text-anchor="${m === 0 ? "start" : m === 60 ? "end" : "middle"}">${m === 0 ? "GRAIN IN" : m === 60 ? "60 MIN" : m}</text>`;
-  }
-  const edge = a => a.map((v, i) => `${i ? "L" : "M"}${q(X(i))} ${q(Y(v))}`).join("");
-  const band = (F, cls) => `<path class="swb${cls}" d="${edge(F.hi)}${F.lo.map((v, i) => `L${q(X(60 - i))} ${q(Y(F.lo[60 - i]))}`).join("")}Z"/><path class="swe${cls}" d="${edge(F.hi)}"/><path class="swe${cls}" d="${edge(F.lo)}"/>`;
-  box.innerHTML = `<svg${N.stale ? ' class="stale"' : ""} viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true" focusable="false"><path class="g-grid" d="${grid}"/>`
-    + `${Q ? band(Q, " alt") : ""}${P ? band(P, swOver(N, P) ? " hot" : "") : ""}<path class="g-sv" d="M0 ${q(Y(N.rest))}H${w}"/>`
-    + `<text class="swrl" x="${w - 4}" y="${q(Y(N.rest) - 4)}" text-anchor="end">${+N.rest.toFixed(1)} ${M.U} REST</text>${gl}${tl}</svg>`;
-}
 /* the strike water card (cardHTML), from the recipe's loading until the malt goes in, while nothing else in the column
    that asks for the brewer is open: it says its own warnings, once */
 function swHTML() {
   const phase = swPhase();
-  if (!phase || st.pbOpen || st.cmpOpen || st.confirmNext || st.confirmReset || st.confirmUnload || st.bsOpen || st.mwOpen) return "";
+  if (!phase || st.pbOpen || st.cmpOpen || st.confirmNext || st.confirmReset || st.confirmUnload || st.bsOpen) return "";
   return cardHTML(phase);
 }
 /* ---------- the strike water card (design/brewday STRIKE-CARD.md) ----------
@@ -2256,7 +1898,7 @@ function cxNow(k, N, K) {
   }
   if (k === "strike") {
     const from = bssFrom(N.plan, K);
-    return {v: N.plan, tag: BSS_TAG[from], say: from === "rest" ? "the rest" : from === "check" ? "the check's" : from === "bs" ? "BeerSmith's" : "yours", amb: from === "bs" && K.stale,
+    return {v: N.plan, tag: N.plan == null ? "not given" : BSS_TAG[from], say: from === "rest" ? "the rest" : from === "check" ? "the check's" : from === "bs" ? "BeerSmith's" : "yours", amb: from === "bs" && K.stale,
       back: K.bs != null && N.plan != null && Math.abs(N.plan - K.bs) >= 0.05 ? K.bs : null, backSays: "BEERSMITH'S"};
   }
   if (k === "hlt") {
@@ -2331,9 +1973,9 @@ function cardCheck(N) {
   const S = st.sw, off = swC() ? 0.5 : 1;
   if (N.miss && N.miss !== "far") return {st: "miss", m: N.miss};
   if (S.failed && !S.working) return {st: "failed"};
-  /* no strike in use to land the mash with (no strike water step, nor the HLT's target by hand): what the recipe still
-     needs, in the check's words, as with a figure it lacks */
-  if (N.plan == null && !S.working && (S.answer || S.check)) return {st: "miss", m: "recipe"};
+  /* no strike to land the mash with (BrewStart, or by hand the HLT, with no temperature): said as what it needs, before
+     the recipe's figures */
+  if (N.plan == null && !S.working) return {st: "miss", m: "strike"};
   if (!("check" in S)) {
     if (N.work) return {st: N.ok ? "work" : "wait"};
     const F = N.ok && N.plan != null ? N.fc(N.plan) : null;
@@ -2349,6 +1991,7 @@ function cardCheck(N) {
 }
 /* what the check still needs, in a few words */
 function cardNeeds(N, m) {
+  if (m === "strike") return "needs the strike";
   if (m === "vol") return N.vol == null ? "needs the HLT water" : "needs more HLT water";
   if (m === "probe" || m === "room") return "needs the room temperature";
   if (m === "grain") return `grain at ${f1(N.typed)} ${M.U} can't be right`;
@@ -2368,6 +2011,7 @@ function cardChkRow(N, K, C) {
   else {
     says = cardNeeds(N, C.m); cls = " quiet";
     if (!open && C.m === "vol") cmd = "sx:open:hlt";
+    else if (!open && C.m === "strike" && !cxWhy("strike")) cmd = "sx:open:strike";
     else if (!open && C.m === "recipe" && N.rest != null && N.gal == null) cmd = "sx:open:water";
   }
   const toggles = cmd === "sx:chk", plain = says.replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ");
@@ -2487,7 +2131,7 @@ function cxCmd(x, y) {
   const e = st.sx;
   if (!e || st.pend.sx) return;
   if (x === "step") {
-    const q = cxDef(e.k).places, from = e.val ?? cxNow(e.k, N, K).v ?? (e.k === "hlt" ? N.gal : null) ?? (cxDef(e.k).unit === M.U ? (swC() ? 20 : 68) : 0);
+    const q = cxDef(e.k).places, from = e.val ?? cxNow(e.k, N, K).v ?? (e.k === "hlt" ? N.gal : e.k === "strike" ? K.R : null) ?? (cxDef(e.k).unit === M.U ? (swC() ? 20 : 68) : 0);
     e.val = Math.max(0, Math.round((from + parseFloat(y)) * 10 ** q) / 10 ** q);
     return renderAll();
   }
@@ -2566,96 +2210,21 @@ function cxSend(k, v, how) {
     return swExec("sx", dir, label, () => api.strikeRoom(back ? null : v, swIds()), {ok: done(label), refused: cxRefused(k, v), fail});
   }
 }
-/* USE waiting for the grain (swHTML) leads to the answer: while BrewStart's row is the way to its box, that box, with
-   focus on IN THE GARAGE and back on USE as it closes; once BrewStart heats or has finished, the strike water box's own
-   grain box, in its details */
-function swWhere() {
-  const bi = bsIdx();
-  if (bi >= 0 && bsLive(bi)) return bsOpen({focus: "garage", from: "use"});
-  st.swOpen = true;
-  swGrain("open");
-}
-/* USE: CraftBeerPi's call puts the temperature in the strike water step, and in BrewStart's while it is next or waits,
-   so Ready by plans for it; and while the strike water step heats or holds the water (BrewStart heating included), in
-   the HLT's target too. A question already up from the old temperature goes, and the step asks again at the new one. By
-   hand it sets the HLT's target alone, as SET does. BACK TO undoes it the same way, to the temperature before the first
-   USE. A figure worked out from numbers since changed on another screen is refused, and said (swRefusal) */
-function swUse() {
-  const N = swNumbers();
-  if (!N.ok || N.stale || st.pend.sw) return;
-  const to = N.strike, from = N.plan, U = M.U;
-  const label = N.step ? `Strike water set to ${to.toFixed(1)} ${U}${from != null ? `, was ${from.toFixed(1)} ${U}` : ""}`
-    : `${M.VNAME.hlt} target ${to.toFixed(1)} ${U} for the strike water${from != null ? `, was ${from.toFixed(1)} ${U}` : ""}`;
-  if (DEMO_MODE) return send("sw", "use", label, () => { if (st.swd.was == null) st.swd.was = from; swSet(to); });
-  const before = Object.assign({}, st.sw.inputs), what = `USE ${to.toFixed(1)} ${U}`;
-  swExec("sw", "use", label, () => api.strikeUse(to, st.sw.answer && st.sw.answer.plan, swIds()), {
-    ok: d => swApplied(d.applied, "use") || label,
-    refused: d => d.error === "plan_changed" ? swRefusal(to, swChanged(before, (d.strike || {}).inputs || {}), d.working ? null : num(d.use))
-      : d.error === "missing" ? `${what} wasn't applied: a number it's worked out from is missing now.` : swNotApplied(what, d),
-    fail: swStill(N)
-  });
-}
-/* the refusal in words: what wasn't applied, what changed, and the figure now (none while it is worked out again). The
-   window shows the strike water still as it was */
-function swRefusal(sent, what, use) {
-  return `USE ${sent.toFixed(1)} ${M.U} wasn't applied: ${what}, ${use == null ? "and CraftBeerPi is working USE out again" : `so USE is ${use.toFixed(1)} ${M.U}`}.`;
-}
-/* what changed between two sets of numbers, in words */
-function swChanged(a, z) {
-  const by = swBrewStart(), U = M.U;
-  if ((a.typed ?? null) !== (z.typed ?? null)) return z.typed == null ? `the grain's temperature is the boil kettle's probe's again, ${num(z.grain) != null ? num(z.grain).toFixed(1) : "– –"} ${U}` : `${by ? "BrewStart's grain temperature" : "the grain's temperature"} is now ${(+z.typed).toFixed(1)} ${U}`;
-  if (Math.abs((a.vol ?? 0) - (z.vol ?? 0)) >= 0.05 && z.vol != null) return `${by ? "BrewStart's water volume" : "the HLT's water"} is now ${(+z.vol).toFixed(1)} ${swVU()}`;
-  if (Math.abs((a.room ?? 0) - (z.room ?? 0)) >= 0.05 && z.room != null) return `the room is now ${(+z.room).toFixed(1)} ${U}`;
-  return "the numbers it is worked out from changed";
-}
-function swBack() {
-  const N = swNumbers(), to = st.sw.was ?? N.rest, U = M.U;
-  if (st.pend.sw || to == null) return;
-  const label = N.step ? `Strike water set back to ${to.toFixed(1)} ${U}` : `${M.VNAME.hlt} target back to ${to.toFixed(1)} ${U}`;
-  if (DEMO_MODE) return send("sw", "back", label, () => { st.swd.was = null; swSet(to); });
-  swExec("sw", "back", label, () => api.strikeBack(to, swIds()), {
-    ok: d => swApplied(d.applied, "back") || label,
-    refused: d => d.error === "back_changed" ? swBackChanged(to, d) : swNotApplied(`BACK TO ${to.toFixed(1)} ${U}`, d),
-    fail: swStill(N)
-  });
-}
-/* USE or BACK TO failed: what is still in force, the strike water as planned, or by hand the HLT's target, in SET's
-   words */
-const swStill = N => `${N.step ? "The strike water" : `The ${M.VNAME.hlt.toLowerCase()} target`} did not change. It is still ${f1(N.plan)} ${M.U}.`;
-/* BACK TO refused because another screen has moved the strike water since: what is in force now, from the state the
-   refusal brings */
-function swBackChanged(to, d) {
-  const S = d.strike && typeof d.strike === "object" ? d.strike : st.sw, now = num(S && S.inputs && S.inputs.planned);
-  return `BACK TO ${to.toFixed(1)} ${M.U} wasn't applied: ${S && S.by === "hand" ? "the HLT's target" : "the strike water"} was changed on another screen.${now != null ? ` It's ${now.toFixed(1)} ${M.U} now.` : ""}`;
-}
-/* the LOG line for what CraftBeerPi applied, in its own figures */
-function swApplied(a, how) {
-  if (!a || num(a.to) == null) return "";
-  const to = num(a.to), from = num(a.from), U = M.U, hand = a.by === "hand";
-  if (how === "back") return hand ? `${M.VNAME.hlt} target back to ${to.toFixed(1)} ${U}` : `Strike water set back to ${to.toFixed(1)} ${U}`;
-  return hand ? `${M.VNAME.hlt} target ${to.toFixed(1)} ${U} for the strike water${from != null ? `, was ${from.toFixed(1)} ${U}` : ""}`
-    : `Strike water set to ${to.toFixed(1)} ${U}${from != null ? `, was ${from.toFixed(1)} ${U}` : ""}`;
-}
-/* why CraftBeerPi refused a strike water call from a screen that hadn't caught up with it, as START's refusal says it:
-   the water already in the mash tun (409 moved), the box no longer applying (409 off, why), the recipe changed on
-   another screen (409 recipe_changed, decided from its name and steps as START's is: none, unloaded; the same name,
-   changed; another, another loaded), or USE or BACK TO over the ceiling (400 too_hot, with CraftBeerPi's own figure).
-   None for an answer that isn't one of these: the call has failed. sample_time is for a CraftBeerPi that sends the
-   mash tun's control interval as off rather than as a number missing */
+/* why CraftBeerPi refused a strike water call (409) from a screen that hadn't caught up with it, as START's refusal says
+   it: the water already in the mash tun (moved), the card no longer applying (off, why), or the recipe changed on
+   another screen (recipe_changed, decided from its name and steps as START's is: none, unloaded; the same name,
+   changed; another, another loaded). None for an answer that isn't one of these: the call has failed */
 const SW_OFF = {no_recipe: "no recipe is loaded now", malt_in: "the malt is already in", not_herms: "the mash tun no longer runs PID_HERMS",
-  sample_time: "the forecast can't use the mash tun's control interval now", no_mash_in: "the recipe's first mash tun step isn't MashIn now",
+  no_mash_in: "the recipe's first mash tun step isn't MashIn now",
   no_mash_tun: "CraftBeerPi doesn't find the mash tun now", no_hlt: "CraftBeerPi doesn't find the HLT now"};
 function swWhyNot(d) {
   if (d.error === "moved") return "the strike water is already in the mash tun";
   if (d.error === "off") return SW_OFF[d.why] || "the strike water helper doesn't apply now";
-  if (d.error === "too_hot") return `it's over ${+(num(d.max) ?? swCeil()).toFixed(1)} ${M.U}, too hot for strike water`;
   if (d.error !== "recipe_changed") return "";
   const steps = Array.isArray(d.steps) ? d.steps : [];
   if (!steps.length) return "the recipe was unloaded on another screen";
   return (String(d.name || "") || "Brew steps") === M.RECIPE.name ? "the recipe was changed on another screen" : "another recipe was loaded on another screen";
 }
-/* USE or BACK TO refused that way: what: the button and its figure */
-const swNotApplied = (what, d) => (why => why ? `${what} wasn't applied: ${why}.` : "")(swWhyNot(d));
 /* a strike water call to CraftBeerPi, as exec sends a command: its button says SENDING… or SETTING… until CraftBeerPi
    answers. label: the LOG line if it goes through as sent; o.ok(answer) gives the line in CraftBeerPi's own figures. A
    refusal the call knows (o.refused(answer, status) gives its words) logs nothing and is said under the box for 6 s;
@@ -2829,24 +2398,6 @@ function bsDayOf(s) {
   if (s.mode === "Daily") return m != null && today * 86400 + m * 60 <= t ? today + 1 : today;
   return today;
 }
-/* where the grain spent the night, answered for this brew: "garage", "indoors", or null while it isn't. CraftBeerPi keeps
-   the answer with the loaded steps (grain_place, core post59; the demo's stand-in too), and its strike state shows it
-   (inputs.grain_place). One from before has no answer to keep and doesn't ask ("old"): its grain counts as answered */
-function bsPlace() {
-  const I = st.sw && st.sw.inputs;
-  if (!I || typeof I !== "object" || !("grain_place" in I)) return "old";
-  return I.grain_place === "garage" || I.grain_place === "indoors" ? I.grain_place : null;
-}
-/* the grain is asked only where USE depends on it, while the strike water box applies to this recipe */
-const bsGrainHere = () => !!swPhase();
-const bsGrainSaid = () => !bsGrainHere() || bsPlace() !== null;
-/* a recipe with BrewStart whose grain isn't answered yet for this brew: USE waits for the answer (swHTML) */
-const bsGrainAsk = () => bsIdx() >= 0 && !bsGrainSaid();
-/* the grain's temperature as given (BrewStart's Grain_Temp), as CraftBeerPi's strike state reads it */
-const bsGrainFig = s => { const I = st.sw && st.sw.inputs; return I && typeof I === "object" && "typed" in I ? num(I.typed) : s ? s.grain ?? null : null; };
-/* the indoor grain's quick figures, the middle one pressed first, and the figures indoor grain can have */
-const bsChips = () => M.U === "°C" ? [18, 20, 22] : [64, 68, 72];
-const bsIndoor = () => M.U === "°C" ? [4, 38] : [40, 100];
 /* a time kept 24-hour, as BrewStart's StartTime keeps it ("07:00"): minutes from midnight, or null */
 function hmMin(x) {
   const m = /^\s*(\d{1,2}):?(\d{2})\s*$/.exec(x || "");
@@ -2928,12 +2479,15 @@ function bsAddHTML() {
 }
 /* a time not yet set takes its day by the noon rule: TOMORROW from noon on CraftBeerPi's clock, TODAY before it */
 const bsNoon = () => { const t = bsNow(); return dayOf(t) + (t % 86400 >= 12 * 3600 ? 1 : 0); };
-/* a new BrewStart's temperature: the strike water step's, or without one the first mash step's. Live, BeerSmith's strike
-   where the recipe has one (the strike water card's plan), else the first MashInStep's, as the recipe pages take it */
+/* BeerSmith's strike for the recipe on the screen, as CraftBeerPi's strike state gives it (strike.beersmith; from an
+   older CraftBeerPi, the recipe's BeerSmith figures); null without one */
+const bsBeerSmith = () => { const X = bssX(); return st.sw && swSameRecipe(st.sw) ? (X ? num(X.beersmith) : num((((st.sw.recipe || {}).beersmith) || {}).strike)) : null; };
+/* a new BrewStart's temperature: BeerSmith's strike where the recipe has one (the strike water card's plan); else the
+   demo's strike water step's or first mash step's, and live the first MashInStep's, as the recipe pages take it */
 function bsNewTemp() {
-  if (DEMO_MODE) { const {S, si, mi} = swDemoSteps(); return si >= 0 ? S[si].temp : mi >= 0 ? S[mi].temp : null; }
-  const X = bssX(), bs = st.sw && swSameRecipe(st.sw) ? (X ? num(X.beersmith) : num((((st.sw.recipe || {}).beersmith) || {}).strike)) : null;
+  const bs = bsBeerSmith();
   if (bs != null) return bs;
+  if (DEMO_MODE) { const {S, si, mi} = swDemoSteps(); return si >= 0 ? S[si].temp : mi >= 0 ? S[mi].temp : null; }
   const s = M.RECIPE.steps.find(x => x.type === "MashInStep");
   return s && s.temp != null ? s.temp : null;
 }
@@ -2982,20 +2536,17 @@ function bsSays(B) {
 }
 /* the water, last in the box: what BrewStart heats, a fact here. A new one's is the recipe pages' (bsFillOf): worked
    out from the recipe; else the water of the newest brew that was brewed and recorded it, saying which brew and why
-   the recipe's own can't be worked out; else none, saying both. It says where it changes: ALL SETTINGS always, and the
-   strike water box only where that box is on the screen and offers the water (swWaterAt). Under it, where the HLT's
-   capacity is known and the water is more (hltOver) */
-function swWaterAt() {
-  if (!swPhase() || !st.sw) return "";
-  const N = swNumbers();
-  return N.ok || N.wait ? "CHANGE in the strike water box's FORECAST" : "HLT WATER in the strike water box";
-}
+   the recipe's own can't be worked out; else none, saying both. Where the temperature is BeerSmith's strike to 0.1 it
+   says so, as the strike water card's STRIKE does. It says where they change: ALL SETTINGS, and the strike water card
+   (HLT WATER and STRIKE); with no water, HLT WATER on the card only while the card is on the screen. Under it, where the
+   HLT's capacity is known and the water is more (hltOver) */
 function bsWater(B) {
-  const w = bsWaterOf(B), U = M.U, el = `The ${esc(w.kn)}'s ${w.watts ? `${w.watts} W ` : ""}element heats`, to = w.temp == null ? "" : ` to ${w.temp.toFixed(1)} ${U}`, sw = swWaterAt();
+  const w = bsWaterOf(B), U = M.U, el = `The ${esc(w.kn)}'s ${w.watts ? `${w.watts} W ` : ""}element heats`, to = w.temp == null ? "" : ` to ${w.temp.toFixed(1)} ${U}`;
+  const bs = bsBeerSmith(), from = w.temp != null && bs != null && Math.abs(w.temp - bs) < 0.05 ? ", BeerSmith's strike" : "";
   const none = B.neu && w.lacks ? `${w.lacks}, and no past brew recorded the HLT's water. Give it` : "give it";
-  if (w.vol == null) return `<p class="bswat">${el} the water${to}. <b>How much water isn't known yet</b>: ${none} with ALL SETTINGS${sw ? `, or ${sw},` : ""} before you START.</p>`;
-  if (B.neu) return `<p class="bswat">${el} ${+w.vol.toFixed(2)} ${w.volU}${to}, ${w.from === "past" && w.past ? `the water the HLT heated for ${esc(brewWords(w.past))}, the last brew that recorded it: ${w.lacks}` : "worked out from the recipe"}.</p>${hltOverHTML(w.vol, w.volU)}`;
-  return `<p class="bswat">${el} ${+w.vol.toFixed(2)} ${w.volU}${to}. ALL SETTINGS changes them.${sw ? ` ${sw[0].toUpperCase()}${sw.slice(1)} changes the water too.` : ""}</p>${hltOverHTML(w.vol, w.volU)}`;
+  if (w.vol == null) return `<p class="bswat">${el} the water${to}${from}. <b>How much water isn't known yet</b>: ${none} with ALL SETTINGS${swPhase() ? ", or HLT WATER on the strike water card," : ""} before you START.</p>`;
+  if (B.neu) return `<p class="bswat">${el} ${+w.vol.toFixed(2)} ${w.volU}${to}${from}, ${w.from === "past" && w.past ? `the water the HLT heated for ${esc(brewWords(w.past))}, the last brew that recorded it: ${w.lacks}` : "worked out from the recipe"}.</p>${hltOverHTML(w.vol, w.volU)}`;
+  return `<p class="bswat">${el} ${+w.vol.toFixed(2)} ${w.volU}${to}${from}. ALL SETTINGS changes them, and so does the strike water card.</p>${hltOverHTML(w.vol, w.volU)}`;
 }
 /* how much the HLT holds, in the volume unit vu ("gal" or "L"), where the Hardware page gives it (CraftBeerPi's kettle
    field capacity, kept in the brewery's own unit); null where it isn't given or can't be right, which changes nothing
@@ -3047,9 +2598,8 @@ function bsClockHTML() {
    that clock is (bsClockHTML), and while BrewStart runs or is stopped, what it is doing (waiting, heating or holding the
    water, stopped), both
    pinned above the middle so they stay in view while the middle scrolls. In the middle, Ready by (or Start at) with the
-   other as a quiet button; the time's keys and box; AM and PM (not in 24-hour); the day; the time in words; where the
-   grain spent the night, where USE depends on it; and last the water, only a fact here, so the part that may scroll out
-   of view. At its foot, pinned so they stay in reach while the middle scrolls, the note line, SET and CANCEL, and ALL
+   other as a quiet button; the time's keys and box; AM and PM (not in 24-hour); the day; the time in words; and last
+   the water, only a fact here, so the part that may scroll out of view. At its foot, pinned so they stay in reach while the middle scrolls, the note line, SET and CANCEL, and ALL
    SETTINGS under them, which opens every setting BrewStart has on Brew Steps (bsAllGo), asking first (bsAskHTML) where
    the box has something not set yet. While its command waits, everything in it is greyed; while BrewStart runs and
    can't take a new time (bsRetimes), the time, AM and PM, the day and START AT */
@@ -3077,34 +2627,27 @@ function bsHTML() {
      hints: the time in words below says which half it is */
   const half = !is12() ? "" : `<div class="bsday bsap" role="group" aria-label="AM or PM">${b("cmdbtn", "AM", "", {cmd: "bs:ap:AM", pressed: B.ap === "AM", why: hoff})}${b("cmdbtn", "PM", "", {cmd: "bs:ap:PM", pressed: B.ap === "PM", why: hoff})}</div>`;
   const day = `<div class="bsday" role="group" aria-label="Day">${b("cmdbtn", "TODAY", dKey(now), {cmd: "bs:day:0", pressed: B.day === now, why: hoff})}${b("cmdbtn", "TOMORROW", dKey(now + 1), {cmd: "bs:day:1", pressed: B.day === now + 1, why: hoff})}</div>`;
-  const chips = B.where !== "indoors" ? "" : `<div class="bsin" role="group" aria-label="The grain's temperature indoors">${bsChips().map(c => b("cmdbtn bschip", `${c} ${U}`, "", {cmd: `bs:chip:${c}`, pressed: B.chip === c, why: off})).join("")}`
-    + `<span class="bsor"><span aria-hidden="true">or</span><input id="bsgin" inputmode="decimal" autocomplete="off" maxlength="5" value="${esc(B.fig)}" aria-label="Or another figure, in ${U}"${busy ? " readonly" : ""}><span aria-hidden="true">${U}</span></span></div>`;
-  const grain = !bsGrainHere() ? "" : `<div class="bsgrain"><p class="bsl" id="bs-gl">Where is the grain tonight?</p><p class="bsgh">Asked once a brew: USE depends on it.</p>`
-    + `<div class="bswhere" role="group" aria-labelledby="bs-gl">${b("cmdbtn", "IN THE GARAGE", `the boil kettle's probe, ${f1(st.v.bk.pv)} ${U}`, {cmd: "bs:where:garage", pressed: B.where === "garage", why: off})}${b("cmdbtn", "INDOORS", "give its temperature", {cmd: "bs:where:indoors", pressed: B.where === "indoors", why: off})}</div>${chips}</div>`;
   bsGoLast = bsGoHTML(B, ws); bsClkLast = bsClockHTML();
   const foot = B.ask ? bsAskHTML(B, ws) : `<div class="bsact">${bsGoLast}${b("cmdbtn", "CANCEL", "", {cmd: "bs:x", why: off})}</div>${b("cmdbtn bsall", "ALL SETTINGS", "every setting, on Brew Steps", {cmd: "bs:all", why: off})}`;
   return `<section class="bsbox" id="bs-box" aria-labelledby="bs-t"><h3 class="bst" id="bs-t">BrewStart</h3>${bsClkLast}${head}<div class="bsmid">${kind}${time}${half}${day}`
-    + `<p class="bssay${ws && ws.past ? " past" : ""}" id="bs-say">${ws ? esc(ws.text) : ""}</p>${grain}${bsWater(B)}</div>`
+    + `<p class="bssay${ws && ws.past ? " past" : ""}" id="bs-say">${ws ? esc(ws.text) : ""}</p>${bsWater(B)}</div>`
     + `<div class="bsfoot"><p class="note">${esc(st.notes.r || "")}</p>${foot}</div></section>`;
 }
-/* what the box has that BrewStart hasn't yet: a new time (its kind, time or day) and the grain's answer, against what
-   the box opened with. A new BrewStart has nothing to keep until a time or the grain is given */
-const bsSnap = B => ({time: JSON.stringify([B.kind, B.m, B.day]), grain: JSON.stringify([B.where, B.chip, String(B.fig || "").trim()])});
-function bsUnset(B) {
-  const a = B.init || bsSnap(B), n = bsSnap(B);
-  return {time: a.time !== n.time, grain: a.grain !== n.grain};
-}
+/* what the box has that BrewStart hasn't yet: a new time (its kind, time or day), against what the box opened with. A
+   new BrewStart has nothing to keep until a time is given */
+const bsSnap = B => JSON.stringify([B.kind, B.m, B.day]);
+const bsUnset = B => (B.init || bsSnap(B)) !== bsSnap(B);
 /* ALL SETTINGS with something in the box not set yet asks in its foot, in place of SET and CANCEL, as the recipe's
    questions ask: what isn't set, and what each answer does. SET AND GO (HEAT NOW AND GO, ADD AND GO, as the main
    button says it) sends it as SET would, greyed where SET is, then opens Brew Steps; GO WITHOUT IT opens it, leaving
    BrewStart as it is; STAY goes back to the box. No answer is the default */
 function bsAskHTML(B, ws) {
-  const u = bsUnset(B), both = u.time && u.grain, it = both ? "them" : "it", verb = B.neu ? "ADD" : ws && ws.soon ? "HEAT NOW" : "SET", why = bsGoWhy(B, ws);
-  const what = B.neu ? "BrewStart isn't added yet." : both ? "Your changes here aren't set yet." : u.time ? "The new time isn't set yet." : "The grain's answer isn't set yet.";
+  const verb = B.neu ? "ADD" : ws && ws.soon ? "HEAT NOW" : "SET", why = bsGoWhy(B, ws);
+  const what = B.neu ? "BrewStart isn't added yet." : "The new time isn't set yet.";
   const does = B.neu ? `${verb} AND GO adds it as step 1, then opens all its settings; GO WITHOUT IT opens a new one there, not added until you SAVE it.`
-    : `${verb} AND GO ${verb === "HEAT NOW" ? "starts the heating" : `sets ${it}`}, then opens all of BrewStart's settings; GO WITHOUT ${it.toUpperCase()} leaves BrewStart as it is.`;
+    : `${verb} AND GO ${verb === "HEAT NOW" ? "starts the heating" : "sets it"}, then opens all of BrewStart's settings; GO WITHOUT IT leaves BrewStart as it is.`;
   const yes = `<button type="button" class="yes" data-cmd="bs:all-set"${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}>${verb} AND GO</button>`;
-  return `<div class="confirm bsask" role="group" aria-labelledby="bs-ask-t"><p id="bs-ask-t" tabindex="-1">${what} ${does}</p><div>${yes}<button type="button" data-cmd="bs:all-go">GO WITHOUT ${it.toUpperCase()}</button></div><div class="one"><button type="button" data-cmd="bs:all-stay">STAY</button></div></div>`;
+  return `<div class="confirm bsask" role="group" aria-labelledby="bs-ask-t"><p id="bs-ask-t" tabindex="-1">${what} ${does}</p><div>${yes}<button type="button" data-cmd="bs:all-go">GO WITHOUT IT</button></div><div class="one"><button type="button" data-cmd="bs:all-stay">STAY</button></div></div>`;
 }
 /* ALL SETTINGS' question wholly in view by the least scrolling, its three answers included: where the page scrolls,
    and on a phone above the tab bar fixed at the foot of the window */
@@ -3210,44 +2753,37 @@ function bsAnnounce(later) {
 /* opening the box: one box at a time in the column, so it closes NEXT STEP's, RESET's and UNLOAD's questions, LOAD's,
    the probes' panel, the pre-brew check's box and the strike water box's FORECAST and its small boxes; a timer's editor
    makes way with the timers on one screen, as for the pre-brew check's box. It starts from the step: its kind, time and
-   day, and the grain's answer; a new BrewStart from Ready by with no time, its day by the noon rule. o: what a moment
-   opens it with (rel: the day, 0 today or 1 tomorrow; at: a part of the box to show), or what the row and USE waiting
-   for the grain open it with (focus "garage": on IN THE GARAGE; from "use": focus back on USE as the box closes) */
+   day; a new BrewStart from Ready by with no time, its day by the noon rule. o: what a moment opens it with (rel: the
+   day, 0 today or 1 tomorrow; at: a part of the box to show) */
 function bsOpen(o = {}) {
   const S = M.RECIPE.steps, bi = bsIdx(), neu = !!o.neu || bi < 0, s = neu ? null : S[bi], now = dayOf(bsNow()), d = s ? bsDayOf(s) : null;
-  Object.assign(st, {confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, pbOpen: false, cmpOpen: false, rbOpen: false, swOpen: false, swVol: null, swGrain: null, swRec: null});
-  const place = bsPlace(), fig = bsGrainFig(s);
-  const where = !s || !bsGrainHere() ? null : place === "old" ? (fig != null ? "indoors" : null) : place;
-  const B = {neu, from: o.from || (neu ? "new" : "row"), kind: s ? bsKind(s) : "ready", day: d === now || d === now + 1 ? d : bsNoon(), where, chip: null, fig: ""};
-  ["kind", "where"].forEach(k => { if (o[k] !== undefined) B[k] = o[k]; });
+  Object.assign(st, {confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, pbOpen: false, cmpOpen: false, rbOpen: false, swOpen: false, swVol: null, swGrain: null});
+  const B = {neu, from: o.from || (neu ? "new" : "row"), kind: o.kind !== undefined ? o.kind : s ? bsKind(s) : "ready", day: d === now || d === now + 1 ? d : bsNoon()};
   /* the time as the step keeps it, 24-hour, or as a moment opens the box with it (txt); shown as the box shows it, its
      half pressed. An empty box starts at AM */
   B.m = hmMin(o.txt !== undefined ? o.txt : s ? bsTime(s) || "" : "");
   Object.assign(B, {txt: bsShow(B.m), ap: B.m == null ? "AM" : bsHalf(B.m), ap0: null});
   if (o.rel != null) B.day = now + o.rel;
-  if (B.where === "indoors") { const g = where === "indoors" ? fig : null, C = bsChips(); if (g == null || C.includes(g)) B.chip = g ?? C[1]; else B.fig = g.toFixed(1); }
   B.init = bsSnap(B);
   st.bs = B; st.bsOpen = true;
   if (neu && !DEMO_MODE) bsFillLoad(B);
-  renderAll(); bsFocus(o.at, o.focus, !!o.now);
+  renderAll(); bsFocus(o.at, !!o.now);
 }
-/* focus goes to the time box, or to IN THE GARAGE with the grain's two answers scrolled into view in the box's middle
-   (for USE waiting for the grain, and for the row while its hint asks where the grain is); a moment can show the
-   middle scrolled to a part of it (at). Opened at the time, the time in words is brought into view where it must be
+/* focus goes to the time box; a moment can show the middle scrolled to a part of it (at). Opened at the time, the time in words is brought into view where it must be
    read before SET (bsSayInView). On a phone the page first brings the box itself into view (boxInView), the focus
    moving in without the browser's own scrolling, which only looks for the box focused. Once the press that opened the
    box is done; for a moment opening it as it loads (now), once the fonts are in, as the mockup's moments have it, so
    what is scrolled into view is where it ends up */
-const bsFocus = (at, on, now = false) => {
+const bsFocus = (at, now = false) => {
   const go = () => {
     if (!root) return;
-    const gar = on === "garage" ? $('#bs-box [data-cmd="bs:where:garage"]') : null, i = gar || $("#bstin"), keep = !!at || !!gar;
+    const i = $("#bstin"), keep = !!at;
     if (i && document.activeElement !== i) { i.focus({preventScroll: keep || PHONE.matches}); if (i.select) i.select(); }
     boxInView($("#bs-box"));
     /* a font the box is the first to use comes in after it is drawn, and its lines wrap again, the box's height with
        them: brought into view again by its height then */
     if (document.fonts && document.fonts.status === "loading") { const g = gen; document.fonts.ready.then(() => { if (g === gen && root && st.bsOpen) boxInView($("#bs-box")); }); }
-    if (keep) $(at || "#bs-box .bswhere")?.scrollIntoView({block: "nearest"});
+    if (keep) $(at)?.scrollIntoView({block: "nearest"});
     else bsSayInView();
   };
   if (!now) { timers.push(setTimeout(go, 0)); return; }
@@ -3267,8 +2803,8 @@ function boxInView(box) {
   const d = R.bottom - top > foot - 8 ? top - 8 : R.bottom > foot ? R.bottom - foot : top < 8 ? top - 8 : 0;
   if (d) window.scrollBy(0, d > 0 ? Math.ceil(d) : Math.floor(d));
 }
-/* focus goes back to where the box was opened from: BrewStart's row, + BrewStart, or the strike water box's USE */
-const bsBack = from => timers.push(setTimeout(() => { if (root) root.querySelector(from === "use" ? "#recipe .sw .swuse" : `[data-cmd="bs:${from === "new" ? "new" : "open"}"]`)?.focus({preventScroll: true}); }, 0));
+/* focus goes back to where the box was opened from: BrewStart's row, or + BrewStart */
+const bsBack = from => timers.push(setTimeout(() => { if (root) root.querySelector(`[data-cmd="bs:${from === "new" ? "new" : "open"}"]`)?.focus({preventScroll: true}); }, 0));
 /* CANCEL and Escape close it, changing nothing; not while its command waits, which can't be called back. A failed SET's
    TRY AGAIN goes with it */
 function bsClose() {
@@ -3280,16 +2816,12 @@ function bsClose() {
   bsBack(from);
 }
 /* the box's keys: −1 H −15 +15 +1 H and AM and PM (below); the day; the kind (while BrewStart runs, only where it takes
-   change_settings); where the
-   grain is, INDOORS starting at 68 °F; the chips. A change in the box takes ALL SETTINGS' question down, as it was about
-   the box before it. The row opens the box at the question its hint names: "where's the grain?" at the grain's two
-   answers, else at the time. again: a failed SET's TRY AGAIN, while the box is open. all: ALL SETTINGS, at once where
+   change_settings). A change in the box takes ALL SETTINGS' question down, as it was about the box before it. again: a failed SET's TRY AGAIN, while the box is open. all: ALL SETTINGS, at once where
    the box has nothing not set yet, else its question; all-set, all-go and all-stay its three answers */
 function bsCmd(x, y) {
   if (x === "open" || x === "new") {
     if (st.bsOpen) return bsFocus();
-    const bi = bsIdx();
-    return bsOpen({neu: x === "new", focus: x === "open" && bi >= 0 && bsRowAsks(M.RECIPE.steps[bi]) === "grain" ? "garage" : undefined});
+    return bsOpen({neu: x === "new"});
   }
   if (x === "again") { if (st.bsOpen && st.bs) return bsSet(); st.alarm = null; return renderAll(); }
   const B = st.bs;
@@ -3298,8 +2830,7 @@ function bsCmd(x, y) {
   if (st.pend.bs) return;
   if (x === "set") return bsSet();
   if (x === "all") {
-    const u = bsUnset(B);
-    if (!u.time && !u.grain) return bsAllGo(B);
+    if (!bsUnset(B)) return bsAllGo(B);
     B.ask = true; renderAll();
     const q = $("#bs-ask-t");
     if (q) { q.focus({preventScroll: true}); bsAskInView(); say(q.textContent); }
@@ -3327,58 +2858,43 @@ function bsCmd(x, y) {
   }
   else if (x === "day") { if (held) return; B.day = dayOf(bsNow()) + parseInt(y, 10); }
   else if (x === "kind") { if (!B.neu && bsRuns() && !bsSets()) return; B.kind = B.kind === "start" ? "ready" : "start"; }
-  else if (x === "where") { B.where = y; if (y === "indoors" && B.chip == null && !B.fig) B.chip = bsChips()[1]; }
-  else if (x === "chip") { B.chip = parseInt(y, 10); B.fig = ""; }
   renderAll();
   if (["step", "ap", "day", "kind"].includes(x)) { bsAnnounce(); bsSayInView(); }
 }
 /* SET: what changed, its LOG line saying so; with nothing changed the box closes and nothing is sent. The day is always
-   saved as a date (never Today or Tomorrow, which BrewStart counts from START), with the time and the kind; a new grain
-   answer has CraftBeerPi work USE out again, as the strike water box's GRAIN does. While BrewStart waits it plans again
+   saved as a date (never Today or Tomorrow, which BrewStart counts from START), with the time and the kind. While
+   BrewStart waits it plans again
    at once (change_time): STARTS for the new time, and its notification in its words; HEAT NOW, a time too soon to wait
    for, has it start heating the HLT at once (bsHeat), its notice spoken and in LOG, and focus goes back where the box was
-   opened from, BrewStart's row (a button while it heats, HEATING with "change") or USE, as after any SET. Asked for by ALL
+   opened from, BrewStart's row (a button while it heats, HEATING with "change"), as after any SET. Asked for by ALL
    SETTINGS' SET AND GO (B.then "all"), Brew Steps opens once it has gone through (bsAllGo). ADD
    BREWSTART puts a new BrewStart in as step 1 (bsAdd, bsAddLive) */
 function bsSet() {
-  const B = st.bs, r = st.recipe, U = M.U;
+  const B = st.bs, r = st.recipe;
   if (!B || st.pend.bs || B.fillBusy) return;
   const m = B.m, ws = bsSays(B);
   if (m == null) return note("r", bsBad());
   if (!ws) return note("r", CLOCK_WAIT);
   if (ws.past) return note("r", ws.text);
-  let g = null;
-  if (B.where === "indoors") {
-    const [lo, hi] = bsIndoor(), v = B.chip != null ? B.chip : parseFloat(B.fig);
-    if (!Number.isFinite(v) || v < lo || v > hi) return note("r", `Indoors, the grain would be between ${lo} and ${hi} ${U}: check the figure.`);
-    g = Math.round(v * 10) / 10;
-  }
   /* the step keeps the time 24-hour (hm); LOG says it by the clock's setting (said) */
   const hm = hhmm(m * 60), said = tod(m * 60), date = dateOf(B.day), kw = B.kind === "start" ? "start at" : "ready by";
-  const grainSays = B.where === "garage" ? "grain in the garage, the boil kettle's probe" : B.where === "indoors" ? `grain indoors at ${g.toFixed(1)} ${U}` : "";
   if (B.neu) {
-    const label = `BrewStart added as step 1: ${kw} ${said} ${dMid(B.day)}${grainSays ? ` · ${grainSays}` : ""}`;
-    return DEMO_MODE ? send("bs", "add", label, () => bsAdd(B, hm, date, g)) : bsAddLive(B, {hm, said, date, g, kw, grainSays, label});
+    const label = `BrewStart added as step 1: ${kw} ${said} ${dMid(B.day)}`;
+    return DEMO_MODE ? send("bs", "add", label, () => bsAdd(B, hm, date)) : bsAddLive(B, {hm, said, date, kw, label});
   }
-  const s = M.RECIPE.steps[bsIdx()], was = bsTime(s), wasKind = bsKind(s), wasDay = bsDayOf(s), place = bsPlace(), fig = bsGrainFig(s);
-  const timeCh = B.kind !== wasKind || hm !== was || B.day !== wasDay;
-  const grainCh = B.where != null && (B.where !== place || (B.where === "indoors" && !(fig != null && Math.abs(fig - g) < 0.05)));
-  if (!timeCh && !grainCh) return bsClose();
+  const s = M.RECIPE.steps[bsIdx()], was = bsTime(s), wasKind = bsKind(s), wasDay = bsDayOf(s);
+  if (B.kind === wasKind && hm === was && B.day === wasDay) return bsClose();
   const wasT = was ? `, was ${B.kind === wasKind ? "" : `${wasKind === "start" ? "start at" : "ready by"} `}${todS(was)}${wasDay != null ? ` ${dShort(wasDay)}` : ""}` : "";
-  const wasG = B.where === "garage" ? (fig == null ? "" : `, was ${place === "indoors" ? "indoors at " : ""}${swGrainSays(fig)}`) : fig == null ? ", was the boil kettle's probe" : `, was ${swGrainSays(fig)}`;
-  const timeSays = `${s.n}: ${kw} ${said} ${dMid(B.day)}${wasT}`, grainLine = `${s.n}: ${grainSays}${wasG}`;
-  const label = timeCh ? `${timeSays}${grainCh ? ` · ${grainSays}` : ""}` : grainLine;
-  B.soon = !!ws.soon && timeCh;
-  if (!DEMO_MODE) return bsSetLive(B, s, {hm, date, g, timeCh, grainCh, timeSays, grainLine, label, was, wasKind, wasDay});
+  const label = `${s.n}: ${kw} ${said} ${dMid(B.day)}${wasT}`;
+  B.soon = !!ws.soon;
+  if (!DEMO_MODE) return bsSetLive(B, s, {hm, date, timeSays: label, label, was, wasKind, wasDay});
   const wasAt = bsAt(s);
   send("bs", "set", label, () => {
-    if (timeCh) Object.assign(s, {ready: B.kind === "ready" ? hm : null, start: B.kind === "start" ? hm : null, date});
-    if (grainCh) Object.assign(s, {where: B.where, grain: B.where === "indoors" ? g : null});
+    Object.assign(s, {ready: B.kind === "ready" ? hm : null, start: B.kind === "start" ? hm : null, date});
     st.bsOpen = false; st.bs = null;
-    if (grainCh && st.swd) swRework("grain");
     /* while BrewStart heats or holds the water, a new timing or time changes nothing in the heating, which carries on
        (BrewStart 1.3.0.post7's change_settings) */
-    if (timeCh && M.RECIPE.steps[r.cur] === s && bsWaits()) {
+    if (M.RECIPE.steps[r.cur] === s && bsWaits()) {
       const pv = st.v.hlt.pv;
       if (ws.soon) {
         /* HEAT NOW: BrewStart's notice, then it heats the HLT itself at once (bsHeat), the current step still */
@@ -3399,40 +2915,16 @@ function bsSet() {
     bsBack(B.from);
   });
 }
-/* the grain's answer as CraftBeerPi's strike water call takes it (POST /step2/strike/grain): the garage blanks the grain's
-   temperature, so the boil kettle's probe stands for it, and says so (place); a figure is indoors. Refused (c.refused),
-   as the strike water box's GRAIN is; failed (c.fail), its temperature is as it was */
-function bsGrainCall(B, g, label) {
-  const U = M.U, [lo, hi] = swRoom(), was = bsGrainFig(M.RECIPE.steps[bsIdx()]);
-  const head = B.where === "garage" ? "The grain's temperature wasn't changed to the boil kettle's probe" : `The grain's temperature wasn't set to ${g.toFixed(1)} ${U}`;
-  return {
-    label,
-    req: () => api.strikeGrain(B.where === "garage" ? null : g, swIds(), B.where === "garage" ? "garage" : undefined),
-    done: res => { if (res.data && typeof res.data === "object" && res.data.strike) swTake(res.data.strike); },
-    refused: res => {
-      const d = res.data && typeof res.data === "object" ? res.data : null;
-      if (!d || (res.status !== 409 && res.status !== 400)) return "";
-      const words = res.status === 400 ? (d.error === "out_of_range" ? `${head}: it has to be between ${num(d.low) ?? lo} and ${num(d.high) ?? hi} ${U}.` : "")
-        : d.error === "recipe_changed" || d.error === "off" ? `${head}: ${swWhyNot(d)}.` : "";
-      if (words && d.strike && typeof d.strike === "object") swTake(d.strike);
-      else if (words && d.error === "recipe_changed") swFetch();
-      return words;
-    },
-    fail: `The grain's temperature did not change. It is still ${was != null ? swGrainSays(was) : `the boil kettle's probe's, ${f1(st.v.bk.pv)} ${U}`}.`
-  };
-}
 /* SET, for real: a changed time or day by PUT /step2/{id}, with BrewStart's settings as read, all of them, and Timing,
-   Mode Date, StartDate and StartTime as the box has them, confirmed once the steps show them, as RESET is; a changed
-   grain by the strike water's call. A grain answer alone on a step that counts its day (Today or Tomorrow) saves the
-   day as a date too, so what the box showed is what happens. Once BrewStart has begun (running: waiting, heating or
+   Mode Date, StartDate and StartTime as the box has them, confirmed once the steps show them, as RESET is. Once
+   BrewStart has begun (running: waiting, heating or
    holding the water; or stopped) the time, the day and Ready by or Start at go by BrewStart's own change_settings
    (bsRetime), which takes them then, a stopped BrewStart's heating marks included. CraftBeerPi refuses a change to a
    step while it runs (409, its sentence), so an older BrewStart running takes only a new time, by its change_time: the
-   moment it planned stands for its day. Where BrewStart can't take one, only the grain goes */
+   moment it planned stands for its day. Where BrewStart can't take one, nothing goes */
 function bsSetLive(B, s, o) {
   const calls = [], runs = bsRuns(), sets = (runs || bsStopped()) && bsSets();
-  if (runs ? o.timeCh && (sets || bsRetimes()) : o.timeCh || (o.grainCh && s.mode !== "Date")) calls.push(sets || runs ? bsRetime(s, o, B, sets) : bsPut(B, s, o));
-  if (o.grainCh) calls.push(bsGrainCall(B, o.g, o.grainLine));
+  if (!runs || sets || bsRetimes()) calls.push(sets || runs ? bsRetime(s, o, B, sets) : bsPut(B, s, o));
   if (!calls.length) return bsClose();
   bsSendLive("set", o.label, calls, B);
 }
@@ -3453,7 +2945,7 @@ function bsPut(B, s, o) {
   for (const k of Object.keys(s.props || {})) if (!String(k).startsWith("_")) props[k] = s.props[k];
   Object.assign(props, {Timing: B.kind === "start" ? "Start at" : "Ready by", Mode: "Date", StartDate: o.date, StartTime: o.hm});
   return {
-    label: o.timeCh ? o.timeSays : "",
+    label: o.timeSays,
     req: async () => bsConfirm(await api.stepUpdate(s.id, {name: s.n, type: s.type, props}), () => bsShows(s, o, props.Timing)),
     refused: res => res.status === 409 && res.data && typeof res.data === "object" && typeof res.data.error === "string" ? res.data.error : "",
     fail: bsStill(s, o)
@@ -3498,11 +2990,12 @@ async function bsHeard(title, since, ms = 1000) {
   }
 }
 /* ADD BREWSTART, for real: POST /step2/ with index 0 (core post58), BrewStart filled in as the recipe pages fill one
-   (bsFillOf) with the box's time and day, confirmed once it is step 1; then the grain's answer, where given, by the
-   strike water's call, as SET gives it. Refused while a step has begun (409 begun, its detail) */
+   (bsFillOf) with the box's time and day, confirmed once it is step 1. Its grain temperature is left blank, not another
+   brew's: the boil kettle's probe stands for the grain unless GRAIN TEMP, in the strike water card's CHECK, gives it.
+   Refused while a step has begun (409 begun, its detail) */
 function bsAddLive(B, o) {
   const F = B.fill || bsFillOf(null);
-  const props = {...F.props, Timing: B.kind === "start" ? "Start at" : "Ready by", Mode: "Date", StartDate: o.date, StartTime: o.hm, Grain_Temp: B.where === "indoors" ? o.g : ""};
+  const props = {...F.props, Timing: B.kind === "start" ? "Start at" : "Ready by", Mode: "Date", StartDate: o.date, StartTime: o.hm, Grain_Temp: ""};
   let id = null;
   const first = () => { const x = ((last || {}).steps || []).filter(Boolean); return id != null && x.length > 0 && x[0].id === id; };
   const calls = [{
@@ -3517,7 +3010,6 @@ function bsAddLive(B, o) {
     refused: res => { const d = res.data && typeof res.data === "object" ? res.data : null; return d && (res.status === 409 || res.status === 400) && (d.detail || d.error) ? String(d.detail || d.error) : ""; },
     fail: "BrewStart was not added. The recipe's steps are as they were."
   }];
-  if (B.where) calls.push(bsGrainCall(B, o.g, `BrewStart: ${o.grainSays}`));
   bsSendLive("add", o.label, calls, B);
 }
 /* BrewStart's SET and ADD BREWSTART go to CraftBeerPi as one or two calls in turn, with SETTING… or ADDING… until the last
@@ -3614,12 +3106,10 @@ async function bsFillLoad(B) {
 }
 /* ---------- the mash water on the MashIn row (design/brewday/STRIKE-WATER.md, "The mash water on the MashIn row") ----------
    The recipe's mash water, the strike water that goes to the mash tun, is on Brew Day whenever a recipe is loaded,
-   whether or not the strike water box is: in the line of MashIn on the mash tun, "126 °F · mash water 8.26 gal · 1.5
-   qt/lb", or "mash water not given" in Note Amber. Until the malt is in, that row opens a small box (mwHTML) with MASH
-   WATER (and its ratio), GRAIN WEIGHT and HLT WATER and the sparge water they leave, each changed through the strike
-   water box's own small boxes, with the same rules and refusals; once the malt is in, the line stays and the row no
-   longer opens. From CraftBeerPi's strike water state for this recipe, where it takes the recipe's figures given here
-   (recipe.typed). MashIn is the step the strike water helper takes the rest from (step_ids.mash_in), else the first
+   whether or not the strike water card is: in the line of MashIn on the mash tun, "126 °F · mash water 8.26 gal · 1.5
+   qt/lb", or "mash water –" where it isn't given. Until the malt is in, that row opens the strike water card's MASH
+   WATER (design/brewday STRIKE-CARD.md); once the malt is in, the line stays and the row no longer opens. From
+   CraftBeerPi's strike water state for this recipe, where it takes the recipe's figures given here (recipe.typed). MashIn is the step the strike water helper takes the rest from (step_ids.mash_in), else the first
    MashIn on the mash tun; never another kind of step, though one with no kettle is drawn as the mash tun's: a recipe
    with no MashIn has no such row */
 function mwIdx() {
@@ -3645,7 +3135,7 @@ function mwSays() {
 function mwWhy() {
   const P = st.pend;
   if (st.link === "lost") return PAUSED;
-  return ["swr", "swv", "bs", "r:start", "r:stop", "r:next", "r:reset", "r:unload", "r:load", "r:check"].some(k => P[k]) ? WAIT : "";
+  return ["bs", "r:start", "r:stop", "r:next", "r:reset", "r:unload", "r:load", "r:check"].some(k => P[k]) ? WAIT : "";
 }
 /* the row as a button, as BrewStart's is: the row as it was, with a small hint under its state, "give it" while the
    mash water isn't given, else "change"; its label says the same in words. It opens the strike water card's MASH
@@ -3655,41 +3145,10 @@ function mwRowHTML(s, i, state, p, right, nt, bar) {
   const hint = `<small class="bsh">${missing ? "give it" : "change"}</small>`;
   const said = `${s.n}${s.temp != null ? `, ${pre != null ? `${pre.toFixed(1)} ${M.U}, then malt` : `${stepTemp(s)} ${M.U}`}` : ""}: mash water ${missing ? "not given" : swMashText(R).replace(/\u00a0/g, " ")}. ${missing ? "Give it" : "Change it"}, with the grain weight and the HLT water`;
   const note = nt ? `<span class="p pn${nt === bssStall(i) ? " amb" : ""}${state === "cur" && st.banner && st.banner.title === s.n ? " asked" : ""}">${esc(nt)}</span>` : "";
-  return `<li class="stepb"><button type="button" class="step mwrow"${state === "cur" ? ' aria-current="step"' : ""} data-cmd="mw:open" aria-label="${esc(said)}" aria-expanded="${!!st.mwOpen}"${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}><span class="n">${i + 1}</span><span class="t">${esc(s.n)}</span><span class="p">${p}</span>${note}<span class="s">${right}${hint}</span>${bar}</button></li>`;
-}
-/* the box: MASH WATER, GRAIN WEIGHT and HLT WATER, each in plain words with its figure, where it comes from and CHANGE
-   (GIVE IT while it isn't given), then the sparge water they leave and anything they would do that they shouldn't.
-   A figure BeerSmith gave changes only where CraftBeerPi keeps BeerSmith's beside it (recipe.changed); else it says
-   where to change it. A small box opened from here takes the box's place, under its heading */
-function mwHTML() {
-  const N = swNumbers(), R = N.R, vu = swVU(), mu = swMU(), s = M.RECIPE.steps[mwIdx()], locked = mwMaltIn(), why = mwWhy();
-  const wrap = inner => `<section class="bsbox mwbox" id="mw-box" aria-labelledby="mw-h"><h3 class="bst" id="mw-h">${esc(s ? s.n : "MashIn")}: the mash water</h3>${inner}</section><p class="note">${esc(st.notes.r || "")}</p>`;
-  if (st.swRec && st.swRec.at === "row") return wrap(swRecHTML(N));
-  if (st.swVol && st.swVol.at === "row") return wrap(swVolHTML(N));
-  const CH = R.changed && typeof R.changed === "object" ? R.changed : null;
-  const typed = k => N.recTyped.includes(k);
-  /* where a figure comes from, after it: BeerSmith's own named where it was changed from it ("BeerSmith: 8.26 gal") */
-  const from = (k, bs) => { const own = typed(k) && CH ? num(CH[k === "water" ? "strike_vol" : "grain"]) : null;
-    return own != null ? `. BeerSmith: ${bs(own)}` : `, ${typed(k) ? "given here for this recipe" : k === "grain" && R.grain_from === "step" ? `${esc(N.mashName)}'s own, on Brew Steps` : "BeerSmith's"}`; };
-  const can = (k, v) => !locked && (v == null || typed(k) || (k === "grain" && R.grain_from === "step") || !!CH);
-  const btn = (k, v, cmd, name) => can(k, v) ? b("cmdbtn", v == null ? "GIVE IT" : "CHANGE", "", {cmd, why, label: `${v == null ? "Give" : "Change"} the ${name}`}) : "";
-  const w = num(R.strike_vol), g = num(R.grain), q = swRatio(R), qw = ratioWarning(q, swCU());
-  const wSays = w == null ? '<span class="amb">Not given yet.</span>' : `${swMashText(R)}${from("water", x => volText(x, vu))}.${!can("water", w) && !locked ? " Import the recipe's BeerSmith file again with UPDATE to change it." : ""}`;
-  const gSays = g == null ? '<span class="amb">Not given yet.</span>' : `${massText(g, mu)}${from("grain", x => massText(x, mu))}.`;
-  const hSays = N.vol == null ? '<span class="amb">Not given yet.</span>' : `${volText(N.vol, vu)}${(st.sw.inputs || {}).vol_from === "brewstart" ? ", BrewStart's water volume" : ", given here"}.`;
-  const row = (label, says, text, button) => `<div class="swyou"><p><b>${label}</b>, ${says}: ${text}</p>${button}</div>`;
-  const sparge = N.vol != null && w != null && !swWarns("hlt_under") ? `<p class="swn swsp">${spargeText(N.vol, w, vu)}.</p>` : "";
-  return wrap(row(MASH_WATER.label, MASH_WATER.says, wSays, btn("water", w, "mw:water", "mash water"))
-    + (qw ? `<p class="vover">${qw}</p>` : "")
-    + row(SW_REC.grain.btn, "all the grain in the mash", gSays, btn("grain", g, "mw:grain", "grain weight"))
-    + row(HLT_WATER.label, HLT_WATER.says, hSays, locked ? "" : b("cmdbtn", N.vol == null ? "GIVE IT" : "CHANGE", "", {cmd: "mw:hlt", why, label: `${N.vol == null ? "Give" : "Change"} the HLT water`}))
-    + sparge + swLowHTML(N)
-    + (locked ? `<p class="swn">The malt is in, so these don't change now.</p>` : "")
-    + `<div class="swa one">${b("cmdbtn", "CLOSE", "the mash water", {cmd: "mw:x"})}</div>`);
+  return `<li class="stepb"><button type="button" class="step mwrow"${state === "cur" ? ' aria-current="step"' : ""} data-cmd="mw:open" aria-label="${esc(said)}" aria-expanded="${!!(st.sx && st.sx.k === "water")}"${why ? ` aria-disabled="true" data-why="${esc(why)}"` : ""}><span class="n">${i + 1}</span><span class="t">${esc(s.n)}</span><span class="p">${p}</span>${note}<span class="s">${right}${hint}</span>${bar}</button></li>`;
 }
 function mwCmd(x) {
   if (x === "open") {
-    if (st.mwOpen) return mwClose();
     if (!mwOpens(mwIdx())) return;
     /* the row opens the strike water card's own mash water, the card brought into view; another box open in the column
        closes, so the card is there to open it in */
@@ -3697,21 +3156,7 @@ function mwCmd(x) {
     if (!(st.sx && st.sx.k === "water")) cxOpen("water"); else renderAll();
     return setTimeout(() => { const c = root && $("#sw-card"); if (c) c.scrollIntoView({block: "nearest"}); }, 0);
   }
-  if (x === "x") return mwClose();
-  if (!st.mwOpen || mwMaltIn()) return;
-  if (x === "water" || x === "grain") return swRec("open", x, "row");
-  if (x === "hlt") return swVol("open", "row");
 }
-function mwClose() {
-  st.mwOpen = false;
-  if (st.swRec && st.swRec.at === "row") st.swRec = null;
-  if (st.swVol && st.swVol.at === "row") st.swVol = null;
-  renderAll();
-  const r = root && $("#recipe .step.mwrow");
-  if (r) r.focus();
-}
-/* focus on the box's first button as it opens, or as a small box in it closes */
-const mwFocus = () => setTimeout(() => { const f = root && $("#mw-box [data-cmd^=\"mw:\"]"); if (f) f.focus(); }, 0);
 /* BrewStart's row says when it's ready by and its water: "126 °F · ready by 7:00 AM Sat · 15 gal". It is the way to its
    box until BrewStart has finished (bsOpens); before its heating it says its day too, or that no time is set; heating or
    finished, it stays as it was, and holding the water for
@@ -4421,30 +3866,18 @@ function renderAll() {
        one screen it makes way with the timers until the box closes (brewday.css) */
     const swGone = !swPhase() || st.pbOpen || st.cmpOpen || st.confirmNext || st.confirmReset || st.confirmUnload;
     if (st.swOpen && swGone) st.swOpen = false;
-    if (st.swVol && st.swVol.at !== "row" && swGone) st.swVol = null;
+    if (st.swVol && swGone) st.swVol = null;
     if (st.swGrain && swGone) st.swGrain = null;
-    if (st.swRec && st.swRec.at !== "row" && swGone) st.swRec = null;
-    /* the MashIn row's mash water box: one box at a time, so another opened in the column closes it; it also goes with
-       the recipe, or once the row no longer offers it, unless its command is on its way. Its small boxes go with it,
-       and once the malt is in */
-    if (st.mwOpen && !st.pend.swr && !st.pend.swv) {
-      const still = !!st.recipe && mwOpens(mwIdx());
-      if (!still || st.pbOpen || st.cmpOpen || st.confirmNext || st.confirmReset || st.confirmUnload || st.swOpen || st.bsOpen || st.rbOpen || st.confirmLoad != null) st.mwOpen = false;
-    }
-    if (!st.mwOpen || mwMaltIn()) {
-      if (st.swRec && st.swRec.at === "row" && !st.pend.swr) st.swRec = null;
-      if (st.swVol && st.swVol.at === "row" && !st.pend.swv) st.swVol = null;
-    }
     /* BrewStart's box: one box at a time, so another opened in the column closes it; it also goes once it no longer
        applies (BrewStart has finished or is no longer the current step, the recipe has gone, or for a new one the recipe
        has begun or has a BrewStart), unless its command is on its way */
     if (st.bsOpen && !st.pend.bs) {
       const bi = bsIdx(), still = st.bs && (st.bs.neu ? pbFresh() && bi < 0 : bi >= 0 && bsOpens(bi));
-      if (!still || st.pbOpen || st.cmpOpen || st.confirmNext || st.confirmReset || st.confirmUnload || st.swOpen || st.swVol || st.swGrain || st.swRec || st.rbOpen || st.confirmLoad != null) { st.bsOpen = false; st.bs = null; }
+      if (!still || st.pbOpen || st.cmpOpen || st.confirmNext || st.confirmReset || st.confirmUnload || st.swOpen || st.swVol || st.swGrain || st.rbOpen || st.confirmLoad != null) { st.bsOpen = false; st.bs = null; }
     }
     /* the strike water card gone (the malt in, the recipe gone or begun by hand): its editor and its check close with it */
     if (!swPhase() && !st.pend.sx) { st.sx = null; st.swOpen = false; }
-    // the check's box, the probes' panel or the strike water box as it is on screen, before the column is drawn again (pbFit)
+    // the check's box or the probes' panel as it is on screen, before the column is drawn again (pbFit)
     const before = pbMeasure();
     /* a timer's editor open in the column: on the one-screen layout the step list (by hand, the recipe book) makes room for
        it, and the strike water box while that box is closed (brewday.css). Beside the drawing it has a box of its own, and
@@ -4453,17 +3886,17 @@ function renderAll() {
     /* and while something in it waits for you (NEXT STEP's, RESET's or UNLOAD's question, the pre-brew check's box or the
        probes side by side, the strike water box opened out or giving a number, a timer's alarm), or BrewStart's box is
        open, the versions' line steps aside on a monitor, so the step list keeps the current step whole (brewday.css) */
-    $("#recipe").toggleAttribute("data-asking", !!(st.confirmNext || st.confirmReset || st.confirmUnload || st.pbOpen || st.cmpOpen || st.swOpen || st.swVol || st.swGrain || st.swRec || st.rbOpen || st.bsOpen || st.mwOpen || (M.TIMERS && st.tmrs.some(t => t.state === "done"))));
+    $("#recipe").toggleAttribute("data-asking", !!(st.confirmNext || st.confirmReset || st.confirmUnload || st.pbOpen || st.cmpOpen || st.swOpen || st.swVol || st.swGrain || st.rbOpen || st.bsOpen || (M.TIMERS && st.tmrs.some(t => t.state === "done"))));
     /* the pre-brew check's box, the probes side by side and the strike water box opened out, or with the HLT's water or
        the grain's temperature being given, take the step list's room on one screen, as a timer's editor does, and the
        timers' too, so the box isn't squeezed and the page doesn't grow; so do BrewStart's box and OTHER RECIPE's book. A timer's editor open as
        the box opens stays open, with what was typed in it: it makes way with the timers until the box closes
        (brewday.css). The strike water card's check, opened, doesn't: the card keeps its own room (brewday.css) */
-    $("#recipe").toggleAttribute("data-pb", !!(st.pbOpen || st.cmpOpen || st.swVol || st.swGrain || st.swRec || st.rbOpen || st.bsOpen || st.mwOpen));
+    $("#recipe").toggleAttribute("data-pb", !!(st.pbOpen || st.cmpOpen || st.swVol || st.swGrain || st.rbOpen || st.bsOpen));
     /* BrewStart's box: COMPARE PROBES makes way for it on one screen too, as the step list does (brewday.css) */
     $("#recipe").toggleAttribute("data-bs", !!st.bsOpen);
     /* typing in BrewStart's box keeps its caret, whatever draws the column again meanwhile */
-    const fa = document.activeElement, fid = fa && (fa.id === "bstin" || fa.id === "bsgin") && root.contains(fa) ? fa.id : null, fsel = fid ? [fa.selectionStart, fa.selectionEnd] : null;
+    const fa = document.activeElement, fid = fa && fa.id === "bstin" && root.contains(fa) ? fa.id : null, fsel = fid ? [fa.selectionStart, fa.selectionEnd] : null;
     /* the demo draws the step list from its top each time, as the mockup, which writes the column anew, does; the list
        then scrolls only as far as the current step needs (keepStepInView), the scroll not taken as one by hand. Live, a
        scroll is kept */
@@ -4477,7 +3910,6 @@ function renderAll() {
     if (fid) { const fi = $("#" + fid); if (fi && document.activeElement !== fi) { fi.focus({preventScroll: true}); try { fi.setSelectionRange(...fsel); } catch (_) { /* not a text box now */ } } }
     bsFit();
     pbFit(before);
-    drawSw();
     morph($("#now"), nowHTML());
   }
   /* a timer that has run out and not been answered: its row, the title bar and a frame round the whole screen pulse
@@ -5028,9 +4460,9 @@ function swWorked() {
 /* the grain's temperature given, or blanked for the boil kettle's probe (THE PROBE): BrewStart's, or by hand the brew
    day's. On BrewStart it also answers where the grain spent the night: a figure is indoors, the probe the garage */
 const swDemoGrain = v => () => { const {S, bi} = swDemoSteps(); if (bi >= 0) Object.assign(S[bi], {grain: v, where: v == null ? "garage" : "indoors"}); else st.swd.grain = v; st.swGrain = null; swRework("grain"); };
-/* a figure given in the strike water box (swRec), as CraftBeerPi keeps it: the recipe's in its numbers, the room for the
+/* a figure given on the strike water card, as CraftBeerPi keeps it: the recipe's in its numbers, the room for the
    brew day */
-const swDemoRec = (k, v) => () => { const d = st.swd; if (k === "room") d.room = v; else d.rec = Object.assign({}, d.rec, {[k]: v}); st.swRec = null; swRework(k === "room" ? "room" : "recipe"); };
+const swDemoRec = (k, v) => () => { const d = st.swd; if (k === "room") d.room = v; else d.rec = Object.assign({}, d.rec, {[k]: v}); swRework(k === "room" ? "room" : "recipe"); };
 /* USE or BACK TO, as CraftBeerPi applies it: the strike water step's temperature, BrewStart's while it is next or waits,
    and while the strike water step heats or holds the water (BrewStart heating included) the HLT's target; by hand the
    HLT's target alone */
@@ -5116,11 +4548,11 @@ function bsDueLine(s, pv) {
     : `BrewStart: Heating has to start now: from ${pv.toFixed(1)} °F it needs about ${Math.round(heat)} min, so the water will be ready around ${bsFmt(eta)}, after ${bsFmt(at)}.`;
 }
 /* the demo's ADD BREWSTART answered: BrewStart in as step 1, on the HLT with its element, heating the recipe's water to
-   the strike water step's temperature; every step after it moves down one. Its water, and the grain's answer, are
-   numbers USE is worked out from, so CraftBeerPi works it out again */
-function bsAdd(B, hm, date, g) {
+   BeerSmith's strike (bsNewTemp); every step after it moves down one. Its water is a figure the check is worked out
+   from, so CraftBeerPi works it out again */
+function bsAdd(B, hm, date) {
   M.RECIPE.steps.unshift({n: "BrewStart", type: "BrewStart", k: "hlt", ready: B.kind === "ready" ? hm : null, start: B.kind === "start" ? hm : null,
-    date, temp: bsNewTemp(), vol: DEMO.SW_NEED, watts: DEMO.SW_WATTS, where: B.where, grain: B.where === "indoors" ? g : null});
+    date, temp: bsNewTemp(), vol: DEMO.SW_NEED, watts: DEMO.SW_WATTS});
   st.bsOpen = false; st.bs = null;
   if (st.swd) swRework(Math.abs(DEMO.SW_NEED - (st.swd.vol ?? 0)) >= 0.05 ? "vol" : "grain");
   if (B.then === "all") return bsAllGo(B);
@@ -5197,7 +4629,7 @@ function cmdReset() {
 function cmdUnload() {
   const u = unloadRule();
   if (u.why) return;
-  Object.assign(st, {confirmNext: false, confirmReset: false, pbOpen: false, cmpOpen: false, rbOpen: false, swOpen: false, swVol: null, swGrain: null, swRec: null, bsOpen: false, bs: null, mwOpen: false});
+  Object.assign(st, {confirmNext: false, confirmReset: false, pbOpen: false, cmpOpen: false, rbOpen: false, swOpen: false, swVol: null, swGrain: null, bsOpen: false, bs: null});
   if (u.ask) { st.confirmUnload = true; return renderAll(); }
   (DEMO_MODE ? cmdUnloadGo : liveUnload)();
 }
@@ -7241,15 +6673,8 @@ function run(cmd) {
     /* OTHER RECIPE's book, opened and closed: opening it closes the probes' panel, and reads the book again, so a recipe
        imported meanwhile on another screen is in it */
     case "rb": st.rbOpen = x === "open"; st.confirmLoad = null; if (st.rbOpen) { st.cmpOpen = false; if (!DEMO_MODE) loadBook(); } return renderAll();
-    /* the strike water box: USE, BACK TO, USE waiting for the grain (where), and FORECAST or CLOSE, one button that opens
-       and closes the details; closing them closes a small box open in them. BrewStart's row, + BrewStart and its box */
-    /* opened by GIVE THEM (swGiveOpen), the box remembers it ("give"), so USE and CLOSE keep GIVE THEM's halves until it
-       closes, even once the forecast takes the figures' place */
-    case "sw": if (x === "use") return swUse(); if (x === "back") return swBack(); if (x === "where") return swWhere(); st.swOpen = x === "more" ? (st.swOpen ? false : swGiveOpen() ? "give" : true) : x === "open"; if (!st.swOpen) { st.swVol = null; st.swGrain = null; st.swRec = null; } return renderAll();
-    case "swv": return swVol(x, y);
+    /* the strike water card, MashIn's row opening its MASH WATER. BrewStart's row, + BrewStart and its box */
     case "sx": return cxCmd(x, y);
-    case "swg": return swGrain(x, y);
-    case "swr": return swRec(x, y);
     case "mw": return mwCmd(x);
     case "bs": return bsCmd(x, y);
     case "e": case "w": return liveOk(k, x);
@@ -7277,7 +6702,7 @@ function blankMoment() {
   return {t: null, link: "lost", age: null, banner: null, v, a, recipe: null, timer: {left: 3600, running: false},
     tmrs: [], names: [], tedit: null, snd: soundInit(),
     events: loadEvents(), pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, logOpen: false, rbOpen: false,
-    sw: null, swOpen: false, swVol: null, swGrain: null, swRec: null, bsOpen: false, bs: null, mwOpen: false, simCfg: false, spdOpen: false, spdPend: null, svAsk: false, svPend: {}, svIn: {},
+    sw: null, swOpen: false, swVol: null, swGrain: null, bsOpen: false, bs: null, simCfg: false, spdOpen: false, spdPend: null, svAsk: false, svPend: {}, svIn: {},
     fail: {}, expect: {}, alarm: null, errors: [], warnings: [], prompts: [], lostAt: null, openedAt: Date.now(),
     waitN: 0, oldAt: 0, seenN: 0, seenDone: new Set()};
 }
@@ -7967,10 +7392,6 @@ const handlers = {
       if (bad) { if (w) w.textContent = bad; } else cxCmd("set");
       return;
     }
-    if (e.target.id === "swvin" && e.key === "Enter") { e.preventDefault(); swVol("set"); return; }
-    if (e.target.id === "swgin" && e.key === "Enter") { e.preventDefault(); swGrain("set"); return; }
-    if (e.target.id === "swrin" && e.key === "Enter") { e.preventDefault(); swRec("set"); return; }
-    if (e.target.id === "swrq" && e.key === "Enter") { e.preventDefault(); swRec("set"); return; }
     /* Enter in a simulated vessel's temperature box is its SET TEMPERATURE; greyed, it says why */
     if (e.key === "Enter" && e.target.dataset && e.target.dataset.v && e.target.closest && e.target.closest("#spd-box")) {
       e.preventDefault();
@@ -7980,7 +7401,7 @@ const handlers = {
     }
     /* Enter in BrewStart's time box, or its grain figure, is SET; a greyed SET says why. The box drawn again keeps the
        caret, at its end */
-    if ((e.target.id === "bstin" || e.target.id === "bsgin") && e.key === "Enter" && st.bs) {
+    if (e.target.id === "bstin" && e.key === "Enter" && st.bs) {
       e.preventDefault();
       const id = e.target.id, go = $("#bs-box .bsgo");
       if (go && go.getAttribute("aria-disabled") === "true") explain(go); else bsSet();
@@ -7988,7 +7409,6 @@ const handlers = {
       if (box && document.activeElement !== box) { box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
       return;
     }
-    if (e.key === "Escape" && (st.swVol || st.swGrain || st.swRec)) { st.swVol = null; st.swGrain = null; st.swRec = null; renderAll(); if (st.mwOpen) mwFocus(); return; }
     /* the pH box: Escape closes it while focus is in it or on its reminder; from elsewhere, once nothing else open is left
        to close first (below) */
     if (e.key === "Escape" && st.ph && st.ph.open && e.target.closest && e.target.closest("#ph-box, #banner")) { phClose(); return; }
@@ -8003,7 +7423,6 @@ const handlers = {
     if (e.key === "Escape" && st.tedit && (tHere() !== "col" ? !inColBox : !(ONE_SCREEN.matches && (st.pbOpen || st.cmpOpen || st.swOpen || st.rbOpen || st.bsOpen)))) { st.tedit = null; renderAll(); return; }
     if (e.key === "Escape" && st.bsOpen && st.bs && st.bs.ask && !st.pend.bs) { bsCmd("all-stay"); return; }
     if (e.key === "Escape" && st.bsOpen) { bsClose(); return; }
-    if (e.key === "Escape" && st.mwOpen) { mwClose(); return; }
     if (e.key === "Escape" && st.spdOpen) { spdClose(); return; }
     if (e.key === "Escape" && st.confirmLoad != null) { st.confirmLoad = null; renderAll(); return; }
     // OTHER RECIPE's book
@@ -8025,14 +7444,8 @@ const handlers = {
     /* the readings box's other figures, the same way */
     if (st.ph && st.ph.f && e.target.dataset && e.target.dataset.k && e.target.closest("#ph-box")) { rdPut(st.ph, e.target.dataset.k, e.target.value); phDraw(); return; }
     /* BrewStart's time box: kept as typed and read (bsTyped), its words, AM and PM, and SET following it in place
-       (bsPatch), and said aloud once the brewer stops typing; its grain figure, kept as typed, un-presses the chips */
+       (bsPatch), and said aloud once the brewer stops typing */
     if (e.target.id === "bstin" && st.bs) { bsTyped(e.target.value); return; }
-    if (e.target.id === "bsgin" && st.bs) {
-      st.bs.fig = e.target.value; st.bs.chip = null;
-      root.querySelectorAll("#bs-box .bschip").forEach(x => x.setAttribute("aria-pressed", "false"));
-      if (st.bs.ask) { st.bs.ask = false; renderAll(); }
-      return;
-    }
     /* a card figure's box: kept as typed, with SET, the line of what it does and the line of what needs a look following
        it in place, so the box keeps its caret */
     if (e.target.id === "sxin" && st.sx) {
@@ -8043,51 +7456,6 @@ const handlers = {
       if (o) o.textContent = cxSays(k, v, N, K).replace(/&nbsp;/g, "\u00a0");
       if (w) w.textContent = bad && v != null ? bad : cxWarn(k, v, N);
       if (set) { const why = cxWhy(k) || bad; if (why) { set.setAttribute("aria-disabled", "true"); set.dataset.why = why; } else { set.removeAttribute("aria-disabled"); delete set.dataset.why; } }
-      return;
-    }
-    /* the strike water box's water and grain: kept as typed, and said on SET, without redrawing */
-    if (e.target.id === "swgin" && st.swGrain) {
-      const x = parseFloat(e.target.value), ok = $("#swgok");
-      st.swGrain.val = Number.isFinite(x) ? Math.round(x * 10) / 10 : null;
-      if (ok) ok.textContent = st.swGrain.val == null ? "– –" : st.swGrain.val.toFixed(1);
-      return;
-    }
-    if (e.target.id === "swrin" && st.swRec) {
-      const x = parseFloat(e.target.value), ok = $("#swrok"), q = swRecPlaces(st.swRec.kind);
-      st.swRec.val = Number.isFinite(x) ? Math.round(x * 10 ** q) / 10 ** q : null;
-      st.swRec.typed = true;
-      if (ok) ok.textContent = st.swRec.val == null ? "– –" : st.swRec.val.toFixed(q);
-      /* the mash water: the ratio it gives, the sparge water it leaves and a ratio no usual mash has follow it in place */
-      if (st.swRec.kind === "water") {
-        const N = swNumbers(), r = $("#swrq"), o = $("#swr-o"), w = $("#swr-w");
-        const ratio = swRatioOf(N.R, st.swRec.val);
-        if (r) r.value = ratio == null ? "" : String(+ratio.toFixed(2));
-        if (o) o.textContent = swRecOther(N, st.swRec.val);
-        if (w) w.textContent = swRecWarn(N, st.swRec.val);
-      }
-      return;
-    }
-    /* the mash water's ratio typed instead: it fills the mash water from the grain weight, with BeerSmith's water under
-       the false bottom */
-    if (e.target.id === "swrq" && st.swRec && st.swRec.kind === "water") {
-      const N = swNumbers(), g = num(N.R.grain), w = waterForRatio(parseFloat(String(e.target.value).replace(",", ".")), g, swMU(), swVU(), swCU());
-      st.swRec.val = w == null ? null : Math.round((w + swDead(N.R)) * 100) / 100;
-      st.swRec.typed = true;
-      const i = $("#swrin"), ok = $("#swrok"), o = $("#swr-o"), warn = $("#swr-w");
-      if (i) i.value = st.swRec.val == null ? "" : st.swRec.val.toFixed(2);
-      if (ok) ok.textContent = st.swRec.val == null ? "– –" : st.swRec.val.toFixed(2);
-      if (o) o.textContent = swRecOther(N, st.swRec.val);
-      if (warn) warn.textContent = swRecWarn(N, st.swRec.val);
-      return;
-    }
-    if (e.target.id === "swvin" && st.swVol) {
-      const x = parseFloat(e.target.value), ok = $("#swvok"), ov = $("#swv-over"), o = $("#swv-o");
-      st.swVol.val = Number.isFinite(x) ? Math.round(x * 10) / 10 : null;
-      if (ok) ok.textContent = st.swVol.val == null ? "– –" : st.swVol.val.toFixed(1);
-      // the line saying it is more than the HLT holds follows the figure as it is typed
-      if (ov) ov.textContent = hltOver(st.swVol.val, swVU());
-      // and the mash water's sparge water left
-      if (o) o.textContent = swVolOther(swNumbers(), st.swVol.val);
       return;
     }
     /* the timer editor's boxes: kept as typed, the box keeping its caret. The names' buttons follow the name in place; a
@@ -8189,15 +7557,9 @@ function demoTick() {
     return;
   }
   const r = st.recipe;
-  /* CraftBeerPi working USE out: how long it has been at it, and its answer once it comes */
+  /* CraftBeerPi working the check out: its answer once it comes */
   const sww = st.swd && st.swd.work;
-  if (sww) {
-    if (st.t - sww.since >= SW_WORK_S) swWorked();
-    else setText(root.querySelector("#sw-el"), swSecs(st.t - sww.since));
-  }
-  /* the levers come after USE: FORECAST's sentence on what would raise USE most, once they're in */
-  const swa = st.swd && st.swd.has;
-  if (swa && swa.lvAt != null && st.t >= swa.lvAt) { delete swa.lvAt; if (st.swOpen) renderAll(); }
+  if (sww && st.t - sww.since >= SW_WORK_S) swWorked();
   /* the pre-brew check's box follows CraftBeerPi while it is open: here, the Pi's clock set from the internet */
   if (st.pbOpen && st.pb.clockAt && !st.pb.clock && st.t >= st.pb.clockAt) { st.pb.clock = true; st.pb.clockWhy = null; say("The clock is set now. Every check passes."); renderAll(); }
   const pz = root.querySelector("#pz");
@@ -8287,9 +7649,6 @@ function liveTick() {
   if (last && last.timer && last.timer.running) { st.timer = timerNow(last.timer); const o = $("#tm-out"); if (o) setText(o, mmss(st.timer.left)); }
   if (M.TIMERS) liveTmTick();
   // how long CraftBeerPi has been working USE out, counted on between its messages
-  if (st.sw && st.sw.working) setText(root.querySelector("#sw-el"), swSecs(swElapsed()));
-  // the strike water as planned still without its forecast after SW_FC_WAIT: MASH drops its WORKING OUT
-  if (swFcGap && !swFcGap.dropped && Date.now() - swFcGap.at >= SW_FC_WAIT) { swFcGap.dropped = true; renderAll(); }
   // the pre-brew check's box, and COMPARE PROBES, follow CraftBeerPi's check while open
   if ((st.pbOpen || st.cmpOpen) && !pbBusy && !(st.cmpOpen && pbNone) && Date.now() - pbAt >= PB_POLL) pbAsk();
   // a pause counts on CraftBeerPi's clock, from when BoilPower stamped it
@@ -8314,7 +7673,7 @@ export function createBrewDay(el, o = {}) {
   if (!DEMO_MODE) { try { window.name = "craftbeerpi"; } catch (_) { /* a sandboxed frame: no name */ } }
   timers = []; noteTimers = {}; hold = null; afterHold = null; heldOn = null; pbKeep = null; rigW = 0; tcornerKeep = null; last = null; everConnected = false; book = []; bookBusy = false; bookAgain = false; bookShown = false;
   bookNames = null; bookFor = null;
-  tAns = null; tMsg = null; lastBannerKey = null; rangAt = 0; newIds = new Set(); openIds = null; sAns = null; swFailedAt = null; swFcGap = null; bsOff = null; clockSeen = null; stepSeen = null;
+  tAns = null; tMsg = null; lastBannerKey = null; rangAt = 0; newIds = new Set(); openIds = null; sAns = null; swFailedAt = null; bsOff = null; clockSeen = null; stepSeen = null;
   answered.clear(); Object.keys(own).forEach(k => delete own[k]);
   const html = document.documentElement;
   // The stylesheets go in once and stay: every rule is scoped to html.bd-page, so they rest while it is off.
@@ -8382,7 +7741,7 @@ export function createBrewDay(el, o = {}) {
     // a moment can open an editor (open) and borrow another moment's graph history (base)
     const open = st.open, base = st.base || key;
     delete st.open; delete st.base;
-    Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, logOpen: false, pbOpen: false, cmpOpen: false, rbOpen: false, swOpen: false, swVol: null, swGrain: null, swRec: null, sx: null, bsOpen: false, bs: null, spdOpen: false, spdPend: null, svAsk: false, svPend: {}, svIn: {}}, open);
+    Object.assign(st, {scene: key, pend: {}, notes: {}, edit: null, confirmNext: false, confirmReset: false, confirmUnload: false, confirmLoad: null, logOpen: false, pbOpen: false, cmpOpen: false, rbOpen: false, swOpen: false, swVol: null, swGrain: null, sx: null, bsOpen: false, bs: null, spdOpen: false, spdPend: null, svAsk: false, svPend: {}, svIn: {}}, open);
     /* the liquid in each vessel (LEVELS.md): the moment's own (the #lv-… moments) or ?levels=tint (?levels=line, a look
        not chosen, too), as the mockup's flag; its level sensors, the moment's or ?lsens=hlt,bk. With the levels, the
        kettles' Hardware page figures are the mockup's examples (DEMO.LV_HW) under any the moment gives */
@@ -8510,7 +7869,7 @@ export function createBrewDay(el, o = {}) {
      next frame, as on a phone fitting it can change the column's height again */
   const rro = PAGE ? null : new ResizeObserver(() => {
     if (gen !== myGen || !st) return;
-    keepStepInView(true); drawSw();
+    keepStepInView(true);
     requestAnimationFrame(() => { if (gen === myGen && st && root && bsFit()) keepStepInView(); });
   });
   if (rro) rro.observe($("#recipe"));
